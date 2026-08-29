@@ -71,6 +71,13 @@ const check = (name, cond) => {
   await page.keyboard.up('ArrowRight');
   const pos = await page.evaluate(() => window.__tiltrBall);
   check(`Ball rollt per Tastatur (dx=${(pos.x - p0.x).toFixed(0)})`, pos.x > p0.x + 40);
+
+  // Ruhiges HUD: der Timer-Chip ändert seine Breite nicht, während die Zeit
+  // läuft (tabular-nums + Mindestbreite) – nichts dahinter verschiebt sich.
+  const w1 = await page.evaluate(() => document.getElementById('timer').getBoundingClientRect().width);
+  await page.waitForTimeout(700);
+  const w2 = await page.evaluate(() => document.getElementById('timer').getBoundingClientRect().width);
+  check(`HUD: Timer-Chip breitenstabil (${w1} = ${w2})`, w1 === w2 && w1 > 0);
   await page.close();
 }
 

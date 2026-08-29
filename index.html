@@ -53,12 +53,24 @@
       opacity: 0.8;
     }
     #hud .btn { pointer-events: auto; margin-left: var(--space-2); }
-    /* Status links darf gekürzt werden, die Buttons rechts brechen nie um. */
-    #hud > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    #hud > span:last-child { flex-shrink: 0; white-space: nowrap; }
+    #hudStats { display: flex; align-items: center; gap: var(--space-2); min-width: 0; overflow: hidden; }
+    #hudButtons { flex-shrink: 0; white-space: nowrap; }
+    /* Timer breit genug für "999.9 s": die laufende Zeit schiebt nichts herum. */
+    #timer { min-width: 4.6em; font-weight: 700; }
     #floor { color: var(--accent-2); }
-    #pings { color: var(--accent); }
+    #pings { color: var(--accent); letter-spacing: 3px; padding-right: calc(10px - 3px); }
     #gems { color: var(--warning); }
+    /* Meldungen (Checkpoint, Sturz, MP-Status …): eigene ruhige Zeile unterm HUD. */
+    #status {
+      position: fixed;
+      top: calc(var(--safe-top) + 62px);
+      left: var(--space-4);
+      right: var(--space-4);
+      text-align: center;
+      font-size: var(--fs-body-s);
+      opacity: 0.85;
+      pointer-events: none;
+    }
 
     /* --- Splash: einmalige Intro-Animation beim Laden (docs/DESIGN.md) --- */
     #splash {
@@ -296,13 +308,19 @@
   <canvas id="game"></canvas>
 
   <div id="hud" class="hidden">
-    <span><b id="timer"></b> <span id="floor"></span> <span id="pings"></span> <span id="gems"></span> <span id="status"></span></span>
-    <span>
+    <span id="hudStats">
+      <b id="timer" class="hud-chip"></b>
+      <span id="floor" class="hud-chip"></span>
+      <span id="pings" class="hud-chip"></span>
+      <span id="gems" class="hud-chip"></span>
+    </span>
+    <span id="hudButtons">
       <button id="calibrateBtn" class="btn btn-ghost" data-i18n-title="hud.calibrate">⌖</button>
       <button id="debugBtn" class="btn btn-ghost hidden" data-i18n-title="hud.debug">👁</button>
       <button id="homeBtn" class="btn btn-ghost" data-i18n-title="hud.home">🏠</button>
     </span>
   </div>
+  <p id="status"></p>
 
   <div id="overlay">
     <h1>tiltr</h1>

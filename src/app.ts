@@ -1294,11 +1294,14 @@ function frame(now: number): void {
     }
 
     timerEl.textContent = fmtTime((now - t0) / 1000);
-    pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(Math.max(0, pingMax - pings));
+    // Nur bei Änderung schreiben: erspart Layout-Arbeit pro Frame.
+    const pingsTxt = '●'.repeat(pings) + '○'.repeat(Math.max(0, pingMax - pings));
+    if (pingsEl.textContent !== pingsTxt) pingsEl.textContent = pingsTxt;
     const allGems = loaded!.floors.flatMap((f) => f.world.gems);
-    gemsEl.textContent = allGems.length
+    const gemsTxt = allGems.length
       ? `💎 ${allGems.filter((g) => g.collected).length}/${allGems.length}`
       : '';
+    if (gemsEl.textContent !== gemsTxt) gemsEl.textContent = gemsTxt;
 
     const fallen = frozen || disconnected ? null : world.fallenHole();
     const caught = fallen || frozen || disconnected ? null : world.guardCaught();

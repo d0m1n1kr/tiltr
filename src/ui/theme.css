@@ -163,6 +163,24 @@
   padding: var(--space-3);
 }
 
+/* HUD-Chip: kleine Status-Pille oben im Spiel (Timer, Ebene, Pings, Gems).
+   Tabellenziffern halten laufende Zahlen ruhig; leere Chips verschwinden. */
+.hud-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: var(--border-subtle);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: var(--fs-body-s);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hud-chip:empty {
+  display: none;
+}
+
 /* Modus-Karte im Startmenü: Icon | Titel + Untertitel | Meta rechts.
    Einheitliche, scannbare Zeile für jeden Spielmodus. */
 .mode-item {

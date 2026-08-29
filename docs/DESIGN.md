@@ -104,6 +104,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.btn-lg` | Hero-Variante des Primary (größer, Glow) |
 | `.chip` (+ `.active`) | Auswahl-Pill in einer Gruppe (Schwierigkeit, Sprache, MP-Modus); aktiv = Teal-Outline |
 | `.mode-item` (+ `.suggest`) | Modus-Karte im Startmenü: Icon, Titel, Untertitel, Meta rechts; `.suggest` (Teal-Rand) hebt GENAU EINE Karte als Einstiegs-Empfehlung hervor |
+| `.hud-chip` | Status-Pille im HUD (Timer, Ebene, Pings, Gems): Tabellenziffern (`tabular-nums`), leere Chips verschwinden (`:empty`); der Timer hat eine Mindestbreite, damit die laufende Zeit nichts verschiebt. Meldungen laufen NICHT im HUD mit, sondern in `#status` (eigene zentrierte Zeile darunter) |
 | `.panel` | Karte/Fläche: subtiler Rand, Radius L |
 | `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
