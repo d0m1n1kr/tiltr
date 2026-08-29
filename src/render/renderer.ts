@@ -250,9 +250,11 @@ export class Renderer {
       ctx.fill();
     }
 
-    // Echo-Ping: expandierender Ring vom Ball aus.
+    // Echo-Ping: expandierender Ring vom Ball aus. Radius geklemmt: der
+    // rAF-Timestamp (Frame-Beginn) kann minimal VOR dem performance.now()
+    // des auslösenden Inputs liegen – arc() wirft bei negativem Radius.
     for (const p of world.pings) {
-      const r = ((now - p.start) / 1000) * p.speed;
+      const r = Math.max(0, ((now - p.start) / 1000) * p.speed);
       const alpha = Math.max(0, 1 - r / p.range) * 0.6;
       if (alpha <= 0.01) continue;
       ctx.strokeStyle = `rgba(${WORLD.ping}, ${alpha})`;
