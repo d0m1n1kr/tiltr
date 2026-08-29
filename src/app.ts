@@ -10,6 +10,7 @@ import { Renderer } from './render/renderer';
 import { loadLevel } from './levels/loader';
 import { generateQuickLevel, PRESETS, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
+import { CAMPAIGN_LEVELS, CAMPAIGN_IDS } from './levels/campaign';
 import type { LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
@@ -20,6 +21,8 @@ const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
 const WIND_HEAR = CELL * 1.8;
 const PING_RANGE = 260; // Reichweite des Echo-Pings
 const PING_SPEED = 600; // px/s – Wellenfront visuell & Echo-Verzögerung
+const GUARD_HEAR = CELL * 2.2;
+const KEY_HEAR = CELL * 2.5;
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -28,6 +31,7 @@ const hud = $('hud');
 const statusEl = $('status');
 const timerEl = $('timer');
 const pingsEl = $('pings');
+const gemsEl = $('gems');
 const quickBtn = $('quickBtn');
 const tutorialBtn = $('tutorialBtn');
 const calibrateBtn = $('calibrateBtn');
@@ -49,7 +53,7 @@ const renderer = new Renderer(canvas);
 setupGallery(audio);
 
 type GameState = 'menu' | 'playing' | 'fell' | 'won';
-type Mode = { kind: 'quick' } | { kind: 'tutorial'; index: number };
+type Mode = { kind: 'quick' } | { kind: 'tutorial'; index: number } | { kind: 'campaign'; index: number };
 
 const TUT_IDS = TUTORIAL_LEVELS.map((l) => l.id);
 
@@ -67,6 +71,9 @@ let message = '';
 let messageUntil = 0;
 let pings = 0;
 let pingMax = 3;
+let falls = 0;
+let levelCols = 0;
+let levelRows = 0;
 
 // Seed aus der URL (?seed=…) macht Läufe reproduzierbar (Tests, später Daily).
 function nextSeed(): number {
@@ -143,7 +150,51 @@ function refreshMenu(): void {
   }
   const best = profile.bestFor(`quick-${profile.preset}`);
   $('quickBest').textContent = best !== null ? `Bestzeit (${PRESETS[profile.preset].label}): ${fmtTime(best)}` : '';
+  $('campaignStars').textContent = `(${profile.totalStars(CAMPAIGN_IDS)}/${CAMPAIGN_IDS.length * 3}★)`;
 }
+
+/* --- Kampagnen-Levelauswahl ------------------------------------------------ */
+
+const campaignPanel = $('campaign');
+const campaignList = $('campaignList');
+
+function levelUnlocked(index: number): boolean {
+  return index === 0 || profile.starsFor(CAMPAIGN_IDS[index - 1]!) > 0;
+}
+
+function refreshCampaignList(): void {
+  campaignList.replaceChildren();
+  CAMPAIGN_LEVELS.forEach((def, i) => {
+    const unlocked = levelUnlocked(i);
+    const item = document.createElement('button');
+    item.className = 'panel level-item' + (unlocked ? '' : ' locked');
+    const name = document.createElement('span');
+    name.textContent = `${i + 1}. ${unlocked ? def.name : '???'}`;
+    const meta = document.createElement('span');
+    meta.className = 'level-meta';
+    if (unlocked) {
+      const stars = profile.starsFor(def.id);
+      const best = profile.bestFor(def.id);
+      meta.textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars) + (best !== null ? ` · ${fmtTime(best)}` : '');
+    } else {
+      meta.textContent = '🔒';
+    }
+    item.append(name, meta);
+    if (unlocked) {
+      item.addEventListener('click', () => {
+        campaignPanel.classList.add('hidden');
+        void startMode({ kind: 'campaign', index: i });
+      });
+    }
+    campaignList.append(item);
+  });
+}
+
+$('campaignBtn').addEventListener('click', () => {
+  refreshCampaignList();
+  campaignPanel.classList.remove('hidden');
+});
+$('campaignClose').addEventListener('click', () => campaignPanel.classList.add('hidden'));
 
 for (const chip of presetChips) {
   chip.addEventListener('click', () => {
@@ -160,6 +211,7 @@ function showMenu(): void {
   audio.setRolling(0);
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
+  audio.setGuard(0, 0, 0);
   hideInterstitial();
   hud.classList.add('hidden');
   overlay.classList.remove('hidden');
@@ -198,11 +250,22 @@ window.addEventListener('resize', () => renderer.resize());
 
 function beginLevel(): void {
   if (!mode) return;
-  const def = mode.kind === 'tutorial' ? TUTORIAL_LEVELS[mode.index]! : generateQuickLevel(nextSeed(), profile.preset);
+  const def =
+    mode.kind === 'tutorial'
+      ? TUTORIAL_LEVELS[mode.index]!
+      : mode.kind === 'campaign'
+        ? CAMPAIGN_LEVELS[mode.index]!
+        : generateQuickLevel(nextSeed(), profile.preset);
   currentDef = def;
   if (def.intro) {
+    const title =
+      mode.kind === 'tutorial'
+        ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${def.name}`
+        : mode.kind === 'campaign'
+          ? `Level ${mode.index + 1} · ${def.name}`
+          : def.name;
     showInterstitial({
-      title: mode.kind === 'tutorial' ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${def.name}` : def.name,
+      title,
       text: def.intro,
       primary: { label: 'Los!', onClick: () => launch(def) },
       secondary: { label: 'Menü', onClick: showMenu },
@@ -217,6 +280,9 @@ function launch(def: LevelDef): void {
   world = loaded.world;
   pingMax = loaded.pingBudget;
   pings = pingMax;
+  levelCols = loaded.cols;
+  levelRows = loaded.rows;
+  falls = 0;
   maxDist = Math.hypot(loaded.cols * CELL, loaded.rows * CELL);
   renderer.setWorld(loaded.cols * CELL, loaded.rows * CELL);
   renderer.follow(world.ball.x, world.ball.y, true);
@@ -259,6 +325,38 @@ function onWin(seconds: number): void {
               label: 'Weiter',
               onClick: () => {
                 mode = { kind: 'tutorial', index: index + 1 };
+                beginLevel();
+              },
+            }
+          : { label: 'Zum Menü', onClick: showMenu },
+        secondary: hasNext ? { label: 'Menü', onClick: showMenu } : undefined,
+      });
+    }, 1800);
+  } else if (mode.kind === 'campaign') {
+    const index = mode.index;
+    const gemsTotal = world?.gems.length ?? 0;
+    const gemsGot = world?.gems.filter((g) => g.collected).length ?? 0;
+    // Sterne: 1 = geschafft, 2 = unter Par, 3 = alle Gems (bzw. sturzfrei ohne Gems)
+    const stars =
+      1 +
+      (def.parTimeS !== undefined && seconds <= def.parTimeS ? 1 : 0) +
+      (gemsTotal > 0 ? (gemsGot === gemsTotal ? 1 : 0) : falls === 0 ? 1 : 0);
+    profile.submitStars(def.id, stars);
+    const isRecord = profile.submitTime(def.id, seconds);
+    const hasNext = index + 1 < CAMPAIGN_LEVELS.length;
+    const lines = [
+      `Zeit: ${fmtTime(seconds)}${def.parTimeS ? ` (Par ${def.parTimeS} s)` : ''}${isRecord ? ' – neue Bestzeit!' : ''}`,
+      gemsTotal > 0 ? `💎 ${gemsGot}/${gemsTotal}` : `Stürze: ${falls}`,
+    ];
+    setTimeout(() => {
+      showInterstitial({
+        title: `${def.name} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`,
+        text: lines.join('\n'),
+        primary: hasNext
+          ? {
+              label: 'Weiter',
+              onClick: () => {
+                mode = { kind: 'campaign', index: index + 1 };
                 beginLevel();
               },
             }
@@ -311,7 +409,7 @@ function firePing(now: number): void {
   const b = world.ball;
   world.pings.push({ x: b.x, y: b.y, start: now, speed: PING_SPEED, range: PING_RANGE });
 
-  const reflections: Array<{ dx: number; dy: number; dist: number; freq: number }> = [];
+  const reflections: Array<{ dx: number; dy: number; dist: number; freq: number; double?: boolean }> = [];
   for (const w of world.walls) {
     const cx = Math.max(w.x, Math.min(b.x, w.x + w.w));
     const cy = Math.max(w.y, Math.min(b.y, w.y + w.h));
@@ -328,12 +426,43 @@ function firePing(now: number): void {
     h.litUntil = h.litFrom + 1200;
     reflections.push({ dx: h.x - b.x, dy: h.y - b.y, dist, freq: 280 });
   }
+  const reveal = (o: { x: number; y: number; litFrom?: number; litUntil?: number }, freq: number, double = false) => {
+    const dist = Math.hypot(b.x - o.x, b.y - o.y);
+    if (dist > PING_RANGE) return;
+    o.litFrom = now + (dist / PING_SPEED) * 1000;
+    o.litUntil = o.litFrom + 1200;
+    reflections.push({ dx: o.x - b.x, dy: o.y - b.y, dist, freq, double });
+  };
+  for (const key of world.keys) if (!key.collected) reveal(key, 1650);
+  for (const gem of world.gems) if (!gem.collected) reveal(gem, 2093, true);
+  for (const g of world.guards) reveal(g, 240);
+
+  // Durchgänge der aktuellen Zelle antworten hell und doppelt ("offen").
+  const cx0 = Math.floor(b.x / CELL);
+  const cy0 = Math.floor(b.y / CELL);
+  const dirs: Array<[number, number]> = [
+    [0, -1],
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+  ];
+  for (const [ddx, ddy] of dirs) {
+    const nx = cx0 + ddx,
+      ny = cy0 + ddy;
+    if (nx < 0 || ny < 0 || nx >= levelCols || ny >= levelRows) continue;
+    const px = (cx0 + 0.5) * CELL + (ddx * CELL) / 2;
+    const py = (cy0 + 0.5) * CELL + (ddy * CELL) / 2;
+    const blocked = world.walls.some((w) => px > w.x - 1 && px < w.x + w.w + 1 && py > w.y - 1 && py < w.y + w.h + 1);
+    if (!blocked) reflections.push({ dx: ddx, dy: ddy, dist: CELL / 2, freq: 1300, double: true });
+  }
+
   reflections.sort((a, c) => a.dist - c.dist);
   audio.echoPing(
-    reflections.slice(0, 8).map((r) => ({
+    reflections.slice(0, 10).map((r) => ({
       dx: r.dx,
       dy: r.dy,
       freq: r.freq,
+      double: r.double,
       delay: r.dist / PING_SPEED,
       gain: 0.05 + 0.25 * (1 - r.dist / PING_RANGE),
     })),
@@ -421,8 +550,57 @@ function frame(now: number): void {
     } else {
       audio.setHoleRumble(0, 0, 0);
     }
+    // Wächter: Brummen aus seiner Richtung, fließt in die Gefahr (Herzschlag) ein
+    let guardDanger = 0;
+    let nearGuard: { dx: number; dy: number } | null = null;
+    for (const g of world.guards) {
+      const d = Math.max(0, Math.hypot(g.x - world.ball.x, g.y - world.ball.y) - g.r);
+      const c = Math.max(0, 1 - d / GUARD_HEAR);
+      if (c > guardDanger) {
+        guardDanger = c;
+        nearGuard = { dx: g.x - world.ball.x, dy: g.y - world.ball.y };
+      }
+    }
+    if (nearGuard) audio.setGuard(guardDanger, nearGuard.dx, nearGuard.dy);
+    else audio.setGuard(0, 0, 0);
+
     if (danger > 0.55) haptics.holeWarning(danger);
-    audio.heartbeat(danger);
+    audio.heartbeat(Math.max(danger, guardDanger));
+
+    // Schlüssel: Klimpern in Hörweite, Einsammeln öffnet die Tür
+    for (const key of world.keys) {
+      if (key.collected) continue;
+      const kdx = key.x - world.ball.x,
+        kdy = key.y - world.ball.y;
+      const kd = Math.hypot(kdx, kdy);
+      if (kd < key.r + world.ball.r) {
+        key.collected = true;
+        audio.collectKey();
+        haptics.checkpoint();
+        for (let i = world.walls.length - 1; i >= 0; i--) {
+          const w = world.walls[i]!;
+          if (w.door?.id === key.opens) {
+            world.walls.splice(i, 1);
+            world.debris.push({ ...w, litUntil: now + 2000 });
+            audio.doorOpen(w.x + w.w / 2 - world.ball.x, w.y + w.h / 2 - world.ball.y);
+          }
+        }
+        flash('Tür geöffnet! 🔑');
+      } else if (kd < KEY_HEAR) {
+        audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR));
+      }
+    }
+
+    // Gems einsammeln
+    for (const gem of world.gems) {
+      if (gem.collected) continue;
+      if (Math.hypot(gem.x - world.ball.x, gem.y - world.ball.y) < gem.r + world.ball.r) {
+        gem.collected = true;
+        audio.collectGem();
+        haptics.checkpoint();
+        flash('💎 Gem!');
+      }
+    }
 
     // Windzonen: hörbar in der Nähe, spürbar (Kraft) mittendrin
     let bestZone: { dist: number; dx: number; dy: number } | null = null;
@@ -450,15 +628,29 @@ function frame(now: number): void {
 
     timerEl.textContent = fmtTime((now - t0) / 1000);
     pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(Math.max(0, pingMax - pings));
+    gemsEl.textContent = world.gems.length
+      ? `💎 ${world.gems.filter((g) => g.collected).length}/${world.gems.length}`
+      : '';
 
     const fallen = world.fallenHole();
+    const caught = fallen ? null : world.guardCaught();
     if (fallen) {
       state = 'fell';
+      falls++;
       fallen.litFrom = 0;
       fallen.litUntil = now + 1500;
       audio.fall();
       haptics.fall();
       statusEl.textContent = 'In ein Loch gestürzt! 🕳';
+      setTimeout(respawn, 1300);
+    } else if (caught) {
+      state = 'fell';
+      falls++;
+      caught.litFrom = 0;
+      caught.litUntil = now + 1500;
+      audio.caught();
+      haptics.fall();
+      statusEl.textContent = 'Erwischt! 👁';
       setTimeout(respawn, 1300);
     } else if (world.goalReached()) {
       state = 'won';
@@ -467,6 +659,7 @@ function frame(now: number): void {
       audio.setRolling(0);
       audio.setWind(0, 0, 0);
       audio.setHoleRumble(0, 0, 0);
+      audio.setGuard(0, 0, 0);
       audio.win();
       haptics.win();
       statusEl.textContent = `Ziel in ${fmtTime(seconds)} 🎉`;

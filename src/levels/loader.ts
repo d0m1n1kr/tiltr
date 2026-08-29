@@ -66,5 +66,14 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
   });
   buildElements(floor.elements, { world, cell: CELL, cols, rows });
 
+  // Schlüssel und Türen müssen zueinander passen.
+  const doorIds = new Set(world.walls.filter((w) => w.door).map((w) => w.door!.id));
+  for (const key of world.keys) {
+    if (!doorIds.has(key.opens)) throw new Error(`Level ${def.id}: Schlüssel öffnet unbekannte Tür "${key.opens}"`);
+  }
+  for (const id of doorIds) {
+    if (!world.keys.some((k) => k.opens === id)) throw new Error(`Level ${def.id}: Tür "${id}" hat keinen Schlüssel`);
+  }
+
   return { def, world, cols, rows, pingBudget: def.pingBudget };
 }

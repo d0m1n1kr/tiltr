@@ -91,7 +91,7 @@
       background: var(--bg-raised);
     }
     .inter-card h2 { font-size: var(--fs-h2); }
-    .inter-card p { font-size: var(--fs-body); line-height: 1.55; opacity: 0.9; }
+    .inter-card p { font-size: var(--fs-body); line-height: 1.55; opacity: 0.9; white-space: pre-line; }
     .inter-buttons { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-2); }
     #version { font-size: var(--fs-caption); opacity: 0.4; }
     #galleryLink { color: var(--accent-2); font-size: var(--fs-body-s); opacity: 0.8; }
@@ -112,7 +112,7 @@
     #banners > .banner { pointer-events: auto; }
     .banner-buttons { display: flex; align-items: center; gap: var(--space-2); }
 
-    #gallery {
+    #gallery, #campaign {
       position: fixed; inset: 0;
       z-index: var(--z-panel);
       background: var(--bg);
@@ -120,15 +120,28 @@
       padding: var(--space-4) var(--space-4) calc(env(safe-area-inset-bottom, 0px) + var(--space-4));
       touch-action: pan-y;
     }
-    #gallery header {
+    #gallery header, #campaign header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       max-width: 560px;
       margin: 0 auto var(--space-3);
     }
-    #gallery h2 { font-size: var(--fs-h2); }
-    #galleryList { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-3); }
+    #gallery h2, #campaign h2 { font-size: var(--fs-h2); }
+    #galleryList, #campaignList { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-3); }
+    .level-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+      color: var(--text);
+      font-size: var(--fs-body);
+      text-align: left;
+      min-height: var(--touch-min);
+      cursor: pointer;
+    }
+    .level-item.locked { opacity: 0.45; cursor: default; }
+    .level-item .level-meta { font-size: var(--fs-small); opacity: 0.8; color: var(--warning); white-space: nowrap; }
     .gallery-item { display: flex; align-items: flex-start; gap: 14px; }
     .gallery-item canvas { border-radius: var(--radius-s); flex-shrink: 0; width: 96px; height: auto; }
     .gallery-item > div { flex: 1; min-width: 0; }
@@ -141,7 +154,7 @@
   <canvas id="game"></canvas>
 
   <div id="hud" class="hidden">
-    <span><b id="timer"></b> <span id="pings" style="color: var(--accent)"></span> <span id="status"></span></span>
+    <span><b id="timer"></b> <span id="pings" style="color: var(--accent)"></span> <span id="gems" style="color: var(--warning)"></span> <span id="status"></span></span>
     <span>
       <button id="calibrateBtn" class="btn btn-ghost" title="Neigung neu kalibrieren">⌖</button>
       <button id="debugBtn" class="btn btn-ghost" title="Debug-Ansicht (Labyrinth zeigen)">👁</button>
@@ -164,6 +177,7 @@
         <button class="btn chip" data-preset="hard">Schwer</button>
       </div>
       <p id="quickBest" class="menu-meta"></p>
+      <button id="campaignBtn" class="btn btn-ghost">🌍 Kampagne <span id="campaignStars"></span></button>
       <button id="tutorialBtn" class="btn btn-ghost">🎓 Tutorial <span id="tutorialProgress"></span></button>
     </div>
     <p id="sensorNote">Beim Start werden Bewegungssensoren &amp; Audio aktiviert.<br>
@@ -189,6 +203,14 @@
       <button id="galleryClose" class="btn btn-ghost">Schließen</button>
     </header>
     <div id="galleryList"></div>
+  </div>
+
+  <div id="campaign" class="hidden">
+    <header>
+      <h2>🌍 Kampagne – Welt 1</h2>
+      <button id="campaignClose" class="btn btn-ghost">Schließen</button>
+    </header>
+    <div id="campaignList"></div>
   </div>
 
   <div id="banners">

@@ -46,11 +46,53 @@ export const checkpointDef = z.object({
   r: z.number().positive().default(30),
 });
 
-export const elementDef = z.discriminatedUnion('type', [holeDef, windZoneDef, checkpointDef]);
+export const guardDef = z.object({
+  type: z.literal('guard'),
+  /** Wegpunkte (Zellen), werden im Ping-Pong abgelaufen */
+  patrol: z.array(cellCoord).min(2),
+  /** px/s */
+  speed: z.number().positive().default(90),
+  r: z.number().positive().default(26),
+});
+
+export const keyDef = z.object({
+  ...base,
+  type: z.literal('key'),
+  /** Tür-ID, die dieser Schlüssel öffnet */
+  opens: z.string().min(1),
+  r: z.number().positive().default(18),
+});
+
+export const doorDef = z.object({
+  type: z.literal('door'),
+  id: z.string().min(1),
+  /** Wandkante, auf der die Tür sitzt – muss im Maze OFFEN sein */
+  edge: wallEdge,
+});
+
+export const gemDef = z.object({
+  ...base,
+  type: z.literal('gem'),
+  r: z.number().positive().default(14),
+});
+
+export const elementDef = z.discriminatedUnion('type', [
+  holeDef,
+  windZoneDef,
+  checkpointDef,
+  guardDef,
+  keyDef,
+  doorDef,
+  gemDef,
+]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
 export type WindZoneDef = z.infer<typeof windZoneDef>;
 export type CheckpointDef = z.infer<typeof checkpointDef>;
+export type GuardDef = z.infer<typeof guardDef>;
+export type KeyDef = z.infer<typeof keyDef>;
+export type DoorDef = z.infer<typeof doorDef>;
+export type GemDef = z.infer<typeof gemDef>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */

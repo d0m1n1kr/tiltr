@@ -134,7 +134,46 @@ const check = (name, cond) => {
   await page.close();
 }
 
-// --- Lauf 4: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
+// --- Lauf 4: Kampagne – Levelauswahl, w1-01 gewinnen, Sterne, Freischaltung ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+
+  await page.click('#campaignBtn');
+  await page.waitForTimeout(200);
+  const items = page.locator('.level-item');
+  check(`Kampagnen-Liste zeigt 10 Level (${await items.count()})`, (await items.count()) === 10);
+  const lockedCount = await page.locator('.level-item.locked').count();
+  check(`nur Level 1 ist freigeschaltet (${10 - lockedCount} offen)`, lockedCount === 9);
+
+  await items.first().click();
+  await page.waitForTimeout(3300); // Kalibrier-Countdown
+  const introTitle = (await page.textContent('#interTitle')).trim();
+  check(`Kampagnen-Intro ("${introTitle}")`, introTitle.includes('Aufbruch'));
+  await page.click('#interPrimary'); // Los!
+
+  // Spine von w1-01: Spalte 0 hinab, dann unten nach rechts.
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(2600);
+  await page.keyboard.up('ArrowDown');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(2600);
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(2300); // Sieg-Reveal + Ergebnis
+
+  const resultTitle = (await page.textContent('#interTitle')).trim();
+  check(`Kampagnen-Ergebnis mit Sternen ("${resultTitle}")`, /★/.test(resultTitle) && resultTitle.includes('Aufbruch'));
+
+  await page.click('#interSecondary'); // Menü
+  await page.click('#campaignBtn');
+  await page.waitForTimeout(200);
+  const lockedAfter = await page.locator('.level-item.locked').count();
+  check(`Level 2 nach Sieg freigeschaltet (${10 - lockedAfter} offen)`, lockedAfter === 8);
+  await page.close();
+}
+
+// --- Lauf 5: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
   page.on('pageerror', (e) => errors.push(String(e)));

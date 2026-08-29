@@ -7,12 +7,14 @@ const KEY = 'tiltr.profile';
 
 export interface ProfileData {
   tutorialDone: string[];
-  /** Bestzeiten in Sekunden, z. B. best['quick-normal'] oder best['tut-3'] */
+  /** Bestzeiten in Sekunden, z. B. best['quick-normal'] oder best['w1-01'] */
   best: Record<string, number>;
+  /** Beste Sternewertung pro Kampagnen-Level (0–3) */
+  stars: Record<string, number>;
   preset: Preset;
 }
 
-const DEFAULTS: ProfileData = { tutorialDone: [], best: {}, preset: 'normal' };
+const DEFAULTS: ProfileData = { tutorialDone: [], best: {}, stars: {}, preset: 'normal' };
 
 const data: ProfileData = load();
 
@@ -24,6 +26,7 @@ function load(): ProfileData {
     return {
       tutorialDone: Array.isArray(parsed.tutorialDone) ? parsed.tutorialDone : [],
       best: typeof parsed.best === 'object' && parsed.best ? parsed.best : {},
+      stars: typeof parsed.stars === 'object' && parsed.stars ? parsed.stars : {},
       preset: parsed.preset === 'easy' || parsed.preset === 'hard' ? parsed.preset : 'normal',
     };
   } catch {
@@ -64,6 +67,20 @@ export const profile = {
   nextTutorialIndex(ids: string[]): number {
     const i = ids.findIndex((id) => !data.tutorialDone.includes(id));
     return i === -1 ? 0 : i;
+  },
+
+  starsFor(id: string): number {
+    return data.stars[id] ?? 0;
+  },
+  /** Sterne eintragen (nur Verbesserungen zählen). */
+  submitStars(id: string, stars: number): void {
+    if (stars > (data.stars[id] ?? 0)) {
+      data.stars[id] = stars;
+      save();
+    }
+  },
+  totalStars(ids: string[]): number {
+    return ids.reduce((sum, id) => sum + (data.stars[id] ?? 0), 0);
   },
 
   bestFor(key: string): number | null {

@@ -15,4 +15,8 @@ export const WORLD = {
   wind: '120, 200, 255',
   checkpoint: '75, 224, 200',
   heart: '255, 110, 130',
+  guard: '255, 92, 92',
+  key: '255, 214, 90',
+  door: '255, 214, 90',
+  gem: '190, 240, 255',
 } as const;

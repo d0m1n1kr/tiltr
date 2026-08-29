@@ -2,7 +2,19 @@
 // Wand-Rechtecken, wird von Windzonen geschoben und offenen Löchern angesaugt.
 // Deterministisch: keine Zeit-/Zufallsquellen außer den übergebenen Parametern.
 
-import type { Checkpoint, Goal, Hole, PingWave, Tilt, Wall, WallHit, WindZone } from './types';
+import type {
+  Checkpoint,
+  Collectible,
+  Goal,
+  Guard,
+  Hole,
+  Key,
+  PingWave,
+  Tilt,
+  Wall,
+  WallHit,
+  WindZone,
+} from './types';
 
 export class Ball {
   vx = 0;
@@ -20,6 +32,9 @@ export class Ball {
 export class World {
   windZones: WindZone[] = [];
   checkpoints: Checkpoint[] = [];
+  guards: Guard[] = [];
+  keys: Key[] = [];
+  gems: Collectible[] = [];
   debris: Wall[] = [];
   pings: PingWave[] = [];
   accel = 2600; // px/s² bei voller Neigung
@@ -66,6 +81,8 @@ export class World {
         const hit = this.collideCircleRect(b, wall);
         if (hit) hits.push(hit);
       }
+
+      this.updateGuards(h);
 
       // Offene Löcher ziehen den Ball leicht an, sobald er über den Rand rollt.
       // openness (0 zu, 1 offen) skaliert den Sog; fehlt es, gilt das Loch als offen.
@@ -132,6 +149,39 @@ export class World {
       b.vy -= (1 + this.restitution) * vn * ny;
     }
     return { wall: rect, nx, ny, impact };
+  }
+
+  // Wächter laufen ihre Wegpunkte im Ping-Pong ab – deterministisch, ohne Physik.
+  private updateGuards(dt: number): void {
+    for (const g of this.guards) {
+      let remaining = g.speed * dt;
+      while (remaining > 0 && g.waypoints.length > 1) {
+        const t = g.waypoints[g.target]!;
+        const dx = t.x - g.x,
+          dy = t.y - g.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= remaining) {
+          g.x = t.x;
+          g.y = t.y;
+          remaining -= d;
+          if (g.target + g.dir < 0 || g.target + g.dir >= g.waypoints.length) g.dir = -g.dir as 1 | -1;
+          g.target += g.dir;
+        } else {
+          g.x += (dx / d) * remaining;
+          g.y += (dy / d) * remaining;
+          remaining = 0;
+        }
+      }
+    }
+  }
+
+  // Wächter, der den Ball gerade berührt, sonst null.
+  guardCaught(): Guard | null {
+    const b = this.ball;
+    for (const g of this.guards) {
+      if (Math.hypot(g.x - b.x, g.y - b.y) < g.r + b.r) return g;
+    }
+    return null;
   }
 
   // Loch, in das der Ball gerade fällt (Mittelpunkt über einem offenen Loch), sonst null.

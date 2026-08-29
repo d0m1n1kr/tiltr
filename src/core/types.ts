@@ -8,6 +8,8 @@ export interface Wall {
   /** Rest-Treffer einer brüchigen Wand; undefined = massiv */
   hp?: number;
   cracked?: boolean;
+  /** Verschlossene Tür – verschwindet, wenn der passende Schlüssel gesammelt wird */
+  door?: { id: string };
   /** Aufleuchten frühestens ab (ms, performance.now-Zeitbasis) – Ping-Wellenfront */
   litFrom?: number;
   /** Aufleuchten bis (ms) */
@@ -66,6 +68,34 @@ export interface PingWave {
   start: number;
   speed: number;
   range: number;
+}
+
+export interface Guard {
+  x: number;
+  y: number;
+  r: number;
+  speed: number;
+  waypoints: Array<{ x: number; y: number }>;
+  /** Index des Wegpunkts, auf den sich der Wächter zubewegt */
+  target: number;
+  /** Laufrichtung durch die Wegpunktliste (Ping-Pong) */
+  dir: 1 | -1;
+  litFrom?: number;
+  litUntil?: number;
+}
+
+export interface Collectible {
+  x: number;
+  y: number;
+  r: number;
+  collected: boolean;
+  litFrom?: number;
+  litUntil?: number;
+}
+
+export interface Key extends Collectible {
+  /** Tür-ID, die dieser Schlüssel öffnet */
+  opens: string;
 }
 
 export interface WallHit {

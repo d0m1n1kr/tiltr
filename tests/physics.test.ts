@@ -57,6 +57,35 @@ describe('Wände', () => {
   });
 });
 
+describe('Wächter', () => {
+  it('läuft im Ping-Pong über seine Wegpunkte', () => {
+    const world = new World([], new Ball(500, 500, 22), { x: 900, y: 900, r: 30 });
+    world.guards.push({
+      x: 50, y: 50, r: 26, speed: 100,
+      waypoints: [{ x: 50, y: 50 }, { x: 250, y: 50 }],
+      target: 1, dir: 1,
+    });
+    const g = world.guards[0]!;
+    for (let i = 0; i < 60; i++) world.step(1 / 60, { x: 0, y: 0 }); // 1 s -> 100 px
+    expect(g.x).toBeCloseTo(150, 0);
+    for (let i = 0; i < 90; i++) world.step(1 / 60, { x: 0, y: 0 }); // +1,5 s -> am Ende, kehrt um
+    expect(g.x).toBeLessThan(250);
+    expect(g.dir).toBe(-1);
+    expect(g.y).toBe(50);
+  });
+
+  it('fängt den Ball bei Berührung', () => {
+    const world = new World([], new Ball(100, 50, 22), { x: 900, y: 900, r: 30 });
+    world.guards.push({
+      x: 300, y: 50, r: 26, speed: 0,
+      waypoints: [{ x: 300, y: 50 }], target: 0, dir: 1,
+    });
+    expect(world.guardCaught()).toBeNull();
+    world.ball.x = 260;
+    expect(world.guardCaught()).not.toBeNull();
+  });
+});
+
 describe('Windzonen', () => {
   it('schieben den Ball innerhalb der Zone', () => {
     const world = new World([], new Ball(150, 150, 22), { x: 500, y: 500, r: 30 });

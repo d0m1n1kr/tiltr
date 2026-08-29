@@ -29,7 +29,7 @@ Fürs Testen am Handy braucht es HTTPS: am einfachsten die Live-Seite, sonst
 `npx vite --host` mit [`@vitejs/plugin-basic-ssl`](https://www.npmjs.com/package/@vitejs/plugin-basic-ssl)
 oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 
-### Spielelemente (Stand M1)
+### Spielelemente (Stand M4)
 
 | Element | Signatur |
 |---|---|
@@ -39,7 +39,10 @@ oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 | Löcher | atmen (öffnen/schließen zyklisch, versetzt); offen = Sog + dunkles Grollen + Herzschlag, zu = harmlos |
 | Windzonen | konstante Windkraft, hörbar als Böen-Rauschen aus Richtung der Zone |
 | Checkpoints | auf dem Lösungsweg (BFS); Respawn-Punkt, +1 Echo-Ping |
-| Echo-Ping | Tap/Leertaste: Wellenfront deckt Umgebung auf, Reflexionen kommen entfernungs-verzögert & räumlich zurück; 3 pro Runde |
+| Echo-Ping | Tap/Leertaste: Wellenfront deckt Umgebung auf, Reflexionen kommen entfernungs-verzögert & räumlich zurück; Durchgänge antworten hell & doppelt, Gems kristallklar, Türen dumpf; begrenzter Vorrat |
+| Wächter | patrouilliert (Ping-Pong über Wegpunkte), pulsierendes Brummen aus seiner Richtung; Berührung = zurück zum Checkpoint |
+| Schlüssel & Tür | Schlüssel klimpert in Hörweite, Einsammeln lässt die Tür hörbar aufgleiten |
+| Gems | optionale Sammelkristalle mit eigener Ping-Antwort; alle gesammelt = dritter Stern |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
 | Zeit | Rundenzeit im HUD, Bestzeit in `localStorage` |
 
@@ -49,6 +52,6 @@ kalibrieren, `👁` Debug-Ansicht (Labyrinth einblenden).
 
 ## Roadmap
 
-Siehe [`docs/PLAN.md`](docs/PLAN.md): M1 Fundament (dieser Stand) → M2 Element-Registry
-+ Levelformat → M3 Tutorial & Schnelles Spiel → M4 Kampagne Welt 1 → M5 Ebenen/Transporter
-→ M6 Challenge of the Day → M7 Multiplayer (WebRTC).
+Siehe [`docs/PLAN.md`](docs/PLAN.md): M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓
+→ M3 Tutorial & Schnelles Spiel ✓ → M4 Kampagne Welt 1 (Wächter, Schlüssel/Tür, Gems,
+Sterne) ✓ → M5 Ebenen/Transporter → M6 Challenge of the Day → M7 Multiplayer (WebRTC).

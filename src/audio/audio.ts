@@ -9,6 +9,8 @@ export interface PingReflection {
   delay: number;
   gain: number;
   freq?: number;
+  /** Doppel-Blip (z. B. Durchgänge, Gems) */
+  double?: boolean;
 }
 
 export class GameAudio {
@@ -20,8 +22,11 @@ export class GameAudio {
   private windPanner!: PannerNode;
   private rumbleGain!: GainNode;
   private rumblePanner!: PannerNode;
+  private guardGain!: GainNode;
+  private guardPanner!: PannerNode;
   private nextPing = 0;
   private nextBeat = 0;
+  private nextTinkle = 0;
 
   // Aus User-Geste aufrufen (Autoplay-Policy).
   async start(): Promise<void> {
@@ -88,6 +93,30 @@ export class GameAudio {
     this.rumbleGain.connect(this.rumblePanner).connect(this.master);
     rumble.start();
     sub.start();
+
+    // Wächter: tonales, pulsierendes Brummen (Sägezahn + Tremolo) – klar
+    // unterscheidbar vom rauschigen Loch-Grollen.
+    const growl = this.ctx.createOscillator();
+    growl.type = 'sawtooth';
+    growl.frequency.value = 55;
+    const growlFilter = this.ctx.createBiquadFilter();
+    growlFilter.type = 'lowpass';
+    growlFilter.frequency.value = 300;
+    const tremolo = this.ctx.createOscillator();
+    tremolo.frequency.value = 4.5;
+    const tremoloGain = this.ctx.createGain();
+    tremoloGain.gain.value = 0.5;
+    const tremoloBase = this.ctx.createGain();
+    tremoloBase.gain.value = 0.5;
+    this.guardGain = this.ctx.createGain();
+    this.guardGain.gain.value = 0;
+    this.guardPanner = this.panner();
+    // Tremolo moduliert die Lautstärke: base 0.5 ± 0.5
+    tremolo.connect(tremoloGain).connect(tremoloBase.gain);
+    growl.connect(growlFilter).connect(tremoloBase).connect(this.guardGain);
+    this.guardGain.connect(this.guardPanner).connect(this.master);
+    growl.start();
+    tremolo.start();
   }
 
   private noiseBuffer(kind: 'brown' | 'white'): AudioBuffer {
@@ -161,6 +190,124 @@ export class GameAudio {
     if (closeness01 > 0) this.place(this.rumblePanner, dx, dy);
   }
 
+  // Wächter-Brummen: closeness01 = 1 direkt daneben, 0 = außer Hörweite.
+  setGuard(closeness01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.guardGain.gain.setTargetAtTime(Math.min(0.5, closeness01 ** 1.5 * 0.55), t, 0.1);
+    if (closeness01 > 0) this.place(this.guardPanner, dx, dy);
+  }
+
+  // Schlüssel-Klimpern: metallischer Doppel-Blip, Rate steigt mit der Nähe.
+  keyTinkle(dx: number, dy: number, dist01: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (t < this.nextTinkle) return;
+    this.nextTinkle = t + 0.5 + dist01 * 1.6;
+    const out = this.spatialOut(dx, dy);
+    [1760, 2217].forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const t0 = t + i * 0.07;
+      const g = 0.04 + (1 - dist01) * 0.16;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(g, t0 + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.1);
+      osc.connect(gain).connect(out);
+      osc.start(t0);
+      osc.stop(t0 + 0.12);
+    });
+  }
+
+  // Schlüssel eingesammelt: aufsteigendes Klimpern.
+  collectKey(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [1318.5, 1760, 2217].forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const t0 = t + i * 0.07;
+      gain.gain.setValueAtTime(0.25, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+      osc.connect(gain).connect(this.master);
+      osc.start(t0);
+      osc.stop(t0 + 0.22);
+    });
+  }
+
+  // Tür gleitet auf: steinernes Rutschen + Einrast-Klick aus Richtung der Tür.
+  doorOpen(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const out = this.spatialOut(dx, dy);
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('brown');
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(200, t);
+    filter.frequency.exponentialRampToValueAtTime(700, t + 0.45);
+    filter.Q.value = 1.5;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.5, t + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    src.connect(filter).connect(gain).connect(out);
+    src.start(t);
+    src.stop(t + 0.55);
+    const click = this.ctx.createOscillator();
+    click.type = 'square';
+    click.frequency.value = 880;
+    const cg = this.ctx.createGain();
+    cg.gain.setValueAtTime(0.15, t + 0.48);
+    cg.gain.exponentialRampToValueAtTime(0.001, t + 0.54);
+    click.connect(cg).connect(out);
+    click.start(t + 0.48);
+    click.stop(t + 0.56);
+  }
+
+  // Gem eingesammelt: funkelnde Arpeggio-Spitze.
+  collectGem(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [1567.98, 2093, 2637] .forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const t0 = t + i * 0.06;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.28, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+      osc.connect(gain).connect(this.master);
+      osc.start(t0);
+      osc.stop(t0 + 0.32);
+    });
+  }
+
+  // Vom Wächter erwischt: harter, dissonanter Sting.
+  caught(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (const f of [110, 116.5]) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f, t);
+      osc.frequency.exponentialRampToValueAtTime(f / 2, t + 0.45);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.35, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.connect(gain).connect(this.master);
+      osc.start(t);
+      osc.stop(t + 0.52);
+    }
+    this.setGuard(0, 0, 0);
+    this.setRolling(0);
+  }
+
   // Wand-Treffer: dumpfer Thump aus Richtung der Wand (Normale zeigt vom Ball weg).
   hit(intensity01: number, nx: number, ny: number): void {
     if (!this.ctx) return;
@@ -213,17 +360,21 @@ export class GameAudio {
     chirp.stop(t + 0.11);
 
     for (const r of reflections) {
-      const t0 = t + 0.1 + r.delay;
-      const osc = this.ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.value = r.freq ?? 950;
-      const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(r.gain, t0 + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
-      osc.connect(gain).connect(this.spatialOut(r.dx, r.dy));
-      osc.start(t0);
-      osc.stop(t0 + 0.14);
+      const out = this.spatialOut(r.dx, r.dy);
+      const blips = r.double ? [0, 0.07] : [0];
+      blips.forEach((off, i) => {
+        const t0 = t + 0.1 + r.delay + off;
+        const osc = this.ctx!.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = r.freq ?? 950;
+        const gain = this.ctx!.createGain();
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(r.gain * (i === 0 ? 1 : 0.7), t0 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+        osc.connect(gain).connect(out);
+        osc.start(t0);
+        osc.stop(t0 + 0.14);
+      });
     }
   }
 
@@ -338,6 +489,7 @@ export class GameAudio {
     osc.stop(t + 1.05);
     this.setHoleRumble(0, 0, 0);
     this.setWind(0, 0, 0);
+    this.setGuard(0, 0, 0);
     this.setRolling(0);
   }
 

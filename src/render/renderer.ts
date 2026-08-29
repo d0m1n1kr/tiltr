@@ -116,7 +116,8 @@ export class Renderer {
       return 0;
     };
     for (const w of world.walls) {
-      addRect(w, wallAlpha(w), w.hp !== undefined || w.cracked ? WORLD.brittle : WORLD.wall);
+      const color = w.door ? WORLD.door : w.hp !== undefined || w.cracked ? WORLD.brittle : WORLD.wall;
+      addRect(w, wallAlpha(w), color);
     }
     for (const d of world.debris) {
       if (d.litUntil && d.litUntil > now) {
@@ -185,6 +186,66 @@ export class Renderer {
       ctx.strokeStyle = `rgba(${WORLD.holeRim}, ${alpha * 0.7})`;
       ctx.lineWidth = 2 * this.dpr;
       ctx.stroke();
+    }
+
+    // Aufdeckbare Objekte: sichtbar bei Debug/Reveal oder nach Ping (litFrom/litUntil).
+    const revealAlpha = (o: { litFrom?: number; litUntil?: number }, base: number): number => {
+      if (debug || revealAll) return base;
+      if (o.litFrom && now < o.litFrom) return 0;
+      if (o.litUntil && o.litUntil > now) return Math.min(1, (o.litUntil - now) / 1200) * base;
+      return 0;
+    };
+
+    // Schlüssel: goldene Raute.
+    for (const key of world.keys) {
+      if (key.collected) continue;
+      const alpha = revealAlpha(key, 0.95);
+      if (alpha <= 0.01) continue;
+      ctx.save();
+      ctx.translate(tx(key.x), ty(key.y));
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = `rgba(${WORLD.key}, ${alpha})`;
+      const s2 = key.r * s * 0.9;
+      ctx.fillRect(-s2 / 2, -s2 / 2, s2, s2);
+      ctx.restore();
+    }
+
+    // Gems: eisblaue Raute mit Ring.
+    for (const gem of world.gems) {
+      if (gem.collected) continue;
+      const alpha = revealAlpha(gem, 0.95);
+      if (alpha <= 0.01) continue;
+      ctx.save();
+      ctx.translate(tx(gem.x), ty(gem.y));
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = `rgba(${WORLD.gem}, ${alpha})`;
+      const s2 = gem.r * s;
+      ctx.fillRect(-s2 / 2, -s2 / 2, s2, s2);
+      ctx.restore();
+    }
+
+    // Wächter: rote Scheibe; im Debug zusätzlich der Patrouillen-Pfad.
+    for (const g of world.guards) {
+      if (debug || revealAll) {
+        ctx.strokeStyle = `rgba(${WORLD.guard}, 0.3)`;
+        ctx.lineWidth = 2 * this.dpr;
+        ctx.beginPath();
+        g.waypoints.forEach((p, i) => (i ? ctx.lineTo(tx(p.x), ty(p.y)) : ctx.moveTo(tx(p.x), ty(p.y))));
+        ctx.stroke();
+      }
+      const alpha = revealAlpha(g, 0.9);
+      if (alpha <= 0.01) continue;
+      const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), g.r * s * 2.2);
+      grad.addColorStop(0, `rgba(${WORLD.guard}, ${alpha * 0.35})`);
+      grad.addColorStop(1, `rgba(${WORLD.guard}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(tx(g.x), ty(g.y), g.r * s * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(${WORLD.guard}, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(tx(g.x), ty(g.y), g.r * s, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Echo-Ping: expandierender Ring vom Ball aus.
