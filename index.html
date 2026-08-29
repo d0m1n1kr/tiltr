@@ -76,7 +76,15 @@
       align-items: center;
       gap: var(--space-3);
     }
+    #quickGroup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-4);
+    }
     #presetRow { display: flex; gap: var(--space-2); }
+    .menu-label { font-size: var(--fs-caption); opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
     .menu-meta { font-size: var(--fs-small); opacity: 0.55; min-height: 1.2em; }
     #interstitial {
       position: fixed; inset: 0;
@@ -180,13 +188,16 @@
       <b>Am besten mit Kopfhörern.</b>
     </p>
     <div id="menuButtons">
-      <button id="quickBtn" class="btn btn-primary btn-lg">⚡ Schnelles Spiel</button>
-      <div id="presetRow">
-        <button class="btn chip" data-preset="easy">Leicht</button>
-        <button class="btn chip" data-preset="normal">Mittel</button>
-        <button class="btn chip" data-preset="hard">Schwer</button>
+      <div id="quickGroup" class="panel">
+        <button id="quickBtn" class="btn btn-primary btn-lg">⚡ Schnelles Spiel</button>
+        <p class="menu-label">Schwierigkeit</p>
+        <div id="presetRow">
+          <button class="btn chip" data-preset="easy">Leicht</button>
+          <button class="btn chip" data-preset="normal">Mittel</button>
+          <button class="btn chip" data-preset="hard">Schwer</button>
+        </div>
+        <p id="quickBest" class="menu-meta"></p>
       </div>
-      <p id="quickBest" class="menu-meta"></p>
       <button id="dailyBtn" class="btn btn-ghost">📅 Tages-Challenge</button>
       <p id="dailyStatus" class="menu-meta"></p>
       <button id="campaignBtn" class="btn btn-ghost">🌍 Kampagne <span id="campaignStars"></span></button>
