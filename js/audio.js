@@ -39,6 +39,60 @@ export class GameAudio {
     this.rollGain.gain.value = 0;
     src.connect(this.rollFilter).connect(this.rollGain).connect(this.master);
     src.start();
+
+    // Wind über Löchern: helles Rauschen -> Bandpass mit langsamer Böen-LFO
+    const wlen = this.ctx.sampleRate * 2;
+    const wbuf = this.ctx.createBuffer(1, wlen, this.ctx.sampleRate);
+    const wdata = wbuf.getChannelData(0);
+    for (let i = 0; i < wlen; i++) wdata[i] = Math.random() * 2 - 1;
+    const wsrc = this.ctx.createBufferSource();
+    wsrc.buffer = wbuf;
+    wsrc.loop = true;
+    this.windFilter = this.ctx.createBiquadFilter();
+    this.windFilter.type = 'bandpass';
+    this.windFilter.frequency.value = 700;
+    this.windFilter.Q.value = 2.5;
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 0.35;
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 220;
+    lfo.connect(lfoGain).connect(this.windFilter.frequency);
+    lfo.start();
+    this.windGain = this.ctx.createGain();
+    this.windGain.gain.value = 0;
+    this.windPan = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+    if (this.windPan) {
+      wsrc.connect(this.windFilter).connect(this.windGain).connect(this.windPan).connect(this.master);
+    } else {
+      wsrc.connect(this.windFilter).connect(this.windGain).connect(this.master);
+    }
+    wsrc.start();
+  }
+
+  // Wind des nächsten Lochs: closeness01 = 1 direkt am Rand, 0 = außer Hörweite.
+  setWind(closeness01, pan = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.windGain.gain.setTargetAtTime(Math.min(0.45, closeness01 ** 1.5 * 0.5), t, 0.1);
+    if (this.windPan) this.windPan.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)), t, 0.1);
+  }
+
+  // Absturz ins Loch: fallender Pfeifton + verhallendes Rauschen.
+  fall() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + 0.9);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    osc.connect(gain).connect(this.master);
+    osc.start(t);
+    osc.stop(t + 1.05);
+    this.setWind(0);
+    this.setRolling(0);
   }
 
   // speed01: Ballgeschwindigkeit normiert auf [0,1]

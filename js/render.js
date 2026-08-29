@@ -54,6 +54,22 @@ export class Renderer {
       ctx.fillRect(tx(w.x), ty(w.y), w.w * s, w.h * s);
     }
 
+    // Löcher: tiefschwarz mit schwachem Rand – sichtbar bei Debug/Reveal
+    // oder kurz nach einem Absturz (litUntil).
+    for (const hole of world.holes || []) {
+      let alpha = 0;
+      if (debug || revealAll) alpha = 0.8;
+      else if (hole.litUntil && hole.litUntil > now) alpha = Math.min(1, (hole.litUntil - now) / 1500);
+      if (alpha <= 0.01) continue;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(tx(hole.x), ty(hole.y), hole.r * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(150, 90, 220, ${alpha * 0.7})`;
+      ctx.lineWidth = 2 * this.dpr;
+      ctx.stroke();
+    }
+
     // Ziel: pulsierender Schein nur bei Debug/Reveal (sonst rein akustisch).
     if (debug || revealAll) {
       const g = world.goal;

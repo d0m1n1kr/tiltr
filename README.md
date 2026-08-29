@@ -19,6 +19,7 @@ Web-Standards. Damit ist die Machbarkeit aller kritischen Bausteine isoliert
 | Haptik | Vibration API (Android; iOS Safari unterstützt sie nicht → Audio kompensiert) | `js/haptics.js` |
 | Physik | eigene 2D-Physik (Kreis vs. Rechteck, Substeps gegen Tunneln) | `js/physics.js` |
 | Labyrinth | Recursive Backtracker | `js/maze.js` |
+| Gefahr: Löcher | unsichtbar, verraten durch Wind (Bandpass-Rauschen mit Böen-LFO, Panning) + Warnvibration; Sturz = fallender Ton + Respawn | `js/physics.js`, `js/audio.js` |
 | Visuelles „Echo" | Canvas 2D, dunkler Screen, berührte Wände verblassen | `js/render.js` |
 | PWA | Web App Manifest + Service Worker (stale-while-revalidate) | `manifest.webmanifest`, `sw.js` |
 

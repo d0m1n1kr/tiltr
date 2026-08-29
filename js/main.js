@@ -9,6 +9,9 @@ const COLS = 6, ROWS = 8;
 const CELL = 100;          // Weltkoordinaten (werden auf den Screen skaliert)
 const WALL_T = 10;
 const BALL_R = 22;
+const HOLE_COUNT = 4;
+const HOLE_R = BALL_R * 1.25;
+const WIND_RANGE = CELL * 2; // Hörweite des Loch-Winds
 
 const canvas = document.getElementById('game');
 const overlay = document.getElementById('overlay');
@@ -28,17 +31,41 @@ let debug = false;
 let revealUntil = 0;
 let maxDist = 1;
 
+// Löcher in zufällige Zellen legen – nie in Start-/Zielzelle oder doppelt.
+function placeHoles() {
+  const forbidden = new Set([0, (ROWS - 1) * COLS + (COLS - 1)]);
+  const holes = [];
+  while (holes.length < HOLE_COUNT) {
+    const cx = Math.floor(Math.random() * COLS);
+    const cy = Math.floor(Math.random() * ROWS);
+    const key = cy * COLS + cx;
+    if (forbidden.has(key)) continue;
+    forbidden.add(key);
+    const jitter = () => (Math.random() - 0.5) * 16;
+    holes.push({ x: (cx + 0.5) * CELL + jitter(), y: (cy + 0.5) * CELL + jitter(), r: HOLE_R });
+  }
+  return holes;
+}
+
 function newGame() {
   const cells = generateMaze(COLS, ROWS);
   const walls = mazeToWalls(cells, COLS, ROWS, CELL, WALL_T);
   const ball = new Ball(CELL / 2, CELL / 2, BALL_R);
   const goal = { x: (COLS - 0.5) * CELL, y: (ROWS - 0.5) * CELL, r: BALL_R * 1.4 };
-  world = new World(walls, ball, goal);
+  world = new World(walls, ball, goal, placeHoles());
   maxDist = Math.hypot(COLS * CELL, ROWS * CELL);
   renderer.fitWorld(COLS * CELL, ROWS * CELL);
   state = 'playing';
   revealUntil = 0;
   input.calibrate();
+}
+
+function respawn() {
+  const b = world.ball;
+  b.x = CELL / 2; b.y = CELL / 2;
+  b.vx = 0; b.vy = 0;
+  state = 'playing';
+  statusEl.textContent = '';
 }
 
 startBtn.addEventListener('click', async () => {
@@ -79,10 +106,28 @@ function frame(now) {
     const { dx, dist } = world.goalVector();
     audio.beacon(dx / (dist || 1), Math.min(1, dist / maxDist));
 
-    if (world.goalReached()) {
+    // Wind & Warnvibration des nächsten Lochs
+    const near = world.nearestHole();
+    if (near) {
+      const closeness = Math.max(0, 1 - near.dist / WIND_RANGE);
+      const pan = (near.hole.x - world.ball.x) / (WIND_RANGE / 2);
+      audio.setWind(closeness, pan);
+      if (closeness > 0.55) haptics.holeWarning(closeness);
+    }
+
+    const fallen = world.fallenHole();
+    if (fallen) {
+      state = 'fell';
+      fallen.litUntil = now + 1500;
+      audio.fall();
+      haptics.fall();
+      statusEl.textContent = 'In ein Loch gestürzt! 🕳';
+      setTimeout(respawn, 1300);
+    } else if (world.goalReached()) {
       state = 'won';
       revealUntil = now + 4000;
       audio.setRolling(0);
+      audio.setWind(0);
       audio.win();
       haptics.win();
       statusEl.textContent = 'Ziel gefunden! 🎉';
