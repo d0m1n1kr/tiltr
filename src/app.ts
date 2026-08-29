@@ -11,6 +11,7 @@ import { loadLevel } from './levels/loader';
 import { generateQuickLevel } from './levels/quick';
 import { setupUpdates } from './ui/update';
 import { setupGallery } from './ui/gallery';
+import { setupInstallHint, hideInstallHint } from './ui/install';
 
 const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
 const WIND_HEAR = CELL * 1.8;
@@ -30,6 +31,7 @@ const debugBtn = $('debugBtn');
 
 $('version').textContent = `v${__APP_VERSION__} · ${__BUILD_TIME__.slice(0, 16).replace('T', ' ')} UTC`;
 setupUpdates();
+setupInstallHint();
 
 const input = new TiltInput();
 const audio = new GameAudio();
@@ -106,6 +108,7 @@ function bestTime(newSeconds: number): boolean {
 // zum Gesicht – würde diese Lage als Null gelten, wäre die Vor/Zurück-Achse
 // beim flachen Spielen dauerhaft am Anschlag (Ball klebt an der Wand).
 startBtn.addEventListener('click', async () => {
+  hideInstallHint(); // im Spiel nicht im Weg stehen
   await Promise.all([input.start(), audio.start()]);
   startBtn.classList.add('hidden');
   $('sensorNote').classList.add('hidden');

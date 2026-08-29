@@ -81,29 +81,48 @@
     #sensorNote { font-size: 12px; opacity: 0.55; }
     #version { font-size: 11px; opacity: 0.4; }
     #galleryLink { color: #6ea8ff; font-size: 13px; opacity: 0.8; }
-    #updateToast {
+    #banners {
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
       bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: min(92vw, 440px);
+      z-index: 30;
+      pointer-events: none;
+    }
+    #banners > div {
+      pointer-events: auto;
       display: flex;
       align-items: center;
       gap: 12px;
       background: #16223f;
       border: 1px solid rgba(110, 168, 255, 0.4);
       border-radius: 14px;
-      padding: 12px 16px;
-      font-size: 14px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      line-height: 1.4;
       box-shadow: 0 6px 24px rgba(0,0,0,0.5);
-      z-index: 30;
     }
-    #updateToast button {
+    #updateToast button, #installBtn {
       background: linear-gradient(90deg, #4be0c8, #6ea8ff);
       border: none;
       color: #06121c;
       font-weight: 700;
       border-radius: 10px;
       padding: 8px 14px;
+      white-space: nowrap;
+    }
+    .banner-buttons { display: flex; align-items: center; gap: 8px; }
+    #installDismiss {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #cfd8ea;
+      border-radius: 10px;
+      padding: 8px 11px;
     }
     #gallery {
       position: fixed; inset: 0;
@@ -191,9 +210,18 @@
     <div id="galleryList"></div>
   </div>
 
-  <div id="updateToast" class="hidden">
-    <span id="updateLabel">Neue Version verfügbar</span>
-    <button id="updateBtn">Aktualisieren</button>
+  <div id="banners">
+    <div id="installHint" class="hidden">
+      <span id="installLabel"></span>
+      <span class="banner-buttons">
+        <button id="installBtn" class="hidden">Installieren</button>
+        <button id="installDismiss" title="Ausblenden">✕</button>
+      </span>
+    </div>
+    <div id="updateToast" class="hidden">
+      <span id="updateLabel">Neue Version verfügbar</span>
+      <button id="updateBtn">Aktualisieren</button>
+    </div>
   </div>
 
   <script type="module" src="/src/app.ts"></script>

@@ -101,6 +101,44 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 3: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?seed=42`);
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })));
+  await page.waitForTimeout(100);
+  const shown = !(await page.locator('#installHint').getAttribute('class')).includes('hidden');
+  check('Install-Hinweis erscheint (Android/beforeinstallprompt)', shown);
+  const btnShown = !(await page.locator('#installBtn').getAttribute('class')).includes('hidden');
+  check('Installieren-Knopf sichtbar (Android)', btnShown);
+
+  await page.click('#installDismiss');
+  const hiddenNow = (await page.locator('#installHint').getAttribute('class')).includes('hidden');
+  await page.reload();
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })));
+  await page.waitForTimeout(100);
+  const staysHidden = (await page.locator('#installHint').getAttribute('class')).includes('hidden');
+  check('Dismiss blendet aus und wird gemerkt', hiddenNow && staysHidden);
+  await page.close();
+}
+{
+  const page = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    userAgent:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?seed=42`);
+  await page.waitForTimeout(200);
+  const shown = !(await page.locator('#installHint').getAttribute('class')).includes('hidden');
+  const text = (await page.textContent('#installLabel')).trim();
+  check(`iOS-Hinweis mit Teilen-Anleitung ("${text.slice(0, 40)}…")`, shown && /Home-Bildschirm/.test(text));
+  const btnHidden = (await page.locator('#installBtn').getAttribute('class')).includes('hidden');
+  check('kein Installieren-Knopf auf iOS', btnHidden);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 
