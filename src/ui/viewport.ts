@@ -25,6 +25,16 @@ export function fixStandaloneViewport(): void {
     const gap = Math.round(target - innerHeight);
     const root = document.documentElement.style;
     if (gap > 8 && gap < 120) {
+      // Klassisches iOS-Gegenmittel: height=device-height zwingt den zu kurz
+      // angelegten Standalone-Viewport auf die Gerätehöhe. Nur zur Laufzeit
+      // und nur im kaputten Zustand injiziert, damit der Browser-Modus
+      // (Toolbars!) unberührt bleibt. Greift es, wird gap 0 und die
+      // CSS-Variablen unten räumen sich beim nächsten resize selbst weg.
+      const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+      const content = meta?.getAttribute('content') ?? '';
+      if (meta && !content.includes('height=')) {
+        meta.setAttribute('content', `${content}, height=device-height`);
+      }
       root.setProperty('--app-height', `${target}px`);
       root.setProperty('--vp-gap', `${gap}px`);
       root.setProperty('--safe-top-fallback', `${gap}px`);
@@ -51,6 +61,8 @@ export function viewportDiagnostics(): string {
   const r = probe.getBoundingClientRect();
   const envTop = Math.round(r.top);
   const envBottom = Math.round(innerHeight - r.bottom);
+  probe.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:100lvh;visibility:hidden;pointer-events:none;';
+  const lvh = Math.round(probe.getBoundingClientRect().height);
   probe.remove();
   const appH = getComputedStyle(document.documentElement).getPropertyValue('--app-height').trim();
   const standalone =
@@ -60,6 +72,7 @@ export function viewportDiagnostics(): string {
     `scr ${screen.width}×${screen.height}`,
     `in ${innerWidth}×${innerHeight}`,
     `vv ${Math.round(window.visualViewport?.height ?? 0)}`,
+    `lvh ${lvh}`,
     `env ${envTop}/${envBottom}`,
     `app-h ${appH || '–'}`,
     standalone ? 'standalone' : 'browser',

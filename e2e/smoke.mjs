@@ -520,6 +520,8 @@ const check = (name, cond) => {
     m.appHeight === '855px' && m.overlayH === 855 && m.gameH === 855);
   check(`Standalone-Fix: Canvas-Backing folgt (h=${m.canvasBackingH})`, m.canvasBackingH === 855);
   check(`Standalone-Fix: HUD unter der Insel (top=${m.hudTop})`, m.hudTop === 55);
+  const viewportMeta = await page.getAttribute('meta[name="viewport"]', 'content');
+  check('Standalone-Fix: height=device-height injiziert', viewportMeta.includes('height=device-height'));
   // Banner: 16px über --safe-bottom (hier 0) ab der ECHTEN Unterkante 855.
   check(`Standalone-Fix: Banner an der echten Unterkante (bottom=${m.bannersBottom})`, m.bannersBottom === 855 - 16);
   await page.close();
