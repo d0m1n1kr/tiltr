@@ -6,6 +6,7 @@
   <title>tiltr</title>
   <meta name="description" content="Steuere einen Ball per Neigung durch ein unsichtbares Labyrinth – die Welt offenbart sich durch Klang, Vibration und Licht.">
   <meta name="theme-color" content="#0b1020">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -105,9 +106,14 @@
     </p>
     <button id="startBtn">Spiel starten</button>
     <p id="sensorNote">Beim Start werden Bewegungssensoren &amp; Audio aktiviert.<br>
-       Desktop-Fallback: Pfeiltasten / WASD, Leertaste = Ping.</p>
+       Desktop-Fallback: Pfeiltasten / WASD.</p>
   </div>
 
-  <script type="module" src="/src/app.ts"></script>
+  <script type="module" src="js/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
 </body>
 </html>
