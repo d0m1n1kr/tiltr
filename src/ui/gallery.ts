@@ -3,6 +3,7 @@
 
 import { galleryEntries, type GalleryEntry } from '../elements';
 import type { GameAudio } from '../audio/audio';
+import { WORLD } from '../render/palette';
 
 // Mechaniken, die keine Level-Elemente sind, aber zur Klangsprache gehören.
 function extraEntries(): GalleryEntry[] {
@@ -12,9 +13,9 @@ function extraEntries(): GalleryEntry[] {
       description:
         'Wände sind unsichtbar; Berührung macht sie kurz sichtbar und klingt als dumpfer Thump aus ihrer Richtung. Brüchige Wände (bernstein) knirschen und stürzen nach 3 harten Treffern ein.',
       draw(ctx, w, h) {
-        ctx.fillStyle = 'rgba(110, 168, 255, 0.9)';
+        ctx.fillStyle = `rgba(${WORLD.wall}, 0.9)`;
         ctx.fillRect(w * 0.15, h * 0.42, w * 0.45, 6);
-        ctx.fillStyle = 'rgba(255, 176, 96, 0.9)';
+        ctx.fillStyle = `rgba(${WORLD.brittle}, 0.9)`;
         ctx.fillRect(w * 0.62, h * 0.42, w * 0.23, 6);
       },
       demoSound(audio) {
@@ -27,11 +28,11 @@ function extraEntries(): GalleryEntry[] {
       title: 'Ziel-Beacon',
       description: 'Sonar-Ping des Ziels: je näher, desto schneller, lauter und höher. Richtung über Spatial Audio.',
       draw(ctx, w, h) {
-        ctx.fillStyle = 'rgba(75, 224, 140, 0.8)';
+        ctx.fillStyle = `rgba(${WORLD.goal}, 0.8)`;
         ctx.beginPath();
         ctx.arc(w / 2, h / 2, h * 0.14, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(75, 224, 140, 0.4)';
+        ctx.strokeStyle = `rgba(${WORLD.goal}, 0.4)`;
         ctx.beginPath();
         ctx.arc(w / 2, h / 2, h * 0.3, 0, Math.PI * 2);
         ctx.stroke();
@@ -45,7 +46,7 @@ function extraEntries(): GalleryEntry[] {
       description:
         'Aktiver Sonar-Impuls (Tap/Leertaste, begrenzter Vorrat): Wellenfront deckt die Umgebung auf, Reflexionen kommen entfernungs-verzögert zurück – Wände hell, Löcher tief.',
       draw(ctx, w, h) {
-        ctx.strokeStyle = 'rgba(75, 224, 200, 0.8)';
+        ctx.strokeStyle = `rgba(${WORLD.ping}, 0.8)`;
         for (const r of [0.12, 0.22, 0.32]) {
           ctx.beginPath();
           ctx.arc(w / 2, h / 2, h * r, 0, Math.PI * 2);
@@ -64,7 +65,7 @@ function extraEntries(): GalleryEntry[] {
       title: 'Herzschlag',
       description: 'Wird schneller und lauter, je näher ein offenes Loch ist. Fällt der Puls, ist der Weg frei.',
       draw(ctx, w, h) {
-        ctx.strokeStyle = 'rgba(255, 110, 130, 0.9)';
+        ctx.strokeStyle = `rgba(${WORLD.heart}, 0.9)`;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(w * 0.1, h / 2);
@@ -99,13 +100,13 @@ export function setupGallery(audio: GameAudio): void {
   function render(): void {
     for (const entry of [...galleryEntries(), ...extraEntries()]) {
       const item = document.createElement('div');
-      item.className = 'gallery-item';
+      item.className = 'panel gallery-item';
 
       const cv = document.createElement('canvas');
       cv.width = 120;
       cv.height = 72;
       const ctx = cv.getContext('2d')!;
-      ctx.fillStyle = '#05070f';
+      ctx.fillStyle = WORLD.bgDeep;
       ctx.fillRect(0, 0, cv.width, cv.height);
       entry.draw(ctx, cv.width, cv.height);
 
@@ -117,6 +118,7 @@ export function setupGallery(audio: GameAudio): void {
       body.append(title, desc);
       if (entry.demoSound) {
         const btn = document.createElement('button');
+        btn.className = 'btn btn-soft';
         btn.textContent = '🔊 Anhören';
         btn.addEventListener('click', () => entry.demoSound!(audio));
         body.append(btn);

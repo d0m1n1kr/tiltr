@@ -3,6 +3,7 @@
 
 import { registerElement, cellCenter } from './registry';
 import type { HoleDef } from '../levels/schema';
+import { WORLD } from '../render/palette';
 
 registerElement<HoleDef>({
   type: 'hole',
@@ -24,11 +25,11 @@ registerElement<HoleDef>({
     description:
       'Verschluckt den Ball und zieht ihn an, sobald er über den Rand rollt. Atmende Löcher öffnen und schließen sich zyklisch – geschlossen sind sie harmlos. Signatur: dunkles Grollen, Herzschlag, Warnvibration.',
     draw(ctx, w, h) {
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = WORLD.holeFill;
       ctx.beginPath();
       ctx.arc(w / 2, h / 2, h * 0.32, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(150, 90, 220, 0.8)';
+      ctx.strokeStyle = `rgba(${WORLD.holeRim}, 0.8)`;
       ctx.lineWidth = 2;
       ctx.stroke();
     },

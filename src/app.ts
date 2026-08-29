@@ -1,3 +1,4 @@
+import './ui/theme.css';
 import { CELL } from './core/constants';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, WindZone } from './core/types';

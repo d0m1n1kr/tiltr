@@ -1,0 +1,145 @@
+/* tiltr Design-Tokens & UI-Komponenten – Guideline: docs/DESIGN.md
+   Wer UI baut, benutzt diese Tokens und Klassen, keine Magic Values. */
+
+:root {
+  /* Grundflächen */
+  --bg-deep: #05070f; /* Spielfeld – reines Schwarz gehört den Löchern */
+  --bg: #0b1020;
+  --bg-raised: #101a33;
+  --bg-panel: #16223f;
+
+  /* Text */
+  --text: #cfd8ea;
+  --text-on-accent: #06121c;
+
+  /* Akzente – semantisch, identisch mit den Weltfarben (src/render/palette.ts) */
+  --accent: #4be0c8; /* Teal: Ball, Positives, Primäraktionen */
+  --accent-2: #6ea8ff; /* Blau: Wände, Information, Links */
+  --warning: #ffb060; /* Bernstein: Brüchiges */
+  --danger: #965adc; /* Violett: Löcher, Gefahr */
+  --success: #4be08c; /* Grün: Ziel, Erfolg */
+  --grad-primary: linear-gradient(90deg, var(--accent), var(--accent-2));
+
+  /* Ränder */
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.08);
+  --border-strong: 1px solid rgba(255, 255, 255, 0.15);
+  --border-accent: 1px solid rgba(110, 168, 255, 0.4);
+
+  /* Radien */
+  --radius-s: 8px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --radius-xl: 16px;
+
+  /* Abstände (4er-Raster) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Typografie */
+  --font: system-ui, -apple-system, sans-serif;
+  --fs-caption: 11px;
+  --fs-small: 12.5px;
+  --fs-body-s: 13.5px;
+  --fs-ui: 14px;
+  --fs-body: 15px;
+  --fs-h2: 20px;
+  --fs-display: 42px;
+
+  /* Effekte */
+  --shadow-raised: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --glow-accent: 0 0 30px rgba(75, 224, 200, 0.35);
+
+  /* Bewegung */
+  --t-tap: 120ms;
+  --t-panel: 250ms;
+
+  /* Ebenen */
+  --z-overlay: 10;
+  --z-panel: 20;
+  --z-banner: 30;
+
+  /* Interaktion */
+  --touch-min: 44px;
+}
+
+/* --- Buttons ------------------------------------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-m);
+  font: 400 var(--fs-ui) / 1 var(--font);
+  color: var(--text);
+  background: none;
+  transition: transform var(--t-tap) ease-out;
+  cursor: pointer;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* Die EINE Hauptaktion pro Screen/Banner. */
+.btn-primary {
+  background: var(--grad-primary);
+  color: var(--text-on-accent);
+  font-weight: 700;
+}
+
+/* Sekundär/neutral: HUD, Schließen, Dismiss. */
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border: var(--border-strong);
+}
+
+/* Leise Inline-Aktion in Karten (z. B. "Anhören"). */
+.btn-soft {
+  background: rgba(75, 224, 200, 0.15);
+  border: 1px solid rgba(75, 224, 200, 0.4);
+  color: var(--accent);
+  font-size: var(--fs-small);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+}
+
+/* Hero-Variante des Primary (Startscreen-CTA). */
+.btn-lg {
+  font-size: 20px;
+  padding: var(--space-4) 42px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glow-accent);
+}
+
+/* --- Flächen ------------------------------------------------------------ */
+
+.panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: var(--border-subtle);
+  border-radius: var(--radius-l);
+  padding: var(--space-3);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--bg-panel);
+  border: var(--border-accent);
+  border-radius: var(--radius-l);
+  padding: var(--space-3) 14px;
+  font-size: var(--fs-body-s);
+  line-height: 1.4;
+  box-shadow: var(--shadow-raised);
+}
+
+.hidden {
+  display: none !important;
+}

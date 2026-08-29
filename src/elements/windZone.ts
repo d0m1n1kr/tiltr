@@ -3,6 +3,7 @@
 
 import { registerElement } from './registry';
 import type { WindZoneDef } from '../levels/schema';
+import { WORLD } from '../render/palette';
 
 const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] } as const;
 
@@ -26,7 +27,7 @@ registerElement<WindZoneDef>({
     description:
       'Unsichtbare Zelle mit konstanter Windkraft – man muss dagegen neigen. Signatur: böiges Rauschen, das aus Richtung der Zone anschwillt.',
     draw(ctx, w, h) {
-      ctx.strokeStyle = 'rgba(120, 200, 255, 0.7)';
+      ctx.strokeStyle = `rgba(${WORLD.wind}, 0.7)`;
       ctx.lineWidth = 2;
       for (let i = 0; i < 3; i++) {
         const y = h * (0.3 + i * 0.2);

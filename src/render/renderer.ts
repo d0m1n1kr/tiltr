@@ -2,6 +2,7 @@
 // leuchten kurz auf ("Echo") und verblassen wieder – so offenbart sich die Welt.
 
 import type { World } from '../core/physics';
+import { WORLD } from './palette';
 
 export interface DrawOptions {
   debug?: boolean;
@@ -115,11 +116,11 @@ export class Renderer {
       return 0;
     };
     for (const w of world.walls) {
-      addRect(w, wallAlpha(w), w.hp !== undefined || w.cracked ? '255, 176, 96' : '110, 168, 255');
+      addRect(w, wallAlpha(w), w.hp !== undefined || w.cracked ? WORLD.brittle : WORLD.wall);
     }
     for (const d of world.debris) {
       if (d.litUntil && d.litUntil > now) {
-        addRect(d, Math.min(1, (d.litUntil - now) / 1500) * 0.6, '255, 176, 96');
+        addRect(d, Math.min(1, (d.litUntil - now) / 1500) * 0.6, WORLD.brittle);
       }
     }
     ctx.globalCompositeOperation = 'destination-over';
@@ -129,21 +130,21 @@ export class Renderer {
     }
 
     // Hintergrund hinter alles, dann wieder normal zeichnen.
-    ctx.fillStyle = '#05070f';
+    ctx.fillStyle = WORLD.bgDeep;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.globalCompositeOperation = 'source-over';
 
     // Windzonen: nur bei Debug/Reveal als Fläche mit Richtungspfeil.
     if (debug || revealAll) {
       for (const z of world.windZones) {
-        ctx.fillStyle = 'rgba(120, 200, 255, 0.08)';
+        ctx.fillStyle = `rgba(${WORLD.wind}, 0.08)`;
         ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
         const cx = tx(z.x + z.w / 2),
           cy = ty(z.y + z.h / 2);
         const f = Math.hypot(z.fx, z.fy) || 1;
         const dx = (z.fx / f) * z.w * s * 0.3,
           dy = (z.fy / f) * z.h * s * 0.3;
-        ctx.strokeStyle = 'rgba(120, 200, 255, 0.6)';
+        ctx.strokeStyle = `rgba(${WORLD.wind}, 0.6)`;
         ctx.lineWidth = 2 * this.dpr;
         ctx.beginPath();
         ctx.moveTo(cx - dx, cy - dy);
@@ -161,7 +162,7 @@ export class Renderer {
       if (debug || revealAll) alpha = cp.reached ? 0.7 : 0.4;
       else if (cp.litUntil && cp.litUntil > now) alpha = Math.min(1, (cp.litUntil - now) / 2000);
       if (alpha <= 0.01) continue;
-      ctx.strokeStyle = `rgba(75, 224, 200, ${alpha})`;
+      ctx.strokeStyle = `rgba(${WORLD.checkpoint}, ${alpha})`;
       ctx.lineWidth = 3 * this.dpr;
       ctx.beginPath();
       ctx.arc(tx(cp.x), ty(cp.y), cp.r * s, 0, Math.PI * 2);
@@ -177,11 +178,11 @@ export class Renderer {
       else if (hole.litUntil && hole.litUntil > now) alpha = Math.min(1, (hole.litUntil - now) / 1500);
       if (alpha <= 0.01) continue;
       const r = hole.r * s * (0.25 + 0.75 * (hole.openness ?? 1));
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = WORLD.holeFill;
       ctx.beginPath();
       ctx.arc(tx(hole.x), ty(hole.y), r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(150, 90, 220, ${alpha * 0.7})`;
+      ctx.strokeStyle = `rgba(${WORLD.holeRim}, ${alpha * 0.7})`;
       ctx.lineWidth = 2 * this.dpr;
       ctx.stroke();
     }
@@ -191,7 +192,7 @@ export class Renderer {
       const r = ((now - p.start) / 1000) * p.speed;
       const alpha = Math.max(0, 1 - r / p.range) * 0.6;
       if (alpha <= 0.01) continue;
-      ctx.strokeStyle = `rgba(75, 224, 200, ${alpha})`;
+      ctx.strokeStyle = `rgba(${WORLD.ping}, ${alpha})`;
       ctx.lineWidth = 2 * this.dpr;
       ctx.beginPath();
       ctx.arc(tx(p.x), ty(p.y), r * s, 0, Math.PI * 2);
@@ -204,8 +205,8 @@ export class Renderer {
       const pulse = 0.5 + 0.5 * Math.sin(now / 300);
       const r = g.r * s * (1.1 + pulse * 0.3);
       const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), r * 2);
-      grad.addColorStop(0, `rgba(75, 224, 140, ${0.5 + pulse * 0.3})`);
-      grad.addColorStop(1, 'rgba(75, 224, 140, 0)');
+      grad.addColorStop(0, `rgba(${WORLD.goal}, ${0.5 + pulse * 0.3})`);
+      grad.addColorStop(1, `rgba(${WORLD.goal}, 0)`);
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(tx(g.x), ty(g.y), r * 2, 0, Math.PI * 2);
@@ -216,14 +217,14 @@ export class Renderer {
     const b = world.ball;
     const br = b.r * s;
     const glow = ctx.createRadialGradient(tx(b.x), ty(b.y), 0, tx(b.x), ty(b.y), br * 5);
-    glow.addColorStop(0, 'rgba(75, 224, 200, 0.5)');
-    glow.addColorStop(1, 'rgba(75, 224, 200, 0)');
+    glow.addColorStop(0, `rgba(${WORLD.ballGlow}, 0.5)`);
+    glow.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(tx(b.x), ty(b.y), br * 5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#4be0c8';
+    ctx.fillStyle = WORLD.ball;
     ctx.beginPath();
     ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
     ctx.fill();
