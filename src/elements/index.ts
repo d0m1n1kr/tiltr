@@ -1,0 +1,8 @@
+// Alle Element-Module registrieren (Import mit Nebenwirkung).
+
+import './hole';
+import './windZone';
+import './checkpoint';
+
+export { buildElements, galleryEntries, registerElement } from './registry';
+export type { BuildContext, ElementModule, GalleryEntry } from './registry';

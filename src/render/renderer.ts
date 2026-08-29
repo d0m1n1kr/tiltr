@@ -15,11 +15,18 @@ interface Bucket {
   path: Path2D;
 }
 
+// Ab dieser Zoomstufe folgt die Kamera dem Ball statt die Welt einzupassen:
+// mindestens so viele Zellen (à 100 Welteinheiten) passen auf die kurze Screenseite.
+const VIEW_CELLS = 6.5;
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private scale = 1;
   private offsetX = 0;
   private offsetY = 0;
+  private worldW = 0;
+  private worldH = 0;
+  private following = false;
   dpr = 1;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -35,16 +42,42 @@ export class Renderer {
     this.canvas.style.width = innerWidth + 'px';
     this.canvas.style.height = innerHeight + 'px';
     this.dpr = dpr;
+    if (this.worldW) this.computeScale();
   }
 
-  // Welt (worldW x worldH) mit Rand in den Screen einpassen.
-  fitWorld(worldW: number, worldH: number): void {
+  // Kleine Welten werden eingepasst; große bekommen eine feste Zoomstufe,
+  // die Kamera folgt dann dem Ball (Multi-Screen-Maps).
+  setWorld(worldW: number, worldH: number): void {
+    this.worldW = worldW;
+    this.worldH = worldH;
+    this.computeScale();
+  }
+
+  private computeScale(): void {
     const margin = 24 * this.dpr;
-    const sw = this.canvas.width - margin * 2;
-    const sh = this.canvas.height - margin * 2;
-    this.scale = Math.min(sw / worldW, sh / worldH);
-    this.offsetX = (this.canvas.width - worldW * this.scale) / 2;
-    this.offsetY = (this.canvas.height - worldH * this.scale) / 2;
+    const fitScale = Math.min(
+      (this.canvas.width - margin * 2) / this.worldW,
+      (this.canvas.height - margin * 2) / this.worldH,
+    );
+    const followScale = Math.min(this.canvas.width, this.canvas.height) / (100 * VIEW_CELLS);
+    this.following = fitScale < followScale;
+    this.scale = this.following ? followScale : fitScale;
+    if (!this.following) {
+      this.offsetX = (this.canvas.width - this.worldW * this.scale) / 2;
+      this.offsetY = (this.canvas.height - this.worldH * this.scale) / 2;
+    }
+  }
+
+  // Pro Frame aufrufen: hält den Ball im Blick (weich, an den Weltgrenzen geklemmt).
+  follow(bx: number, by: number, snap = false): void {
+    if (!this.following) return;
+    const margin = 24 * this.dpr;
+    const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
+    const tx = clamp(this.canvas.width / 2 - bx * this.scale, this.canvas.width - margin - this.worldW * this.scale, margin);
+    const ty = clamp(this.canvas.height / 2 - by * this.scale, this.canvas.height - margin - this.worldH * this.scale, margin);
+    const k = snap ? 1 : 0.12;
+    this.offsetX += (tx - this.offsetX) * k;
+    this.offsetY += (ty - this.offsetY) * k;
   }
 
   draw(world: World, opts: DrawOptions): void {

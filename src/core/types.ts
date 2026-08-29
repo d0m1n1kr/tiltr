@@ -14,14 +14,25 @@ export interface Wall {
   litUntil?: number;
 }
 
+export interface Breathing {
+  /** Sekunden offen */
+  open: number;
+  /** Sekunden geschlossen */
+  closed: number;
+  /** Öffnen/Schließen-Rampe in Sekunden */
+  ramp: number;
+  /** Phasenversatz in Sekunden */
+  offset: number;
+}
+
 export interface Hole {
   x: number;
   y: number;
   r: number;
   /** 0 = geschlossen, 1 = offen; undefined = dauerhaft offen */
   openness?: number;
-  /** Phasenversatz des Atem-Zyklus in Sekunden */
-  offset?: number;
+  /** fehlt = Loch ist dauerhaft offen */
+  breathing?: Breathing;
   litFrom?: number;
   litUntil?: number;
 }

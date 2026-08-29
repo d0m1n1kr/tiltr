@@ -44,6 +44,16 @@ const check = (name, cond) => {
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`${BASE}/?seed=42`);
+
+  const version = (await page.textContent('#version')).trim();
+  check(`Version auf Startscreen ("${version}")`, /^v\d+\.\d+\.\d+/.test(version));
+
+  await page.click('#galleryLink');
+  await page.waitForTimeout(300);
+  const galleryItems = await page.locator('.gallery-item').count();
+  check(`Element-Galerie zeigt Einträge (${galleryItems})`, galleryItems >= 6);
+  await page.click('#galleryClose');
+
   await page.click('#startBtn');
   await page.waitForTimeout(3600); // Kalibrier-Countdown
 

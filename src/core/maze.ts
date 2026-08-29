@@ -43,6 +43,31 @@ export function generateMaze(cols: number, rows: number, rng: Rng): Cell[] {
   return cells;
 }
 
+// Eine Wandkante setzen/öffnen – hält die Nachbarzelle konsistent.
+// Für Level-Edits (carve/add) auf generierten Mazes.
+export function setWall(
+  cells: Cell[],
+  cols: number,
+  rows: number,
+  x: number,
+  y: number,
+  dir: keyof Cell,
+  present: boolean,
+): void {
+  const idx = (cx: number, cy: number) => cy * cols + cx;
+  const cell = cells[idx(x, y)];
+  if (!cell) throw new Error(`setWall: Zelle (${x},${y}) außerhalb ${cols}x${rows}`);
+  cell[dir] = present;
+  const neighbor: Record<keyof Cell, [number, number, keyof Cell]> = {
+    n: [x, y - 1, 's'],
+    e: [x + 1, y, 'w'],
+    s: [x, y + 1, 'n'],
+    w: [x - 1, y, 'e'],
+  };
+  const [nx, ny, opp] = neighbor[dir];
+  if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) cells[idx(nx, ny)]![opp] = present;
+}
+
 // Lösungsweg von (0,0) nach (cols-1, rows-1) per BFS – für Checkpoint-Platzierung.
 export function solveMaze(cells: Cell[], cols: number, rows: number): Array<{ x: number; y: number }> {
   const idx = (x: number, y: number) => y * cols + x;

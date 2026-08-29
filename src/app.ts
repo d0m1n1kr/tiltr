@@ -1,33 +1,21 @@
-import { generateMaze, mazeToWalls, solveMaze } from './core/maze';
-import { Ball, World } from './core/physics';
-import { mulberry32, randomSeed, seedFromString, type Rng } from './core/rng';
-import type { Checkpoint, Hole, Wall, WindZone } from './core/types';
+import { CELL } from './core/constants';
+import { randomSeed, seedFromString } from './core/rng';
+import type { Hole, WindZone } from './core/types';
+import type { World } from './core/physics';
+import type { Ball } from './core/physics';
 import { TiltInput } from './input/tilt';
 import { GameAudio } from './audio/audio';
 import { haptics } from './audio/haptics';
 import { Renderer } from './render/renderer';
+import { loadLevel } from './levels/loader';
+import { generateQuickLevel } from './levels/quick';
+import { setupUpdates } from './ui/update';
+import { setupGallery } from './ui/gallery';
 
-const COLS = 6,
-  ROWS = 8;
-const CELL = 100; // Weltkoordinaten (werden auf den Screen skaliert)
-const WALL_T = 10;
-const BALL_R = 22;
-const HOLE_COUNT = 4;
-const HOLE_R = BALL_R * 0.95; // deutlich schmaler als der Gang (~44 vs. 90)
 const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
-const CHECKPOINT_R = 30;
-const WINDZONE_COUNT = 2;
-const WIND_ACCEL = 1150; // Gegenhalten braucht ~10° Neigung
 const WIND_HEAR = CELL * 1.8;
-const BRITTLE_CHANCE = 0.16; // Anteil brüchiger Innenwände
-const BRITTLE_HITS = 3; // Treffer bis zum Einsturz
-const PING_MAX = 3; // Echo-Pings pro Runde (Checkpoint füllt +1 auf)
 const PING_RANGE = 260; // Reichweite des Echo-Pings
 const PING_SPEED = 600; // px/s – Wellenfront visuell & Echo-Verzögerung
-const HOLE_RAMP = 0.6; // Atem-Zyklus der Löcher (Sekunden)
-const HOLE_OPEN = 2.6;
-const HOLE_CLOSED = 2.2;
-const HOLE_PERIOD = HOLE_RAMP * 2 + HOLE_OPEN + HOLE_CLOSED;
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -40,9 +28,13 @@ const startBtn = $('startBtn');
 const calibrateBtn = $('calibrateBtn');
 const debugBtn = $('debugBtn');
 
+$('version').textContent = `v${__APP_VERSION__} · ${__BUILD_TIME__.slice(0, 16).replace('T', ' ')} UTC`;
+setupUpdates();
+
 const input = new TiltInput();
 const audio = new GameAudio();
 const renderer = new Renderer(canvas);
+setupGallery(audio);
 
 type GameState = 'menu' | 'playing' | 'fell' | 'won';
 
@@ -51,11 +43,12 @@ let state: GameState = 'menu';
 let debug = false;
 let revealUntil = 0;
 let maxDist = 1;
-let respawnPoint = { x: CELL / 2, y: CELL / 2 };
+let respawnPoint = { x: 0, y: 0 };
 let t0 = 0;
 let message = '';
 let messageUntil = 0;
-let pings = PING_MAX;
+let pings = 0;
+let pingMax = 3;
 
 // Seed aus der URL (?seed=…) macht Läufe reproduzierbar (Tests, später Daily).
 function nextSeed(): number {
@@ -65,80 +58,23 @@ function nextSeed(): number {
   return Number.isFinite(n) ? n >>> 0 : seedFromString(s);
 }
 
-const cellCenter = (c: { x: number; y: number }) => ({ x: (c.x + 0.5) * CELL, y: (c.y + 0.5) * CELL });
 const flash = (text: string, ms = 1800) => {
   message = text;
   messageUntil = performance.now() + ms;
 };
 
-// Zufällige freie Zellen ziehen; forbidden sammelt bereits belegte Zellindizes.
-function pickCells(count: number, forbidden: Set<number>, rng: Rng): Array<{ x: number; y: number }> {
-  const picked: Array<{ x: number; y: number }> = [];
-  while (picked.length < count) {
-    const cx = Math.floor(rng() * COLS);
-    const cy = Math.floor(rng() * ROWS);
-    const key = cy * COLS + cx;
-    if (forbidden.has(key)) continue;
-    forbidden.add(key);
-    picked.push({ x: cx, y: cy });
-  }
-  return picked;
-}
-
-// Innenwände zufällig als brüchig markieren (Außenrand nie).
-function markBrittleWalls(walls: Wall[], rng: Rng): void {
-  for (const w of walls) {
-    const interior = w.x > 0 && w.y > 0 && w.x + w.w < COLS * CELL && w.y + w.h < ROWS * CELL;
-    if (interior && rng() < BRITTLE_CHANCE) w.hp = BRITTLE_HITS;
-  }
-}
-
 function newGame(): void {
-  const rng = mulberry32(nextSeed());
-  const cells = generateMaze(COLS, ROWS, rng);
-  const walls = mazeToWalls(cells, COLS, ROWS, CELL, WALL_T);
-  markBrittleWalls(walls, rng);
-
-  const path = solveMaze(cells, COLS, ROWS);
-  const cpCells = [path[Math.floor(path.length / 3)]!, path[Math.floor((2 * path.length) / 3)]!];
-  const checkpoints: Checkpoint[] = cpCells.map((c) => ({
-    ...cellCenter(c),
-    r: CHECKPOINT_R,
-    reached: false,
-  }));
-
-  const forbidden = new Set<number>([0, (ROWS - 1) * COLS + (COLS - 1)]);
-  for (const c of cpCells) forbidden.add(c.y * COLS + c.x);
-  const jitter = () => (rng() - 0.5) * 16;
-  const holes: Hole[] = pickCells(HOLE_COUNT, forbidden, rng).map((c) => {
-    const p = cellCenter(c);
-    // offset entzerrt die Atem-Zyklen, damit nie alle Löcher synchron sind
-    return { x: p.x + jitter(), y: p.y + jitter(), r: HOLE_R, offset: rng() * HOLE_PERIOD, openness: 0 };
-  });
-  const dirs: Array<[number, number]> = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-  ];
-  const windZones: WindZone[] = pickCells(WINDZONE_COUNT, forbidden, rng).map((c) => {
-    const dir = dirs[Math.floor(rng() * 4)]!;
-    return { x: c.x * CELL, y: c.y * CELL, w: CELL, h: CELL, fx: dir[0] * WIND_ACCEL, fy: dir[1] * WIND_ACCEL };
-  });
-
-  const ball = new Ball(CELL / 2, CELL / 2, BALL_R);
-  const goal = { x: (COLS - 0.5) * CELL, y: (ROWS - 0.5) * CELL, r: BALL_R * 1.4 };
-  world = new World(walls, ball, goal, holes);
-  world.windZones = windZones;
-  world.checkpoints = checkpoints;
-
-  maxDist = Math.hypot(COLS * CELL, ROWS * CELL);
-  renderer.fitWorld(COLS * CELL, ROWS * CELL);
-  respawnPoint = { x: CELL / 2, y: CELL / 2 };
+  const loaded = loadLevel(generateQuickLevel(nextSeed()));
+  world = loaded.world;
+  pingMax = loaded.pingBudget;
+  pings = pingMax;
+  maxDist = Math.hypot(loaded.cols * CELL, loaded.rows * CELL);
+  renderer.setWorld(loaded.cols * CELL, loaded.rows * CELL);
+  renderer.follow(world.ball.x, world.ball.y, true);
+  respawnPoint = { x: world.ball.x, y: world.ball.y };
   t0 = performance.now();
   state = 'playing';
   revealUntil = 0;
-  pings = PING_MAX;
   input.calibrate();
 }
 
@@ -188,17 +124,21 @@ debugBtn.addEventListener('click', () => {
   debug = !debug;
 });
 
-window.addEventListener('resize', () => {
-  if (world) renderer.fitWorld(COLS * CELL, ROWS * CELL);
-});
+window.addEventListener('resize', () => renderer.resize());
 
 // Atem-Zyklus der Löcher: öffnen (Rampe) -> offen -> schließen (Rampe) -> zu.
 function updateHoles(nowMs: number): void {
   for (const h of world!.holes) {
-    const cyc = (nowMs / 1000 + (h.offset ?? 0)) % HOLE_PERIOD;
-    if (cyc < HOLE_RAMP) h.openness = cyc / HOLE_RAMP;
-    else if (cyc < HOLE_RAMP + HOLE_OPEN) h.openness = 1;
-    else if (cyc < HOLE_RAMP * 2 + HOLE_OPEN) h.openness = 1 - (cyc - HOLE_RAMP - HOLE_OPEN) / HOLE_RAMP;
+    const br = h.breathing;
+    if (!br) {
+      h.openness = 1;
+      continue;
+    }
+    const period = br.ramp * 2 + br.open + br.closed;
+    const cyc = (nowMs / 1000 + br.offset) % period;
+    if (cyc < br.ramp) h.openness = cyc / br.ramp;
+    else if (cyc < br.ramp + br.open) h.openness = 1;
+    else if (cyc < br.ramp * 2 + br.open) h.openness = 1 - (cyc - br.ramp - br.open) / br.ramp;
     else h.openness = 0;
   }
 }
@@ -339,7 +279,7 @@ function frame(now: number): void {
         cp.reached = true;
         cp.litUntil = now + 2000;
         respawnPoint = { x: cp.x, y: cp.y };
-        pings = Math.min(PING_MAX, pings + 1);
+        pings = Math.min(pingMax, pings + 1);
         audio.checkpoint();
         haptics.checkpoint();
         flash('Checkpoint! ✓ +1 Ping');
@@ -347,7 +287,7 @@ function frame(now: number): void {
     }
 
     timerEl.textContent = ((now - t0) / 1000).toFixed(1) + ' s';
-    pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(PING_MAX - pings);
+    pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(Math.max(0, pingMax - pings));
 
     const fallen = world.fallenHole();
     if (fallen) {
@@ -380,6 +320,7 @@ function frame(now: number): void {
     }
   }
 
+  renderer.follow(world.ball.x, world.ball.y);
   renderer.draw(world, { debug, revealAll: revealUntil > now, now });
   // Testbarkeits-Hook für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {

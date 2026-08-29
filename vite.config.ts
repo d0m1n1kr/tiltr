@@ -1,12 +1,39 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+  version: string;
+};
+const buildTime = new Date().toISOString();
+
+// Schreibt version.json in den Build – die App fragt sie beim Update-Check ab,
+// um anzuzeigen, WELCHE Version verfügbar ist.
+function versionJson(): Plugin {
+  return {
+    name: 'tiltr-version-json',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version: pkg.version, builtAt: buildTime }),
+      });
+    },
+  };
+}
 
 export default defineConfig({
   // Relative Pfade, damit die App unter https://<user>.github.io/tiltr/ läuft.
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_TIME__: JSON.stringify(buildTime),
+  },
   plugins: [
+    versionJson(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': neue Version wird gemeldet und erst auf Klick aktiviert.
+      registerType: 'prompt',
       includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'tiltr – das unsichtbare Labyrinth',
@@ -24,6 +51,16 @@ export default defineConfig({
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // version.json immer frisch vom Netz holen (Update-Anzeige).
+        navigateFallbackDenylist: [/version\.json$/],
+        runtimeCaching: [
+          {
+            urlPattern: /version\.json$/,
+            handler: 'NetworkOnly',
+          },
         ],
       },
     }),
