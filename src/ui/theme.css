@@ -64,6 +64,12 @@
 
   /* Interaktion */
   --touch-min: 44px;
+
+  /* Safe-Area (installierte PWA; im Browser 0). Unten GEDECKELT auf die von
+     Apple dokumentierten 34pt – installierte iOS-PWAs melden teils ~89px,
+     und jeder Pixel darüber wäre ein toter Streifen. Regeln: docs/DESIGN.md */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: min(env(safe-area-inset-bottom, 0px), 34px);
 }
 
 /* --- Buttons ------------------------------------------------------------ */
@@ -131,6 +137,16 @@
   background: rgba(75, 224, 200, 0.15);
   border: 1px solid rgba(75, 224, 200, 0.4);
   color: var(--accent);
+}
+/* Chips SEHEN klein aus, treffen aber 44px hoch: unsichtbare Trefffläche
+   statt größerer Optik (docs/DESIGN.md, Safe-Area & Trefflächen). */
+.chip {
+  position: relative;
+}
+.chip::before {
+  content: '';
+  position: absolute;
+  inset: calc((var(--touch-min) - 100%) / -2) 0;
 }
 
 /* --- Flächen ------------------------------------------------------------ */

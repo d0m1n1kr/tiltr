@@ -38,10 +38,12 @@ export class Renderer {
 
   resize(): void {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = Math.round(innerWidth * dpr);
-    this.canvas.height = Math.round(innerHeight * dpr);
-    this.canvas.style.width = innerWidth + 'px';
-    this.canvas.style.height = innerHeight + 'px';
+    // Größe aus dem eigenen CSS-Rect (position: fixed; inset: 0): das ist der
+    // Layout-Viewport – auch in der installierten PWA der ganze Bildschirm,
+    // wo innerHeight/100vh je nach Plattform danebenliegen können.
+    const rect = this.canvas.getBoundingClientRect();
+    this.canvas.width = Math.round(rect.width * dpr);
+    this.canvas.height = Math.round(rect.height * dpr);
     this.dpr = dpr;
     if (this.worldW) this.computeScale();
   }

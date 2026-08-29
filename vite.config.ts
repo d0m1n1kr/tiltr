@@ -40,8 +40,12 @@ export default defineConfig({
         short_name: 'tiltr',
         description:
           'Steuere einen Ball per Neigung durch ein unsichtbares Labyrinth. Klang, Vibration und Licht offenbaren die Welt.',
+        // id/scope/start_url explizit – sonst öffnet Android geteilte Links
+        // im Browser statt in der App; navigate-existing nutzt das offene Fenster.
+        id: './',
         start_url: './',
         scope: './',
+        launch_handler: { client_mode: 'navigate-existing' },
         display: 'fullscreen',
         orientation: 'portrait',
         background_color: '#0b1020',

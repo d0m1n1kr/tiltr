@@ -127,6 +127,40 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
   darf nur die Welt.
 
+## Safe-Area & Viewport (installierte PWA)
+
+Aus einem Vorgängerprojekt übernommene, dort teuer gemessene Regeln. Die
+Fehler dieser Kategorie sind **im Browser unsichtbar** (alle Insets 0) –
+kaputt ist es erst in der installierten PWA auf dem Gerät. Deshalb sichert
+`e2e/smoke.mjs` (Lauf „Safe-Area-Pflichttest") jede Regel mit nachgebildeten
+Insets (62/34) UND einer Gegenprobe ohne ab. Jede neue Zusicherung wird
+einmal rot gesehen, bevor sie zählt.
+
+- **Keine Höhenangaben für App-Flächen.** Alles Ganzflächige ist
+  `position: fixed; inset: 0` – kein `100vh`, kein `100dvh`, kein
+  `height: 100%` als Hüllenmaß (jede dieser Angaben geht in der
+  installierten iOS-PWA auf eigene Art daneben). Das Canvas braucht
+  zusätzlich `width/height: 100%`, weil replaced elements sich mit
+  `inset: 0` allein nicht strecken; seine Pixelgröße misst der Renderer
+  am eigenen Rect, nicht an `innerWidth/innerHeight`.
+- **Insets nur über die Tokens** `--safe-top` und `--safe-bottom`
+  (theme.css). Der untere ist auf 34 px **gedeckelt** (installierte
+  iOS-PWAs melden teils ~89 px – alles darüber wäre ein toter Streifen)
+  und wird **lokal** gesetzt (HUD, Banner, Panel-Padding), nie als
+  globales Hüllen-Padding.
+- **`touch-action: pan-x pan-y` auf html/body, niemals `none`** –
+  touch-action wirkt über die ganze Vorfahrenkette; mit `none` ließe
+  sich kein Panel mehr per Finger scrollen. Nur das Spielfeld (`#game`)
+  setzt selbst `none`. Doppeltipp-/Pinch-Zoom bleiben trotzdem aus
+  (plus `maximum-scale=1` im Viewport-Meta).
+- **Zentrieren scrollfähiger Overlays über Auto-Margins**
+  (`::before/::after { margin: auto }` bzw. `margin: auto` am Kind),
+  nie `justify-content: center` + `overflow` – das schneidet bei
+  Überlauf den Anfang ab (Querformat!).
+- **Manifest:** `id`, `scope`, `start_url` explizit, `launch_handler:
+  navigate-existing`. Die Adresse (`/tiltr/`) ist praktisch
+  unumkehrbar, sobald jemand installiert hat – nicht umziehen.
+
 ## Don'ts
 
 - Kein Inline-`style="…"` und keine Hex-Werte in Markup/TS – immer Token.

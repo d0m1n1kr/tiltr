@@ -211,6 +211,85 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 6: Safe-Area-Pflichttest – nachgebildete Insets (iPhone 402x874,
+// oben 62 / unten 34) UND Gegenprobe ohne. Die Fehler dieser Kategorie sind
+// im Browser unsichtbar; dieser Lauf ersetzt das installierte Gerät. ---
+{
+  const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  // Tokens VOR dem ersten Render überschreiben: nach dem Theme-<link> injiziert,
+  // gewinnt der Style per Kaskade (gleiche Spezifität, späterer Ursprung).
+  await page.route(`${BASE}/`, async (route) => {
+    const res = await route.fetch();
+    const body = (await res.text()).replace(
+      '</head>',
+      '<style>:root{--safe-top:62px;--safe-bottom:34px}</style></head>',
+    );
+    await route.fulfill({ response: res, body });
+  });
+  await page.goto(`${BASE}/`);
+  await page.waitForTimeout(300);
+
+  const m = await page.evaluate(() => {
+    const hud = document.getElementById('hud');
+    hud.classList.remove('hidden'); // nur für die Messung
+    const hudTop = hud.getBoundingClientRect().top;
+    hud.classList.add('hidden');
+    const canvas = document.getElementById('game').getBoundingClientRect();
+    const banners = document.getElementById('banners').getBoundingClientRect();
+    document.getElementById('galleryLink').click();
+    const gallery = getComputedStyle(document.getElementById('gallery'));
+    return {
+      hudTop,
+      canvasW: canvas.width,
+      canvasH: canvas.height,
+      bannersBottom: banners.bottom,
+      galleryPadTop: gallery.paddingTop,
+      galleryPadBottom: gallery.paddingBottom,
+      bodyTouch: getComputedStyle(document.body).touchAction,
+      gameTouch: getComputedStyle(document.getElementById('game')).touchAction,
+      innerH: innerHeight,
+      innerW: innerWidth,
+    };
+  });
+  check(`HUD beginnt unter dem oberen Inset (top=${m.hudTop})`, m.hudTop === 62);
+  check(`Canvas füllt den Layout-Viewport (${m.canvasW}x${m.canvasH})`, m.canvasW === m.innerW && m.canvasH === m.innerH);
+  check(`Banner enden über dem Home-Indicator (bottom=${m.bannersBottom})`, m.bannersBottom === m.innerH - 34 - 16);
+  check(`Panel-Padding respektiert Insets (${m.galleryPadTop}/${m.galleryPadBottom})`, m.galleryPadTop === '78px' && m.galleryPadBottom === '50px');
+  check(`touch-action: body=${m.bodyTouch}, game=${m.gameTouch}`, m.bodyTouch === 'pan-x pan-y' && m.gameTouch === 'none');
+
+  // Panels müssen scrollbar sein (der alte touch-action:none-Bug wäre hier unsichtbar,
+  // aber die Struktur – overflow + genügend Inhalt – lässt sich prüfen).
+  const scroll = await page.evaluate(() => {
+    const g = document.getElementById('gallery');
+    g.scrollTop = 200;
+    return { scrolled: g.scrollTop > 0, overflows: g.scrollHeight > g.clientHeight };
+  });
+  check('Galerie-Panel ist scrollbar', scroll.scrolled && scroll.overflows);
+  await page.close();
+}
+{
+  // Gegenprobe ohne Insets (normaler Browser): alles bündig.
+  const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+  const m = await page.evaluate(() => {
+    const hud = document.getElementById('hud');
+    hud.classList.remove('hidden');
+    const hudTop = hud.getBoundingClientRect().top;
+    hud.classList.add('hidden');
+    return {
+      hudTop,
+      canvasH: document.getElementById('game').getBoundingClientRect().height,
+      bannersBottom: document.getElementById('banners').getBoundingClientRect().bottom,
+      innerH: innerHeight,
+    };
+  });
+  check(`Gegenprobe ohne Insets (hud=${m.hudTop}, banner=${m.bannersBottom})`,
+    m.hudTop === 0 && m.canvasH === m.innerH && m.bannersBottom === m.innerH - 16);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

@@ -1,0 +1,55 @@
+# tiltr – Hinweise für die Entwicklung
+
+Immersives Sensor-Spiel als PWA: Ball per Neigung durch ein unsichtbares
+Labyrinth, die Welt offenbart sich über Klang (Spatial Audio), Vibration und
+sparsames Licht. Live: https://d0m1n1kr.github.io/tiltr/
+
+## Befehle
+
+```bash
+npm run dev        # Dev-Server (Desktop: WASD/Pfeile, Leertaste = Ping)
+npm run typecheck  # tsc --noEmit
+npm test           # Vitest-Units
+npm run lint       # ESLint
+npm run build      # Produktions-Build (dist/, inkl. PWA/Workbox)
+npm run e2e        # Playwright-Smoke gegen vite preview (fester Seed)
+```
+
+CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
+auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem
+Release die Version in `package.json` bumpen – sie erscheint auf dem
+Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
+
+## Architektur (Details: docs/PLAN.md)
+
+- `src/core/` – deterministische, DOM-freie Simulation (Physik, Maze,
+  seeded RNG). Kein `performance.now()`/`Math.random()` hier drin:
+  Determinismus ist Grundlage für Daily Challenge und Multiplayer.
+  `?seed=…` in der URL macht Läufe reproduzierbar.
+- `src/elements/` – Element-Registry: Jedes Spielelement ist ein Modul mit
+  `build()` (Loader), Galerie-Eintrag (Visual + Klang-Demo) und zod-Schema
+  in `src/levels/schema.ts`. Neue Elemente brauchen alle drei plus eine
+  Weltfarbe in `src/render/palette.ts`.
+- `src/levels/` – Levelformat (zod), Loader, Tutorial-/Kampagnen-Level,
+  Quick-Generator. Jedes neue Level braucht einen Lösbarkeits-Test
+  (siehe tests/campaign.test.ts – inkl. Tür-Semantik: Schlüssel vor der
+  Tür erreichbar).
+- Audio ist das Leitmedium: Jedes Element hat eine eindeutige, räumlich
+  ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound.
+
+## UI & Layout
+
+- **docs/DESIGN.md ist verbindlich**: Tokens/Komponenten aus
+  `src/ui/theme.css`, Weltfarben aus `src/render/palette.ts` – keine
+  Magic Values, kein Inline-Style.
+- **Safe-Area-Regeln beachten** (Abschnitt „Safe-Area & Viewport" in
+  docs/DESIGN.md): Fehler dieser Kategorie sind im Browser unsichtbar
+  und brechen erst in der installierten PWA. Jede Layout-Änderung muss
+  den Safe-Area-Lauf in `e2e/smoke.mjs` (nachgebildete Insets 62/34 +
+  Gegenprobe) grün halten; neue Zusicherungen einmal rot sehen.
+
+## Git
+
+- Branch: `claude/sensor-ball-game-pwa-f6jg9b` (Default). Jeder Push
+  deployt nach Tests automatisch live.
+- `prototype/` ist der eingefrorene Phase-0-Prototyp (Referenz).
