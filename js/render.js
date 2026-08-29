@@ -53,8 +53,10 @@ export class Renderer {
       if (!b) { b = { q, color, path: new Path2D() }; buckets.set(key, b); }
       b.path.rect(tx(r.x), ty(r.y), r.w * s, r.h * s);
     };
+    // litFrom verzögert das Aufleuchten: so breitet sich der Echo-Ping als Welle aus.
     const wallAlpha = (w) => {
       if (debug || revealAll) return 0.55;
+      if (w.litFrom && now < w.litFrom) return 0;
       if (w.litUntil && w.litUntil > now) return Math.min(1, (w.litUntil - now) / 1200) * 0.9;
       return 0;
     };
@@ -108,19 +110,33 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // Löcher: tiefschwarz mit schwachem Rand – sichtbar bei Debug/Reveal
-    // oder kurz nach einem Absturz (litUntil).
+    // Löcher: tiefschwarz mit schwachem Rand – sichtbar bei Debug/Reveal, nach
+    // einem Absturz oder Echo-Ping. Der Radius atmet mit dem Öffnungsgrad.
     for (const hole of world.holes || []) {
       let alpha = 0;
       if (debug || revealAll) alpha = 0.8;
+      else if (hole.litFrom && now < hole.litFrom) alpha = 0;
       else if (hole.litUntil && hole.litUntil > now) alpha = Math.min(1, (hole.litUntil - now) / 1500);
       if (alpha <= 0.01) continue;
+      const r = hole.r * s * (0.25 + 0.75 * (hole.openness ?? 1));
       ctx.fillStyle = '#000';
       ctx.beginPath();
-      ctx.arc(tx(hole.x), ty(hole.y), hole.r * s, 0, Math.PI * 2);
+      ctx.arc(tx(hole.x), ty(hole.y), r, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = `rgba(150, 90, 220, ${alpha * 0.7})`;
       ctx.lineWidth = 2 * this.dpr;
+      ctx.stroke();
+    }
+
+    // Echo-Ping: expandierender Ring vom Ball aus.
+    for (const p of world.pings || []) {
+      const r = ((now - p.start) / 1000) * p.speed;
+      const alpha = Math.max(0, 1 - r / p.range) * 0.6;
+      if (alpha <= 0.01) continue;
+      ctx.strokeStyle = `rgba(75, 224, 200, ${alpha})`;
+      ctx.lineWidth = 2 * this.dpr;
+      ctx.beginPath();
+      ctx.arc(tx(p.x), ty(p.y), r * s, 0, Math.PI * 2);
       ctx.stroke();
     }
 

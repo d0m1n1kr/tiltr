@@ -25,6 +25,9 @@ Web-Standards. Damit ist die Machbarkeit aller kritischen Bausteine isoliert
 | Checkpoints | 2 Stück auf dem Lösungsweg (BFS), Doppelklang + Vibration, dienen als Respawn-Punkt | `js/main.js`, `js/maze.js` |
 | Brüchige Wände | einige Innenwände knirschen bei harten Treffern und stürzen nach 3 Treffern ein (öffnet Abkürzungen) | `js/main.js`, `js/audio.js` |
 | Zeit | laufende Rundenzeit im HUD, Bestzeit in `localStorage` | `js/main.js` |
+| Echo-Ping | Tap/Leertaste: Sonar-Impuls deckt Umgebung als Wellenfront auf, Reflexionen kommen entfernungs-verzögert & räumlich zurück; 3 pro Runde, Checkpoint füllt +1 auf | `js/main.js`, `js/audio.js` |
+| Herzschlag | "lub-dub" wird schneller und lauter, je näher ein offenes Loch ist | `js/audio.js` |
+| Atmende Löcher | Löcher öffnen/schließen sich zyklisch (versetzt); zu = harmlos & leise, offen = Sog + Grollen. Das An-/Abschwellen ist das "Atmen" | `js/physics.js`, `js/main.js` |
 | Visuelles „Echo" | Canvas 2D, dunkler Screen, berührte Wände verblassen | `js/render.js` |
 | PWA | Web App Manifest + Service Worker (stale-while-revalidate) | `manifest.webmanifest`, `sw.js` |
 

@@ -18,12 +18,20 @@ const WIND_ACCEL = 1150;      // Gegenhalten braucht ~10° Neigung
 const WIND_HEAR = CELL * 1.8;
 const BRITTLE_CHANCE = 0.16;  // Anteil brüchiger Innenwände
 const BRITTLE_HITS = 3;       // Treffer bis zum Einsturz
+const PING_MAX = 3;           // Echo-Pings pro Runde (Checkpoint füllt +1 auf)
+const PING_RANGE = 260;       // Reichweite des Echo-Pings
+const PING_SPEED = 600;       // px/s – Wellenfront visuell & Echo-Verzögerung
+const HOLE_RAMP = 0.6;        // Atem-Zyklus der Löcher (Sekunden)
+const HOLE_OPEN = 2.6;
+const HOLE_CLOSED = 2.2;
+const HOLE_PERIOD = HOLE_RAMP * 2 + HOLE_OPEN + HOLE_CLOSED;
 
 const canvas = document.getElementById('game');
 const overlay = document.getElementById('overlay');
 const hud = document.getElementById('hud');
 const statusEl = document.getElementById('status');
 const timerEl = document.getElementById('timer');
+const pingsEl = document.getElementById('pings');
 const startBtn = document.getElementById('startBtn');
 const calibrateBtn = document.getElementById('calibrateBtn');
 const debugBtn = document.getElementById('debugBtn');
@@ -41,6 +49,7 @@ let respawnPoint = { x: CELL / 2, y: CELL / 2 };
 let t0 = 0;
 let message = '';
 let messageUntil = 0;
+let pings = PING_MAX;
 
 const cellCenter = (c) => ({ x: (c.x + 0.5) * CELL, y: (c.y + 0.5) * CELL });
 const flash = (text, ms = 1800) => { message = text; messageUntil = performance.now() + ms; };
@@ -81,7 +90,8 @@ function newGame() {
   const jitter = () => (Math.random() - 0.5) * 16;
   const holes = pickCells(HOLE_COUNT, forbidden).map((c) => {
     const p = cellCenter(c);
-    return { x: p.x + jitter(), y: p.y + jitter(), r: HOLE_R };
+    // offset entzerrt die Atem-Zyklen, damit nie alle Löcher synchron sind
+    return { x: p.x + jitter(), y: p.y + jitter(), r: HOLE_R, offset: Math.random() * HOLE_PERIOD, openness: 0 };
   });
   const windZones = pickCells(WINDZONE_COUNT, forbidden).map((c) => {
     const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
@@ -94,6 +104,8 @@ function newGame() {
   world.windZones = windZones;
   world.checkpoints = checkpoints;
   world.debris = [];
+  world.pings = [];
+  pings = PING_MAX;
 
   maxDist = Math.hypot(COLS * CELL, ROWS * CELL);
   renderer.fitWorld(COLS * CELL, ROWS * CELL);
@@ -148,6 +160,55 @@ window.addEventListener('resize', () => {
   if (world) renderer.fitWorld(COLS * CELL, ROWS * CELL);
 });
 
+// Atem-Zyklus der Löcher: öffnen (Rampe) -> offen -> schließen (Rampe) -> zu.
+function updateHoles(nowMs) {
+  for (const h of world.holes) {
+    const cyc = (nowMs / 1000 + h.offset) % HOLE_PERIOD;
+    if (cyc < HOLE_RAMP) h.openness = cyc / HOLE_RAMP;
+    else if (cyc < HOLE_RAMP + HOLE_OPEN) h.openness = 1;
+    else if (cyc < HOLE_RAMP * 2 + HOLE_OPEN) h.openness = 1 - (cyc - HOLE_RAMP - HOLE_OPEN) / HOLE_RAMP;
+    else h.openness = 0;
+  }
+}
+
+// Echo-Ping: Umgebung im Radius aufdecken (als Wellenfront) und die
+// Reflexionen verzögert & räumlich zurückkommen lassen.
+function firePing(now) {
+  if (!world || state !== 'playing' || pings <= 0) return;
+  pings--;
+  const b = world.ball;
+  world.pings.push({ x: b.x, y: b.y, start: now, speed: PING_SPEED, range: PING_RANGE });
+
+  const reflections = [];
+  for (const w of world.walls) {
+    const cx = Math.max(w.x, Math.min(b.x, w.x + w.w));
+    const cy = Math.max(w.y, Math.min(b.y, w.y + w.h));
+    const dist = Math.hypot(b.x - cx, b.y - cy);
+    if (dist > PING_RANGE) continue;
+    w.litFrom = now + (dist / PING_SPEED) * 1000;
+    w.litUntil = w.litFrom + 1000;
+    reflections.push({ dx: cx - b.x, dy: cy - b.y, dist, freq: 950 });
+  }
+  for (const h of world.holes) {
+    const dist = Math.max(0, Math.hypot(b.x - h.x, b.y - h.y) - h.r);
+    if (dist > PING_RANGE) continue;
+    h.litFrom = now + (dist / PING_SPEED) * 1000;
+    h.litUntil = h.litFrom + 1200;
+    reflections.push({ dx: h.x - b.x, dy: h.y - b.y, dist, freq: 280 });
+  }
+  reflections.sort((a, c) => a.dist - c.dist);
+  audio.echoPing(reflections.slice(0, 8).map((r) => ({
+    dx: r.dx, dy: r.dy, freq: r.freq,
+    delay: r.dist / PING_SPEED,
+    gain: 0.05 + 0.25 * (1 - r.dist / PING_RANGE),
+  })));
+}
+
+canvas.addEventListener('pointerdown', () => firePing(performance.now()));
+window.addEventListener('keydown', (e) => {
+  if (e.key === ' ' && !e.repeat) firePing(performance.now());
+});
+
 // Nähe + Richtung zu einem Rechteck (für den Windzonen-Sound).
 function zoneProximity(z, b) {
   const cx = Math.max(z.x, Math.min(b.x, z.x + z.w));
@@ -167,12 +228,16 @@ function frame(now) {
   last = now;
   if (!world) return;
 
+  updateHoles(now);
+  world.pings = world.pings.filter((p) => ((now - p.start) / 1000) * p.speed < p.range);
+
   if (state === 'playing') {
     const tilt = input.tilt;
     const hits = world.step(dt, tilt);
 
     for (const hit of hits) {
       const wall = hit.wall;
+      wall.litFrom = 0;           // Berührung leuchtet sofort, ohne Ping-Verzögerung
       wall.litUntil = now + 1200; // Echo: berührte Wand kurz sichtbar machen
       const intensity = Math.min(1, hit.impact / 500);
       if (intensity <= 0.06) continue;
@@ -200,13 +265,22 @@ function frame(now) {
     const { dx, dy, dist } = world.goalVector();
     audio.beacon(dx, dy, Math.min(1, dist / maxDist));
 
-    // Loch-Grollen + Warnvibration
-    const near = world.nearestHole();
-    if (near) {
-      const closeness = Math.max(0, 1 - near.dist / HOLE_HEAR);
-      audio.setHoleRumble(closeness, near.hole.x - world.ball.x, near.hole.y - world.ball.y);
-      if (closeness > 0.55) haptics.holeWarning(closeness);
+    // Gefahr = Nähe des bedrohlichsten OFFENEN Lochs: steuert Grollen
+    // (Atmen = An- und Abschwellen mit dem Öffnungsgrad), Warnvibration
+    // und den Herzschlag.
+    let danger = 0, dangerHole = null;
+    for (const h of world.holes) {
+      const d = Math.max(0, Math.hypot(h.x - world.ball.x, h.y - world.ball.y) - h.r);
+      const c = Math.max(0, 1 - d / HOLE_HEAR) * h.openness;
+      if (c > danger) { danger = c; dangerHole = h; }
     }
+    if (dangerHole) {
+      audio.setHoleRumble(danger, dangerHole.x - world.ball.x, dangerHole.y - world.ball.y);
+    } else {
+      audio.setHoleRumble(0, 0, 0);
+    }
+    if (danger > 0.55) haptics.holeWarning(danger);
+    audio.heartbeat(danger);
 
     // Windzonen: hörbar in der Nähe, spürbar (Kraft) mittendrin
     let bestZone = null;
@@ -225,13 +299,15 @@ function frame(now) {
         cp.reached = true;
         cp.litUntil = now + 2000;
         respawnPoint = { x: cp.x, y: cp.y };
+        pings = Math.min(PING_MAX, pings + 1);
         audio.checkpoint();
         haptics.checkpoint();
-        flash('Checkpoint! ✓');
+        flash('Checkpoint! ✓ +1 Ping');
       }
     }
 
     timerEl.textContent = ((now - t0) / 1000).toFixed(1) + ' s';
+    pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(PING_MAX - pings);
 
     const fallen = world.fallenHole();
     if (fallen) {

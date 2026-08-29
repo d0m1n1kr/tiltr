@@ -6,6 +6,7 @@ export class GameAudio {
   constructor() {
     this.ctx = null;
     this.nextPing = 0;
+    this.nextBeat = 0;
   }
 
   // Aus User-Geste aufrufen (Autoplay-Policy).
@@ -174,6 +175,59 @@ export class GameAudio {
     osc.connect(gain).connect(this._spatialOut(dx, dy));
     osc.start(t);
     osc.stop(t + 0.2);
+  }
+
+  // Aktiver Echo-Ping: Abstrahl-Chirp, dann kommen die Reflexionen der
+  // Umgebung zurück – verzögert nach Entfernung, räumlich aus ihrer Richtung.
+  // reflections: [{dx, dy, delay, gain, freq}]
+  echoPing(reflections) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const chirp = this.ctx.createOscillator();
+    chirp.type = 'sine';
+    chirp.frequency.setValueAtTime(1400, t);
+    chirp.frequency.exponentialRampToValueAtTime(900, t + 0.08);
+    const cg = this.ctx.createGain();
+    cg.gain.setValueAtTime(0.25, t);
+    cg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    chirp.connect(cg).connect(this.master);
+    chirp.start(t);
+    chirp.stop(t + 0.11);
+
+    for (const r of reflections) {
+      const t0 = t + 0.1 + r.delay;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = r.freq || 950;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(r.gain, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+      osc.connect(gain).connect(this._spatialOut(r.dx, r.dy));
+      osc.start(t0);
+      osc.stop(t0 + 0.14);
+    }
+  }
+
+  // Herzschlag: "lub-dub", Tempo und Lautstärke steigen mit der Gefahr.
+  heartbeat(danger01) {
+    if (!this.ctx || danger01 < 0.05) return;
+    const t = this.ctx.currentTime;
+    if (t < this.nextBeat) return;
+    this.nextBeat = t + 1.25 - danger01 * 0.8;
+    const vol = 0.08 + danger01 * 0.25;
+    [[0, 1, 58], [0.14, 0.7, 50]].forEach(([off, mul, freq]) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + off);
+      osc.frequency.exponentialRampToValueAtTime(35, t + off + 0.1);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(vol * mul, t + off);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + off + 0.12);
+      osc.connect(gain).connect(this.master);
+      osc.start(t + off);
+      osc.stop(t + off + 0.14);
+    });
   }
 
   // Brüchige Wand knirscht beim Treffer.

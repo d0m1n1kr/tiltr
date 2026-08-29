@@ -50,12 +50,15 @@ export class World {
         if (hit) hits.push(hit);
       }
 
-      // Löcher ziehen den Ball leicht an, sobald er über den Rand rollt.
+      // Offene Löcher ziehen den Ball leicht an, sobald er über den Rand rollt.
+      // openness (0 zu, 1 offen) skaliert den Sog; fehlt es, gilt das Loch als offen.
       for (const hole of this.holes) {
+        const open = hole.openness ?? 1;
+        if (open < 0.2) continue;
         const dx = hole.x - b.x, dy = hole.y - b.y;
         const d = Math.hypot(dx, dy);
         if (d < hole.r + b.r && d > 1e-6) {
-          const pull = this.accel * 0.55 * (1 - d / (hole.r + b.r));
+          const pull = this.accel * 0.55 * open * (1 - d / (hole.r + b.r));
           b.vx += (dx / d) * pull * h;
           b.vy += (dy / d) * pull * h;
         }
@@ -64,10 +67,11 @@ export class World {
     return hits;
   }
 
-  // Loch, in das der Ball gerade fällt (Mittelpunkt über dem Loch), sonst null.
+  // Loch, in das der Ball gerade fällt (Mittelpunkt über einem offenen Loch), sonst null.
   fallenHole() {
     const b = this.ball;
     for (const hole of this.holes) {
+      if ((hole.openness ?? 1) < 0.6) continue;
       if (Math.hypot(hole.x - b.x, hole.y - b.y) < hole.r * 0.85) return hole;
     }
     return null;
