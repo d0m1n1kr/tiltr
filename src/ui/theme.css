@@ -67,9 +67,12 @@
   --touch-min: 44px;
 
   /* Safe-Area (installierte PWA; im Browser 0). Unten GEDECKELT auf die von
-     Apple dokumentierten 34pt – installierte iOS-PWAs melden teils ~89px,
-     und jeder Pixel darüber wäre ein toter Streifen. Regeln: docs/DESIGN.md */
-  --safe-top: env(safe-area-inset-top, 0px);
+     Apple dokumentierten 34pt – installierte iOS-PWAs melden teils ~89px
+     (Statusbar + Home-Indicator, s. Viewport-Bug in docs/DESIGN.md), und
+     jeder Pixel darüber wäre ein toter Streifen. Oben greift zusätzlich der
+     JS-gemessene Fallback (src/ui/viewport.ts), weil env() im verschobenen
+     Standalone-Viewport 0 melden kann. */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-top-fallback, 0px));
   --safe-bottom: min(env(safe-area-inset-bottom, 0px), 34px);
 }
 

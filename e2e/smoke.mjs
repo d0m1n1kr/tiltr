@@ -481,6 +481,50 @@ const check = (name, cond) => {
   await ctx.close();
 }
 
+// --- Lauf 9b: iOS-Standalone-Viewport-Bug nachgebildet – der Layout-Viewport
+// ist 55px kürzer als der Screen (Statusbar) und env() meldet oben 0. Die App
+// muss die Lücke messen: Vollflächen bis zum echten Screenrand, HUD unter der
+// Insel (Safe-Top-Fallback), Banner an der echten Unterkante. ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    // Standalone vortäuschen und screen.height 55px über innerHeight legen.
+    const origMatch = window.matchMedia.bind(window);
+    window.matchMedia = (q) =>
+      q === '(display-mode: standalone)'
+        ? { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false }
+        : origMatch(q);
+    Object.defineProperty(Screen.prototype, 'width', { get: () => 400 });
+    Object.defineProperty(Screen.prototype, 'height', { get: () => 855 });
+  });
+  await page.goto(`${BASE}/?nosplash`);
+  await page.waitForTimeout(300);
+
+  const m = await page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const hud = document.getElementById('hud');
+    hud.classList.remove('hidden');
+    const hudTop = hud.getBoundingClientRect().top;
+    hud.classList.add('hidden');
+    return {
+      appHeight: cs.getPropertyValue('--app-height').trim(),
+      overlayH: document.getElementById('overlay').getBoundingClientRect().height,
+      gameH: document.getElementById('game').getBoundingClientRect().height,
+      canvasBackingH: document.getElementById('game').height,
+      hudTop,
+      bannersBottom: document.getElementById('banners').getBoundingClientRect().bottom,
+    };
+  });
+  check(`Standalone-Fix: Vollflächen bis zum Screenrand (855px, overlay=${m.overlayH}, game=${m.gameH})`,
+    m.appHeight === '855px' && m.overlayH === 855 && m.gameH === 855);
+  check(`Standalone-Fix: Canvas-Backing folgt (h=${m.canvasBackingH})`, m.canvasBackingH === 855);
+  check(`Standalone-Fix: HUD unter der Insel (top=${m.hudTop})`, m.hudTop === 55);
+  // Banner: 16px über --safe-bottom (hier 0) ab der ECHTEN Unterkante 855.
+  check(`Standalone-Fix: Banner an der echten Unterkante (bottom=${m.bannersBottom})`, m.bannersBottom === 855 - 16);
+  await page.close();
+}
+
 // --- Lauf 10: Splash – Version + Credits, verschwindet von selbst ---
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });

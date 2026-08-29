@@ -167,6 +167,19 @@ einmal rot gesehen, bevor sie zählt.
   zusätzlich `width/height: 100%`, weil replaced elements sich mit
   `inset: 0` allein nicht strecken; seine Pixelgröße misst der Renderer
   am eigenen Rect, nicht an `innerWidth/innerHeight`.
+- **iOS-Standalone-Viewport-Bug (gemessen):** In der installierten PWA ist
+  der Layout-Viewport um die Statusbar-Höhe (~55pt) zu KURZ und beginnt
+  trotzdem am oberen Screenrand: `fixed inset:0` endet ~55pt über der
+  Unterkante (sichtbarer Streifen), `env(safe-area-inset-top)` meldet 0
+  (Inhalt unter der Dynamic Island), unten sind Statusbar+Home-Indicator
+  aufaddiert (~89px – daher der 34px-Deckel). Gegenmittel
+  (`src/ui/viewport.ts`): die Lücke wird als `screen.height − innerHeight`
+  gemessen; daraus `--app-height` (Vollflächen-Screens und `#game` bekommen
+  `height: var(--app-height, …)` und reichen bis zum echten Screenrand),
+  `--vp-gap` (Korrektur für bottom-verankerte Elemente wie `#banners`) und
+  `--safe-top-fallback` (fließt per `max()` in `--safe-top` ein).
+  E2E-Lauf „Standalone-Fix" bildet den Bug mit gefälschtem
+  `display-mode: standalone` + `screen.height` nach.
 - **Insets nur über die Tokens** `--safe-top` und `--safe-bottom`
   (theme.css). Der untere ist auf 34 px **gedeckelt** (installierte
   iOS-PWAs melden teils ~89 px – alles darüber wäre ein toter Streifen)

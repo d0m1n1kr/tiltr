@@ -14,6 +14,7 @@ import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang } from './i18n';
 import { showSplash } from './ui/splash';
+import { fixStandaloneViewport } from './ui/viewport';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
 import { connect, makeRoomCode, type Transport } from './net/transport';
 import { scanRoomCode } from './ui/scanner';
@@ -51,6 +52,7 @@ const interText = $('interText');
 const interPrimary = $<HTMLButtonElement>('interPrimary');
 const interSecondary = $<HTMLButtonElement>('interSecondary');
 
+fixStandaloneViewport();
 document.documentElement.lang = currentLang();
 applyI18n();
 showSplash(__APP_VERSION__);
