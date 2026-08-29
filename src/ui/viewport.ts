@@ -1,13 +1,29 @@
-// iOS-Standalone-Viewport-Bug (empirisch, siehe docs/DESIGN.md "Safe-Area"):
-// In der installierten PWA ist der Layout-Viewport um die Statusbar-Höhe zu
-// KURZ und startet trotzdem am oberen Screenrand. Folgen:
-//  - fixed inset:0 endet ~55pt über dem unteren Screenrand (sichtbarer Streifen),
-//  - env(safe-area-inset-top) meldet 0 (Logo unter der Dynamic Island),
-//  - env(safe-area-inset-bottom) meldet Statusbar+Home-Indicator (~89px).
-// Messbare Wahrheit: screen.height (orientierungsbewusst) minus innerHeight.
-// Daraus setzen wir --app-height (Vollflächen bis zum echten Screenrand),
-// --vp-gap (Korrektur für bottom-verankerte Elemente) und einen
-// --safe-top-fallback in Höhe der Lücke (= Statusbar/Island).
+// iOS-Standalone-Viewport (empirisch per Geräte-Diagnose, docs/DESIGN.md):
+// Mit status-bar-style 'black-translucent' bemisst iOS den PWA-Container
+// "Screen minus Statusbar", verankert ihn aber oben AM Screenrand – unten
+// fehlt genau Statusbarhöhe (unbemalbarer schwarzer Balken), env() meldet
+// oben die Insel (62), innerHeight bleibt zu klein (812 bei 874-Screen).
+// Seit dem Wechsel auf 'black' liegt der Container UNTER der Statusbar
+// (Größe und Position stimmen überein) – dann ist hier nichts zu tun.
+//
+// Für Alt-Installationen (translucent eingebrannt, bis zur Neuinstallation)
+// bleibt der Ausgleich aktiv: Er erkennt den kaputten Zustand daran, dass
+// eine Lücke (screen − innerHeight) UND eine Insel-Überlappung (env oben > 0)
+// zusammenkommen, und setzt --app-height/--vp-gap/--safe-top-fallback.
+
+/** env(safe-area-inset-top) in px – per Mess-Element, da CSS-seitig nur als
+ *  Wert nutzbar. Das Element trägt eine feste id (auch für Tests). */
+function measureEnvTop(): number {
+  const probe = document.createElement('div');
+  probe.id = 'vp-env-probe';
+  probe.style.cssText =
+    'position:fixed;left:0;width:1px;height:1px;visibility:hidden;pointer-events:none;' +
+    'top:env(safe-area-inset-top,0px);';
+  document.body.append(probe);
+  const top = Math.round(probe.getBoundingClientRect().top);
+  probe.remove();
+  return top;
+}
 
 export function fixStandaloneViewport(): void {
   const standalone =
@@ -24,17 +40,7 @@ export function fixStandaloneViewport(): void {
       : Math.max(screen.width, screen.height);
     const gap = Math.round(target - innerHeight);
     const root = document.documentElement.style;
-    if (gap > 8 && gap < 120) {
-      // Klassisches iOS-Gegenmittel: height=device-height zwingt den zu kurz
-      // angelegten Standalone-Viewport auf die Gerätehöhe. Nur zur Laufzeit
-      // und nur im kaputten Zustand injiziert, damit der Browser-Modus
-      // (Toolbars!) unberührt bleibt. Greift es, wird gap 0 und die
-      // CSS-Variablen unten räumen sich beim nächsten resize selbst weg.
-      const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
-      const content = meta?.getAttribute('content') ?? '';
-      if (meta && !content.includes('height=')) {
-        meta.setAttribute('content', `${content}, height=device-height`);
-      }
+    if (gap > 8 && gap < 120 && measureEnvTop() > 8) {
       root.setProperty('--app-height', `${target}px`);
       root.setProperty('--vp-gap', `${gap}px`);
       root.setProperty('--safe-top-fallback', `${gap}px`);
@@ -51,7 +57,7 @@ export function fixStandaloneViewport(): void {
 }
 
 /** Eine Zeile Geräte-Wahrheit für die Debug-Ansicht: Screen-/Viewport-Maße,
- *  echte env()-Insets (per Mess-Element), gesetzte --app-height, Modus. */
+ *  echte env()-Insets (Mess-Element), 100lvh, gesetzte --app-height, Modus. */
 export function viewportDiagnostics(): string {
   const probe = document.createElement('div');
   probe.style.cssText =

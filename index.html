@@ -9,7 +9,14 @@
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- 'black', NICHT 'black-translucent': iOS bemisst den Standalone-Container
+       bei translucent "Screen minus Statusbar", verankert ihn aber oben AM
+       Screenrand – unten fehlt dann genau Statusbarhöhe (schwarzer Balken,
+       auf dem Gerät per Diagnose belegt: in 812 / lvh 874 / env oben 62).
+       Mit 'black' stimmen Größe und Position überein; die schwarze Bar
+       verschmilzt mit dem dunklen Theme. Wird bei der Installation
+       eingebrannt (Änderung = neu zum Home-Bildschirm hinzufügen). -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <style>
     /* Nur Layout & Screen-Struktur – Tokens/Komponenten: src/ui/theme.css,
        Guideline: docs/DESIGN.md */
