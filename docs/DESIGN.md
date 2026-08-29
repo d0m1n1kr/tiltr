@@ -167,19 +167,24 @@ einmal rot gesehen, bevor sie zählt.
   zusätzlich `width/height: 100%`, weil replaced elements sich mit
   `inset: 0` allein nicht strecken; seine Pixelgröße misst der Renderer
   am eigenen Rect, nicht an `innerWidth/innerHeight`.
-- **iOS-Standalone-Viewport-Bug (gemessen):** In der installierten PWA ist
-  der Layout-Viewport um die Statusbar-Höhe (~55pt) zu KURZ und beginnt
-  trotzdem am oberen Screenrand: `fixed inset:0` endet ~55pt über der
-  Unterkante (sichtbarer Streifen), `env(safe-area-inset-top)` meldet 0
-  (Inhalt unter der Dynamic Island), unten sind Statusbar+Home-Indicator
-  aufaddiert (~89px – daher der 34px-Deckel). Gegenmittel
-  (`src/ui/viewport.ts`): die Lücke wird als `screen.height − innerHeight`
-  gemessen; daraus `--app-height` (Vollflächen-Screens und `#game` bekommen
-  `height: var(--app-height, …)` und reichen bis zum echten Screenrand),
-  `--vp-gap` (Korrektur für bottom-verankerte Elemente wie `#banners`) und
-  `--safe-top-fallback` (fließt per `max()` in `--safe-top` ein).
-  E2E-Lauf „Standalone-Fix" bildet den Bug mit gefälschtem
-  `display-mode: standalone` + `screen.height` nach.
+- **iOS-Standalone-Container (per Geräte-Diagnose belegt):** Mit
+  `apple-mobile-web-app-status-bar-style: black-translucent` bemisst iOS
+  den PWA-Container „Screen minus Statusbar", verankert ihn aber oben AM
+  Screenrand – unten fehlen exakt Statusbarhöhe (~55–62pt) als
+  **unbemalbarer** schwarzer Balken (Diagnosewerte: `in 812 · lvh 874 ·
+  env 62/34` bei 874er-Screen). Kein Web-Code kann außerhalb des
+  Containers zeichnen; `--app-height`, `100lvh` und `height=device-height`
+  bleiben wirkungslos. **Deshalb `black` statt `black-translucent`** –
+  damit stimmen Größe und Position überein (Container von Statusbar bis
+  Screen-Unterkante). Beide Meta-Werte werden wie `display` bei der
+  Installation eingebrannt (Änderung = neu zum Home-Bildschirm).
+  Für Alt-Installationen erkennt `src/ui/viewport.ts` den kaputten
+  translucent-Zustand (Lücke `screen.height − innerHeight` UND
+  Insel-Überlappung `env oben > 0`) und gleicht aus: `--app-height`
+  (Vollflächen + `#game` bis zur Gerätehöhe), `--vp-gap` (bottom-verankerte
+  Banner), `--safe-top-fallback` (per `max()` in `--safe-top`). Der
+  E2E-Lauf „Standalone" bildet beide Zustände nach. Die Debug-Ansicht
+  (5 Taps auf die Version) zeigt eine Diagnosezeile mit den echten Werten.
 - **Insets nur über die Tokens** `--safe-top` und `--safe-bottom`
   (theme.css). Der untere ist auf 34 px **gedeckelt** (installierte
   iOS-PWAs melden teils ~89 px – alles darüber wäre ein toter Streifen)
