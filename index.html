@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>tiltr</title>
+  <meta name="description" content="Steuere einen Ball per Neigung durch ein unsichtbares Labyrinth – die Welt offenbart sich durch Klang, Vibration und Licht.">
+  <meta name="theme-color" content="#0b1020">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #0b1020;
+      color: #cfd8ea;
+      font-family: system-ui, -apple-system, sans-serif;
+      touch-action: none;
+      overscroll-behavior: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #game { position: fixed; inset: 0; display: block; }
+    #hud {
+      position: fixed;
+      top: env(safe-area-inset-top, 0);
+      left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      pointer-events: none;
+      font-size: 13px;
+      opacity: 0.8;
+    }
+    #hud button {
+      pointer-events: auto;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #cfd8ea;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+    #overlay {
+      position: fixed; inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: radial-gradient(circle at 50% 40%, #101a33 0%, #0b1020 70%);
+      text-align: center;
+      padding: 24px;
+      z-index: 10;
+    }
+    #overlay h1 {
+      font-size: 42px;
+      letter-spacing: 3px;
+      background: linear-gradient(90deg, #4be0c8, #6ea8ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #overlay p { max-width: 420px; line-height: 1.5; font-size: 15px; opacity: 0.85; }
+    #startBtn {
+      font-size: 20px;
+      padding: 16px 42px;
+      border-radius: 16px;
+      border: none;
+      color: #06121c;
+      font-weight: 700;
+      background: linear-gradient(90deg, #4be0c8, #6ea8ff);
+      box-shadow: 0 0 30px rgba(75, 224, 200, 0.35);
+    }
+    #startBtn:active { transform: scale(0.97); }
+    #sensorNote { font-size: 12px; opacity: 0.55; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <span id="status"></span>
+    <span>
+      <button id="calibrateBtn" title="Neigung neu kalibrieren">⌖</button>
+      <button id="debugBtn" title="Debug-Ansicht (Labyrinth zeigen)">👁</button>
+    </span>
+  </div>
+
+  <div id="overlay">
+    <h1>tiltr</h1>
+    <p>
+      Ein Ball. Ein unsichtbares Labyrinth.<br>
+      Neige dein Handy, um den Ball zu rollen. Höre auf das Echo der Wände,
+      spüre die Kollisionen, folge dem Ping des Ziels.<br>
+      <b>Am besten mit Kopfhörern.</b>
+    </p>
+    <button id="startBtn">Spiel starten</button>
+    <p id="sensorNote">Beim Start werden Bewegungssensoren &amp; Audio aktiviert.<br>
+       Desktop-Fallback: Pfeiltasten / WASD.</p>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</body>
+</html>

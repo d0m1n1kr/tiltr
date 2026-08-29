@@ -1,0 +1,17 @@
+{
+  "name": "tiltr – das unsichtbare Labyrinth",
+  "short_name": "tiltr",
+  "description": "Steuere einen Ball per Neigung durch ein unsichtbares Labyrinth. Klang, Vibration und Licht offenbaren die Welt.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "de",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
