@@ -29,7 +29,7 @@ Fürs Testen am Handy braucht es HTTPS: am einfachsten die Live-Seite, sonst
 `npx vite --host` mit [`@vitejs/plugin-basic-ssl`](https://www.npmjs.com/package/@vitejs/plugin-basic-ssl)
 oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 
-### Spielelemente (Stand M5)
+### Spielelemente (Stand M6)
 
 | Element | Signatur |
 |---|---|
@@ -55,4 +55,11 @@ kalibrieren, `👁` Debug-Ansicht (Labyrinth einblenden).
 
 Siehe [`docs/PLAN.md`](docs/PLAN.md): M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓
 → M3 Tutorial & Schnelles Spiel ✓ → M4 Kampagne Welt 1 (Wächter, Schlüssel/Tür, Gems,
-Sterne) ✓ → M5 Ebenen/Transporter + Welt 2 ✓ → M6 Challenge of the Day → M7 Multiplayer (WebRTC).
+Sterne) ✓ → M5 Ebenen/Transporter + Welt 2 ✓ → M6 Tages-Challenge + Herausfordern ✓
+→ M7 Multiplayer (WebRTC).
+
+**Tages-Challenge:** Seed = UTC-Datum → jeden Tag ein neues, für alle identisches
+Multi-Ebenen-Level, komplett serverlos. Der erste Zieleinlauf zählt als Tageswert
+(Rest ist Training), Serien 🔥 für tägliches Spielen. Teilen erzeugt einen Link
+(`#daily=DATUM&t=ZEIT`), der beim Empfänger dieselbe Challenge mit „Schlag X!"-
+Vorgabe startet – auch für vergangene Tage reproduzierbar.

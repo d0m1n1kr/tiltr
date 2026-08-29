@@ -11,6 +11,7 @@ import { loadLevel, type LoadedLevel } from './levels/loader';
 import { generateQuickLevel, PRESETS, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
+import { generateDailyLevel, todayUTC, formatDate } from './levels/daily';
 import type { LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
@@ -54,7 +55,11 @@ const renderer = new Renderer(canvas);
 setupGallery(audio);
 
 type GameState = 'menu' | 'playing' | 'fell' | 'warp' | 'won';
-type Mode = { kind: 'quick' } | { kind: 'tutorial'; index: number } | { kind: 'campaign'; index: number };
+type Mode =
+  | { kind: 'quick' }
+  | { kind: 'tutorial'; index: number }
+  | { kind: 'campaign'; index: number }
+  | { kind: 'daily'; date: string; target?: number };
 
 const TUT_IDS = TUTORIAL_LEVELS.map((l) => l.id);
 
@@ -155,6 +160,11 @@ function refreshMenu(): void {
   const best = profile.bestFor(`quick-${profile.preset}`);
   $('quickBest').textContent = best !== null ? `Bestzeit (${PRESETS[profile.preset].label}): ${fmtTime(best)}` : '';
   $('campaignStars').textContent = `(${profile.totalStars(CAMPAIGN_IDS)}/${CAMPAIGN_IDS.length * 3}★)`;
+  const today = todayUTC();
+  const daily = profile.dailyInfo(today);
+  const streak = profile.streakInfo();
+  const streakText = streak && streak.count > 1 && streak.last === today ? ` · 🔥 ${streak.count} Tage` : '';
+  $('dailyStatus').textContent = daily?.first != null ? `Heute: ${fmtTime(daily.first)}${streakText}` : 'Heute noch offen';
 }
 
 /* --- Kampagnen-Levelauswahl ------------------------------------------------ */
@@ -252,6 +262,7 @@ async function startMode(m: Mode): Promise<void> {
 }
 
 quickBtn.addEventListener('click', () => void startMode({ kind: 'quick' }));
+$('dailyBtn').addEventListener('click', () => void startMode({ kind: 'daily', date: todayUTC() }));
 tutorialBtn.addEventListener('click', () =>
   void startMode({ kind: 'tutorial', index: profile.nextTutorialIndex(TUT_IDS) }),
 );
@@ -273,20 +284,26 @@ function beginLevel(): void {
       ? TUTORIAL_LEVELS[mode.index]!
       : mode.kind === 'campaign'
         ? CAMPAIGN_LEVELS[mode.index]!
-        : generateQuickLevel(nextSeed(), profile.preset);
+        : mode.kind === 'daily'
+          ? generateDailyLevel(mode.date)
+          : generateQuickLevel(nextSeed(), profile.preset);
   currentDef = def;
   if (def.intro) {
     const title =
-      mode.kind === 'tutorial'
+      mode.kind === 'daily'
+        ? `📅 Challenge ${formatDate(mode.date)}`
+        : mode.kind === 'tutorial'
         ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${def.name}`
         : mode.kind === 'campaign'
           ? `${WORLDS[mode.index < WORLDS[0]!.levels.length ? 0 : 1]!.name.split(' – ')[0]} · Level ${
               mode.index < WORLDS[0]!.levels.length ? mode.index + 1 : mode.index + 1 - WORLDS[0]!.levels.length
             } · ${def.name}`
           : def.name;
+    const targetLine =
+      mode.kind === 'daily' && mode.target !== undefined ? `\n\n🎯 Herausforderung: schlag ${fmtTime(mode.target)}!` : '';
     showInterstitial({
       title,
-      text: def.intro,
+      text: def.intro + targetLine,
       primary: { label: 'Los!', onClick: () => launch(def) },
       secondary: { label: 'Menü', onClick: showMenu },
     });
@@ -320,6 +337,7 @@ function launch(def: LevelDef): void {
   state = 'playing';
   revealUntil = 0;
   statusEl.textContent = '';
+  if (mode?.kind === 'daily' && mode.target !== undefined) flash(`🎯 Schlag ${fmtTime(mode.target)}!`, 4000);
   input.calibrate();
 }
 
@@ -361,7 +379,36 @@ function respawn(): void {
 function onWin(seconds: number): void {
   if (!mode || !currentDef) return;
   const def = currentDef;
-  if (mode.kind === 'tutorial') {
+  if (mode.kind === 'daily') {
+    const date = mode.date;
+    const target = mode.target;
+    const today = todayUTC();
+    const { isFirst, first } = profile.submitDaily(date, seconds, today);
+    const streak = profile.streakInfo();
+    const lines = [
+      isFirst ? 'Dein Tageswert! 🏁' : `Training – dein Tageswert bleibt ${fmtTime(first)}.`,
+      target !== undefined
+        ? seconds < target
+          ? `🎯 Herausforderung geschlagen (${fmtTime(target)})!`
+          : `🎯 Nicht geschlagen – Vorgabe war ${fmtTime(target)}.`
+        : '',
+      isFirst && date === today && streak ? `🔥 Serie: ${streak.count} ${streak.count === 1 ? 'Tag' : 'Tage'}` : '',
+    ].filter(Boolean);
+    setTimeout(() => {
+      showInterstitial({
+        title: `Challenge ${formatDate(date)} – ${fmtTime(seconds)}`,
+        text: lines.join('\n'),
+        primary: {
+          label: '📤 Herausfordern',
+          onClick: () => {
+            showMenu();
+            void shareDaily(date, isFirst ? seconds : Math.min(first, seconds));
+          },
+        },
+        secondary: { label: 'Menü', onClick: showMenu },
+      });
+    }, 1800);
+  } else if (mode.kind === 'tutorial') {
     profile.markTutorialDone(def.id);
     const isRecord = profile.submitTime(def.id, seconds);
     const index = TUT_IDS.indexOf(def.id);
@@ -551,6 +598,40 @@ function zoneProximity(z: WindZone, b: Ball): { dist: number; dx: number; dy: nu
 }
 
 /* --- Hauptschleife ---------------------------------------------------------- */
+
+// Teilen: Web Share API, sonst Zwischenablage.
+async function shareDaily(date: string, seconds: number): Promise<void> {
+  const url = `${location.origin}${location.pathname}#daily=${date}&t=${seconds.toFixed(1)}`;
+  const text = `tiltr Tages-Challenge ${formatDate(date)}: ${fmtTime(seconds)} – schaffst du das schneller?`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ text, url });
+    } else {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      $('dailyStatus').textContent = 'Link kopiert! 📋';
+    }
+  } catch {
+    /* abgebrochen */
+  }
+}
+
+// Empfangene Herausforderung (#daily=DATUM&t=SEKUNDEN) anbieten.
+function checkChallengeHash(): void {
+  const m = location.hash.match(/^#daily=(\d{4}-\d{2}-\d{2})(?:&t=([\d.]+))?$/);
+  if (!m) return;
+  const date = m[1]!;
+  const target = m[2] !== undefined ? parseFloat(m[2]) : undefined;
+  history.replaceState(null, '', location.pathname + location.search);
+  showInterstitial({
+    title: '🎯 Herausforderung!',
+    text:
+      `Jemand fordert dich in der Tages-Challenge vom ${formatDate(date)} heraus` +
+      (target !== undefined ? `:\nSchlag ${fmtTime(target)}!` : '.'),
+    primary: { label: 'Annehmen', onClick: () => void startMode({ kind: 'daily', date, target }) },
+    secondary: { label: 'Später', onClick: () => undefined },
+  });
+}
+checkChallengeHash();
 
 let last = performance.now();
 function frame(now: number): void {

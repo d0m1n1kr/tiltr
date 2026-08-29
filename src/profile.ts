@@ -12,9 +12,20 @@ export interface ProfileData {
   /** Beste Sternewertung pro Kampagnen-Level (0–3) */
   stars: Record<string, number>;
   preset: Preset;
+  /** Tages-Challenge: erster Zieleinlauf zählt, Rest ist Training */
+  daily: { date: string; first: number | null; best: number | null; attempts: number } | null;
+  /** Serie: an aufeinanderfolgenden Tagen die Tages-Challenge beendet */
+  streak: { count: number; last: string } | null;
 }
 
-const DEFAULTS: ProfileData = { tutorialDone: [], best: {}, stars: {}, preset: 'normal' };
+const DEFAULTS: ProfileData = {
+  tutorialDone: [],
+  best: {},
+  stars: {},
+  preset: 'normal',
+  daily: null,
+  streak: null,
+};
 
 const data: ProfileData = load();
 
@@ -28,6 +39,8 @@ function load(): ProfileData {
       best: typeof parsed.best === 'object' && parsed.best ? parsed.best : {},
       stars: typeof parsed.stars === 'object' && parsed.stars ? parsed.stars : {},
       preset: parsed.preset === 'easy' || parsed.preset === 'hard' ? parsed.preset : 'normal',
+      daily: parsed.daily && typeof parsed.daily.date === 'string' ? parsed.daily : null,
+      streak: parsed.streak && typeof parsed.streak.last === 'string' ? parsed.streak : null,
     };
   } catch {
     return { ...DEFAULTS };
@@ -81,6 +94,40 @@ export const profile = {
   },
   totalStars(ids: string[]): number {
     return ids.reduce((sum, id) => sum + (data.stars[id] ?? 0), 0);
+  },
+
+  /** Gespeicherter Stand für die Challenge dieses Datums (sonst null). */
+  dailyInfo(date: string): { first: number | null; best: number | null; attempts: number } | null {
+    return data.daily?.date === date ? data.daily : null;
+  },
+
+  /**
+   * Zieleinlauf einer Tages-Challenge eintragen. isFirst = erster Einlauf
+   * für dieses Datum (zählt als Tageswert). Serie wächst nur, wenn die
+   * Challenge an ihrem eigenen Tag gespielt wird.
+   */
+  submitDaily(date: string, seconds: number, today: string): { isFirst: boolean; first: number } {
+    if (data.daily?.date !== date) data.daily = { date, first: null, best: null, attempts: 0 };
+    const d = data.daily;
+    d.attempts++;
+    const isFirst = d.first === null;
+    if (isFirst) d.first = seconds;
+    if (d.best === null || seconds < d.best) d.best = seconds;
+    if (isFirst && date === today) {
+      const yesterday = new Date(new Date(`${today}T00:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10);
+      data.streak =
+        data.streak && data.streak.last === yesterday
+          ? { count: data.streak.count + 1, last: today }
+          : data.streak?.last === today
+            ? data.streak
+            : { count: 1, last: today };
+    }
+    save();
+    return { isFirst, first: d.first! };
+  },
+
+  streakInfo(): { count: number; last: string } | null {
+    return data.streak;
   },
 
   bestFor(key: string): number | null {

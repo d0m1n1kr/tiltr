@@ -208,7 +208,39 @@ const check = (name, cond) => {
   await page.close();
 }
 
-// --- Lauf 6: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
+// --- Lauf 6: Tages-Challenge – Menü-Status und Herausforderungs-Link ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+  const status = (await page.textContent('#dailyStatus')).trim();
+  check(`Daily-Status im Menü ("${status}")`, status === 'Heute noch offen');
+  await page.close();
+}
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/#daily=2026-01-05&t=42.3`);
+  await page.waitForTimeout(300);
+  const title = (await page.textContent('#interTitle')).trim();
+  const text = (await page.textContent('#interText')).trim();
+  check(`Herausforderung wird angeboten ("${title}")`, title.includes('Herausforderung') && text.includes('42.3 s'));
+  check('Hash wurde aus der URL entfernt', await page.evaluate(() => location.hash === ''));
+
+  await page.click('#interPrimary'); // Annehmen
+  await page.waitForTimeout(3300); // Kalibrier-Countdown
+  const intro = (await page.textContent('#interTitle')).trim();
+  const introText = (await page.textContent('#interText')).trim();
+  check(`Challenge-Intro mit Datum ("${intro}")`, intro.includes('05.01.2026'));
+  check('Intro nennt die Zielzeit', introText.includes('42.3 s'));
+  await page.click('#interPrimary'); // Los!
+  await page.waitForTimeout(300);
+  const floor = (await page.textContent('#floor')).trim();
+  check(`Daily ist mehrstöckig ("${floor}")`, floor === '⬍ E1');
+  await page.close();
+}
+
+// --- Lauf 7: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
   page.on('pageerror', (e) => errors.push(String(e)));
