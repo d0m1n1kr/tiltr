@@ -24,9 +24,10 @@ automatically via GitHub Actions (tests → build → pages).
   the daily score, streaks 🔥 reward playing daily. Share links
   (`#daily=DATE&t=TIME`) challenge friends to beat your time — for past
   days too.
-- **🌍 Campaign** — two hand-built worlds (15 levels): guards, keys and
-  doors, gems, breathing holes, wind, brittle walls, and multi-floor maps
-  connected by transporters. Up to three stars per level (finish, par
+- **🌍 Campaign** — two hand-built worlds (16 levels): guards, keys and
+  doors, gems, breathing holes, wind, brittle walls, multi-floor maps
+  connected by transporters, and multi-screen expanses the camera scrolls
+  across. Up to three stars per level (finish, par
   time, all gems).
 - **👥 Multiplayer** — two players, peer-to-peer over WebRTC
   ([trystero](https://github.com/dmotz/trystero); the handshake runs over a

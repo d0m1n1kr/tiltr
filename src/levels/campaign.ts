@@ -474,6 +474,52 @@ const defs2: unknown[] = [
       },
     ],
   },
+  {
+    id: 'w2-06',
+    name: 'Die Weite',
+    intro:
+      'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, und abseits des Weges funkelt es.',
+    parTimeS: 150,
+    pingBudget: 5,
+    floors: [
+      {
+        // Multi-Screen-Level: 13x15 Zellen (~2 Screens breit auf dem Handy),
+        // Spine als L (Spalte 0 hinab, unten nach rechts), Rest liefert das
+        // Seed-Maze – Gems & Checkpoints abseits, Wachen auf dem Spine.
+        size: [13, 15],
+        maze: {
+          seed: 260,
+          carve: [...down(0, 0, 14), ...right(14, 0, 12)],
+          add: [],
+          brittle: [],
+          brittleChance: 0.12,
+          brittleHits: 3,
+        },
+        elements: [
+          { type: 'checkpoint', cell: [0, 7] },
+          { type: 'checkpoint', cell: [6, 14] },
+          { type: 'checkpoint', cell: [12, 7] },
+          { type: 'guard', patrol: [[0, 4], [0, 8]], speed: 80 },
+          { type: 'guard', patrol: [[3, 14], [7, 14]], speed: 95 },
+          { type: 'hole', cell: [0, 3], breathing: { offset: 0 } },
+          { type: 'hole', cell: [0, 10], breathing: { offset: 2 } },
+          { type: 'hole', cell: [3, 14], breathing: { offset: 4 } },
+          { type: 'hole', cell: [9, 14], breathing: { offset: 1 } },
+          { type: 'hole', cell: [5, 5], breathing: { offset: 3 } },
+          { type: 'hole', cell: [10, 4], breathing: { offset: 5 } },
+          { type: 'windZone', cell: [0, 12], dir: 'n' },
+          { type: 'windZone', cell: [8, 14], dir: 'w' },
+          { type: 'gem', cell: [2, 2] },
+          { type: 'gem', cell: [6, 7] },
+          { type: 'gem', cell: [11, 2] },
+          { type: 'gem', cell: [4, 10] },
+          { type: 'gem', cell: [9, 9] },
+        ],
+        start: [0, 0],
+        goal: [12, 0],
+      },
+    ],
+  },
 ];
 
 // Spiegelachsen pro Level, damit Start/Ziel nicht immer oben links/unten
@@ -495,6 +541,7 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'w2-03': 'xy',
   'w2-04': 'xy',
   'w2-05': 'x',
+  'w2-06': 'y',
 };
 
 const build = (d: unknown): LevelDef => {

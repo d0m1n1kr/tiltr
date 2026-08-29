@@ -5,11 +5,11 @@ import { Ball, World } from '../src/core/physics';
 import { cellKey, coopReachable, expectAllReachable, reachable } from './helpers';
 
 describe('Multiplayer-Level', () => {
-  it('5 Coop + 5 Race, IDs eindeutig, Intros vorhanden', () => {
-    expect(COOP_LEVELS).toHaveLength(5);
-    expect(RACE_LEVELS).toHaveLength(5);
+  it('6 Coop + 6 Race, IDs eindeutig, Intros vorhanden', () => {
+    expect(COOP_LEVELS).toHaveLength(6);
+    expect(RACE_LEVELS).toHaveLength(6);
     const ids = [...COOP_LEVELS, ...RACE_LEVELS].map((l) => l.id);
-    expect(new Set(ids).size).toBe(10);
+    expect(new Set(ids).size).toBe(12);
     for (const l of [...COOP_LEVELS, ...RACE_LEVELS]) expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
   });
 

@@ -41,15 +41,15 @@ export const PRESETS: Record<
     pings: 3,
     breath: { open: 2.6, closed: 2.2, ramp: 0.6 },
   },
-  // Größer als der Screen: hier übernimmt die folgende Kamera (Multi-Screen).
+  // Deutlich größer als der Screen (Multi-Screen): die Kamera folgt dem Ball.
   hard: {
     label: 'Schwer',
-    cols: 8,
-    rows: 11,
-    holes: 7,
-    wind: 3,
+    cols: 11,
+    rows: 15,
+    holes: 11,
+    wind: 4,
     brittleChance: 0.2,
-    pings: 3,
+    pings: 5,
     breath: { open: 3.0, closed: 1.6, ramp: 0.5 },
   },
 };

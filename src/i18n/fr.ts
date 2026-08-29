@@ -13,7 +13,7 @@ export const fr: Dict = {
   'menu.daily.done': 'Aujourd’hui : {time}',
   'menu.daily.streak': ' · 🔥 {n} jours',
   'menu.campaign': 'Campagne',
-  'menu.campaign.sub': '2 mondes, 15 niveaux',
+  'menu.campaign.sub': '2 mondes, 16 niveaux',
   'menu.mp': 'Multijoueur',
   'menu.mp.sub': 'Coop & course – à deux, par QR code',
   'menu.tutorial': 'Tutoriel',
@@ -259,6 +259,9 @@ export const fr: Dict = {
   'lv.w2-05.name': 'Cathédrale',
   'lv.w2-05.intro':
     'Trois étages plus bas repose la clé de la crypte. Brise ce qui craque, défie le vent et la garde – et remonte à la lumière avec la clé.',
+  'lv.w2-06.name': 'L’Immensité',
+  'lv.w2-06.intro':
+    'L’immensité : plus grand que ton écran. Longe le bord à travers l’obscurité – les checkpoints sécurisent le long voyage, et à l’écart du chemin, ça scintille.',
 
   'lv.coop-01.name': 'Le sas',
   'lv.coop-01.intro':
@@ -275,6 +278,9 @@ export const fr: Dict = {
   'lv.coop-05.name': 'Quatre mains, deux étages',
   'lv.coop-05.intro':
     'Le final : la plaque de la porte d’arrivée est un étage PLUS BAS. L’un descend et tient, l’autre roule à l’arrivée – et tient de là la porte pour celui qui remonte. Qui repose à l’arrivée continue de tenir !',
+  'lv.coop-06.name': 'L’Expédition',
+  'lv.coop-06.intro':
+    'La grande expédition : une marche sur plus d’un écran. L’un tient au départ la plaque de la lointaine porte d’arrivée – l’autre ose le long voyage. Et qui repose à l’arrivée tient la porte pour le second.',
 
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Même parcours, mêmes chances : le premier arrivé gagne. Le halo te dit où est ton adversaire.',
@@ -288,4 +294,7 @@ export const fr: Dict = {
     'Beaucoup de murs ici sont friables – qui percute avec courage trouve des raccourcis. Trop de courage, et tu perds ta vitesse sur le mauvais mur.',
   'lv.race-05.name': 'L’épreuve reine',
   'lv.race-05.intro': 'La grande course : longue, profonde, gardée et friable. Tout ce que tu as appris – plus vite que ton adversaire.',
+  'lv.race-06.name': 'Marathon',
+  'lv.race-06.intro':
+    'Le marathon : la plus longue piste du jeu – plusieurs écrans de large. Économise tes pings et ne laisse pas les gardes te renvoyer en arrière.',
 };

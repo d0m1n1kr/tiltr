@@ -33,7 +33,7 @@ interface DayParams {
 
 // Index = getUTCDay(): 0 = Sonntag.
 const WEEKDAYS: DayParams[] = [
-  { label: 'Sonntag – das volle Programm', floors: 3, cols: 7, rows: 8, holes: 6, wind: 2, guards: 2, brittleChance: 0.18, pings: 3, gems: 4 },
+  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5 },
   { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2 },
   { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2 },
   { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3 },

@@ -163,9 +163,9 @@ const check = (name, cond) => {
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
   const items = page.locator('.level-item');
-  check(`Kampagnen-Liste zeigt 15 Level (${await items.count()})`, (await items.count()) === 15);
+  check(`Kampagnen-Liste zeigt 16 Level (${await items.count()})`, (await items.count()) === 16);
   const lockedCount = await page.locator('.level-item.locked').count();
-  check(`nur Level 1 ist freigeschaltet (${15 - lockedCount} offen)`, lockedCount === 14);
+  check(`nur Level 1 ist freigeschaltet (${16 - lockedCount} offen)`, lockedCount === 15);
 
   await items.first().click();
   await page.waitForTimeout(3300); // Kalibrier-Countdown
@@ -189,7 +189,7 @@ const check = (name, cond) => {
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
   const lockedAfter = await page.locator('.level-item.locked').count();
-  check(`Level 2 nach Sieg freigeschaltet (${15 - lockedAfter} offen)`, lockedAfter === 13);
+  check(`Level 2 nach Sieg freigeschaltet (${16 - lockedAfter} offen)`, lockedAfter === 14);
   await page.close();
 }
 
@@ -203,7 +203,7 @@ const check = (name, cond) => {
   await page.waitForTimeout(200);
   const items = await page.locator('.level-item').count();
   const headers = await page.locator('.world-header').count();
-  check(`Kampagne: 15 Level in 2 Welten (${items}/${headers})`, items === 15 && headers === 2);
+  check(`Kampagne: 16 Level in 2 Welten (${items}/${headers})`, items === 16 && headers === 2);
   const locked = await page.locator('.level-item.locked').count();
   check('?unlock schaltet alles frei', locked === 0);
 
@@ -396,7 +396,7 @@ const check = (name, cond) => {
   await pageA.click('[data-mpmode="race"]');
   const raceCount = await pageA.locator('#mpLevelList .level-item').count();
   await pageA.click('[data-mpmode="coop"]');
-  check(`MP-Panel: 5 Coop- und 5 Race-Level (${coopCount}/${raceCount})`, coopCount === 5 && raceCount === 5);
+  check(`MP-Panel: 6 Coop- und 6 Race-Level (${coopCount}/${raceCount})`, coopCount === 6 && raceCount === 6);
 
   await pageA.locator('#mpLevelList .level-item').first().click(); // coop-01 Schleuse
   await pageA.waitForTimeout(300);

@@ -83,7 +83,7 @@ describe('Presets', () => {
 
   it('Presets unterscheiden sich in der Feldgröße', () => {
     expect(generateQuickLevel(1, 'easy').floors[0]!.size).toEqual([5, 7]);
-    expect(generateQuickLevel(1, 'hard').floors[0]!.size).toEqual([8, 11]);
+    expect(generateQuickLevel(1, 'hard').floors[0]!.size).toEqual([11, 15]);
   });
 });
 

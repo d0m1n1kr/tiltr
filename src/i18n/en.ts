@@ -13,7 +13,7 @@ export const en: Dict = {
   'menu.daily.done': 'Today: {time}',
   'menu.daily.streak': ' · 🔥 {n} days',
   'menu.campaign': 'Campaign',
-  'menu.campaign.sub': '2 worlds, 15 levels',
+  'menu.campaign.sub': '2 worlds, 16 levels',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Co-op & race – two players, via QR code',
   'menu.tutorial': 'Tutorial',
@@ -259,6 +259,9 @@ export const en: Dict = {
   'lv.w2-05.name': 'Cathedral',
   'lv.w2-05.intro':
     'Three floors down lies the key to the crypt. Break through what crunches, defy wind and guard – and climb back to the light with the key.',
+  'lv.w2-06.name': 'The Expanse',
+  'lv.w2-06.intro':
+    'The expanse: bigger than your screen. Follow the edge through the dark – checkpoints secure the long journey, and off the path something sparkles.',
 
   'lv.coop-01.name': 'Airlock',
   'lv.coop-01.intro':
@@ -275,6 +278,9 @@ export const en: Dict = {
   'lv.coop-05.name': 'Four Hands, Two Floors',
   'lv.coop-05.intro':
     'The finale: the plate for the goal door lies one floor DOWN. One descends and holds, the other rolls into the goal – and holds the door from there for the returner. Whoever rests in the goal keeps holding!',
+  'lv.coop-06.name': 'Expedition',
+  'lv.coop-06.intro':
+    'The grand expedition: a march across more than one screen. One holds the plate of the distant goal door at the start – the other dares the long journey. And whoever rests in the goal holds the door for the second.',
 
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Same track, same chances: first to the goal wins. The halo tells you where your rival is.',
@@ -288,4 +294,7 @@ export const en: Dict = {
     'Many walls here are brittle – ram bravely and you find shortcuts. Too bravely, and you lose speed on the wrong wall.',
   'lv.race-05.name': 'Grand Final',
   'lv.race-05.intro': 'The big race: long, deep, guarded and brittle. Everything you have learned – faster than your rival.',
+  'lv.race-06.name': 'Marathon',
+  'lv.race-06.intro':
+    'The marathon: the longest track in the game – several screens wide. Ration your pings and don’t let the guards throw you back.',
 };

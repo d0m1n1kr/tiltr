@@ -5,10 +5,10 @@ import { setWall } from '../src/core/maze';
 import { buildFloorCells, cellKey, reachable } from './helpers';
 
 describe('Kampagne', () => {
-  it('Welt 1 hat 10, Welt 2 hat 5 Level; IDs eindeutig, Intro + Par überall', () => {
+  it('Welt 1 hat 10, Welt 2 hat 6 Level; IDs eindeutig, Intro + Par überall', () => {
     expect(WORLDS[0]!.levels).toHaveLength(10);
-    expect(WORLDS[1]!.levels).toHaveLength(5);
-    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(15);
+    expect(WORLDS[1]!.levels).toHaveLength(6);
+    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(16);
     for (const l of CAMPAIGN_LEVELS) {
       expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
       expect(l.parTimeS, l.id).toBeGreaterThan(0);
@@ -62,6 +62,7 @@ describe('Kampagne', () => {
     // Ohne Sprünge bleibt man auf Ebene 0; Türen öffnen sich nur, wenn ihr
     // Schlüssel dort erreichbar ist (Fixpunkt).
     for (const def of WORLDS[1]!.levels) {
+      if (def.floors.length === 1) continue; // w2-06 'Die Weite' ist bewusst einstöckig (Multi-Screen)
       const floor0 = def.floors[0]!;
       const [cols, rows] = floor0.size;
       const openDoors = new Set<string>();

@@ -13,7 +13,7 @@ export const es: Dict = {
   'menu.daily.done': 'Hoy: {time}',
   'menu.daily.streak': ' · 🔥 {n} días',
   'menu.campaign': 'Campaña',
-  'menu.campaign.sub': '2 mundos, 15 niveles',
+  'menu.campaign.sub': '2 mundos, 16 niveles',
   'menu.mp': 'Multijugador',
   'menu.mp.sub': 'Coop y carrera – para dos, por código QR',
   'menu.tutorial': 'Tutorial',
@@ -259,6 +259,9 @@ export const es: Dict = {
   'lv.w2-05.name': 'Catedral',
   'lv.w2-05.intro':
     'Tres pisos abajo yace la llave de la cripta. Rompe lo que cruje, desafía al viento y a la guardia, y sube de vuelta a la luz con la llave.',
+  'lv.w2-06.name': 'La Inmensidad',
+  'lv.w2-06.intro':
+    'La inmensidad: más grande que tu pantalla. Sigue el borde a través de la oscuridad; los checkpoints aseguran el largo viaje, y fuera del camino algo brilla.',
 
   'lv.coop-01.name': 'La esclusa',
   'lv.coop-01.intro':
@@ -275,6 +278,9 @@ export const es: Dict = {
   'lv.coop-05.name': 'Cuatro manos, dos pisos',
   'lv.coop-05.intro':
     'El final: la placa de la puerta de meta está un piso MÁS ABAJO. Uno baja y sujeta; el otro rueda a la meta, y desde allí sujeta la puerta para el que vuelve. ¡Quien descansa en la meta sigue sujetando!',
+  'lv.coop-06.name': 'La Expedición',
+  'lv.coop-06.intro':
+    'La gran expedición: una marcha de más de una pantalla. Uno sujeta en la salida la placa de la lejana puerta de meta; el otro se atreve al largo viaje. Y quien descansa en la meta sujeta la puerta para el segundo.',
 
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Mismo recorrido, mismas oportunidades: gana quien llegue primero. El halo te dice dónde está tu rival.',
@@ -288,4 +294,7 @@ export const es: Dict = {
     'Muchos muros aquí son frágiles: quien embiste con valor encuentra atajos. Quien se pasa de valiente pierde velocidad en el muro equivocado.',
   'lv.race-05.name': 'Prueba reina',
   'lv.race-05.intro': 'La gran carrera: larga, honda, vigilada y frágil. Todo lo que has aprendido, más rápido que tu rival.',
+  'lv.race-06.name': 'Maratón',
+  'lv.race-06.intro':
+    'El maratón: el recorrido más largo del juego, varias pantallas de ancho. Administra tus pings y no dejes que las guardias te devuelvan.',
 };

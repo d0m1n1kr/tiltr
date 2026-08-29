@@ -15,13 +15,13 @@ describe('Tages-Challenge', () => {
     expect(generateDailyLevel('2026-01-05')).not.toEqual(generateDailyLevel('2026-01-06'));
   });
 
-  it('Wochentag bestimmt die Struktur (Mo: 2 Ebenen, So: 3 Ebenen, 7x8)', () => {
+  it('Wochentag bestimmt die Struktur (Mo: 2 Ebenen, So: 3 Ebenen, 8x11)', () => {
     const monday = generateDailyLevel('2026-01-05');
     expect(monday.floors).toHaveLength(2);
     expect(monday.floors[0]!.size).toEqual([5, 6]);
     const sunday = generateDailyLevel('2026-01-11');
     expect(sunday.floors).toHaveLength(3);
-    expect(sunday.floors[0]!.size).toEqual([7, 8]);
+    expect(sunday.floors[0]!.size).toEqual([8, 11]);
   });
 
   it('das Ziel liegt immer auf der untersten Ebene (Ebenenwechsel ist Pflicht)', () => {

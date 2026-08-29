@@ -25,9 +25,10 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
   (`#daily=DATUM&t=ZEIT`) fordern Freunde heraus, deine Zeit zu schlagen –
   auch für vergangene Tage.
-- **🌍 Kampagne** – zwei handgebaute Welten (15 Level): Wächter, Schlüssel
-  und Türen, Gems, atmende Löcher, Wind, brüchige Wände und mehrstöckige
-  Karten mit Transportern. Bis zu drei Sterne pro Level (geschafft,
+- **🌍 Kampagne** – zwei handgebaute Welten (16 Level): Wächter, Schlüssel
+  und Türen, Gems, atmende Löcher, Wind, brüchige Wände, mehrstöckige
+  Karten mit Transportern und Multi-Screen-Weiten, über die die Kamera
+  scrollt. Bis zu drei Sterne pro Level (geschafft,
   Par-Zeit, alle Gems).
 - **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
   ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über

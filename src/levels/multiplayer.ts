@@ -172,6 +172,38 @@ const coopDefs: unknown[] = [
       },
     ],
   },
+  {
+    id: 'coop-06',
+    name: 'Expedition',
+    intro:
+      'Die große Expedition: ein Marsch über mehr als einen Bildschirm. Einer hält am Start die Platte der fernen Zieltür – der andere wagt die weite Reise. Und wer im Ziel liegt, hält die Tür für den Zweiten.',
+    pingBudget: 5,
+    floors: [
+      {
+        // Multi-Screen-Coop (10x12): Muster von "Fernwirkung", nur weit –
+        // Zielkammer versiegelt (Tür = einziger Eingang, add-Wand im Westen).
+        size: [10, 12],
+        maze: {
+          seed: 307,
+          carve: [...right(0, 0, 9), ...down(9, 0, 11)],
+          add: [[[8, 11], 'e']],
+        },
+        elements: [
+          { type: 'door', id: 'g1', edge: [[9, 10], 's'] },
+          { type: 'plate', cell: [1, 0], opens: 'g1' },
+          { type: 'plate', cell: [9, 11], opens: 'g1' },
+          { type: 'guard', patrol: [[3, 0], [6, 0]], speed: 75 },
+          { type: 'hole', cell: [4, 0], breathing: { offset: 0 } },
+          { type: 'hole', cell: [9, 4], breathing: { offset: 2 } },
+          { type: 'windZone', cell: [9, 7], dir: 'n' },
+          { type: 'checkpoint', cell: [9, 0] },
+          { type: 'checkpoint', cell: [9, 8] },
+        ],
+        start: [0, 0],
+        goal: [9, 11],
+      },
+    ],
+  },
 ];
 
 const raceDefs: unknown[] = [
@@ -282,6 +314,35 @@ const raceDefs: unknown[] = [
       },
     ],
   },
+  {
+    id: 'race-06',
+    name: 'Marathon',
+    intro:
+      'Der Marathon: die längste Strecke im Spiel – mehrere Bildschirme weit. Teile dir die Pings ein und lass dich von den Wachen nicht zurückwerfen.',
+    pingBudget: 4,
+    floors: [
+      {
+        size: [12, 16],
+        maze: { seed: 316, carve: [...down(0, 0, 15), ...right(15, 0, 11)], brittleChance: 0.15 },
+        elements: [
+          { type: 'guard', patrol: [[0, 6], [0, 10]], speed: 80 },
+          { type: 'guard', patrol: [[2, 15], [6, 15]], speed: 95 },
+          { type: 'hole', cell: [0, 3], breathing: { offset: 0 } },
+          { type: 'hole', cell: [0, 8], breathing: { offset: 1.5 } },
+          { type: 'hole', cell: [0, 12], breathing: { offset: 3 } },
+          { type: 'hole', cell: [4, 15], breathing: { offset: 4.5 } },
+          { type: 'hole', cell: [8, 15], breathing: { offset: 2 } },
+          { type: 'windZone', cell: [0, 5], dir: 'n' },
+          { type: 'windZone', cell: [9, 15], dir: 'w' },
+          { type: 'checkpoint', cell: [0, 5] },
+          { type: 'checkpoint', cell: [0, 11] },
+          { type: 'checkpoint', cell: [5, 15] },
+        ],
+        start: [0, 0],
+        goal: [11, 15],
+      },
+    ],
+  },
 ];
 
 // Spiegelachsen: Startecken variieren (coop-01 bleibt ungespiegelt – das
@@ -297,6 +358,8 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'race-03': 'y',
   'race-04': 'x',
   'race-05': 'xy',
+  'race-06': 'x',
+  'coop-06': 'xy',
 };
 
 const build = (d: unknown): LevelDef => {

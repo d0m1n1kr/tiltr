@@ -16,7 +16,7 @@ export const de = {
   'menu.daily.done': 'Heute: {time}',
   'menu.daily.streak': ' · 🔥 {n} Tage',
   'menu.campaign': 'Kampagne',
-  'menu.campaign.sub': '2 Welten, 15 Level',
+  'menu.campaign.sub': '2 Welten, 16 Level',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Coop & Race – zu zweit, per QR-Code',
   'menu.tutorial': 'Tutorial',
@@ -262,6 +262,9 @@ export const de = {
   'lv.w2-05.name': 'Kathedrale',
   'lv.w2-05.intro':
     'Drei Ebenen tief liegt der Schlüssel zur Krypta. Brich durch, was knirscht, trotze Wind und Wache – und steig mit dem Schlüssel zurück ans Licht.',
+  'lv.w2-06.name': 'Die Weite',
+  'lv.w2-06.intro':
+    'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, und abseits des Weges funkelt es.',
 
   'lv.coop-01.name': 'Schleuse',
   'lv.coop-01.intro':
@@ -278,6 +281,9 @@ export const de = {
   'lv.coop-05.name': 'Vier Hände, zwei Ebenen',
   'lv.coop-05.intro':
     'Das Finale: Die Platte für die Zieltür liegt eine Ebene TIEFER. Einer steigt hinab und hält, der andere rollt ins Ziel – und hält von dort die Tür für den Rückkehrer auf. Wer im Ziel liegt, hält weiter!',
+  'lv.coop-06.name': 'Expedition',
+  'lv.coop-06.intro':
+    'Die große Expedition: ein Marsch über mehr als einen Bildschirm. Einer hält am Start die Platte der fernen Zieltür – der andere wagt die weite Reise. Und wer im Ziel liegt, hält die Tür für den Zweiten.',
 
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro':
@@ -293,6 +299,9 @@ export const de = {
   'lv.race-05.name': 'Königsdisziplin',
   'lv.race-05.intro':
     'Das große Rennen: lang, tief, bewacht und brüchig. Alles, was du gelernt hast – schneller als dein Gegner.',
+  'lv.race-06.name': 'Marathon',
+  'lv.race-06.intro':
+    'Der Marathon: die längste Strecke im Spiel – mehrere Bildschirme weit. Teile dir die Pings ein und lass dich von den Wachen nicht zurückwerfen.',
 };
 
 /** Alle Sprachen müssen exakt diese Schlüsselmenge abdecken. */
