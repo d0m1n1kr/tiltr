@@ -16,6 +16,7 @@ import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, form
 import { showSplash } from './ui/splash';
 import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
+import { generateMpLevel, parseMpQuickId } from './levels/mpQuick';
 import { connect, makeRoomCode, type Transport } from './net/transport';
 import { scanRoomCode } from './ui/scanner';
 import { renderSVG } from 'uqr';
@@ -749,6 +750,20 @@ function refreshMpPanel(): void {
     chip.classList.toggle('active', chip.dataset.mpmode === mpModeSel);
   }
   mpLevelList.replaceChildren();
+  // Zufallslevel (wie beim Schnellen Spiel, mit Multiplayer-Elementen):
+  // der Gast regeneriert es deterministisch aus der ID (mpq-<modus>-<seed>).
+  const rndItem = document.createElement('button');
+  rndItem.id = 'mpRandomBtn';
+  rndItem.className = 'panel level-item';
+  const rndName = document.createElement('span');
+  rndName.textContent = `🎲 ${t('mp.random')}`;
+  const rndMeta = document.createElement('span');
+  rndMeta.className = 'level-meta';
+  rndMeta.textContent = '∞';
+  rndItem.append(rndName, rndMeta);
+  rndItem.addEventListener('click', () => void mpHost(generateMpLevel(randomSeed(), mpModeSel)));
+  mpLevelList.append(rndItem);
+
   const levels = mpModeSel === 'coop' ? COOP_LEVELS : RACE_LEVELS;
   levels.forEach((def, i) => {
     const item = document.createElement('button');
@@ -775,25 +790,51 @@ function mpJoinUrl(code: string): string {
   return `${location.origin}${location.pathname}#join=${code}`;
 }
 
+// Lobby SOFORT zeigen, dann verbinden: Der Relay-Aufbau darf weder die UI
+// blockieren noch bei einem Fehler stumm bleiben. Das Token erkennt einen
+// Abbruch (Abbrechen/Schließen) während des Verbindens.
+let mpPending: string | null = null;
+
 async function mpHost(level: LevelDef): Promise<void> {
   // ?mpcode=TEST… erzwingt den Raumcode (E2E: TEST-Präfix wählt den LocalTransport)
   const code = new URLSearchParams(location.search).get('mpcode')?.toUpperCase() ?? makeRoomCode();
-  const transport = await connect(code);
-  mpInit(transport, code, true, mpModeSel, level);
   $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${lvName(level)}`;
   $('mpQr').innerHTML = renderSVG(mpJoinUrl(code));
   $('mpQr').classList.remove('hidden');
   $('mpCode').textContent = code;
-  mpShowLobby(t('mp.waiting'));
+  mpShowLobby(t('mp.connecting'));
+  mpPending = code;
+  try {
+    const transport = await connect(code);
+    if (mpPending !== code) {
+      transport.leave();
+      return;
+    }
+    mpInit(transport, code, true, mpModeSel, level);
+    $('mpLobbyStatus').textContent = t('mp.waiting');
+  } catch {
+    if (mpPending === code) $('mpLobbyStatus').textContent = t('mp.error');
+  }
 }
 
 async function mpJoin(code: string): Promise<void> {
-  const transport = await connect(code.toUpperCase());
-  mpInit(transport, code.toUpperCase(), false, 'coop', null);
+  code = code.toUpperCase();
   $('mpLobbyTitle').textContent = t('mp.join');
   $('mpQr').classList.add('hidden');
-  $('mpCode').textContent = code.toUpperCase();
+  $('mpCode').textContent = code;
   mpShowLobby(t('mp.connecting'));
+  mpPending = code;
+  try {
+    const transport = await connect(code);
+    if (mpPending !== code) {
+      transport.leave();
+      return;
+    }
+    mpInit(transport, code, false, 'coop', null);
+    $('mpLobbyStatus').textContent = t('mp.connecting');
+  } catch {
+    if (mpPending === code) $('mpLobbyStatus').textContent = t('mp.error');
+  }
 }
 
 function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMode, level: LevelDef | null): void {
@@ -858,7 +899,8 @@ function mpOnMessage(type: string, payload: unknown): void {
   if (type === 'setup') {
     const p = payload as { mode: MpMode; levelId: string };
     const pool = p.mode === 'coop' ? COOP_LEVELS : RACE_LEVELS;
-    const level = pool.find((l) => l.id === p.levelId);
+    // Zufallslevel stehen nicht im Pool: aus der ID deterministisch regenerieren.
+    const level = pool.find((l) => l.id === p.levelId) ?? parseMpQuickId(p.levelId);
     if (!level) return;
     mp.mode = p.mode;
     mp.level = level;
@@ -1079,9 +1121,11 @@ $('mpClose').addEventListener('click', () => {
     mp.transport.leave();
     mp = null;
   }
+  mpPending = null;
   mpPanel.classList.add('hidden');
 });
 $('mpCancelBtn').addEventListener('click', () => {
+  mpPending = null;
   mp?.transport.leave();
   mp = null;
   refreshMpPanel();
@@ -1370,6 +1414,7 @@ function frame(now: number): void {
   (window as unknown as { __tiltrMp?: unknown }).__tiltrMp = mp
     ? {
         phase: mp.phase,
+        levelId: mp.level?.id ?? null,
         remote: { ...mp.remote },
         localFinished: mp.localFinished,
         localHolds: [...mp.localHolds],

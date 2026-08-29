@@ -37,7 +37,9 @@ automatically via GitHub Actions (tests → build → pages).
   doors; every door seals a chamber with a plate outside and one inside, and
   whoever rests in the goal holds the goal plate for the straggler — you
   only win once both of you are in. **Race:** identical level, first one
-  in wins, with rematch. A pulsing halo shows your partner — clamped to
+  in wins, with rematch. Besides the hand-built levels, a 🎲 random level
+  generator creates fresh co-op and race maps on demand — the guest
+  regenerates the exact same level from the room's level id. A pulsing halo shows your partner — clamped to
   the screen edge when they're out of view. Lost connections get a
   10-second reconnect window.
 - **🎓 Tutorial** — eight micro-levels that teach the sound language, one
@@ -112,7 +114,7 @@ browser. Phone testing needs HTTPS: easiest via the live page, otherwise
 M1 foundation ✓ → M2 element registry + level format ✓ → M3 tutorial &
 quick game ✓ → M4 campaign world 1 ✓ → M5 floors/transporters + world 2 ✓
 → M6 daily challenge + share links ✓ → M7 multiplayer co-op & race ✓ →
-M8 design polish, splash & i18n (EN/DE/FR/ES) ✓
+M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉
 
 ---
 

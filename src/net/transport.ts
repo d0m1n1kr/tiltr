@@ -47,17 +47,25 @@ export async function connect(code: string): Promise<Transport> {
 
 /* --- Trystero (Nostr) ------------------------------------------------------ */
 
+// Minimale Sicht auf die trystero-0.25-API (@trystero-p2p/core):
+// makeAction liefert ein OBJEKT {send, onMessage}, onPeerJoin/-Leave sind
+// zuweisbare Properties. (Die 0.21er-Tupel-API existiert nicht mehr –
+// der frühere Cast hatte genau das versteckt.)
+interface TrysteroAction<T> {
+  send(data: T): Promise<void>;
+  onMessage: ((data: T, ctx: { peerId: string }) => void) | null;
+}
 interface TrysteroRoom {
-  makeAction<T>(name: string): [(data: T) => void, (cb: (data: T, peerId: string) => void) => void];
-  onPeerJoin(cb: (peerId: string) => void): void;
-  onPeerLeave(cb: (peerId: string) => void): void;
-  leave(): void;
+  makeAction<T>(name: string): TrysteroAction<T>;
+  onPeerJoin: ((peerId: string) => void) | null;
+  onPeerLeave: ((peerId: string) => void) | null;
+  leave(): Promise<void>;
 }
 
 class TrysteroTransport implements Transport {
   private messageCb: MessageHandler = () => {};
   private peerCb: PeerHandler = () => {};
-  private sendAction!: (data: { t: string; p: unknown }) => void;
+  private action!: TrysteroAction<{ t: string; p: unknown }>;
   private room!: TrysteroRoom;
   /** 2-Spieler-Raum: nur der erste Peer zählt, weitere werden ignoriert. */
   private peerId: string | null = null;
@@ -70,29 +78,28 @@ class TrysteroTransport implements Transport {
       { appId: APP_ID, relayConfig: { urls: NOSTR_RELAYS, redundancy: NOSTR_RELAYS.length } },
       code,
     ) as unknown as TrysteroRoom;
-    const [send, receive] = self.room.makeAction<{ t: string; p: unknown }>('msg');
-    self.sendAction = send;
-    receive((data, peerId) => {
-      if (self.peerId !== null && peerId !== self.peerId) return;
+    self.action = self.room.makeAction<{ t: string; p: unknown }>('msg');
+    self.action.onMessage = (data, ctx) => {
+      if (self.peerId !== null && ctx.peerId !== self.peerId) return;
       self.messageCb(data.t, data.p);
-    });
-    self.room.onPeerJoin((peerId) => {
+    };
+    self.room.onPeerJoin = (peerId) => {
       if (self.peerId === null) {
         self.peerId = peerId;
         self.peerCb('join');
       }
-    });
-    self.room.onPeerLeave((peerId) => {
+    };
+    self.room.onPeerLeave = (peerId) => {
       if (peerId === self.peerId) {
         self.peerId = null;
         self.peerCb('leave');
       }
-    });
+    };
     return self;
   }
 
   send(type: string, payload: unknown): void {
-    this.sendAction({ t: type, p: payload });
+    void this.action.send({ t: type, p: payload });
   }
   onMessage(cb: MessageHandler): void {
     this.messageCb = cb;
@@ -101,7 +108,7 @@ class TrysteroTransport implements Transport {
     this.peerCb = cb;
   }
   leave(): void {
-    this.room.leave();
+    void this.room.leave();
   }
 }
 

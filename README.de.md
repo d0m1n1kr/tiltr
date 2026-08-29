@@ -38,7 +38,9 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   öffnen die Türen des Partners; jede Tür versiegelt eine Kammer mit einer
   Platte außen und einer innen, und wer im Ziel liegt, hält die Zielplatte
   für den Nachzügler – gewonnen ist erst, wenn beide drin sind. **Race:**
-  identisches Level, wer zuerst ankommt, gewinnt – mit Rematch. Ein
+  identisches Level, wer zuerst ankommt, gewinnt – mit Rematch. Neben den
+  handgebauten Leveln würfelt ein 🎲-Generator frische Coop- und
+  Race-Karten – der Gast regeneriert aus der Level-ID exakt dasselbe Level. Ein
   pulsierender Halo zeigt den Partner – am Screenrand geklemmt, wenn er
   außer Sicht ist. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
   zum Wiederverbinden.
@@ -116,7 +118,7 @@ sonst `npx vite --host` mit lokalem TLS-Plugin oder einem Tunnel.
 M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓ → M3 Tutorial &
 Schnelles Spiel ✓ → M4 Kampagne Welt 1 ✓ → M5 Ebenen/Transporter + Welt 2 ✓
 → M6 Tages-Challenge + Herausfordern ✓ → M7 Multiplayer Coop & Race ✓ →
-M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓
+M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉
 
 ---
 

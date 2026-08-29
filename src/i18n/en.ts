@@ -137,6 +137,8 @@ export const en: Dict = {
   'mp.lostCoop': 'Your partner is gone – co-op needs both of you.',
   'mp.lostRace': 'Your rival is gone.',
   'mp.floors': '{n} floors',
+  'mp.random': 'Random level',
+  'mp.error': 'Connection failed – please try again.',
 
   /* --- Install / update / splash / gallery --- */
   'inst.android': 'Install tiltr as an app – offline & fullscreen.',

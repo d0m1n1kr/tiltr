@@ -396,9 +396,9 @@ const check = (name, cond) => {
   await pageA.click('[data-mpmode="race"]');
   const raceCount = await pageA.locator('#mpLevelList .level-item').count();
   await pageA.click('[data-mpmode="coop"]');
-  check(`MP-Panel: 6 Coop- und 6 Race-Level (${coopCount}/${raceCount})`, coopCount === 6 && raceCount === 6);
+  check(`MP-Panel: je 6 Level + 🎲 Zufall (${coopCount}/${raceCount})`, coopCount === 7 && raceCount === 7);
 
-  await pageA.locator('#mpLevelList .level-item').first().click(); // coop-01 Schleuse
+  await pageA.locator('#mpLevelList .level-item:not(#mpRandomBtn)').first().click(); // coop-01 Schleuse
   await pageA.waitForTimeout(300);
   const qrHtml = await pageA.innerHTML('#mpQr');
   const codeShown = (await pageA.textContent('#mpCode')).trim();
@@ -484,6 +484,39 @@ const check = (name, cond) => {
   await pageA.waitForTimeout(800);
   const statusGone = (await pageA.textContent('#status')).trim();
   check(`Disconnect-Countdown bei A ("${statusGone}")`, statusGone.includes('Verbindung verloren'));
+
+  // Zufallslevel: Host würfelt, der Gast regeneriert es aus der ID (Seed).
+  const pageC = await ctx.newPage();
+  const pageD = await ctx.newPage();
+  for (const p of [pageC, pageD]) {
+    p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+    p.on('pageerror', (e) => errors.push(String(e)));
+  }
+  await pageC.goto(`${BASE}/?mpcode=TESTR01&nosplash`);
+  await pageC.click('#mpBtn');
+  await pageC.click('#mpRandomBtn');
+  await pageC.waitForTimeout(300);
+  const rndLobby = !(await pageC.locator('#mpLobby').getAttribute('class')).includes('hidden');
+  const rndQr = (await pageC.innerHTML('#mpQr')).includes('<svg');
+  check('Zufallslevel: Lobby mit QR erscheint sofort', rndLobby && rndQr);
+
+  await pageD.goto(`${BASE}/?nosplash`);
+  await pageD.click('#mpBtn');
+  await pageD.fill('#mpCodeInput', 'TESTR01');
+  await pageD.click('#mpJoinBtn');
+  await pageD.waitForTimeout(600);
+  const rndIntroC = (await pageC.textContent('#interTitle')).trim();
+  const rndIntroD = (await pageD.textContent('#interTitle')).trim();
+  check(`Zufallslevel: beide sehen das Intro ("${rndIntroD}")`, rndIntroC.includes('Zufallslevel') && rndIntroD.includes('Zufallslevel'));
+
+  await pageC.click('#interPrimary');
+  await pageD.click('#interPrimary');
+  await pageC.waitForTimeout(4200);
+  const idC = await pageC.evaluate(() => window.__tiltrMp?.levelId);
+  const idD = await pageD.evaluate(() => window.__tiltrMp?.levelId);
+  const phaseC = await pageC.evaluate(() => window.__tiltrMp?.phase);
+  check(`Zufallslevel: beide spielen DASSELBE regenerierte Level (${idC})`,
+    phaseC === 'playing' && typeof idC === 'string' && idC.startsWith('mpq-coop-') && idC === idD);
 
   await ctx.close();
 }

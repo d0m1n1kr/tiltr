@@ -80,6 +80,7 @@ const dyn = (key: string): string | undefined => (dicts[lang] as Record<string, 
 export function lvName(def: { id: string; name: string }): string {
   if (def.id.startsWith('daily-')) return t('daily.name');
   if (def.id.startsWith('quick-')) return t('menu.quick');
+  if (def.id.startsWith('mpq-')) return t('mp.random');
   return dyn(`lv.${def.id}.name`) ?? def.name;
 }
 

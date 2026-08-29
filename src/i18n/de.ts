@@ -140,6 +140,8 @@ export const de = {
   'mp.lostCoop': 'Dein Partner ist weg – Coop braucht euch beide.',
   'mp.lostRace': 'Dein Gegner ist weg.',
   'mp.floors': '{n} Ebenen',
+  'mp.random': 'Zufallslevel',
+  'mp.error': 'Verbindung fehlgeschlagen – bitte nochmal versuchen.',
 
   /* --- Install / Update / Splash / Galerie --- */
   'inst.android': 'tiltr als App installieren – offline & im Vollbild.',

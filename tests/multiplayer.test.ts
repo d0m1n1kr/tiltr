@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COOP_LEVELS, RACE_LEVELS } from '../src/levels/multiplayer';
+import { generateMpLevel, parseMpQuickId } from '../src/levels/mpQuick';
 import { loadLevel } from '../src/levels/loader';
 import { Ball, World } from '../src/core/physics';
 import { cellKey, coopReachable, expectAllReachable, reachable } from './helpers';
@@ -69,6 +70,49 @@ describe('Multiplayer-Level', () => {
         expect(outside.length, `${def.id}: Tür ${id} ohne Außenplatte`).toBeGreaterThan(0);
         expect(inside.length, `${def.id}: Tür ${id} ohne Innenplatte (Aussperr-Gefahr)`).toBeGreaterThan(0);
       }
+    }
+  });
+});
+
+describe('Zufalls-Multiplayer-Level (mpq)', () => {
+  it('deterministisch: gleicher Seed -> identisches Level; ID regeneriert es', () => {
+    expect(generateMpLevel(7, 'coop')).toEqual(generateMpLevel(7, 'coop'));
+    expect(parseMpQuickId('mpq-race-42')).toEqual(generateMpLevel(42, 'race'));
+    expect(parseMpQuickId('coop-01')).toBeNull();
+  });
+
+  it('Race: 40 Seeds laden und sind vollständig erreichbar', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const def = generateMpLevel(seed, 'race');
+      expect(() => loadLevel(def), def.id).not.toThrow();
+      expectAllReachable(def, (cond, msg) => expect(cond, `${def.id}: ${msg}`).toBe(true));
+    }
+  });
+
+  it('Coop: 40 Seeds – Fixpunkt erreicht Ziel & Platten, Tür notwendig, Platte außen+innen', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const def = generateMpLevel(seed, 'coop');
+      expect(() => loadLevel(def), def.id).not.toThrow();
+      const floor = def.floors[0]!;
+      const goal = floor.goal!;
+
+      const seen = coopReachable(def);
+      expect(seen.has(cellKey(0, goal)), `${def.id}: Ziel`).toBe(true);
+      for (const el of floor.elements) {
+        if (el.type === 'plate' || el.type === 'checkpoint') {
+          expect(seen.has(cellKey(0, el.cell)), `${def.id}: ${el.type} ${el.cell}`).toBe(true);
+        }
+      }
+
+      const banned = coopReachable(def, new Set(['g1']));
+      expect(banned.has(cellKey(0, goal)), `${def.id}: Tür g1 ist umgehbar`).toBe(false);
+
+      const preDoor = reachable(def, { brittleOpen: true, doorsOpen: false });
+      const plates = floor.elements.filter((e) => e.type === 'plate');
+      const outside = plates.filter((p) => preDoor.has(cellKey(0, p.cell)));
+      const inside = plates.filter((p) => !preDoor.has(cellKey(0, p.cell)));
+      expect(outside.length, `${def.id}: ohne Außenplatte`).toBeGreaterThan(0);
+      expect(inside.length, `${def.id}: ohne Innenplatte`).toBeGreaterThan(0);
     }
   });
 });
