@@ -64,7 +64,8 @@ RGB-Tripel als String (`'110, 168, 255'`), weil das Rendering eigene
 Alpha-Werte interpoliert (Echo-Fade). Ball `#4be0c8`, Wand Blau, brüchige
 Wand Bernstein, Loch-Füllung `#000` mit Violett-Ring, Ziel Grün, Ping Teal,
 Wind Hellblau, Herzschlag Rot (`255, 110, 130`), Wächter Rot (`255, 92, 92`),
-Schlüssel/Tür Gold (`255, 214, 90`), Gem Eisblau (`190, 240, 255`).
+Schlüssel/Tür Gold (`255, 214, 90`), Gem Eisblau (`190, 240, 255`),
+Transporter/Portal Magenta (`240, 130, 230`).
 
 ## Typografie
 

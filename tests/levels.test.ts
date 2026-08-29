@@ -70,7 +70,7 @@ describe('Loader', () => {
     expect(world.checkpoints).toHaveLength(1);
     expect(world.ball.x).toBe(50);
     expect(world.ball.y).toBe(50);
-    expect(world.goal.x).toBe(350);
+    expect(world.goal!.x).toBe(350);
   });
 
   it('ist deterministisch: gleiche Def ergibt identische Wände', () => {
@@ -79,10 +79,28 @@ describe('Loader', () => {
     expect(a.world.walls).toEqual(b.world.walls);
   });
 
-  it('lehnt goal=null ab, solange es keine Ebenen gibt (M5)', () => {
+  it('verlangt genau ein Ziel über alle Ebenen', () => {
     expect(() =>
       loadLevel({ ...minimalLevel, floors: [{ ...minimalLevel.floors[0], goal: null }] }),
-    ).toThrow(/M5/);
+    ).toThrow(/kein Ziel/);
+    expect(() =>
+      loadLevel({ ...minimalLevel, floors: [minimalLevel.floors[0], minimalLevel.floors[0]] }),
+    ).toThrow(/mehr als ein Ziel/);
+  });
+
+  it('validiert Transporter-Ziele (Ebene existiert, Zelle im Feld)', () => {
+    const withTransporter = (target: { floor: number; cell: [number, number] }) => ({
+      ...minimalLevel,
+      floors: [
+        {
+          ...minimalLevel.floors[0],
+          elements: [{ type: 'transporter', cell: [1, 1], target }],
+        },
+      ],
+    });
+    expect(() => loadLevel(withTransporter({ floor: 3, cell: [0, 0] }))).toThrow(/Ebene 3/);
+    expect(() => loadLevel(withTransporter({ floor: 0, cell: [9, 9] }))).toThrow(/außerhalb/);
+    expect(() => loadLevel(withTransporter({ floor: 0, cell: [2, 2] }))).not.toThrow();
   });
 });
 

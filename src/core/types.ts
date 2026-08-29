@@ -98,6 +98,20 @@ export interface Key extends Collectible {
   opens: string;
 }
 
+export interface Transporter {
+  x: number;
+  y: number;
+  r: number;
+  /** Ziel: Ebene + Weltkoordinaten */
+  targetFloor: number;
+  tx: number;
+  ty: number;
+  /** abgeleitet aus Ebenen-Differenz – bestimmt Klang & Glyphe */
+  dir: 'up' | 'down' | 'same';
+  litFrom?: number;
+  litUntil?: number;
+}
+
 export interface WallHit {
   wall: Wall;
   nx: number;

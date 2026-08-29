@@ -29,7 +29,7 @@ Fürs Testen am Handy braucht es HTTPS: am einfachsten die Live-Seite, sonst
 `npx vite --host` mit [`@vitejs/plugin-basic-ssl`](https://www.npmjs.com/package/@vitejs/plugin-basic-ssl)
 oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 
-### Spielelemente (Stand M4)
+### Spielelemente (Stand M5)
 
 | Element | Signatur |
 |---|---|
@@ -43,6 +43,7 @@ oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 | Wächter | patrouilliert (Ping-Pong über Wegpunkte), pulsierendes Brummen aus seiner Richtung; Berührung = zurück zum Checkpoint |
 | Schlüssel & Tür | Schlüssel klimpert in Hörweite, Einsammeln lässt die Tür hörbar aufgleiten |
 | Gems | optionale Sammelkristalle mit eigener Ping-Antwort; alle gesammelt = dritter Stern |
+| Transporter | trägt den Ball auf andere Ebenen (oder als Portal quer über die Map); schwebender Doppelton in der Nähe, Warp klingt abwärts fallend bzw. aufwärts steigend; Ziel-Beacon klingt auf fremden Ebenen gedämpft wie durch den Boden |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
 | Zeit | Rundenzeit im HUD, Bestzeit in `localStorage` |
 
@@ -54,4 +55,4 @@ kalibrieren, `👁` Debug-Ansicht (Labyrinth einblenden).
 
 Siehe [`docs/PLAN.md`](docs/PLAN.md): M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓
 → M3 Tutorial & Schnelles Spiel ✓ → M4 Kampagne Welt 1 (Wächter, Schlüssel/Tür, Gems,
-Sterne) ✓ → M5 Ebenen/Transporter → M6 Challenge of the Day → M7 Multiplayer (WebRTC).
+Sterne) ✓ → M5 Ebenen/Transporter + Welt 2 ✓ → M6 Challenge of the Day → M7 Multiplayer (WebRTC).

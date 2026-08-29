@@ -24,6 +24,8 @@ export class GameAudio {
   private rumblePanner!: PannerNode;
   private guardGain!: GainNode;
   private guardPanner!: PannerNode;
+  private portalGain!: GainNode;
+  private portalPanner!: PannerNode;
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
@@ -117,6 +119,67 @@ export class GameAudio {
     this.guardGain.connect(this.guardPanner).connect(this.master);
     growl.start();
     tremolo.start();
+
+    // Transporter: schwebender Doppelton (zwei leicht verstimmte Sinus ->
+    // langsames Schweben) – klar unterscheidbar von Wind, Grollen und Wächter.
+    this.portalGain = this.ctx.createGain();
+    this.portalGain.gain.value = 0;
+    this.portalPanner = this.panner();
+    for (const f of [392, 396.5]) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      const g = this.ctx.createGain();
+      g.gain.value = 0.5;
+      osc.connect(g).connect(this.portalGain);
+      osc.start();
+    }
+    this.portalGain.connect(this.portalPanner).connect(this.master);
+  }
+
+  // Transporter-Schweben: closeness01 = 1 auf dem Pad, 0 = außer Hörweite.
+  setPortal(closeness01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.portalGain.gain.setTargetAtTime(Math.min(0.35, closeness01 ** 1.5 * 0.4), t, 0.1);
+    if (closeness01 > 0) this.place(this.portalPanner, dx, dy);
+  }
+
+  // Ebenenwechsel: Schimmer-Arpeggio, abwärts fallend oder aufwärts steigend;
+  // 'same' (Portal) als schneller Doppelschlag auf einer Höhe.
+  warp(dir: 'up' | 'down' | 'same'): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const base = [523.25, 659.25, 783.99, 1046.5];
+    const notes = dir === 'down' ? [...base].reverse() : base;
+    const seq = dir === 'same' ? [783.99, 783.99] : notes;
+    seq.forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, t + i * 0.09);
+      osc.frequency.exponentialRampToValueAtTime(dir === 'down' ? f * 0.8 : f * 1.2, t + i * 0.09 + 0.18);
+      const gain = this.ctx!.createGain();
+      gain.gain.setValueAtTime(0, t + i * 0.09);
+      gain.gain.linearRampToValueAtTime(0.22, t + i * 0.09 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.35);
+      osc.connect(gain).connect(this.master);
+      osc.start(t + i * 0.09);
+      osc.stop(t + i * 0.09 + 0.4);
+    });
+    // Luftzug unter dem Schimmern
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('white');
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 1.2;
+    filter.frequency.setValueAtTime(dir === 'down' ? 1200 : 400, t);
+    filter.frequency.exponentialRampToValueAtTime(dir === 'down' ? 300 : 1600, t + 0.5);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    src.connect(filter).connect(gain).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.6);
   }
 
   private noiseBuffer(kind: 'brown' | 'white'): AudioBuffer {
@@ -325,22 +388,26 @@ export class GameAudio {
   }
 
   // Ziel-Beacon wie ein Sonar: näher = schneller, lauter, höher.
-  beacon(dx: number, dy: number, dist01: number): void {
+  // muffled = Ziel liegt auf einer anderen Ebene: tiefer, leiser, träger –
+  // als käme der Ping durch den Boden.
+  beacon(dx: number, dy: number, dist01: number, muffled = false): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     if (t < this.nextPing) return;
-    this.nextPing = t + 0.14 + dist01 * 1.1;
+    this.nextPing = t + (muffled ? 0.6 : 0.14) + dist01 * 1.1;
 
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(660 + (1 - dist01) * 660, t);
+    const freq = 660 + (1 - dist01) * 660;
+    osc.frequency.setValueAtTime(muffled ? freq * 0.45 : freq, t);
     const gain = this.ctx.createGain();
+    const g = 0.05 + (1 - dist01) * 0.3;
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.05 + (1 - dist01) * 0.3, t + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    gain.gain.linearRampToValueAtTime(muffled ? g * 0.35 : g, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + (muffled ? 0.3 : 0.18));
     osc.connect(gain).connect(this.spatialOut(dx, dy));
     osc.start(t);
-    osc.stop(t + 0.2);
+    osc.stop(t + (muffled ? 0.32 : 0.2));
   }
 
   // Aktiver Echo-Ping: Abstrahl-Chirp, dann kommen die Reflexionen der
@@ -490,6 +557,7 @@ export class GameAudio {
     this.setHoleRumble(0, 0, 0);
     this.setWind(0, 0, 0);
     this.setGuard(0, 0, 0);
+    this.setPortal(0, 0, 0);
     this.setRolling(0);
   }
 

@@ -11,6 +11,8 @@ export interface BuildContext {
   cell: number;
   cols: number;
   rows: number;
+  /** Index der Ebene, in die gebaut wird (0 = Start-Ebene) */
+  floorIndex: number;
 }
 
 export interface GalleryEntry {

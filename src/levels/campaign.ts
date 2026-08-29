@@ -1,4 +1,5 @@
-// Kampagne Welt 1: 10 handgebaute Level mit steigender Schwierigkeit.
+// Kampagne: Welt 1 (10 Level, eine Ebene) und Welt 2 (5 Level, mehrere
+// Ebenen mit Transportern und Portalen).
 // Jedes Level carvt sich einen garantierten "Spine"-Korridor durch das
 // Seed-Maze (L-Form o. ä.) und platziert seine Elemente daran – die
 // Lösbarkeit aller Level sichert tests/campaign.test.ts ab.
@@ -272,5 +273,212 @@ const defs: unknown[] = [
   },
 ];
 
-export const CAMPAIGN_LEVELS: LevelDef[] = defs.map(parseLevel);
+const defs2: unknown[] = [
+  {
+    id: 'w2-01',
+    name: 'Unterführung',
+    intro:
+      'Eine Mauer versiegelt den Weg – aber hörst du das Schweben? Ein Transporter führt hinab. Unten quer durch die Dunkelheit, an anderer Stelle wieder hinauf.',
+    parTimeS: 75,
+    pingBudget: 3,
+    floors: [
+      {
+        size: [5, 6],
+        maze: {
+          seed: 201,
+          carve: [...right(0, 0, 4), ...right(5, 0, 4)],
+          add: [[[0, 2], 's'], [[1, 2], 's'], [[2, 2], 's'], [[3, 2], 's'], [[4, 2], 's']],
+        },
+        elements: [{ type: 'transporter', cell: [4, 0], target: { floor: 1, cell: [4, 0] } }],
+        start: [0, 0],
+        goal: [4, 5],
+      },
+      {
+        size: [5, 6],
+        maze: { seed: 202, carve: [...down(4, 0, 5), ...right(5, 0, 4)] },
+        elements: [
+          { type: 'hole', cell: [4, 2], breathing: { offset: 0 } },
+          { type: 'hole', cell: [2, 5], breathing: { offset: 2.7 } },
+          { type: 'checkpoint', cell: [4, 5] },
+          { type: 'transporter', cell: [0, 5], target: { floor: 0, cell: [0, 5] } },
+        ],
+        start: [4, 0],
+        goal: null,
+      },
+    ],
+  },
+  {
+    id: 'w2-02',
+    name: 'Doppelter Boden',
+    intro:
+      'Die Tür oben schweigt – ihr Schlüssel klimpert unter deinen Füßen. Hinab, an der Wache vorbei, den Schlüssel holen und woanders wieder ans Licht.',
+    parTimeS: 100,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [5, 7],
+        maze: { seed: 210, carve: [...down(0, 0, 6), ...right(6, 0, 4)] },
+        elements: [
+          { type: 'door', id: 'tor', edge: [[2, 6], 'e'] },
+          { type: 'transporter', cell: [0, 3], target: { floor: 1, cell: [0, 0] } },
+          { type: 'checkpoint', cell: [0, 6] },
+        ],
+        start: [0, 0],
+        goal: [4, 6],
+      },
+      {
+        size: [5, 4],
+        maze: { seed: 211, carve: [...right(0, 0, 4), ...down(4, 0, 3), ...right(3, 0, 4)] },
+        elements: [
+          { type: 'guard', patrol: [[1, 0], [3, 0]], speed: 85 },
+          { type: 'key', cell: [4, 3], opens: 'tor' },
+          { type: 'hole', cell: [2, 3], breathing: { offset: 1 } },
+          { type: 'transporter', cell: [0, 3], target: { floor: 0, cell: [1, 6] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+    ],
+  },
+  {
+    id: 'w2-03',
+    name: 'Fahrstuhl',
+    intro:
+      'Immer tiefer: zwei Schächte hinab, unten wartet das Funkeln – und ein Aufzug, der dich direkt in die versiegelte Zielkammer hebt.',
+    parTimeS: 110,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [4, 4],
+        maze: {
+          seed: 220,
+          carve: [...right(0, 0, 3), [[2, 3], 'e']],
+          add: [[[3, 2], 's'], [[1, 3], 'e'], [[2, 2], 's']],
+        },
+        elements: [{ type: 'transporter', cell: [3, 0], target: { floor: 1, cell: [0, 0] } }],
+        start: [0, 0],
+        goal: [3, 3],
+      },
+      {
+        size: [4, 4],
+        maze: { seed: 221, carve: right(0, 0, 3) },
+        elements: [
+          { type: 'hole', cell: [1, 0], breathing: { offset: 0 } },
+          { type: 'hole', cell: [2, 0], breathing: { offset: 2.7 } },
+          { type: 'transporter', cell: [3, 0], target: { floor: 2, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        size: [4, 4],
+        maze: { seed: 222, carve: [...down(0, 0, 3), ...right(3, 0, 3)] },
+        elements: [
+          { type: 'gem', cell: [2, 3] },
+          { type: 'gem', cell: [3, 0] },
+          { type: 'windZone', cell: [1, 3], dir: 'w' },
+          { type: 'checkpoint', cell: [0, 3] },
+          { type: 'transporter', cell: [3, 3], target: { floor: 0, cell: [2, 3] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+    ],
+  },
+  {
+    id: 'w2-04',
+    name: 'Zwillingstore',
+    intro:
+      'Zwei Portale auf einer Ebene, ein versiegeltes Ziel. Spring – und lerne, wo du landest. Der aufsteigende Doppelklang deines Pings verrät die Tore.',
+    parTimeS: 90,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 8],
+        maze: {
+          seed: 230,
+          carve: [...right(0, 0, 3), ...right(7, 0, 3), [[5, 6], 's']],
+          add: [[[5, 5], 's'], [[4, 6], 'e'], [[4, 7], 'e']],
+        },
+        elements: [
+          { type: 'transporter', cell: [3, 0], target: { floor: 0, cell: [0, 7] } },
+          { type: 'transporter', cell: [3, 7], target: { floor: 0, cell: [5, 6] } },
+          { type: 'hole', cell: [1, 7], breathing: { offset: 0.5 } },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'gem', cell: [0, 4] },
+          { type: 'checkpoint', cell: [0, 7] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+    ],
+  },
+  {
+    id: 'w2-05',
+    name: 'Kathedrale',
+    intro:
+      'Drei Ebenen tief liegt der Schlüssel zur Krypta. Brich durch, was knirscht, trotze Wind und Wache – und steig mit dem Schlüssel zurück ans Licht.',
+    parTimeS: 220,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 9],
+        maze: {
+          seed: 240,
+          carve: [...down(0, 0, 8), ...right(8, 0, 6), ...right(0, 0, 5)],
+          // Zielkammer {[5,8],[6,8]} versiegeln – die Krypta-Tür ist der einzige Eingang
+          add: [[[5, 7], 's'], [[6, 7], 's']],
+        },
+        elements: [
+          { type: 'guard', patrol: [[1, 0], [4, 0]], speed: 95 },
+          { type: 'door', id: 'krypta', edge: [[4, 8], 'e'] },
+          { type: 'transporter', cell: [0, 4], target: { floor: 1, cell: [0, 0] } },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'checkpoint', cell: [0, 8] },
+        ],
+        start: [0, 0],
+        goal: [6, 8],
+      },
+      {
+        size: [6, 6],
+        maze: { seed: 241, carve: [...right(0, 0, 5), ...down(5, 0, 5)] },
+        elements: [
+          { type: 'windZone', cell: [2, 0], dir: 'w' },
+          { type: 'windZone', cell: [3, 0], dir: 'w' },
+          { type: 'hole', cell: [5, 2], breathing: { offset: 1 } },
+          { type: 'gem', cell: [0, 5] },
+          { type: 'transporter', cell: [5, 5], target: { floor: 2, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        size: [5, 5],
+        maze: {
+          seed: 242,
+          carve: [...down(0, 0, 4), ...right(4, 0, 4), ...down(4, 0, 4)],
+          add: [[[0, 2], 's']],
+          brittle: [[[0, 2], 's']],
+          brittleHits: 2,
+        },
+        elements: [
+          { type: 'guard', patrol: [[1, 4], [3, 4]], speed: 75 },
+          { type: 'key', cell: [4, 4], opens: 'krypta' },
+          { type: 'hole', cell: [4, 2], breathing: { offset: 2 } },
+          { type: 'checkpoint', cell: [0, 4] },
+          { type: 'transporter', cell: [4, 0], target: { floor: 0, cell: [1, 8] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+    ],
+  },
+];
+
+export const WORLDS: Array<{ name: string; levels: LevelDef[] }> = [
+  { name: 'Welt 1 – Die Tiefe erwacht', levels: defs.map(parseLevel) },
+  { name: 'Welt 2 – Zwischen den Ebenen', levels: defs2.map(parseLevel) },
+];
+
+export const CAMPAIGN_LEVELS: LevelDef[] = WORLDS.flatMap((w) => w.levels);
 export const CAMPAIGN_IDS = CAMPAIGN_LEVELS.map((l) => l.id);

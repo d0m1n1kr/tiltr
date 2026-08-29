@@ -143,9 +143,9 @@ const check = (name, cond) => {
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
   const items = page.locator('.level-item');
-  check(`Kampagnen-Liste zeigt 10 Level (${await items.count()})`, (await items.count()) === 10);
+  check(`Kampagnen-Liste zeigt 15 Level (${await items.count()})`, (await items.count()) === 15);
   const lockedCount = await page.locator('.level-item.locked').count();
-  check(`nur Level 1 ist freigeschaltet (${10 - lockedCount} offen)`, lockedCount === 9);
+  check(`nur Level 1 ist freigeschaltet (${15 - lockedCount} offen)`, lockedCount === 14);
 
   await items.first().click();
   await page.waitForTimeout(3300); // Kalibrier-Countdown
@@ -169,11 +169,46 @@ const check = (name, cond) => {
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
   const lockedAfter = await page.locator('.level-item.locked').count();
-  check(`Level 2 nach Sieg freigeschaltet (${10 - lockedAfter} offen)`, lockedAfter === 8);
+  check(`Level 2 nach Sieg freigeschaltet (${15 - lockedAfter} offen)`, lockedAfter === 13);
   await page.close();
 }
 
-// --- Lauf 5: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
+// --- Lauf 5: Multi-Ebenen (W2-01) – ?unlock, Weltsektionen, echter Warp ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?unlock`);
+
+  await page.click('#campaignBtn');
+  await page.waitForTimeout(200);
+  const items = await page.locator('.level-item').count();
+  const headers = await page.locator('.world-header').count();
+  check(`Kampagne: 15 Level in 2 Welten (${items}/${headers})`, items === 15 && headers === 2);
+  const locked = await page.locator('.level-item.locked').count();
+  check('?unlock schaltet alles frei', locked === 0);
+
+  await page.locator('.level-item').nth(10).click(); // W2-01 Unterführung
+  await page.waitForTimeout(3300); // Countdown
+  const introTitle = (await page.textContent('#interTitle')).trim();
+  check(`W2-Intro ("${introTitle}")`, introTitle.includes('Unterführung'));
+  await page.click('#interPrimary'); // Los!
+  await page.waitForTimeout(200);
+
+  const floor1 = (await page.textContent('#floor')).trim();
+  check(`Ebenen-Anzeige im HUD ("${floor1}")`, floor1 === '⬍ E1');
+
+  // Auf E1 nach rechts zum Transporter [4,0] rollen -> Warp nach E2
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(2400);
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(1200); // Warp-Pause + Ankunft
+  const floor2 = (await page.textContent('#floor')).trim();
+  const pos = await page.evaluate(() => window.__tiltrBall);
+  check(`Warp auf Ebene 2 (jetzt "${floor2}", Ball x=${pos.x.toFixed(0)})`, floor2 === '⬍ E2');
+  await page.close();
+}
+
+// --- Lauf 6: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
   page.on('pageerror', (e) => errors.push(String(e)));

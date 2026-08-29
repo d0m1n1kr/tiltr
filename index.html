@@ -136,6 +136,8 @@
       margin: 0 auto var(--space-3);
     }
     #gallery h2, #campaign h2 { font-size: var(--fs-h2); }
+    .world-header { font-size: var(--fs-body); opacity: 0.6; margin-top: var(--space-3); font-weight: 600; }
+    #campaign h2 span { font-size: var(--fs-small); opacity: 0.6; }
     #galleryList, #campaignList { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-3); }
     .level-item {
       display: flex;
@@ -162,7 +164,7 @@
   <canvas id="game"></canvas>
 
   <div id="hud" class="hidden">
-    <span><b id="timer"></b> <span id="pings" style="color: var(--accent)"></span> <span id="gems" style="color: var(--warning)"></span> <span id="status"></span></span>
+    <span><b id="timer"></b> <span id="floor" style="color: var(--accent-2)"></span> <span id="pings" style="color: var(--accent)"></span> <span id="gems" style="color: var(--warning)"></span> <span id="status"></span></span>
     <span>
       <button id="calibrateBtn" class="btn btn-ghost" title="Neigung neu kalibrieren">⌖</button>
       <button id="debugBtn" class="btn btn-ghost" title="Debug-Ansicht (Labyrinth zeigen)">👁</button>
@@ -215,7 +217,7 @@
 
   <div id="campaign" class="hidden">
     <header>
-      <h2>🌍 Kampagne – Welt 1</h2>
+      <h2>🌍 Kampagne</h2>
       <button id="campaignClose" class="btn btn-ghost">Schließen</button>
     </header>
     <div id="campaignList"></div>

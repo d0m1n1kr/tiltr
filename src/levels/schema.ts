@@ -76,6 +76,14 @@ export const gemDef = z.object({
   r: z.number().positive().default(14),
 });
 
+export const transporterDef = z.object({
+  ...base,
+  type: z.literal('transporter'),
+  /** Ziel: Ebenen-Index + Zelle. Gleiche Ebene = Portal. */
+  target: z.object({ floor: z.number().int().min(0), cell: cellCoord }),
+  r: z.number().positive().default(32),
+});
+
 export const elementDef = z.discriminatedUnion('type', [
   holeDef,
   windZoneDef,
@@ -84,6 +92,7 @@ export const elementDef = z.discriminatedUnion('type', [
   keyDef,
   doorDef,
   gemDef,
+  transporterDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -93,6 +102,7 @@ export type GuardDef = z.infer<typeof guardDef>;
 export type KeyDef = z.infer<typeof keyDef>;
 export type DoorDef = z.infer<typeof doorDef>;
 export type GemDef = z.infer<typeof gemDef>;
+export type TransporterDef = z.infer<typeof transporterDef>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */
@@ -125,8 +135,8 @@ export const levelSchema = z.object({
   parTimeS: z.number().positive().optional(),
   /** Echo-Pings zu Rundenbeginn */
   pingBudget: z.number().int().min(0).default(3),
-  // Mehrere Ebenen sind ab M5 geplant; das Format trägt sie schon.
-  floors: z.array(floorSchema).min(1).max(1),
+  /** Ebene 0 ist die Start-Ebene; höherer Index = tiefer. */
+  floors: z.array(floorSchema).min(1).max(4),
 });
 export type LevelDef = z.infer<typeof levelSchema>;
 

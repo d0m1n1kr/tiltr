@@ -25,7 +25,8 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 - `src/core/` – deterministische, DOM-freie Simulation (Physik, Maze,
   seeded RNG). Kein `performance.now()`/`Math.random()` hier drin:
   Determinismus ist Grundlage für Daily Challenge und Multiplayer.
-  `?seed=…` in der URL macht Läufe reproduzierbar.
+  `?seed=…` in der URL macht Läufe reproduzierbar; `?unlock` schaltet
+  alle Kampagnen-Level frei (Playtesting).
 - `src/elements/` – Element-Registry: Jedes Spielelement ist ein Modul mit
   `build()` (Loader), Galerie-Eintrag (Visual + Klang-Demo) und zod-Schema
   in `src/levels/schema.ts`. Neue Elemente brauchen alle drei plus eine

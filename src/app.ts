@@ -7,10 +7,10 @@ import { TiltInput } from './input/tilt';
 import { GameAudio } from './audio/audio';
 import { haptics } from './audio/haptics';
 import { Renderer } from './render/renderer';
-import { loadLevel } from './levels/loader';
+import { loadLevel, type LoadedLevel } from './levels/loader';
 import { generateQuickLevel, PRESETS, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
-import { CAMPAIGN_LEVELS, CAMPAIGN_IDS } from './levels/campaign';
+import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import type { LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
@@ -23,6 +23,7 @@ const PING_RANGE = 260; // Reichweite des Echo-Pings
 const PING_SPEED = 600; // px/s – Wellenfront visuell & Echo-Verzögerung
 const GUARD_HEAR = CELL * 2.2;
 const KEY_HEAR = CELL * 2.5;
+const PORTAL_HEAR = CELL * 2;
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -52,12 +53,15 @@ const audio = new GameAudio();
 const renderer = new Renderer(canvas);
 setupGallery(audio);
 
-type GameState = 'menu' | 'playing' | 'fell' | 'won';
+type GameState = 'menu' | 'playing' | 'fell' | 'warp' | 'won';
 type Mode = { kind: 'quick' } | { kind: 'tutorial'; index: number } | { kind: 'campaign'; index: number };
 
 const TUT_IDS = TUTORIAL_LEVELS.map((l) => l.id);
 
 let world: World | null = null;
+let loaded: LoadedLevel | null = null;
+let activeFloor = 0;
+let warpReady = true;
 let state: GameState = 'menu';
 let mode: Mode | null = null;
 let currentDef: LevelDef | null = null;
@@ -65,7 +69,7 @@ let sensorsReady = false;
 let debug = false;
 let revealUntil = 0;
 let maxDist = 1;
-let respawnPoint = { x: 0, y: 0 };
+let respawnPoint = { floor: 0, x: 0, y: 0 };
 let t0 = 0;
 let message = '';
 let messageUntil = 0;
@@ -158,18 +162,31 @@ function refreshMenu(): void {
 const campaignPanel = $('campaign');
 const campaignList = $('campaignList');
 
+const UNLOCK_ALL = new URLSearchParams(location.search).has('unlock');
+
 function levelUnlocked(index: number): boolean {
-  return index === 0 || profile.starsFor(CAMPAIGN_IDS[index - 1]!) > 0;
+  return UNLOCK_ALL || index === 0 || profile.starsFor(CAMPAIGN_IDS[index - 1]!) > 0;
 }
 
 function refreshCampaignList(): void {
   campaignList.replaceChildren();
-  CAMPAIGN_LEVELS.forEach((def, i) => {
+  let flat = 0;
+  for (const world of WORLDS) {
+    const header = document.createElement('h3');
+    header.className = 'world-header';
+    header.textContent = world.name;
+    campaignList.append(header);
+    world.levels.forEach((def, local) => appendLevelItem(def, flat++, local + 1));
+  }
+}
+
+function appendLevelItem(def: LevelDef, i: number, num: number): void {
+  {
     const unlocked = levelUnlocked(i);
     const item = document.createElement('button');
     item.className = 'panel level-item' + (unlocked ? '' : ' locked');
     const name = document.createElement('span');
-    name.textContent = `${i + 1}. ${unlocked ? def.name : '???'}`;
+    name.textContent = `${num}. ${unlocked ? def.name : '???'}`;
     const meta = document.createElement('span');
     meta.className = 'level-meta';
     if (unlocked) {
@@ -187,7 +204,7 @@ function refreshCampaignList(): void {
       });
     }
     campaignList.append(item);
-  });
+  }
 }
 
 $('campaignBtn').addEventListener('click', () => {
@@ -212,6 +229,7 @@ function showMenu(): void {
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
+  audio.setPortal(0, 0, 0);
   hideInterstitial();
   hud.classList.add('hidden');
   overlay.classList.remove('hidden');
@@ -262,7 +280,9 @@ function beginLevel(): void {
       mode.kind === 'tutorial'
         ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${def.name}`
         : mode.kind === 'campaign'
-          ? `Level ${mode.index + 1} · ${def.name}`
+          ? `${WORLDS[mode.index < WORLDS[0]!.levels.length ? 0 : 1]!.name.split(' – ')[0]} · Level ${
+              mode.index < WORLDS[0]!.levels.length ? mode.index + 1 : mode.index + 1 - WORLDS[0]!.levels.length
+            } · ${def.name}`
           : def.name;
     showInterstitial({
       title,
@@ -275,18 +295,27 @@ function beginLevel(): void {
   }
 }
 
+function activateFloor(index: number): void {
+  if (!loaded) return;
+  activeFloor = index;
+  const floor = loaded.floors[index]!;
+  world = floor.world;
+  levelCols = floor.cols;
+  levelRows = floor.rows;
+  maxDist = Math.hypot(floor.cols * CELL, floor.rows * CELL);
+  renderer.setWorld(floor.cols * CELL, floor.rows * CELL);
+  renderer.follow(world.ball.x, world.ball.y, true);
+  $('floor').textContent = loaded.floors.length > 1 ? `⬍ E${index + 1}` : '';
+}
+
 function launch(def: LevelDef): void {
-  const loaded = loadLevel(def);
-  world = loaded.world;
+  loaded = loadLevel(def);
   pingMax = loaded.pingBudget;
   pings = pingMax;
-  levelCols = loaded.cols;
-  levelRows = loaded.rows;
   falls = 0;
-  maxDist = Math.hypot(loaded.cols * CELL, loaded.rows * CELL);
-  renderer.setWorld(loaded.cols * CELL, loaded.rows * CELL);
-  renderer.follow(world.ball.x, world.ball.y, true);
-  respawnPoint = { x: world.ball.x, y: world.ball.y };
+  warpReady = true;
+  activateFloor(0);
+  respawnPoint = { floor: 0, x: loaded.world.ball.x, y: loaded.world.ball.y };
   t0 = performance.now();
   state = 'playing';
   revealUntil = 0;
@@ -294,8 +323,32 @@ function launch(def: LevelDef): void {
   input.calibrate();
 }
 
+// Ebenenwechsel: kurzes Innehalten, Schimmern in Richtung der Reise,
+// dann steht der Ball ruhig auf der Ziel-Ebene.
+function startWarp(tx: number, ty: number, targetFloor: number, dir: 'up' | 'down' | 'same'): void {
+  if (!world) return;
+  state = 'warp';
+  audio.setRolling(0);
+  audio.setPortal(0, 0, 0);
+  audio.warp(dir);
+  haptics.checkpoint();
+  setTimeout(() => {
+    if (!loaded || state !== 'warp') return;
+    activateFloor(targetFloor);
+    const b = world!.ball;
+    b.x = tx;
+    b.y = ty;
+    b.vx = 0;
+    b.vy = 0;
+    warpReady = false; // erst wieder scharf, wenn der Ball das Ziel-Pad verlassen hat
+    state = 'playing';
+    flash(dir === 'down' ? `⬇ Ebene ${targetFloor + 1}` : dir === 'up' ? `⬆ Ebene ${targetFloor + 1}` : '✦ Portal');
+  }, 700);
+}
+
 function respawn(): void {
   if (!world || state !== 'fell') return;
+  if (respawnPoint.floor !== activeFloor) activateFloor(respawnPoint.floor);
   const b = world.ball;
   b.x = respawnPoint.x;
   b.y = respawnPoint.y;
@@ -334,8 +387,10 @@ function onWin(seconds: number): void {
     }, 1800);
   } else if (mode.kind === 'campaign') {
     const index = mode.index;
-    const gemsTotal = world?.gems.length ?? 0;
-    const gemsGot = world?.gems.filter((g) => g.collected).length ?? 0;
+    // Gems über ALLE Ebenen zählen, nicht nur die aktive
+    const allGems = loaded?.floors.flatMap((f) => f.world.gems) ?? [];
+    const gemsTotal = allGems.length;
+    const gemsGot = allGems.filter((g) => g.collected).length;
     // Sterne: 1 = geschafft, 2 = unter Par, 3 = alle Gems (bzw. sturzfrei ohne Gems)
     const stars =
       1 +
@@ -436,6 +491,15 @@ function firePing(now: number): void {
   for (const key of world.keys) if (!key.collected) reveal(key, 1650);
   for (const gem of world.gems) if (!gem.collected) reveal(gem, 2093, true);
   for (const g of world.guards) reveal(g, 240);
+  for (const t of world.transporters) {
+    const dist = Math.hypot(b.x - t.x, b.y - t.y);
+    if (dist > PING_RANGE) continue;
+    t.litFrom = now + (dist / PING_SPEED) * 1000;
+    t.litUntil = t.litFrom + 1200;
+    // zwei Blips, der zweite höher und später: "hier geht es weiter"
+    reflections.push({ dx: t.x - b.x, dy: t.y - b.y, dist, freq: 700 });
+    reflections.push({ dx: t.x - b.x, dy: t.y - b.y, dist: dist + 55, freq: 1400 });
+  }
 
   // Durchgänge der aktuellen Zelle antworten hell und doppelt ("offen").
   const cx0 = Math.floor(b.x / CELL);
@@ -529,8 +593,10 @@ function frame(now: number): void {
 
     audio.setRolling(Math.min(1, world.ball.speed / world.maxSpeed));
 
-    const { dx, dy, dist } = world.goalVector();
-    audio.beacon(dx, dy, Math.min(1, dist / maxDist));
+    const gdx = loaded!.goalPos.x - world.ball.x;
+    const gdy = loaded!.goalPos.y - world.ball.y;
+    const gdist = Math.hypot(gdx, gdy);
+    audio.beacon(gdx, gdy, Math.min(1, gdist / maxDist), activeFloor !== loaded!.goalFloor);
 
     // Gefahr = Nähe des bedrohlichsten OFFENEN Lochs: steuert Grollen
     // (Atmen = An- und Abschwellen mit dem Öffnungsgrad), Warnvibration
@@ -618,7 +684,7 @@ function frame(now: number): void {
       if (Math.hypot(cp.x - world.ball.x, cp.y - world.ball.y) < cp.r) {
         cp.reached = true;
         cp.litUntil = now + 2000;
-        respawnPoint = { x: cp.x, y: cp.y };
+        respawnPoint = { floor: activeFloor, x: cp.x, y: cp.y };
         pings = Math.min(pingMax, pings + 1);
         audio.checkpoint();
         haptics.checkpoint();
@@ -626,10 +692,38 @@ function frame(now: number): void {
       }
     }
 
+    // Transporter: Schweben in Hörweite; Betreten löst den Ebenenwechsel aus
+    let portalCloseness = 0;
+    let nearPortal: { dx: number; dy: number } | null = null;
+    for (const t of world.transporters) {
+      const d = Math.max(0, Math.hypot(t.x - world.ball.x, t.y - world.ball.y) - t.r);
+      const c = Math.max(0, 1 - d / PORTAL_HEAR);
+      if (c > portalCloseness) {
+        portalCloseness = c;
+        nearPortal = { dx: t.x - world.ball.x, dy: t.y - world.ball.y };
+      }
+    }
+    if (nearPortal) audio.setPortal(portalCloseness, nearPortal.dx, nearPortal.dy);
+    else audio.setPortal(0, 0, 0);
+
+    if (!warpReady && !world.transporters.some((t) => Math.hypot(t.x - world!.ball.x, t.y - world!.ball.y) < t.r + world!.ball.r + 10)) {
+      warpReady = true;
+    }
+    const pad = warpReady ? world.transporterHit() : null;
+    if (pad) {
+      pad.litFrom = 0;
+      pad.litUntil = now + 1200;
+      startWarp(pad.tx, pad.ty, pad.targetFloor, pad.dir);
+      renderer.follow(world.ball.x, world.ball.y);
+      renderer.draw(world, { debug, revealAll: revealUntil > now, now });
+      return;
+    }
+
     timerEl.textContent = fmtTime((now - t0) / 1000);
     pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(Math.max(0, pingMax - pings));
-    gemsEl.textContent = world.gems.length
-      ? `💎 ${world.gems.filter((g) => g.collected).length}/${world.gems.length}`
+    const allGems = loaded!.floors.flatMap((f) => f.world.gems);
+    gemsEl.textContent = allGems.length
+      ? `💎 ${allGems.filter((g) => g.collected).length}/${allGems.length}`
       : '';
 
     const fallen = world.fallenHole();
@@ -660,6 +754,7 @@ function frame(now: number): void {
       audio.setWind(0, 0, 0);
       audio.setHoleRumble(0, 0, 0);
       audio.setGuard(0, 0, 0);
+      audio.setPortal(0, 0, 0);
       audio.win();
       haptics.win();
       statusEl.textContent = `Ziel in ${fmtTime(seconds)} 🎉`;

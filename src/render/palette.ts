@@ -19,4 +19,5 @@ export const WORLD = {
   key: '255, 214, 90',
   door: '255, 214, 90',
   gem: '190, 240, 255',
+  portal: '240, 130, 230',
 } as const;

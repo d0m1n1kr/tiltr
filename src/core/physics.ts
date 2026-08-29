@@ -11,6 +11,7 @@ import type {
   Key,
   PingWave,
   Tilt,
+  Transporter,
   Wall,
   WallHit,
   WindZone,
@@ -35,6 +36,7 @@ export class World {
   guards: Guard[] = [];
   keys: Key[] = [];
   gems: Collectible[] = [];
+  transporters: Transporter[] = [];
   debris: Wall[] = [];
   pings: PingWave[] = [];
   accel = 2600; // px/s² bei voller Neigung
@@ -45,7 +47,8 @@ export class World {
   constructor(
     public walls: Wall[],
     public ball: Ball,
-    public goal: Goal,
+    /** null = das Ziel liegt auf einer anderen Ebene */
+    public goal: Goal | null,
     public holes: Hole[] = [],
   ) {}
 
@@ -210,16 +213,18 @@ export class World {
   }
 
   goalReached(): boolean {
-    const g = this.goal,
-      b = this.ball;
+    const g = this.goal;
+    if (!g) return false;
+    const b = this.ball;
     return Math.hypot(b.x - g.x, b.y - g.y) < g.r;
   }
 
-  goalVector(): { dx: number; dy: number; dist: number } {
-    const g = this.goal,
-      b = this.ball;
-    const dx = g.x - b.x,
-      dy = g.y - b.y;
-    return { dx, dy, dist: Math.hypot(dx, dy) };
+  // Transporter, auf dem der Ball gerade steht, sonst null.
+  transporterHit(): Transporter | null {
+    const b = this.ball;
+    for (const t of this.transporters) {
+      if (Math.hypot(t.x - b.x, t.y - b.y) < t.r * 0.8) return t;
+    }
+    return null;
   }
 }

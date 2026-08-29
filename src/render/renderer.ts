@@ -250,6 +250,43 @@ export class Renderer {
       ctx.fill();
     }
 
+    // Transporter: Doppelring mit Richtungs-Glyphe (▼ runter, ▲ hoch, ◆ Portal).
+    for (const t of world.transporters) {
+      const alpha = revealAlpha(t, 0.9);
+      if (alpha <= 0.01) continue;
+      const cx = tx(t.x),
+        cy = ty(t.y);
+      const r = t.r * s;
+      ctx.strokeStyle = `rgba(${WORLD.portal}, ${alpha})`;
+      ctx.lineWidth = 2.5 * this.dpr;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(${WORLD.portal}, ${alpha * 0.5})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(${WORLD.portal}, ${alpha})`;
+      const g = r * 0.3;
+      ctx.beginPath();
+      if (t.dir === 'down') {
+        ctx.moveTo(cx - g, cy - g * 0.6);
+        ctx.lineTo(cx + g, cy - g * 0.6);
+        ctx.lineTo(cx, cy + g);
+      } else if (t.dir === 'up') {
+        ctx.moveTo(cx - g, cy + g * 0.6);
+        ctx.lineTo(cx + g, cy + g * 0.6);
+        ctx.lineTo(cx, cy - g);
+      } else {
+        ctx.moveTo(cx, cy - g);
+        ctx.lineTo(cx + g, cy);
+        ctx.lineTo(cx, cy + g);
+        ctx.lineTo(cx - g, cy);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
     // Echo-Ping: expandierender Ring vom Ball aus. Radius geklemmt: der
     // rAF-Timestamp (Frame-Beginn) kann minimal VOR dem performance.now()
     // des auslösenden Inputs liegen – arc() wirft bei negativem Radius.
@@ -265,7 +302,8 @@ export class Renderer {
     }
 
     // Ziel: pulsierender Schein nur bei Debug/Reveal (sonst rein akustisch).
-    if (debug || revealAll) {
+    // Auf Ebenen ohne Ziel (Multi-Floor) gibt es nichts zu zeichnen.
+    if ((debug || revealAll) && world.goal) {
       const g = world.goal;
       const pulse = 0.5 + 0.5 * Math.sin(now / 300);
       const r = g.r * s * (1.1 + pulse * 0.3);
