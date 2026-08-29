@@ -545,7 +545,9 @@ const check = (name, cond) => {
   const debugHidden = (await page.locator('#debugBtn').getAttribute('class')).includes('hidden');
   for (let i = 0; i < 5; i++) await page.click('#version');
   const debugShown = !(await page.locator('#debugBtn').getAttribute('class')).includes('hidden');
-  check('Debug-Knopf erst nach 5 Version-Taps', debugHidden && debugShown);
+  const diag = (await page.textContent('#diag')).trim();
+  check(`Debug-Knopf + Viewport-Diagnose nach 5 Version-Taps ("${diag.slice(0, 40)}…")`,
+    debugHidden && debugShown && diag.startsWith('scr ') && diag.includes('env '));
 
   // Grundton = Spielfeld-Ton: kein heller Streifen neben dem Canvas möglich.
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);

@@ -39,3 +39,29 @@ export function fixStandaloneViewport(): void {
   window.addEventListener('resize', apply);
   window.visualViewport?.addEventListener('resize', apply);
 }
+
+/** Eine Zeile Geräte-Wahrheit für die Debug-Ansicht: Screen-/Viewport-Maße,
+ *  echte env()-Insets (per Mess-Element), gesetzte --app-height, Modus. */
+export function viewportDiagnostics(): string {
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;left:0;width:1px;visibility:hidden;pointer-events:none;' +
+    'top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);';
+  document.body.append(probe);
+  const r = probe.getBoundingClientRect();
+  const envTop = Math.round(r.top);
+  const envBottom = Math.round(innerHeight - r.bottom);
+  probe.remove();
+  const appH = getComputedStyle(document.documentElement).getPropertyValue('--app-height').trim();
+  const standalone =
+    matchMedia('(display-mode: standalone)').matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true;
+  return [
+    `scr ${screen.width}×${screen.height}`,
+    `in ${innerWidth}×${innerHeight}`,
+    `vv ${Math.round(window.visualViewport?.height ?? 0)}`,
+    `env ${envTop}/${envBottom}`,
+    `app-h ${appH || '–'}`,
+    standalone ? 'standalone' : 'browser',
+  ].join(' · ');
+}

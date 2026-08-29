@@ -48,7 +48,7 @@ export default defineConfig({
         launch_handler: { client_mode: 'navigate-existing' },
         display: 'fullscreen',
         orientation: 'portrait',
-        background_color: '#0b1020',
+        background_color: '#05070f',
         theme_color: '#0b1020',
         lang: 'de',
         icons: [

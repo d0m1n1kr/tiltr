@@ -14,7 +14,7 @@ import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang } from './i18n';
 import { showSplash } from './ui/splash';
-import { fixStandaloneViewport } from './ui/viewport';
+import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
 import { connect, makeRoomCode, type Transport } from './net/transport';
 import { scanRoomCode } from './ui/scanner';
@@ -328,13 +328,23 @@ debugBtn.addEventListener('click', () => {
   debug = !debug;
 });
 
-// Debug-Ansicht ist versteckt: 5 Taps auf die Versionsnummer schalten sie frei.
+// Debug-Ansicht ist versteckt: 5 Taps auf die Versionsnummer schalten sie
+// frei – samt Viewport-Diagnose (Geräte-Wahrheit für Safe-Area-Fragen).
 let versionTaps = 0;
 $('version').addEventListener('click', () => {
   if (!debugBtn.classList.contains('hidden')) return;
   if (++versionTaps < 5) return;
   debugBtn.classList.remove('hidden');
   $('version').textContent += ' · 🔧';
+  const diag = document.createElement('p');
+  diag.id = 'diag';
+  diag.className = 'menu-meta';
+  $('menuFooter').append(diag);
+  const update = (): void => {
+    diag.textContent = viewportDiagnostics();
+  };
+  update();
+  setInterval(update, 1000);
 });
 homeBtn.addEventListener('click', showMenu);
 
