@@ -25,14 +25,15 @@ Web-Standards. Damit ist die Machbarkeit aller kritischen Bausteine isoliert
 
 ### Ausprobieren
 
-Sensoren, Vibration, Service Worker und iOS-Permissions erfordern **HTTPS**
-(oder `localhost`). Am einfachsten:
+**Live: https://d0m1n1kr.github.io/tiltr/** — jeder Push deployt automatisch
+per GitHub Actions (`.github/workflows/pages.yml`).
 
-1. **GitHub Pages** für dieses Repo aktivieren (Settings → Pages → Branch
-   wählen) und die URL auf dem Handy öffnen, oder
-2. lokal: `python3 -m http.server 8000` und am Desktop mit Pfeiltasten/WASD
+Sensoren, Vibration, Service Worker und iOS-Permissions erfordern **HTTPS**
+(oder `localhost`). Alternativen zur Live-Seite:
+
+1. lokal: `python3 -m http.server 8000` und am Desktop mit Pfeiltasten/WASD
    testen (`http://localhost:8000`), oder
-3. lokal mit HTTPS fürs Handy im selben WLAN: z. B. `npx vite` + `--host`
+2. lokal mit HTTPS fürs Handy im selben WLAN: z. B. `npx vite` + `--host`
    mit [`@vitejs/plugin-basic-ssl`](https://www.npmjs.com/package/@vitejs/plugin-basic-ssl)
    oder ein Tunnel (`npx ngrok http 8000`).
 
