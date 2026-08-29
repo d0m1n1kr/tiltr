@@ -2,6 +2,8 @@
 // "Installieren"-Knopf (beforeinstallprompt), iOS Safari eine kurze Anleitung
 // über das Teilen-Menü. Dismiss merkt sich die Entscheidung 14 Tage.
 
+import { t, onLangChange } from '../i18n';
+
 const DISMISS_KEY = 'tiltr.installDismissedAt';
 const DISMISS_DAYS = 14;
 
@@ -53,10 +55,13 @@ export function setupInstallHint(): void {
 
   // Android/Chromium: echtes Install-Prompt anbieten.
   let deferred: BeforeInstallPromptEvent | null = null;
+  let setLabel: (() => void) | null = null;
+  onLangChange(() => setLabel?.());
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferred = e as BeforeInstallPromptEvent;
-    label.textContent = 'tiltr als App installieren – offline & im Vollbild.';
+    setLabel = () => (label.textContent = t('inst.android'));
+    setLabel();
     installBtn.classList.remove('hidden');
     hint.classList.remove('hidden');
   });
@@ -78,7 +83,8 @@ export function setupInstallHint(): void {
       'style="vertical-align:-3px;margin:0 1px" aria-label="Teilen-Symbol" role="img">' +
       '<path d="M4.5 6H3a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 3 16h8a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11 6H9.5"/>' +
       '<path d="M7 10.5V1.5"/><path d="M4.2 4.2 7 1.4l2.8 2.8"/></svg>';
-    label.innerHTML = `Als App installieren: Teilen-Symbol ${shareIcon} tippen, dann „Zum Home-Bildschirm".`;
+    setLabel = () => (label.innerHTML = t('inst.ios', { icon: shareIcon }));
+    setLabel();
     installBtn.classList.add('hidden');
     hint.classList.remove('hidden');
   }

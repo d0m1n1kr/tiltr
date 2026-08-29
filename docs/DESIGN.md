@@ -101,7 +101,8 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.btn-ghost` | Sekundär/neutral (dunkle Fläche, feiner Rand): HUD, Schließen, Dismiss |
 | `.btn-soft` | Leise Inline-Aktion in Karten (Teal-Outline), z. B. „Anhören" |
 | `.btn-lg` | Hero-Variante des Primary (größer, Glow) |
-| `.chip` (+ `.active`) | Auswahl-Pill in einer Gruppe (z. B. Schwierigkeits-Preset); aktiv = Teal-Outline |
+| `.chip` (+ `.active`) | Auswahl-Pill in einer Gruppe (Schwierigkeit, Sprache, MP-Modus); aktiv = Teal-Outline |
+| `.mode-item` (+ `.suggest`) | Modus-Karte im Startmenü: Icon, Titel, Untertitel, Meta rechts; `.suggest` (Teal-Rand) hebt GENAU EINE Karte als Einstiegs-Empfehlung hervor |
 | `.panel` | Karte/Fläche: subtiler Rand, Radius L |
 | `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
@@ -119,6 +120,7 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
 | `--z-overlay` | 10 | Vollflächen-Screens (Start, Ergebnis) |
 | `--z-panel` | 20 | Galerie, künftige Menü-Panels |
 | `--z-banner` | 30 | Banner/Toasts (liegen über allem) |
+| `--z-splash` | 40 | Splash beim Laden (einmalig, entfernt sich selbst) |
 
 ## Bewegung
 
@@ -126,7 +128,27 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
   immer `ease-out`. Spielfeld-Animationen (Echo 1200 ms, Reveal 4000 ms)
   sind Gameplay, nicht UI – sie bleiben im Renderer.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
-  darf nur die Welt.
+  darf nur die Welt. Einzige Ausnahme: der **Splash** beim Laden (Ball rollt
+  ein, zwei Echo-Ringe, Logo/Credits blenden ein) – endlich, überspringbar
+  per Tap, respektiert `prefers-reduced-motion`, `?nosplash` (E2E)
+  unterdrückt ihn ganz.
+
+## Sprache & Texte (i18n)
+
+Alle nutzersichtbaren Texte leben in `src/i18n/` (de/en/fr/es; Deutsch ist
+das Referenz-Wörterbuch und typisiert die Schlüsselmenge). **Kein neuer
+UI-String ohne Schlüssel in allen vier Sprachen** – tests/i18n.test.ts
+erzwingt identische Schlüsselmengen und übereinstimmende `{platzhalter}`.
+
+- Statisches HTML: `data-i18n` (textContent), `data-i18n-html` (nur für
+  Schlüssel mit Markup), `data-i18n-ph` (placeholder), `data-i18n-title`.
+- Dynamische Strings: `t(key, vars)`; nach `setLang()` rendern Screens über
+  `onLangChange`-Listener neu.
+- Level-Namen/-Intros: Übersetzung per `lv.<id>.name/.intro`, die deutschen
+  Texte in den Level-Definitionen bleiben Quelle der Wahrheit (Test prüft
+  Übereinstimmung). Anzeige immer über `lvName(def)`/`lvIntro(def)`.
+- Sprachwahl: gespeicherte Wahl > Browser-Locale > Englisch; Auswahl-Chips
+  im Menü-Footer.
 
 ## Safe-Area & Viewport (installierte PWA)
 

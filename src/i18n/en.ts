@@ -1,0 +1,291 @@
+import type { Dict } from './de';
+
+export const en: Dict = {
+  /* --- App / start screen --- */
+  'app.tagline': 'A ball. An invisible maze.<br>Sound, vibration and light show you the way.',
+  'app.headphones': '🎧 Best played with headphones',
+  'app.sensorNote': 'Starting a game enables motion sensors &amp; audio.<br>Desktop: arrow keys/WASD, Space = ping.',
+
+  'menu.quick': 'Quick Game',
+  'menu.quick.best': 'Best time ({preset}): {time}',
+  'menu.daily': 'Daily Challenge',
+  'menu.daily.open': 'Still open today',
+  'menu.daily.done': 'Today: {time}',
+  'menu.daily.streak': ' · 🔥 {n} days',
+  'menu.campaign': 'Campaign',
+  'menu.campaign.sub': '2 worlds full of guards, keys and floors',
+  'menu.mp': 'Multiplayer',
+  'menu.mp.sub': 'Co-op & race – two players, via QR code',
+  'menu.tutorial': 'Tutorial',
+  'menu.tutorial.sub': 'Learn the sounds of the dark',
+  'menu.tutorial.new': 'Start here!',
+  'menu.gallery': 'Element Gallery',
+  'menu.gallery.sub': 'See & hear every element',
+  'preset.easy': 'Easy',
+  'preset.normal': 'Medium',
+  'preset.hard': 'Hard',
+
+  /* --- Common --- */
+  'common.close': 'Close',
+  'common.menu': 'Menu',
+  'common.go': 'Go!',
+  'common.next': 'Next',
+  'common.again': '⟳ Again',
+  'common.toMenu': 'To menu',
+  'common.cancel': 'Cancel',
+  'common.ok': 'OK',
+  'common.listen': '🔊 Listen',
+  'common.level': 'Level',
+
+  /* --- HUD --- */
+  'hud.calibrate': 'Recalibrate tilt',
+  'hud.debug': 'Debug view (show the maze)',
+  'hud.home': 'Back to menu',
+  'hud.keys': 'Keys (WASD/arrows)',
+  'hud.tilt': 'Tilt',
+
+  'calib.title': 'Calibration',
+  'calib.text': 'Now hold your phone <b>flat like a tray</b> –<br>the way you want to play.',
+
+  /* --- Status / flash --- */
+  'st.fell': 'Fell into a hole! 🕳',
+  'st.caught': 'Caught! 👁',
+  'st.win': 'Goal in {time} 🎉',
+  'st.door': 'Door opened! 🔑',
+  'st.gem': '💎 Gem!',
+  'st.checkpoint': 'Checkpoint! ✓ +1 ping',
+  'st.floorDown': '⬇ Floor {n}',
+  'st.floorUp': '⬆ Floor {n}',
+  'st.portal': '✦ Portal',
+  'st.wallDown': 'Wall collapsed! 🧱',
+
+  /* --- Result cards --- */
+  'res.time': 'Time: {time}',
+  'res.newBest': ' – new best time!',
+  'res.newBestLine': 'New best time!',
+  'res.par': ' (par {n} s)',
+  'res.falls': 'Falls: {n}',
+  'res.tutTitle': '{name} – done! 🎉',
+  'res.tutProgress': 'Tutorial: {done}/{total}',
+  'res.tutDone': 'Tutorial complete – you are ready for the dark!',
+  'res.winTitle': 'Goal in {time} 🎉',
+
+  /* --- Daily challenge --- */
+  'daily.name': 'Daily Challenge',
+  'daily.intro': '{label}. One level for everyone, a new one every day – your first finish counts as the daily score.',
+  'daily.day0': 'Sunday – the full works',
+  'daily.day1': 'Monday – a gentle start',
+  'daily.day2': 'Tuesday – first headwind',
+  'daily.day3': 'Wednesday – the guard awakes',
+  'daily.day4': 'Thursday – three floors deep',
+  'daily.day5': 'Friday – it gets tight',
+  'daily.day6': 'Saturday – deep and watchful',
+  'daily.introTitle': '📅 Challenge {date}',
+  'daily.targetLine': '🎯 Challenge: beat {time}!',
+  'daily.targetFlash': '🎯 Beat {time}!',
+  'daily.resultTitle': 'Challenge {date} – {time}',
+  'daily.first': 'Your daily score! 🏁',
+  'daily.training': 'Practice – your daily score stays {time}.',
+  'daily.beat': '🎯 Challenge beaten ({time})!',
+  'daily.notBeat': '🎯 Not beaten – the target was {time}.',
+  'daily.streakOne': '🔥 Streak: 1 day',
+  'daily.streakMany': '🔥 Streak: {n} days',
+  'daily.share': '📤 Challenge a friend',
+  'daily.copied': 'Link copied! 📋',
+  'daily.shareText': 'tiltr daily challenge {date}: {time} – can you beat it?',
+  'daily.challengeTitle': '🎯 Challenge!',
+  'daily.challengeText': 'Someone challenges you in the daily challenge of {date}.',
+  'daily.challengeTextTarget': 'Someone challenges you in the daily challenge of {date}:\nBeat {time}!',
+  'daily.accept': 'Accept',
+  'daily.later': 'Later',
+
+  /* --- Multiplayer --- */
+  'mp.title': '👥 Multiplayer',
+  'mp.mode': 'Mode',
+  'mp.coop': '🤝 Co-op',
+  'mp.race': '🏁 Race',
+  'mp.hint.coop': 'Together: pressure plates open your partner’s door. You only win once BOTH of you reach the goal.',
+  'mp.hint.race': 'Head to head: identical level, first to the goal wins. The halo shows your rival.',
+  'mp.pickLevel': 'Pick a level = open a room',
+  'mp.orJoin': 'Or join a room',
+  'mp.code': 'ROOM CODE',
+  'mp.join': 'Join',
+  'mp.scan': '📷 Scan',
+  'mp.scanHint': 'Point the camera at the room’s QR code',
+  'mp.waiting': 'Waiting for a player – scan the QR code or enter the code …',
+  'mp.connecting': 'Connecting …',
+  'mp.connected': 'Partner connected!',
+  'mp.waitLevel': 'Connected – waiting for the level …',
+  'mp.leftLobby': 'Your partner left the room.',
+  'mp.leftWait': 'Your partner left the room – still waiting …',
+  'mp.rejoined': 'Partner is back! 🎉',
+  'mp.ready': 'Ready!',
+  'mp.readyTitle': 'Ready ✓',
+  'mp.waitPartner': 'Waiting for your partner …',
+  'mp.leave': 'Leave',
+  'mp.partnerFinished': 'Your partner reached the goal!',
+  'mp.coopWin': '🤝 Done together!',
+  'mp.teamTime': 'Team time: {team}\nYou: {you} · Partner: {partner}',
+  'mp.raceTimes': 'You: {you}\nRival: {rival}',
+  'mp.raceWin': '🏆 You win!',
+  'mp.raceLose': 'Lost …',
+  'mp.draw': '🤝 It’s a draw!',
+  'mp.frozenCoop': 'In the goal! Waiting for your partner …',
+  'mp.frozenRace': 'In the goal! Your rival is still rolling …',
+  'mp.lostCountdown': 'Connection lost … {n}s',
+  'mp.lostTitle': 'Connection lost',
+  'mp.lostCoop': 'Your partner is gone – co-op needs both of you.',
+  'mp.lostRace': 'Your rival is gone.',
+  'mp.floors': '{n} floors',
+
+  /* --- Install / update / splash / gallery --- */
+  'inst.android': 'Install tiltr as an app – offline & fullscreen.',
+  'inst.button': 'Install',
+  'inst.ios': 'Install as an app: tap the share icon {icon}, then “Add to Home Screen”.',
+  'upd.available': 'New version available',
+  'upd.availableV': 'New version v{v} available',
+  'upd.button': 'Update',
+  'splash.credit': 'A game by Dominik Rössler & Claude',
+  'gallery.title': '🧩 Element Gallery',
+
+  /* --- Element gallery --- */
+  'el.hole.title': 'Hole',
+  'el.hole.desc':
+    'Swallows the ball and pulls it in as soon as it rolls over the rim. Breathing holes open and close in cycles – closed, they are harmless. Signature: dark rumble, heartbeat, warning vibration.',
+  'el.windZone.title': 'Wind zone',
+  'el.windZone.desc':
+    'Invisible cell with a constant wind force – you have to tilt against it. Signature: gusty rushing that swells from the zone’s direction.',
+  'el.checkpoint.title': 'Checkpoint',
+  'el.checkpoint.desc':
+    'Invisible ring on the path. Touch it once: respawn point after a fall, plus +1 echo ping. Signature: friendly double chime, double vibration.',
+  'el.guard.title': 'Guard',
+  'el.guard.desc':
+    'Patrols the corridors and throws you back to the last checkpoint on touch. Signature: menacing, pulsing hum from its direction – and your heart beats faster.',
+  'el.key.title': 'Key & door',
+  'el.key.desc':
+    'The key jingles metallically in the distance, the locked door answers the echo ping with a muffled thud. Collect the key – and the door audibly slides open.',
+  'el.door.title': 'Door',
+  'el.door.desc':
+    'A locked wall with its own ping signature: duller and fuller than normal walls. Only the matching key opens it – then it rumbles aside.',
+  'el.gem.title': 'Gem',
+  'el.gem.desc':
+    'A sparkling crystal off the beaten path. Answers the echo ping with a bright double chime – collect them all to earn the third star.',
+  'el.transporter.title': 'Transporter',
+  'el.transporter.desc':
+    'Carries you to another floor – or across the map as a portal. Signature: hovering double tone nearby; the jump shimmers falling down or rising up. Answers the ping with a rising double echo.',
+  'el.plate.title': 'Pressure plate & partner door',
+  'el.plate.desc':
+    'Co-op: while your partner holds the plate, your door slides open – release it and it closes again. Same golden ping signature as the door it opens. Multiplayer only.',
+  'el.wallEcho.title': 'Wall & echo',
+  'el.wallEcho.desc':
+    'Walls are invisible; touching one makes it flash briefly and sound as a dull thump from its direction. Brittle walls (amber) crunch and collapse after 3 hard hits.',
+  'el.goal.title': 'Goal beacon',
+  'el.goal.desc': 'The goal’s sonar ping: the closer you are, the faster, louder and higher it gets. Direction via spatial audio.',
+  'el.ping.title': 'Echo ping',
+  'el.ping.desc':
+    'Active sonar pulse (tap/Space, limited supply): a wavefront reveals your surroundings, reflections return delayed by distance – walls bright, holes deep.',
+  'el.heart.title': 'Heartbeat',
+  'el.heart.desc': 'Gets faster and louder the closer an open hole is. When the pulse drops, the way is clear.',
+
+  /* --- Worlds & levels --- */
+  'world.w1': 'World 1 – The Deep Awakes',
+  'world.w2': 'World 2 – Between the Floors',
+
+  'lv.tut-1.name': 'Roll & Listen',
+  'lv.tut-1.intro':
+    'Tilt your phone gently – the ball rolls. Listen to the sonar ping: it comes from the direction of the goal and gets faster the closer you are. Roll right!',
+  'lv.tut-2.name': 'Walls & Echo',
+  'lv.tut-2.intro':
+    'The walls are invisible. Touch one and you hear a dull thump from its direction – and it lights up briefly. Feel your way forward.',
+  'lv.tut-3.name': 'The Echo Ping',
+  'lv.tut-3.intro':
+    'Tap the screen: an echo ping briefly reveals your surroundings – nearby walls answer first. Your supply is scarce, use it wisely.',
+  'lv.tut-4.name': 'The Rumble',
+  'lv.tut-4.intro':
+    'Hear that dark rumble? A hole is waiting there. The closer you get, the louder it grows – and your heart beats faster. Sneak past or take the detour below.',
+  'lv.tut-5.name': 'Breathing Holes',
+  'lv.tut-5.intro':
+    'This hole breathes: it opens and closes. Closed, it is harmless and silent. Wait until the rumble fades – then roll across.',
+  'lv.tut-6.name': 'Headwind',
+  'lv.tut-6.intro': 'That rushing ahead is wind – it pushes you back. Tilt harder against it and fight your way through.',
+  'lv.tut-7.name': 'Brittle Walls',
+  'lv.tut-7.intro':
+    'Some walls crunch when you ram them – they are brittle. Two hard hits and they collapse. The only way to the goal leads through this wall.',
+  'lv.tut-8.name': 'The Anchor',
+  'lv.tut-8.intro':
+    'That friendly double chime is a checkpoint: after a fall you continue from there – and it refills one echo ping. A hole breathes behind it. Don’t fear the fall.',
+
+  'lv.w1-01.name': 'Setting Out',
+  'lv.w1-01.intro':
+    'Welcome to the dark. Follow the goal’s ping – the left wall leads you down, then it’s off to the right.',
+  'lv.w1-02.name': 'Hollow Way',
+  'lv.w1-02.intro': 'The way down breathes: two holes open and close. Listen to the rumble – and wait for the silence.',
+  'lv.w1-03.name': 'First Watch',
+  'lv.w1-03.intro':
+    'Something is humming. A guard patrols the upper corridor – touch it and you are thrown back. Listen closely to where it is.',
+  'lv.w1-04.name': 'Locksmith',
+  'lv.w1-04.intro':
+    'Just before the goal a door blocks the way – it answers your ping with a muffled thud. Somewhere its key is jingling.',
+  'lv.w1-05.name': 'Sparkle',
+  'lv.w1-05.intro':
+    'Hear that bright double echo on your ping? Gems! They lie off the beaten path. Collect all three to earn the third star.',
+  'lv.w1-06.name': 'Draught',
+  'lv.w1-06.intro': 'In the upper corridor the wind pushes against you. Hold your line – and don’t get blown into the hole behind it.',
+  'lv.w1-07.name': 'Breaker',
+  'lv.w1-07.intro':
+    'The way is walled off here – but something crunches suspiciously. Ram the brittle walls, dodge the guard below and collect what sparkles.',
+  'lv.w1-08.name': 'Double Watch',
+  'lv.w1-08.intro':
+    'Two guards, one door. The key lies in the middle of the guarded corridor on the right – grab it once the guard has passed.',
+  'lv.w1-09.name': 'Short of Breath',
+  'lv.w1-09.intro':
+    'The long descent: five holes breathe out of step with each other, and at the bottom the wind pushes you exactly where you don’t want to go. Patience wins.',
+  'lv.w1-10.name': 'Keystone',
+  'lv.w1-10.intro':
+    'Everything you have learned: two guards, a door, brittle shortcuts, breathing holes and wind. Two paths lead to the goal – choose wisely.',
+
+  'lv.w2-01.name': 'Underpass',
+  'lv.w2-01.intro':
+    'A wall seals the way – but do you hear that hovering? A transporter leads down. Cross the dark below, then rise again elsewhere.',
+  'lv.w2-02.name': 'False Bottom',
+  'lv.w2-02.intro':
+    'The door above stays silent – its key jingles beneath your feet. Head down, slip past the guard, grab the key and surface somewhere else.',
+  'lv.w2-03.name': 'Elevator',
+  'lv.w2-03.intro':
+    'Ever deeper: two shafts down, sparkle waits at the bottom – and a lift that carries you straight into the sealed goal chamber.',
+  'lv.w2-04.name': 'Twin Gates',
+  'lv.w2-04.intro':
+    'Two portals on one floor, one sealed goal. Jump – and learn where you land. The rising double chime of your ping gives the gates away.',
+  'lv.w2-05.name': 'Cathedral',
+  'lv.w2-05.intro':
+    'Three floors down lies the key to the crypt. Break through what crunches, defy wind and guard – and climb back to the light with the key.',
+
+  'lv.coop-01.name': 'Airlock',
+  'lv.coop-01.intro':
+    'The goal chamber only opens while one of you holds the pressure plate in front of it. And whoever rests in the goal holds the plate inside – for the straggler. One holds, one rolls!',
+  'lv.coop-02.name': 'Interplay',
+  'lv.coop-02.intro':
+    'The plate for the goal door sits in its own locked chamber. Unlock each other: every chamber has a plate inside for self-release.',
+  'lv.coop-03.name': 'Remote Action',
+  'lv.coop-03.intro':
+    'The plate for the goal chamber lies right at the start. One stays behind and holds, the other rolls the long way – against wind and past a breathing hole. Then the first one holds the door from the goal.',
+  'lv.coop-04.name': 'Double Airlock',
+  'lv.coop-04.intro':
+    'Like Interplay, but mean: the floor breathes between the chambers, and a guard patrols the crossing. Timing is everything.',
+  'lv.coop-05.name': 'Four Hands, Two Floors',
+  'lv.coop-05.intro':
+    'The finale: the plate for the goal door lies one floor DOWN. One descends and holds, the other rolls into the goal – and holds the door from there for the returner. Whoever rests in the goal keeps holding!',
+
+  'lv.race-01.name': 'Sprint',
+  'lv.race-01.intro': 'Same track, same chances: first to the goal wins. The halo tells you where your rival is.',
+  'lv.race-02.name': 'Headwind',
+  'lv.race-02.intro': 'Two wind zones stand between you and the goal. Whoever holds the line better wins the race.',
+  'lv.race-03.name': 'Gauntlet',
+  'lv.race-03.intro':
+    'A guard patrols the home straight. Get caught and you fly back to the checkpoint – losing precious seconds.',
+  'lv.race-04.name': 'Breaker Run',
+  'lv.race-04.intro':
+    'Many walls here are brittle – ram bravely and you find shortcuts. Too bravely, and you lose speed on the wrong wall.',
+  'lv.race-05.name': 'Grand Final',
+  'lv.race-05.intro': 'The big race: long, deep, guarded and brittle. Everything you have learned – faster than your rival.',
+};

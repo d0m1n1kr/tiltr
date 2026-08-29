@@ -40,6 +40,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 
 ## UI & Layout
 
+- **i18n**: Alle nutzersichtbaren Texte über `src/i18n/` (de/en/fr/es;
+  Deutsch = Referenz, typisiert die Schlüsselmenge). Neuer String ⇒
+  Schlüssel in allen vier Wörterbüchern (tests/i18n.test.ts erzwingt das).
+  Level-Namen/-Intros: Anzeige über `lvName`/`lvIntro`, deutsche Texte in
+  den Level-Defs bleiben Quelle der Wahrheit. E2E läuft mit
+  `locale: 'de-DE'` und `?nosplash`.
+
 - **docs/DESIGN.md ist verbindlich**: Tokens/Komponenten aus
   `src/ui/theme.css`, Weltfarben aus `src/render/palette.ts` – keine
   Magic Values, kein Inline-Style.

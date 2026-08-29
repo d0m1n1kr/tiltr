@@ -45,8 +45,9 @@ export function buildElements(defs: ElementDef[], ctx: BuildContext): void {
   }
 }
 
-export function galleryEntries(): GalleryEntry[] {
-  return [...registry.values()].map((m) => m.gallery);
+/** Galerie-Einträge samt Element-Typ (Schlüssel für die Übersetzung el.<typ>.*). */
+export function galleryEntries(): Array<GalleryEntry & { type: string }> {
+  return [...registry.values()].map((m) => ({ type: m.type, ...m.gallery }));
 }
 
 export const cellCenter = (c: readonly [number, number], cell: number) => ({

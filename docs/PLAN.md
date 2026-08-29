@@ -174,5 +174,6 @@ und QA-Checkliste – und ist die Vorstufe eines Level-Editors.
 | **M5** | Ebenen + Transporter, Kampagne Welt 2 | vertikale Maps |
 | **M6** | Challenge of the Day + Share-Links | täglicher Anreiz |
 | **M7** | Multiplayer: Race, dann Coop (Trystero-Signaling) | lokales Netzwerkspiel |
+| **M8** | Design-Politur (Startscreen, Splash mit Credits) + i18n DE/EN/FR/ES (Auto-Detect + Umschalter) | internationale, polierte App |
 
 Jeder Meilenstein endet deploybar (Pages) und mit grüner Test-Suite.

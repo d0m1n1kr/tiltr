@@ -43,7 +43,72 @@
       opacity: 0.8;
     }
     #hud .btn { pointer-events: auto; margin-left: var(--space-2); }
+    #floor { color: var(--accent-2); }
+    #pings { color: var(--accent); }
+    #gems { color: var(--warning); }
 
+    /* --- Splash: einmalige Intro-Animation beim Laden (docs/DESIGN.md) --- */
+    #splash {
+      position: fixed; inset: 0;
+      z-index: var(--z-splash);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-3);
+      background: radial-gradient(circle at 50% 44%, var(--bg-raised) 0%, var(--bg) 72%);
+      transition: opacity 500ms ease-out;
+    }
+    #splash.fade { opacity: 0; pointer-events: none; }
+    .splash-stage { position: relative; width: 120px; height: 56px; }
+    .splash-ball {
+      position: absolute; top: 50%; left: 50%;
+      width: 18px; height: 18px; margin: -9px 0 0 -9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: var(--glow-accent);
+      animation: splash-roll 900ms ease-out both;
+    }
+    .splash-ring {
+      position: absolute; top: 50%; left: 50%;
+      width: 18px; height: 18px; margin: -9px 0 0 -9px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      opacity: 0;
+      animation: splash-ping 1100ms ease-out 2 both;
+    }
+    .splash-ring.r2 { animation-delay: 1450ms; border-color: var(--accent-2); }
+    .splash-ring.r1 { animation-delay: 900ms; }
+    @keyframes splash-roll {
+      from { transform: translateX(-46vw); opacity: 0; }
+      30% { opacity: 1; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes splash-ping {
+      from { transform: scale(1); opacity: 0.9; }
+      to { transform: scale(7); opacity: 0; }
+    }
+    .splash-logo {
+      font-size: var(--fs-display);
+      letter-spacing: 3px;
+      background: var(--grad-primary);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: splash-in 700ms ease-out 600ms both;
+    }
+    #splashCredit { font-size: var(--fs-body-s); opacity: 0.7; animation: splash-in 700ms ease-out 1100ms both; }
+    #splashVersion { font-size: var(--fs-caption); opacity: 0.4; animation: splash-in 700ms ease-out 1300ms both; }
+    @keyframes splash-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #splash * { animation: none !important; }
+      .splash-ball { transform: none; }
+    }
+
+    /* --- Startscreen --- */
     #overlay {
       position: fixed; inset: 0;
       display: flex;
@@ -51,7 +116,7 @@
       align-items: center;
       /* Zentriert über Auto-Margins statt justify-content: bei Überlauf
          (Querformat) bleibt der Anfang scrollbar statt abgeschnitten. */
-      gap: 18px;
+      gap: var(--space-4);
       background: radial-gradient(circle at 50% 40%, var(--bg-raised) 0%, var(--bg) 70%);
       text-align: center;
       padding: calc(var(--safe-top) + var(--space-5)) var(--space-5) calc(var(--safe-bottom) + var(--space-5));
@@ -68,24 +133,36 @@
       background-clip: text;
       color: transparent;
     }
-    #overlay p { max-width: 420px; line-height: 1.5; font-size: var(--fs-body); opacity: 0.85; }
-    #sensorNote { font-size: var(--fs-small); opacity: 0.55; }
+    #tagline { max-width: 420px; line-height: 1.45; font-size: var(--fs-body); opacity: 0.85; }
+    #headphones { font-size: var(--fs-body-s); opacity: 0.6; }
+    #sensorNote { font-size: var(--fs-small); opacity: 0.55; line-height: 1.5; }
     #menuButtons {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: stretch;
       gap: var(--space-3);
+      width: min(100%, 360px);
     }
     #quickGroup {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: var(--space-2);
+      gap: var(--space-3);
       padding: var(--space-4);
     }
     #presetRow { display: flex; gap: var(--space-2); }
+    #modeList { display: flex; flex-direction: column; gap: var(--space-2); }
     .menu-label { font-size: var(--fs-caption); opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
     .menu-meta { font-size: var(--fs-small); opacity: 0.55; min-height: 1.2em; }
+    #menuFooter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    #langRow { display: flex; gap: var(--space-2); }
+    #version { font-size: var(--fs-caption); opacity: 0.4; }
+
     #interstitial {
       position: fixed; inset: 0;
       display: flex;
@@ -109,8 +186,6 @@
     .inter-card h2 { font-size: var(--fs-h2); }
     .inter-card p { font-size: var(--fs-body); line-height: 1.55; opacity: 0.9; white-space: pre-line; }
     .inter-buttons { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-2); }
-    #version { font-size: var(--fs-caption); opacity: 0.4; }
-    #galleryLink { color: var(--accent-2); font-size: var(--fs-body-s); opacity: 0.8; }
 
     #banners {
       position: fixed;
@@ -204,42 +279,89 @@
   <canvas id="game"></canvas>
 
   <div id="hud" class="hidden">
-    <span><b id="timer"></b> <span id="floor" style="color: var(--accent-2)"></span> <span id="pings" style="color: var(--accent)"></span> <span id="gems" style="color: var(--warning)"></span> <span id="status"></span></span>
+    <span><b id="timer"></b> <span id="floor"></span> <span id="pings"></span> <span id="gems"></span> <span id="status"></span></span>
     <span>
-      <button id="calibrateBtn" class="btn btn-ghost" title="Neigung neu kalibrieren">⌖</button>
-      <button id="debugBtn" class="btn btn-ghost" title="Debug-Ansicht (Labyrinth zeigen)">👁</button>
-      <button id="homeBtn" class="btn btn-ghost" title="Zurück zum Menü">🏠</button>
+      <button id="calibrateBtn" class="btn btn-ghost" data-i18n-title="hud.calibrate">⌖</button>
+      <button id="debugBtn" class="btn btn-ghost" data-i18n-title="hud.debug">👁</button>
+      <button id="homeBtn" class="btn btn-ghost" data-i18n-title="hud.home">🏠</button>
     </span>
   </div>
 
   <div id="overlay">
     <h1>tiltr</h1>
-    <p>
-      Ein Ball. Ein unsichtbares Labyrinth.<br>
-      Klang, Vibration und Licht zeigen dir den Weg.<br>
-      <b>Am besten mit Kopfhörern.</b>
-    </p>
+    <p id="tagline" data-i18n-html="app.tagline"></p>
+    <p id="headphones" data-i18n="app.headphones"></p>
     <div id="menuButtons">
       <div id="quickGroup" class="panel">
-        <button id="quickBtn" class="btn btn-primary btn-lg">⚡ Schnelles Spiel</button>
-        <p class="menu-label">Schwierigkeit</p>
+        <button id="quickBtn" class="btn btn-primary btn-lg">⚡ <span data-i18n="menu.quick">Schnelles Spiel</span></button>
         <div id="presetRow">
-          <button class="btn chip" data-preset="easy">Leicht</button>
-          <button class="btn chip" data-preset="normal">Mittel</button>
-          <button class="btn chip" data-preset="hard">Schwer</button>
+          <button class="btn chip" data-preset="easy" data-i18n="preset.easy">Leicht</button>
+          <button class="btn chip" data-preset="normal" data-i18n="preset.normal">Mittel</button>
+          <button class="btn chip" data-preset="hard" data-i18n="preset.hard">Schwer</button>
         </div>
         <p id="quickBest" class="menu-meta"></p>
       </div>
-      <button id="dailyBtn" class="btn btn-ghost">📅 Tages-Challenge</button>
-      <p id="dailyStatus" class="menu-meta"></p>
-      <button id="campaignBtn" class="btn btn-ghost">🌍 Kampagne <span id="campaignStars"></span></button>
-      <button id="mpBtn" class="btn btn-ghost">👥 Multiplayer</button>
-      <button id="tutorialBtn" class="btn btn-ghost">🎓 Tutorial <span id="tutorialProgress"></span></button>
+      <div id="modeList">
+        <button id="dailyBtn" class="panel mode-item">
+          <span class="mode-icon">📅</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="menu.daily">Tages-Challenge</span>
+            <span class="mode-sub" id="dailyStatus"></span>
+          </span>
+        </button>
+        <button id="campaignBtn" class="panel mode-item">
+          <span class="mode-icon">🌍</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="menu.campaign">Kampagne</span>
+            <span class="mode-sub" data-i18n="menu.campaign.sub"></span>
+          </span>
+          <span class="mode-meta" id="campaignStars"></span>
+        </button>
+        <button id="mpBtn" class="panel mode-item">
+          <span class="mode-icon">👥</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="menu.mp">Multiplayer</span>
+            <span class="mode-sub" data-i18n="menu.mp.sub"></span>
+          </span>
+        </button>
+        <button id="tutorialBtn" class="panel mode-item">
+          <span class="mode-icon">🎓</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="menu.tutorial">Tutorial</span>
+            <span class="mode-sub" id="tutorialSub" data-i18n="menu.tutorial.sub"></span>
+          </span>
+          <span class="mode-meta" id="tutorialProgress"></span>
+        </button>
+        <button id="galleryLink" class="panel mode-item">
+          <span class="mode-icon">🧩</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="menu.gallery">Element-Galerie</span>
+            <span class="mode-sub" data-i18n="menu.gallery.sub"></span>
+          </span>
+        </button>
+      </div>
     </div>
-    <p id="sensorNote">Beim Start werden Bewegungssensoren &amp; Audio aktiviert.<br>
-       Desktop-Fallback: Pfeiltasten / WASD, Leertaste = Ping.</p>
-    <a id="galleryLink" href="#gallery">🧩 Element-Galerie</a>
-    <p id="version"></p>
+    <div id="menuFooter">
+      <div id="langRow">
+        <button class="btn chip" data-lang="de">DE</button>
+        <button class="btn chip" data-lang="en">EN</button>
+        <button class="btn chip" data-lang="fr">FR</button>
+        <button class="btn chip" data-lang="es">ES</button>
+      </div>
+      <p id="sensorNote" data-i18n-html="app.sensorNote"></p>
+      <p id="version"></p>
+    </div>
+  </div>
+
+  <div id="splash">
+    <div class="splash-stage">
+      <div class="splash-ball"></div>
+      <div class="splash-ring r1"></div>
+      <div class="splash-ring r2"></div>
+    </div>
+    <h1 class="splash-logo">tiltr</h1>
+    <p id="splashCredit"></p>
+    <p id="splashVersion"></p>
   </div>
 
   <div id="interstitial" class="hidden">
@@ -255,40 +377,40 @@
 
   <div id="gallery" class="hidden">
     <header>
-      <h2>🧩 Element-Galerie</h2>
-      <button id="galleryClose" class="btn btn-ghost">Schließen</button>
+      <h2>🧩 <span data-i18n="menu.gallery">Element-Galerie</span></h2>
+      <button id="galleryClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
     </header>
     <div id="galleryList"></div>
   </div>
 
   <div id="campaign" class="hidden">
     <header>
-      <h2>🌍 Kampagne</h2>
-      <button id="campaignClose" class="btn btn-ghost">Schließen</button>
+      <h2>🌍 <span data-i18n="menu.campaign">Kampagne</span></h2>
+      <button id="campaignClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
     </header>
     <div id="campaignList"></div>
   </div>
 
   <div id="mp" class="hidden">
     <header>
-      <h2>👥 Multiplayer</h2>
-      <button id="mpClose" class="btn btn-ghost">Schließen</button>
+      <h2>👥 <span data-i18n="menu.mp">Multiplayer</span></h2>
+      <button id="mpClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
     </header>
     <div id="mpContent">
       <div id="mpChoose">
-        <p class="menu-label">Modus</p>
+        <p class="menu-label" data-i18n="mp.mode">Modus</p>
         <div id="mpModeRow">
-          <button class="btn chip active" data-mpmode="coop">🤝 Coop</button>
-          <button class="btn chip" data-mpmode="race">🏁 Race</button>
+          <button class="btn chip active" data-mpmode="coop" data-i18n="mp.coop">🤝 Coop</button>
+          <button class="btn chip" data-mpmode="race" data-i18n="mp.race">🏁 Race</button>
         </div>
         <p id="mpModeHint" class="menu-meta"></p>
-        <p class="menu-label">Level wählen = Raum eröffnen</p>
+        <p class="menu-label" data-i18n="mp.pickLevel">Level wählen = Raum eröffnen</p>
         <div id="mpLevelList"></div>
-        <p class="menu-label">Oder einem Raum beitreten</p>
+        <p class="menu-label" data-i18n="mp.orJoin">Oder einem Raum beitreten</p>
         <div id="mpJoinRow">
-          <input id="mpCodeInput" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="10" placeholder="RAUMCODE">
-          <button id="mpJoinBtn" class="btn btn-primary">Beitreten</button>
-          <button id="mpScanBtn" class="btn btn-ghost">📷 Scannen</button>
+          <input id="mpCodeInput" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="10" data-i18n-ph="mp.code" placeholder="RAUMCODE">
+          <button id="mpJoinBtn" class="btn btn-primary" data-i18n="mp.join">Beitreten</button>
+          <button id="mpScanBtn" class="btn btn-ghost" data-i18n="mp.scan">📷 Scannen</button>
         </div>
       </div>
       <div id="mpLobby" class="hidden">
@@ -296,28 +418,28 @@
         <div id="mpQr"></div>
         <p id="mpCode" class="mp-code"></p>
         <p id="mpLobbyStatus" class="menu-meta"></p>
-        <button id="mpCancelBtn" class="btn btn-ghost">Abbrechen</button>
+        <button id="mpCancelBtn" class="btn btn-ghost" data-i18n="common.cancel">Abbrechen</button>
       </div>
     </div>
   </div>
 
   <div id="scanner" class="hidden">
     <video id="scannerVideo" playsinline muted></video>
-    <div id="scannerHint">QR-Code des Raums vor die Kamera halten</div>
-    <button id="scannerClose" class="btn btn-ghost">Abbrechen</button>
+    <div id="scannerHint" data-i18n="mp.scanHint">QR-Code des Raums vor die Kamera halten</div>
+    <button id="scannerClose" class="btn btn-ghost" data-i18n="common.cancel">Abbrechen</button>
   </div>
 
   <div id="banners">
     <div id="installHint" class="banner hidden">
       <span id="installLabel"></span>
       <span class="banner-buttons">
-        <button id="installBtn" class="btn btn-primary hidden">Installieren</button>
-        <button id="installDismiss" class="btn btn-ghost" title="Ausblenden">✕</button>
+        <button id="installBtn" class="btn btn-primary hidden" data-i18n="inst.button">Installieren</button>
+        <button id="installDismiss" class="btn btn-ghost" data-i18n-title="common.close">✕</button>
       </span>
     </div>
     <div id="updateToast" class="banner hidden">
-      <span id="updateLabel">Neue Version verfügbar</span>
-      <button id="updateBtn" class="btn btn-primary">Aktualisieren</button>
+      <span id="updateLabel" data-i18n="upd.available">Neue Version verfügbar</span>
+      <button id="updateBtn" class="btn btn-primary" data-i18n="upd.button">Aktualisieren</button>
     </div>
   </div>
 

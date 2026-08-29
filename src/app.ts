@@ -8,10 +8,12 @@ import { GameAudio } from './audio/audio';
 import { haptics } from './audio/haptics';
 import { Renderer } from './render/renderer';
 import { loadLevel, type LoadedLevel } from './levels/loader';
-import { generateQuickLevel, PRESETS, type Preset } from './levels/quick';
+import { generateQuickLevel, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
-import { generateDailyLevel, todayUTC, formatDate } from './levels/daily';
+import { generateDailyLevel, todayUTC } from './levels/daily';
+import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang } from './i18n';
+import { showSplash } from './ui/splash';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
 import { connect, makeRoomCode, type Transport } from './net/transport';
 import { scanRoomCode } from './ui/scanner';
@@ -49,6 +51,9 @@ const interText = $('interText');
 const interPrimary = $<HTMLButtonElement>('interPrimary');
 const interSecondary = $<HTMLButtonElement>('interSecondary');
 
+document.documentElement.lang = currentLang();
+applyI18n();
+showSplash(__APP_VERSION__);
 $('version').textContent = `v${__APP_VERSION__} · ${__BUILD_TIME__.slice(0, 16).replace('T', ' ')} UTC`;
 setupUpdates();
 setupInstallHint();
@@ -165,10 +170,10 @@ function hideInterstitial(): void {
 async function calibrationCountdown(): Promise<void> {
   interPrimary.classList.add('hidden');
   interSecondary.classList.add('hidden');
-  interTitle.textContent = 'Kalibrierung';
+  interTitle.textContent = t('calib.title');
   interstitial.classList.remove('hidden');
   for (let i = 3; i > 0; i--) {
-    interText.innerHTML = `Halte das Handy jetzt <b>flach wie ein Tablett</b> –<br>so, wie du spielen willst.<br><br><span style="font-size:34px">${i}</span>`;
+    interText.innerHTML = `${t('calib.text')}<br><br><span style="font-size:34px">${i}</span>`;
     await new Promise((r) => setTimeout(r, 1000));
   }
   hideInterstitial();
@@ -181,18 +186,36 @@ const presetChips = [...document.querySelectorAll<HTMLButtonElement>('#presetRow
 function refreshMenu(): void {
   const { done, total } = profile.tutorialProgress(TUT_IDS.length);
   $('tutorialProgress').textContent = `(${done}/${total})`;
+  // Neuen Spielenden den Einstieg zeigen: Tutorial-Karte hervorheben.
+  tutorialBtn.classList.toggle('suggest', done === 0);
+  $('tutorialSub').textContent = done === 0 ? t('menu.tutorial.new') : t('menu.tutorial.sub');
   for (const chip of presetChips) {
     chip.classList.toggle('active', chip.dataset.preset === profile.preset);
   }
+  for (const chip of document.querySelectorAll<HTMLButtonElement>('#langRow .chip')) {
+    chip.classList.toggle('active', chip.dataset.lang === currentLang());
+  }
   const best = profile.bestFor(`quick-${profile.preset}`);
-  $('quickBest').textContent = best !== null ? `Bestzeit (${PRESETS[profile.preset].label}): ${fmtTime(best)}` : '';
+  $('quickBest').textContent =
+    best !== null ? t('menu.quick.best', { preset: t(`preset.${profile.preset}`), time: fmtTime(best) }) : '';
   $('campaignStars').textContent = `(${profile.totalStars(CAMPAIGN_IDS)}/${CAMPAIGN_IDS.length * 3}★)`;
   const today = todayUTC();
   const daily = profile.dailyInfo(today);
   const streak = profile.streakInfo();
-  const streakText = streak && streak.count > 1 && streak.last === today ? ` · 🔥 ${streak.count} Tage` : '';
-  $('dailyStatus').textContent = daily?.first != null ? `Heute: ${fmtTime(daily.first)}${streakText}` : 'Heute noch offen';
+  const streakText =
+    streak && streak.count > 1 && streak.last === today ? t('menu.daily.streak', { n: streak.count }) : '';
+  $('dailyStatus').textContent =
+    daily?.first != null ? `${t('menu.daily.done', { time: fmtTime(daily.first) })}${streakText}` : t('menu.daily.open');
 }
+
+for (const chip of document.querySelectorAll<HTMLButtonElement>('#langRow .chip')) {
+  chip.addEventListener('click', () => setLang(chip.dataset.lang as Lang));
+}
+onLangChange(() => {
+  refreshMenu();
+  if (!campaignPanel.classList.contains('hidden')) refreshCampaignList();
+  if (!mpPanel.classList.contains('hidden') && !mpChoose.classList.contains('hidden')) refreshMpPanel();
+});
 
 /* --- Kampagnen-Levelauswahl ------------------------------------------------ */
 
@@ -208,13 +231,13 @@ function levelUnlocked(index: number): boolean {
 function refreshCampaignList(): void {
   campaignList.replaceChildren();
   let flat = 0;
-  for (const world of WORLDS) {
+  WORLDS.forEach((world, wi) => {
     const header = document.createElement('h3');
     header.className = 'world-header';
-    header.textContent = world.name;
+    header.textContent = t(wi === 0 ? 'world.w1' : 'world.w2');
     campaignList.append(header);
     world.levels.forEach((def, local) => appendLevelItem(def, flat++, local + 1));
-  }
+  });
 }
 
 function appendLevelItem(def: LevelDef, i: number, num: number): void {
@@ -223,7 +246,7 @@ function appendLevelItem(def: LevelDef, i: number, num: number): void {
     const item = document.createElement('button');
     item.className = 'panel level-item' + (unlocked ? '' : ' locked');
     const name = document.createElement('span');
-    name.textContent = `${num}. ${unlocked ? def.name : '???'}`;
+    name.textContent = `${num}. ${unlocked ? lvName(def) : '???'}`;
     const meta = document.createElement('span');
     meta.className = 'level-meta';
     if (unlocked) {
@@ -319,24 +342,25 @@ function beginLevel(): void {
           ? generateDailyLevel(mode.date)
           : generateQuickLevel(nextSeed(), profile.preset);
   currentDef = def;
-  if (def.intro) {
+  const intro = lvIntro(def);
+  if (intro) {
     const title =
       mode.kind === 'daily'
-        ? `📅 Challenge ${formatDate(mode.date)}`
+        ? t('daily.introTitle', { date: formatDate(mode.date) })
         : mode.kind === 'tutorial'
-        ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${def.name}`
+        ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${lvName(def)}`
         : mode.kind === 'campaign'
-          ? `${WORLDS[mode.index < WORLDS[0]!.levels.length ? 0 : 1]!.name.split(' – ')[0]} · Level ${
+          ? `${t(mode.index < WORLDS[0]!.levels.length ? 'world.w1' : 'world.w2').split(' – ')[0]} · ${t('common.level')} ${
               mode.index < WORLDS[0]!.levels.length ? mode.index + 1 : mode.index + 1 - WORLDS[0]!.levels.length
-            } · ${def.name}`
-          : def.name;
+            } · ${lvName(def)}`
+          : lvName(def);
     const targetLine =
-      mode.kind === 'daily' && mode.target !== undefined ? `\n\n🎯 Herausforderung: schlag ${fmtTime(mode.target)}!` : '';
+      mode.kind === 'daily' && mode.target !== undefined ? `\n\n${t('daily.targetLine', { time: fmtTime(mode.target) })}` : '';
     showInterstitial({
       title,
-      text: def.intro + targetLine,
-      primary: { label: 'Los!', onClick: () => launch(def) },
-      secondary: { label: 'Menü', onClick: showMenu },
+      text: intro + targetLine,
+      primary: { label: t('common.go'), onClick: () => launch(def) },
+      secondary: { label: t('common.menu'), onClick: showMenu },
     });
   } else {
     launch(def);
@@ -368,7 +392,7 @@ function launch(def: LevelDef): void {
   state = 'playing';
   revealUntil = 0;
   statusEl.textContent = '';
-  if (mode?.kind === 'daily' && mode.target !== undefined) flash(`🎯 Schlag ${fmtTime(mode.target)}!`, 4000);
+  if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   input.calibrate();
 }
 
@@ -391,7 +415,13 @@ function startWarp(tx: number, ty: number, targetFloor: number, dir: 'up' | 'dow
     b.vy = 0;
     warpReady = false; // erst wieder scharf, wenn der Ball das Ziel-Pad verlassen hat
     state = 'playing';
-    flash(dir === 'down' ? `⬇ Ebene ${targetFloor + 1}` : dir === 'up' ? `⬆ Ebene ${targetFloor + 1}` : '✦ Portal');
+    flash(
+      dir === 'down'
+        ? t('st.floorDown', { n: targetFloor + 1 })
+        : dir === 'up'
+          ? t('st.floorUp', { n: targetFloor + 1 })
+          : t('st.portal'),
+    );
   }, 700);
 }
 
@@ -417,26 +447,30 @@ function onWin(seconds: number): void {
     const { isFirst, first } = profile.submitDaily(date, seconds, today);
     const streak = profile.streakInfo();
     const lines = [
-      isFirst ? 'Dein Tageswert! 🏁' : `Training – dein Tageswert bleibt ${fmtTime(first)}.`,
+      isFirst ? t('daily.first') : t('daily.training', { time: fmtTime(first) }),
       target !== undefined
         ? seconds < target
-          ? `🎯 Herausforderung geschlagen (${fmtTime(target)})!`
-          : `🎯 Nicht geschlagen – Vorgabe war ${fmtTime(target)}.`
+          ? t('daily.beat', { time: fmtTime(target) })
+          : t('daily.notBeat', { time: fmtTime(target) })
         : '',
-      isFirst && date === today && streak ? `🔥 Serie: ${streak.count} ${streak.count === 1 ? 'Tag' : 'Tage'}` : '',
+      isFirst && date === today && streak
+        ? streak.count === 1
+          ? t('daily.streakOne')
+          : t('daily.streakMany', { n: streak.count })
+        : '',
     ].filter(Boolean);
     setTimeout(() => {
       showInterstitial({
-        title: `Challenge ${formatDate(date)} – ${fmtTime(seconds)}`,
+        title: t('daily.resultTitle', { date: formatDate(date), time: fmtTime(seconds) }),
         text: lines.join('\n'),
         primary: {
-          label: '📤 Herausfordern',
+          label: t('daily.share'),
           onClick: () => {
             showMenu();
             void shareDaily(date, isFirst ? seconds : Math.min(first, seconds));
           },
         },
-        secondary: { label: 'Menü', onClick: showMenu },
+        secondary: { label: t('common.menu'), onClick: showMenu },
       });
     }, 1800);
   } else if (mode.kind === 'tutorial') {
@@ -447,20 +481,20 @@ function onWin(seconds: number): void {
     const { done, total } = profile.tutorialProgress(TUT_IDS.length);
     setTimeout(() => {
       showInterstitial({
-        title: `${def.name} – geschafft! 🎉`,
+        title: t('res.tutTitle', { name: lvName(def) }),
         text:
-          `Zeit: ${fmtTime(seconds)}${isRecord ? ' – neue Bestzeit!' : ''}\n` +
-          (hasNext ? `Tutorial: ${done}/${total}` : 'Tutorial abgeschlossen – du bist bereit für die Dunkelheit!'),
+          `${t('res.time', { time: fmtTime(seconds) })}${isRecord ? t('res.newBest') : ''}\n` +
+          (hasNext ? t('res.tutProgress', { done, total }) : t('res.tutDone')),
         primary: hasNext
           ? {
-              label: 'Weiter',
+              label: t('common.next'),
               onClick: () => {
                 mode = { kind: 'tutorial', index: index + 1 };
                 beginLevel();
               },
             }
-          : { label: 'Zum Menü', onClick: showMenu },
-        secondary: hasNext ? { label: 'Menü', onClick: showMenu } : undefined,
+          : { label: t('common.toMenu'), onClick: showMenu },
+        secondary: hasNext ? { label: t('common.menu'), onClick: showMenu } : undefined,
       });
     }, 1800);
   } else if (mode.kind === 'campaign') {
@@ -478,23 +512,23 @@ function onWin(seconds: number): void {
     const isRecord = profile.submitTime(def.id, seconds);
     const hasNext = index + 1 < CAMPAIGN_LEVELS.length;
     const lines = [
-      `Zeit: ${fmtTime(seconds)}${def.parTimeS ? ` (Par ${def.parTimeS} s)` : ''}${isRecord ? ' – neue Bestzeit!' : ''}`,
-      gemsTotal > 0 ? `💎 ${gemsGot}/${gemsTotal}` : `Stürze: ${falls}`,
+      `${t('res.time', { time: fmtTime(seconds) })}${def.parTimeS ? t('res.par', { n: def.parTimeS }) : ''}${isRecord ? t('res.newBest') : ''}`,
+      gemsTotal > 0 ? `💎 ${gemsGot}/${gemsTotal}` : t('res.falls', { n: falls }),
     ];
     setTimeout(() => {
       showInterstitial({
-        title: `${def.name} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`,
+        title: `${lvName(def)} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`,
         text: lines.join('\n'),
         primary: hasNext
           ? {
-              label: 'Weiter',
+              label: t('common.next'),
               onClick: () => {
                 mode = { kind: 'campaign', index: index + 1 };
                 beginLevel();
               },
             }
-          : { label: 'Zum Menü', onClick: showMenu },
-        secondary: hasNext ? { label: 'Menü', onClick: showMenu } : undefined,
+          : { label: t('common.toMenu'), onClick: showMenu },
+        secondary: hasNext ? { label: t('common.menu'), onClick: showMenu } : undefined,
       });
     }, 1800);
   } else {
@@ -502,14 +536,14 @@ function onWin(seconds: number): void {
     const best = profile.bestFor(`quick-${profile.preset}`);
     setTimeout(() => {
       showInterstitial({
-        title: `Ziel in ${fmtTime(seconds)} 🎉`,
+        title: t('res.winTitle', { time: fmtTime(seconds) }),
         text: isRecord
-          ? 'Neue Bestzeit!'
+          ? t('res.newBestLine')
           : best !== null
-            ? `Bestzeit (${PRESETS[profile.preset].label}): ${fmtTime(best)}`
+            ? t('menu.quick.best', { preset: t(`preset.${profile.preset}`), time: fmtTime(best) })
             : '',
-        primary: { label: '⟳ Nochmal', onClick: beginLevel },
-        secondary: { label: 'Menü', onClick: showMenu },
+        primary: { label: t('common.again'), onClick: beginLevel },
+        secondary: { label: t('common.menu'), onClick: showMenu },
       });
     }, 1800);
   }
@@ -633,13 +667,13 @@ function zoneProximity(z: WindZone, b: Ball): { dist: number; dx: number; dy: nu
 // Teilen: Web Share API, sonst Zwischenablage.
 async function shareDaily(date: string, seconds: number): Promise<void> {
   const url = `${location.origin}${location.pathname}#daily=${date}&t=${seconds.toFixed(1)}`;
-  const text = `tiltr Tages-Challenge ${formatDate(date)}: ${fmtTime(seconds)} – schaffst du das schneller?`;
+  const text = t('daily.shareText', { date: formatDate(date), time: fmtTime(seconds) });
   try {
     if (navigator.share) {
       await navigator.share({ text, url });
     } else {
       await navigator.clipboard.writeText(`${text} ${url}`);
-      $('dailyStatus').textContent = 'Link kopiert! 📋';
+      $('dailyStatus').textContent = t('daily.copied');
     }
   } catch {
     /* abgebrochen */
@@ -663,12 +697,13 @@ function checkChallengeHash(): void {
   const target = m[2] !== undefined ? parseFloat(m[2]) : undefined;
   history.replaceState(null, '', location.pathname + location.search);
   showInterstitial({
-    title: '🎯 Herausforderung!',
+    title: t('daily.challengeTitle'),
     text:
-      `Jemand fordert dich in der Tages-Challenge vom ${formatDate(date)} heraus` +
-      (target !== undefined ? `:\nSchlag ${fmtTime(target)}!` : '.'),
-    primary: { label: 'Annehmen', onClick: () => void startMode({ kind: 'daily', date, target }) },
-    secondary: { label: 'Später', onClick: () => undefined },
+      target !== undefined
+        ? t('daily.challengeTextTarget', { date: formatDate(date), time: fmtTime(target) })
+        : t('daily.challengeText', { date: formatDate(date) }),
+    primary: { label: t('daily.accept'), onClick: () => void startMode({ kind: 'daily', date, target }) },
+    secondary: { label: t('daily.later'), onClick: () => undefined },
   });
 }
 checkChallengeHash();
@@ -683,15 +718,12 @@ const mpLevelList = $('mpLevelList');
 const mpCodeInput = $<HTMLInputElement>('mpCodeInput');
 let mpModeSel: MpMode = 'coop';
 
-const MP_MODE_HINTS: Record<MpMode, string> = {
-  coop: 'Gemeinsam: Druckplatten öffnen die Tür des Partners. Gewonnen ist erst, wenn BEIDE im Ziel sind.',
-  race: 'Gegeneinander: identisches Level, wer zuerst im Ziel ist, gewinnt. Der Halo zeigt den Gegner.',
-};
+const mpModeHint = (m: MpMode): string => t(m === 'coop' ? 'mp.hint.coop' : 'mp.hint.race');
 
 function refreshMpPanel(): void {
   mpChoose.classList.remove('hidden');
   mpLobby.classList.add('hidden');
-  $('mpModeHint').textContent = MP_MODE_HINTS[mpModeSel];
+  $('mpModeHint').textContent = mpModeHint(mpModeSel);
   for (const chip of document.querySelectorAll<HTMLButtonElement>('#mpModeRow .chip')) {
     chip.classList.toggle('active', chip.dataset.mpmode === mpModeSel);
   }
@@ -701,11 +733,11 @@ function refreshMpPanel(): void {
     const item = document.createElement('button');
     item.className = 'panel level-item';
     const name = document.createElement('span');
-    name.textContent = `${i + 1}. ${def.name}`;
+    name.textContent = `${i + 1}. ${lvName(def)}`;
     const meta = document.createElement('span');
     meta.className = 'level-meta';
     const [c, r] = def.floors[0]!.size;
-    meta.textContent = `${def.floors.length > 1 ? `${def.floors.length} Ebenen · ` : ''}${c}×${r}`;
+    meta.textContent = `${def.floors.length > 1 ? `${t('mp.floors', { n: def.floors.length })} · ` : ''}${c}×${r}`;
     item.append(name, meta);
     item.addEventListener('click', () => void mpHost(def));
     mpLevelList.append(item);
@@ -727,20 +759,20 @@ async function mpHost(level: LevelDef): Promise<void> {
   const code = new URLSearchParams(location.search).get('mpcode')?.toUpperCase() ?? makeRoomCode();
   const transport = await connect(code);
   mpInit(transport, code, true, mpModeSel, level);
-  $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${level.name}`;
+  $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${lvName(level)}`;
   $('mpQr').innerHTML = renderSVG(mpJoinUrl(code));
   $('mpQr').classList.remove('hidden');
   $('mpCode').textContent = code;
-  mpShowLobby('Warte auf Mitspieler – QR scannen oder Code eingeben …');
+  mpShowLobby(t('mp.waiting'));
 }
 
 async function mpJoin(code: string): Promise<void> {
   const transport = await connect(code.toUpperCase());
   mpInit(transport, code.toUpperCase(), false, 'coop', null);
-  $('mpLobbyTitle').textContent = 'Beitreten';
+  $('mpLobbyTitle').textContent = t('mp.join');
   $('mpQr').classList.add('hidden');
   $('mpCode').textContent = code.toUpperCase();
-  mpShowLobby('Verbinde …');
+  mpShowLobby(t('mp.connecting'));
 }
 
 function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMode, level: LevelDef | null): void {
@@ -771,15 +803,15 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
         // Kurzer Aussetzer: weiterspielen, aktuelle Platten erneut melden
         mp.disconnectedAt = null;
         for (const id of mp.localHolds) mp.transport.send('plate', { id, held: true });
-        flash('Partner wieder da! 🎉');
+        flash(t('mp.rejoined'));
         return;
       }
       if (mp.host && mp.level) {
         mp.transport.send('setup', { mode: mp.mode, levelId: mp.level.id });
-        $('mpLobbyStatus').textContent = 'Partner verbunden!';
+        $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
       } else {
-        $('mpLobbyStatus').textContent = 'Verbunden – warte auf Level …';
+        $('mpLobbyStatus').textContent = t('mp.waitLevel');
       }
     } else {
       mpPeerLeft();
@@ -793,10 +825,10 @@ function mpPeerLeft(): void {
   if (mp.phase === 'playing' || mp.phase === 'done') {
     mp.disconnectedAt = performance.now();
   } else {
-    $('mpLobbyStatus').textContent = 'Partner hat den Raum verlassen.';
+    $('mpLobbyStatus').textContent = t('mp.leftLobby');
     if (interstitial && !interstitial.classList.contains('hidden')) hideInterstitial();
     mpPanel.classList.remove('hidden');
-    mpShowLobby('Partner hat den Raum verlassen – warte weiter …');
+    mpShowLobby(t('mp.leftWait'));
   }
 }
 
@@ -825,7 +857,7 @@ function mpOnMessage(type: string, payload: unknown): void {
     else mp.remoteHolds.delete(p.id);
   } else if (type === 'finish') {
     const p = payload as { elapsed: number };
-    if (!mp.remote.finished) flash('Partner ist im Ziel!');
+    if (!mp.remote.finished) flash(t('mp.partnerFinished'));
     mp.remote.finished = true;
     mp.remote.elapsed = p.elapsed;
     mpCheckResult();
@@ -841,10 +873,10 @@ function mpShowIntro(): void {
   mpPanel.classList.add('hidden');
   const icon = mp.mode === 'coop' ? '🤝' : '🏁';
   showInterstitial({
-    title: `${icon} ${mp.level.name}`,
-    text: `${mp.level.intro ?? ''}\n\n${MP_MODE_HINTS[mp.mode]}`,
+    title: `${icon} ${lvName(mp.level)}`,
+    text: `${lvIntro(mp.level) ?? ''}\n\n${mpModeHint(mp.mode)}`,
     primary: {
-      label: 'Bereit!',
+      label: t('mp.ready'),
       onClick: () => {
         void (async () => {
           if (!mp) return;
@@ -858,12 +890,12 @@ function mpShowIntro(): void {
           mp.selfReady = true;
           mp.transport.send('ready', null);
           if (!mpMaybeStart()) {
-            showInterstitial({ title: 'Bereit ✓', text: 'Warte auf deinen Partner …' });
+            showInterstitial({ title: t('mp.readyTitle'), text: t('mp.waitPartner') });
           }
         })();
       },
     },
-    secondary: { label: 'Verlassen', onClick: showMenu },
+    secondary: { label: t('mp.leave'), onClick: showMenu },
   });
 }
 
@@ -979,8 +1011,8 @@ function mpCheckResult(): void {
   if (mp.mode === 'coop') {
     audio.win();
     haptics.win();
-    title = '🤝 Gemeinsam geschafft!';
-    text = `Team-Zeit: ${fmtTime(Math.max(mine, theirs))}\nDu: ${fmtTime(mine)} · Partner: ${fmtTime(theirs)}`;
+    title = t('mp.coopWin');
+    text = t('mp.teamTime', { team: fmtTime(Math.max(mine, theirs)), you: fmtTime(mine), partner: fmtTime(theirs) });
   } else {
     const won = mine < theirs;
     if (won) {
@@ -989,8 +1021,8 @@ function mpCheckResult(): void {
     } else {
       audio.caught();
     }
-    title = mine === theirs ? '🤝 Unentschieden!' : won ? '🏆 Gewonnen!' : 'Verloren …';
-    text = `Du: ${fmtTime(mine)}\nGegner: ${fmtTime(theirs)}`;
+    title = mine === theirs ? t('mp.draw') : won ? t('mp.raceWin') : t('mp.raceLose');
+    text = t('mp.raceTimes', { you: fmtTime(mine), rival: fmtTime(theirs) });
   }
   setTimeout(() => {
     if (!mp) return;
@@ -998,16 +1030,21 @@ function mpCheckResult(): void {
       title,
       text,
       primary: {
-        label: '⟳ Nochmal',
+        label: t('common.again'),
         onClick: () => {
           if (!mp) return;
           mp.rematchSelf = true;
           mp.transport.send('rematch', null);
           if (mp.rematchPeer) mpMaybeRematch();
-          else showInterstitial({ title: '⟳ Nochmal', text: 'Warte auf deinen Partner …', secondary: { label: 'Menü', onClick: showMenu } });
+          else
+            showInterstitial({
+              title: t('common.again'),
+              text: t('mp.waitPartner'),
+              secondary: { label: t('common.menu'), onClick: showMenu },
+            });
         },
       },
-      secondary: { label: 'Menü', onClick: showMenu },
+      secondary: { label: t('common.menu'), onClick: showMenu },
     });
   }, 1800);
 }
@@ -1085,7 +1122,7 @@ function frame(now: number): void {
           world.debris.push({ ...wall, litUntil: now + 1500 });
           audio.crumble(hit.nx, hit.ny);
           haptics.crumble();
-          flash('Wand eingestürzt! 🧱');
+          flash(t('st.wallDown'));
         } else {
           audio.crackle(hit.nx, hit.ny);
         }
@@ -1152,7 +1189,7 @@ function frame(now: number): void {
             audio.doorOpen(w.x + w.w / 2 - world.ball.x, w.y + w.h / 2 - world.ball.y);
           }
         }
-        flash('Tür geöffnet! 🔑');
+        flash(t('st.door'));
       } else if (kd < KEY_HEAR) {
         audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR));
       }
@@ -1165,7 +1202,7 @@ function frame(now: number): void {
         gem.collected = true;
         audio.collectGem();
         haptics.checkpoint();
-        flash('💎 Gem!');
+        flash(t('st.gem'));
       }
     }
 
@@ -1189,7 +1226,7 @@ function frame(now: number): void {
         pings = Math.min(pingMax, pings + 1);
         audio.checkpoint();
         haptics.checkpoint();
-        flash('Checkpoint! ✓ +1 Ping');
+        flash(t('st.checkpoint'));
       }
     }
 
@@ -1227,9 +1264,9 @@ function frame(now: number): void {
         const wasCoop = mp.mode === 'coop';
         showMenu();
         showInterstitial({
-          title: 'Verbindung verloren',
-          text: wasCoop ? 'Dein Partner ist weg – Coop braucht euch beide.' : 'Dein Gegner ist weg.',
-          primary: { label: 'OK', onClick: () => undefined },
+          title: t('mp.lostTitle'),
+          text: wasCoop ? t('mp.lostCoop') : t('mp.lostRace'),
+          primary: { label: t('common.ok'), onClick: () => undefined },
         });
         return;
       }
@@ -1251,7 +1288,7 @@ function frame(now: number): void {
       fallen.litUntil = now + 1500;
       audio.fall();
       haptics.fall();
-      statusEl.textContent = 'In ein Loch gestürzt! 🕳';
+      statusEl.textContent = t('st.fell');
       setTimeout(respawn, 1300);
     } else if (caught) {
       state = 'fell';
@@ -1260,15 +1297,15 @@ function frame(now: number): void {
       caught.litUntil = now + 1500;
       audio.caught();
       haptics.fall();
-      statusEl.textContent = 'Erwischt! 👁';
+      statusEl.textContent = t('st.caught');
       setTimeout(respawn, 1300);
     } else if (mp && !frozen && !disconnected && world.goalReached()) {
       mpLocalFinish(now);
     } else if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
-      statusEl.textContent = `Verbindung verloren … ${remaining.toFixed(0)}s`;
+      statusEl.textContent = t('mp.lostCountdown', { n: remaining.toFixed(0) });
     } else if (frozen && state === 'playing') {
-      statusEl.textContent = mp?.mode === 'coop' ? 'Im Ziel! Warte auf deinen Partner …' : 'Im Ziel! Der Gegner rollt noch …';
+      statusEl.textContent = t(mp?.mode === 'coop' ? 'mp.frozenCoop' : 'mp.frozenRace');
     } else if (!mp && world.goalReached()) {
       state = 'won';
       revealUntil = now + 4000;
@@ -1280,12 +1317,12 @@ function frame(now: number): void {
       audio.setPortal(0, 0, 0);
       audio.win();
       haptics.win();
-      statusEl.textContent = `Ziel in ${fmtTime(seconds)} 🎉`;
+      statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
       onWin(seconds);
     } else if (messageUntil > now) {
       statusEl.textContent = message;
     } else {
-      const modeLabel = input.hasSensor ? 'Neigung' : 'Tasten (WASD/Pfeile)';
+      const modeLabel = t(input.hasSensor ? 'hud.tilt' : 'hud.keys');
       statusEl.textContent = debug ? `Debug · ${modeLabel} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)}` : '';
     }
   }

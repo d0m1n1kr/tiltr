@@ -4,11 +4,15 @@
 import { galleryEntries, type GalleryEntry } from '../elements';
 import type { GameAudio } from '../audio/audio';
 import { WORLD } from '../render/palette';
+import { t, onLangChange, type Dict } from '../i18n';
+
+type TypedEntry = GalleryEntry & { type: string };
 
 // Mechaniken, die keine Level-Elemente sind, aber zur Klangsprache gehören.
-function extraEntries(): GalleryEntry[] {
+function extraEntries(): TypedEntry[] {
   return [
     {
+      type: 'wallEcho',
       title: 'Wand & Echo',
       description:
         'Wände sind unsichtbar; Berührung macht sie kurz sichtbar und klingt als dumpfer Thump aus ihrer Richtung. Brüchige Wände (bernstein) knirschen und stürzen nach 3 harten Treffern ein.',
@@ -25,6 +29,7 @@ function extraEntries(): GalleryEntry[] {
       },
     },
     {
+      type: 'goal',
       title: 'Ziel-Beacon',
       description: 'Sonar-Ping des Ziels: je näher, desto schneller, lauter und höher. Richtung über Spatial Audio.',
       draw(ctx, w, h) {
@@ -42,6 +47,7 @@ function extraEntries(): GalleryEntry[] {
       },
     },
     {
+      type: 'ping',
       title: 'Echo-Ping',
       description:
         'Aktiver Sonar-Impuls (Tap/Leertaste, begrenzter Vorrat): Wellenfront deckt die Umgebung auf, Reflexionen kommen entfernungs-verzögert zurück – Wände hell, Löcher tief.',
@@ -62,6 +68,7 @@ function extraEntries(): GalleryEntry[] {
       },
     },
     {
+      type: 'heart',
       title: 'Herzschlag',
       description: 'Wird schneller und lauter, je näher ein offenes Loch ist. Fällt der Puls, ist der Weg frei.',
       draw(ctx, w, h) {
@@ -96,6 +103,11 @@ export function setupGallery(audio: GameAudio): void {
     panel.classList.remove('hidden');
   });
   close.addEventListener('click', () => panel.classList.add('hidden'));
+  // Sprachwechsel: Einträge neu aufbauen (offene Galerie sofort, sonst lazy).
+  onLangChange(() => {
+    list.replaceChildren();
+    if (!panel.classList.contains('hidden')) render();
+  });
 
   function render(): void {
     for (const entry of [...galleryEntries(), ...extraEntries()]) {
@@ -112,14 +124,14 @@ export function setupGallery(audio: GameAudio): void {
 
       const body = document.createElement('div');
       const title = document.createElement('h3');
-      title.textContent = entry.title;
+      title.textContent = t(`el.${entry.type}.title` as keyof Dict);
       const desc = document.createElement('p');
-      desc.textContent = entry.description;
+      desc.textContent = t(`el.${entry.type}.desc` as keyof Dict);
       body.append(title, desc);
       if (entry.demoSound) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-soft';
-        btn.textContent = '🔊 Anhören';
+        btn.textContent = t('common.listen');
         btn.addEventListener('click', () => entry.demoSound!(audio));
         body.append(btn);
       }

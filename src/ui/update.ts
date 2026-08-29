@@ -2,6 +2,7 @@
 // Version deployt wurde, und zeigt dann einen Hinweis mit Update-Knopf.
 
 import { registerSW } from 'virtual:pwa-register';
+import { t } from '../i18n';
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000; // alle 10 Minuten
 
@@ -13,12 +14,12 @@ export function setupUpdates(): void {
   const updateSW = registerSW({
     async onNeedRefresh() {
       // version.json wird NetworkOnly ausgeliefert und trägt die NEUE Version.
-      let text = 'Neue Version verfügbar';
+      let text = t('upd.available');
       try {
         const res = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`);
         if (res.ok) {
           const info = (await res.json()) as { version?: string };
-          if (info.version) text = `Neue Version v${info.version} verfügbar`;
+          if (info.version) text = t('upd.availableV', { v: info.version });
         }
       } catch {
         /* offline o. ä. – generischer Text reicht */

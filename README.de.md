@@ -1,0 +1,122 @@
+# tiltr – das unsichtbare Labyrinth
+
+🇬🇧 [English version](README.md)
+
+**Ein immersives Sensor-Spiel als PWA.** Du steuerst einen Ball per Neigung
+des Handys durch ein unsichtbares Labyrinth – die Welt offenbart sich über
+**räumlichen Klang** (Rollen, Wand-Echos, Sonar-Ping des Ziels),
+**Vibration** und **sparsames Licht**: Wände leuchten nur dort auf, wo du
+sie berührst oder dein Echo-Ping sie erreicht. Am besten mit Kopfhörern und
+halb geschlossenen Augen.
+
+**▶ Jetzt spielen: https://d0m1n1kr.github.io/tiltr/** – jeder Push deployt
+automatisch per GitHub Actions (Tests → Build → Pages).
+
+| Splash | Menü | Echo-Ping | Multiplayer-Lobby | Coop |
+|---|---|---|---|---|
+| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände und Löcher auf"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer-Lobby mit QR-Code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop mit Druckplatte, Tür und Partner-Halo"> |
+
+## Spielmodi
+
+- **⚡ Schnelles Spiel** – prozedural generiertes Labyrinth in drei
+  Schwierigkeiten, mit Bestzeiten pro Stufe.
+- **📅 Tages-Challenge** – Seed = UTC-Datum: ein Level für alle, jeden Tag
+  ein neues, komplett serverlos und reproduzierbar. Der erste Zieleinlauf
+  zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
+  (`#daily=DATUM&t=ZEIT`) fordern Freunde heraus, deine Zeit zu schlagen –
+  auch für vergangene Tage.
+- **🌍 Kampagne** – zwei handgebaute Welten (15 Level): Wächter, Schlüssel
+  und Türen, Gems, atmende Löcher, Wind, brüchige Wände und mehrstöckige
+  Karten mit Transportern. Bis zu drei Sterne pro Level (geschafft,
+  Par-Zeit, alle Gems).
+- **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
+  ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über
+  eine feste Liste von 8 etablierten Nostr-Relays, kein eigener Server).
+  Beitritt per QR-Code (In-App-Scanner oder Kamera-App – der Code trägt
+  einen `#join=`-Link) oder 6-stelligem Raumcode. **Coop:** Druckplatten
+  öffnen die Türen des Partners; jede Tür versiegelt eine Kammer mit einer
+  Platte außen und einer innen, und wer im Ziel liegt, hält die Zielplatte
+  für den Nachzügler – gewonnen ist erst, wenn beide drin sind. **Race:**
+  identisches Level, wer zuerst ankommt, gewinnt – mit Rematch. Ein
+  pulsierender Halo zeigt den Partner – am Screenrand geklemmt, wenn er
+  außer Sicht ist. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
+  zum Wiederverbinden.
+- **🎓 Tutorial** – acht Micro-Level, die die Klangsprache beibringen,
+  ein Element nach dem anderen.
+- **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und
+  Klang-Signatur, per Knopfdruck anspielbar.
+
+**Sprachen:** Deutsch, Englisch, Französisch und Spanisch – automatisch
+nach Browser-Locale, jederzeit auf dem Startscreen umschaltbar.
+
+## Auf dem Handy spielen
+
+Live-Seite öffnen, einen Modus antippen (aktiviert Bewegungssensoren und
+Audio), Kopfhörer aufsetzen und das Handy während des Kalibrier-Countdowns
+flach wie ein Tablett halten. HUD-Knöpfe: `⌖` neu kalibrieren, `👁`
+Debug-Ansicht (zeigt das Labyrinth), `🏠` zurück zum Menü. Als App
+installieren (offline & Vollbild) über den Hinweis oder das Browser-Menü.
+
+Am Desktop gibt es einen Tastatur-Fallback: Pfeiltasten/WASD zum Rollen,
+Leertaste für den Ping.
+
+## Spielelemente
+
+| Element | Signatur |
+|---|---|
+| Neigungssteuerung | `DeviceOrientationEvent`, Kalibrier-Countdown nach Start-Tap, Achsen-Remap nach Screen-Orientierung, Tastatur-Fallback |
+| Spatial Audio | HRTF-`PannerNode`: alle Richtungsklänge räumlich (Kopfhörer!) |
+| Wände | Echo: berührte Wände leuchten kurz auf; brüchige Wände (bernstein) knirschen und stürzen nach 3 Treffern ein |
+| Löcher | atmen (öffnen/schließen zyklisch, versetzt); offen = Sog + dunkles Grollen + Herzschlag, zu = harmlos |
+| Windzonen | konstante Windkraft, hörbar als Böen-Rauschen aus Richtung der Zone |
+| Checkpoints | auf dem Lösungsweg (BFS); Respawn-Punkt, +1 Echo-Ping |
+| Echo-Ping | Tap/Leertaste: Wellenfront deckt Umgebung auf, Reflexionen kommen entfernungs-verzögert & räumlich zurück; Durchgänge antworten hell & doppelt, Gems kristallklar, Türen dumpf; begrenzter Vorrat |
+| Wächter | patrouilliert (Ping-Pong über Wegpunkte), pulsierendes Brummen aus seiner Richtung; Berührung = zurück zum Checkpoint |
+| Schlüssel & Tür | Schlüssel klimpert in Hörweite, Einsammeln lässt die Tür hörbar aufgleiten |
+| Gems | optionale Sammelkristalle mit eigener Ping-Antwort; alle gesammelt = dritter Stern |
+| Transporter | trägt den Ball auf andere Ebenen (oder als Portal quer über die Map); schwebender Doppelton in der Nähe, Warp klingt abwärts fallend bzw. aufwärts steigend; Ziel-Beacon klingt auf fremden Ebenen gedämpft wie durch den Boden |
+| Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
+| Partner-Halo | pulsierender Lichtring an der Position des Mitspielers; außer Sicht an den Screenrand geklemmt (mit Ebenen-Label) |
+| Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
+
+## Entwicklung
+
+TypeScript + Vite + Vitest + Playwright; PWA über `vite-plugin-pwa`. Der
+Ausbauplan steht in [`docs/PLAN.md`](docs/PLAN.md), die verbindliche
+UI-Guideline in [`docs/DESIGN.md`](docs/DESIGN.md); der ursprüngliche
+Phase-0-Prototyp liegt als Referenz in [`prototype/`](prototype/).
+
+```bash
+npm install
+npm run dev        # Dev-Server (Desktop: Pfeiltasten/WASD, Leertaste = Ping)
+npm run typecheck  # tsc --noEmit
+npm test           # Vitest-Units (Physik, Maze, Level-Lösbarkeit, i18n)
+npm run lint       # ESLint
+npm run build      # Produktions-Build nach dist/ (inkl. Service Worker)
+npm run e2e        # Playwright-Smoke gegen vite preview (fester Seed)
+```
+
+Nützliche URL-Parameter: `?seed=<zahl|text>` macht Läufe reproduzierbar,
+`?unlock` schaltet alle Kampagnen-Level frei (Playtesting), `?nosplash`
+überspringt den Splash (E2E), `?mpcode=TEST…` erzwingt einen Raumcode auf
+dem lokalen `BroadcastChannel`-Transport (Multiplayer-E2E ohne Netz).
+
+Test-Philosophie: Jedes Level kommt mit Lösbarkeits-Beweis (BFS über
+Ebenen, gerichtete Transporter-Kanten, Tür-/Schlüssel-/Platten-Fixpunkte –
+die Coop-Tests beweisen sogar, dass jede Tür notwendig ist und niemand
+eingesperrt werden kann), die vier Sprach-Wörterbücher werden auf
+Vollständigkeit erzwungen, und ein Safe-Area-Pflichtlauf spielt die in der
+installierten PWA wirksamen Insets nach, die im Browser unsichtbar sind.
+Fürs Testen am Handy braucht es HTTPS: am einfachsten die Live-Seite,
+sonst `npx vite --host` mit lokalem TLS-Plugin oder einem Tunnel.
+
+## Roadmap
+
+M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓ → M3 Tutorial &
+Schnelles Spiel ✓ → M4 Kampagne Welt 1 ✓ → M5 Ebenen/Transporter + Welt 2 ✓
+→ M6 Tages-Challenge + Herausfordern ✓ → M7 Multiplayer Coop & Race ✓ →
+M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓
+
+---
+
+Ein Spiel von **Dominik Rössler & Claude**.

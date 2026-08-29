@@ -40,10 +40,10 @@ const check = (name, cond) => {
 
 // --- Lauf 1: Tastatur-Fallback, Ping, HUD (fester Seed => deterministisch) ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?seed=42`);
+  await page.goto(`${BASE}/?seed=42&nosplash`);
 
   const version = (await page.textContent('#version')).trim();
   check(`Version auf Startscreen ("${version}")`, /^v\d+\.\d+\.\d+/.test(version));
@@ -75,9 +75,9 @@ const check = (name, cond) => {
 
 // --- Lauf 2: Achsen mit synthetischen Sensor-Events (steil tippen, flach spielen) ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?seed=42`);
+  await page.goto(`${BASE}/?seed=42&nosplash`);
   const fire = (beta, gamma) =>
     page.evaluate(([b, g]) => {
       window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: b, gamma: g }));
@@ -103,9 +103,9 @@ const check = (name, cond) => {
 
 // --- Lauf 3: Tutorial-Flow – Intro, Level 1 gewinnen, Ergebnis, Fortschritt ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/`);
+  await page.goto(`${BASE}/?nosplash`);
 
   const progress = (await page.textContent('#tutorialProgress')).trim();
   check(`Tutorial-Fortschritt im Menü ("${progress}")`, progress === '(0/8)');
@@ -136,9 +136,9 @@ const check = (name, cond) => {
 
 // --- Lauf 4: Kampagne – Levelauswahl, w1-01 gewinnen, Sterne, Freischaltung ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/`);
+  await page.goto(`${BASE}/?nosplash`);
 
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
@@ -175,9 +175,9 @@ const check = (name, cond) => {
 
 // --- Lauf 5: Multi-Ebenen (W2-01) – ?unlock, Weltsektionen, echter Warp ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?unlock`);
+  await page.goto(`${BASE}/?unlock&nosplash`);
 
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
@@ -210,17 +210,17 @@ const check = (name, cond) => {
 
 // --- Lauf 6: Tages-Challenge – Menü-Status und Herausforderungs-Link ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/`);
+  await page.goto(`${BASE}/?nosplash`);
   const status = (await page.textContent('#dailyStatus')).trim();
   check(`Daily-Status im Menü ("${status}")`, status === 'Heute noch offen');
   await page.close();
 }
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/#daily=2026-01-05&t=42.3`);
+  await page.goto(`${BASE}/?nosplash#daily=2026-01-05&t=42.3`);
   await page.waitForTimeout(300);
   const title = (await page.textContent('#interTitle')).trim();
   const text = (await page.textContent('#interText')).trim();
@@ -242,9 +242,9 @@ const check = (name, cond) => {
 
 // --- Lauf 7: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
 {
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?seed=42`);
+  await page.goto(`${BASE}/?seed=42&nosplash`);
   await page.evaluate(() => window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })));
   await page.waitForTimeout(100);
   const shown = !(await page.locator('#installHint').getAttribute('class')).includes('hidden');
@@ -264,11 +264,12 @@ const check = (name, cond) => {
 {
   const page = await browser.newPage({
     viewport: { width: 390, height: 844 },
+    locale: 'de-DE',
     userAgent:
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?seed=42`);
+  await page.goto(`${BASE}/?seed=42&nosplash`);
   await page.waitForTimeout(200);
   const shown = !(await page.locator('#installHint').getAttribute('class')).includes('hidden');
   const text = (await page.textContent('#installLabel')).trim();
@@ -282,7 +283,7 @@ const check = (name, cond) => {
 // oben 62 / unten 34) UND Gegenprobe ohne. Die Fehler dieser Kategorie sind
 // im Browser unsichtbar; dieser Lauf ersetzt das installierte Gerät. ---
 {
-  const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
+  const page = await browser.newPage({ viewport: { width: 402, height: 874 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
   // Tokens VOR dem ersten Render überschreiben: nach dem Theme-<link> injiziert,
   // gewinnt der Style per Kaskade (gleiche Spezifität, späterer Ursprung).
@@ -337,7 +338,7 @@ const check = (name, cond) => {
 }
 {
   // Gegenprobe ohne Insets (normaler Browser): alles bündig.
-  const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
+  const page = await browser.newPage({ viewport: { width: 402, height: 874 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`${BASE}/`);
   const m = await page.evaluate(() => {
@@ -361,7 +362,7 @@ const check = (name, cond) => {
 // (BroadcastChannel, Raumcode "TEST…"): Host + QR/Code, Beitritt, Bereit-Flow,
 // Druckplatte öffnet die Tür des Partners, beide im Ziel, Rematch, Disconnect. ---
 {
-  const ctx = await browser.newContext({ viewport: { width: 400, height: 800 } });
+  const ctx = await browser.newContext({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   const pageA = await ctx.newPage(); // Host
   const pageB = await ctx.newPage(); // Gast
   for (const p of [pageA, pageB]) {
@@ -369,7 +370,7 @@ const check = (name, cond) => {
     p.on('pageerror', (e) => errors.push(String(e)));
   }
 
-  await pageA.goto(`${BASE}/?mpcode=TESTE2E`);
+  await pageA.goto(`${BASE}/?mpcode=TESTE2E&nosplash`);
   await pageA.click('#mpBtn');
   const coopCount = await pageA.locator('#mpLevelList .level-item').count();
   await pageA.click('[data-mpmode="race"]');
@@ -383,7 +384,7 @@ const check = (name, cond) => {
   const codeShown = (await pageA.textContent('#mpCode')).trim();
   check(`Lobby zeigt QR-Code + Raumcode ("${codeShown}")`, qrHtml.includes('<svg') && codeShown === 'TESTE2E');
 
-  await pageB.goto(`${BASE}/`);
+  await pageB.goto(`${BASE}/?nosplash`);
   await pageB.click('#mpBtn');
   await pageB.fill('#mpCodeInput', 'TESTE2E');
   await pageB.click('#mpJoinBtn');
@@ -465,6 +466,59 @@ const check = (name, cond) => {
   check(`Disconnect-Countdown bei A ("${statusGone}")`, statusGone.includes('Verbindung verloren'));
 
   await ctx.close();
+}
+
+// --- Lauf 10: Splash – Version + Credits, verschwindet von selbst ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+  await page.waitForTimeout(200);
+  const splashShown = await page.locator('#splash').isVisible();
+  const splashVersion = (await page.textContent('#splashVersion')).trim();
+  const splashCredit = (await page.textContent('#splashCredit')).trim();
+  check(
+    `Splash mit Version + Credits ("${splashVersion}" / "${splashCredit}")`,
+    splashShown && /^v\d+\.\d+\.\d+$/.test(splashVersion) && splashCredit.includes('Dominik Rössler') && splashCredit.includes('Claude'),
+  );
+  await page.waitForTimeout(3400); // Auto-Fade nach ~2,6 s + Ausblenden
+  check('Splash verschwindet von selbst', (await page.locator('#splash').count()) === 0);
+  await page.close();
+}
+
+// --- Lauf 11: i18n – Auto-Detect (en-US), manueller Wechsel, Persistenz ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'en-US' });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  const lang = await page.evaluate(() => document.documentElement.lang);
+  const dailyEn = (await page.textContent('#dailyStatus')).trim();
+  const quickEn = (await page.textContent('#quickBtn')).trim();
+  check(`Browser-Locale en-US => Englisch (lang=${lang}, "${dailyEn}")`, lang === 'en' && dailyEn === 'Still open today' && quickEn.includes('Quick Game'));
+
+  // Neues Menü: 5 Modus-Karten, Tutorial als Einstieg empfohlen
+  const modeItems = await page.locator('#modeList .mode-item').count();
+  const suggested = await page.locator('#tutorialBtn.suggest').count();
+  check(`Startscreen: 5 Modus-Karten, Tutorial empfohlen (${modeItems}/${suggested})`, modeItems === 5 && suggested === 1);
+
+  // Galerie übersetzt (erster Registry-Eintrag: Loch -> "Hole")
+  await page.click('#galleryLink');
+  await page.waitForTimeout(300);
+  const firstTitle = (await page.locator('.gallery-item h3').first().textContent()).trim();
+  check(`Galerie auf Englisch ("${firstTitle}")`, firstTitle === 'Hole');
+  await page.click('#galleryClose');
+
+  // Manueller Wechsel auf FR + Persistenz über Reload
+  await page.click('[data-lang="fr"]');
+  const dailyFr = (await page.textContent('#dailyStatus')).trim();
+  check(`Sprachwechsel auf FR ("${dailyFr}")`, dailyFr.includes('Encore ouvert'));
+  await page.reload();
+  await page.waitForTimeout(200);
+  const dailyFr2 = (await page.textContent('#dailyStatus')).trim();
+  const langFr = await page.evaluate(() => document.documentElement.lang);
+  check(`FR überlebt Reload (lang=${langFr})`, langFr === 'fr' && dailyFr2.includes('Encore ouvert'));
+  await page.close();
 }
 
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
