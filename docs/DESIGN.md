@@ -195,8 +195,13 @@ einmal rot gesehen, bevor sie zählt.
   nie `justify-content: center` + `overflow` – das schneidet bei
   Überlauf den Anfang ab (Querformat!).
 - **Manifest:** `id`, `scope`, `start_url` explizit, `launch_handler:
-  navigate-existing`. Die Adresse (`/tiltr/`) ist praktisch
-  unumkehrbar, sobald jemand installiert hat – nicht umziehen.
+  navigate-existing`, **`display: standalone` – niemals `fullscreen`**:
+  iOS unterstützt fullscreen nicht und rendert solche PWAs mit verkürztem
+  WebView-Container (schwarzer Balken unten in Statusbarhöhe, `env()`
+  liefert oben 0 – exakt das Bild des Viewport-Bugs oben). Der Modus wird
+  bei der Installation eingebrannt: eine Änderung wirkt erst nach Entfernen
+  und Neu-Hinzufügen zum Home-Bildschirm. Die Adresse (`/tiltr/`) ist
+  praktisch unumkehrbar, sobald jemand installiert hat – nicht umziehen.
 
 ## Don'ts
 

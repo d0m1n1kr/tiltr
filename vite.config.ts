@@ -46,7 +46,10 @@ export default defineConfig({
         start_url: './',
         scope: './',
         launch_handler: { client_mode: 'navigate-existing' },
-        display: 'fullscreen',
+        // 'standalone', NICHT 'fullscreen': iOS unterstützt fullscreen nicht
+        // und rendert solche PWAs mit verkürztem Container (schwarzer Balken
+        // unten, ~Statusbarhöhe). Details: docs/DESIGN.md, Safe-Area.
+        display: 'standalone',
         orientation: 'portrait',
         background_color: '#05070f',
         theme_color: '#0b1020',
