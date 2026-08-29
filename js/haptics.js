@@ -23,6 +23,16 @@ export const haptics = {
     navigator.vibrate(12);
   },
 
+  checkpoint() {
+    if (!this.supported) return;
+    navigator.vibrate([15, 40, 15]);
+  },
+
+  crumble() {
+    if (!this.supported) return;
+    navigator.vibrate([20, 20, 70]);
+  },
+
   fall() {
     if (!this.supported) return;
     navigator.vibrate([30, 30, 50, 30, 90, 30, 140]);

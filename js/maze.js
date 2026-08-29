@@ -24,6 +24,35 @@ export function generateMaze(cols, rows, rng = Math.random) {
   return cells;
 }
 
+// Lösungsweg von (0,0) nach (cols-1, rows-1) per BFS – für Checkpoint-Platzierung.
+export function solveMaze(cells, cols, rows) {
+  const idx = (x, y) => y * cols + x;
+  const prev = new Array(cols * rows).fill(-1);
+  const seen = new Array(cols * rows).fill(false);
+  const queue = [0];
+  seen[0] = true;
+  while (queue.length) {
+    const c = queue.shift();
+    const x = c % cols, y = (c - x) / cols;
+    const cell = cells[c];
+    const next = [];
+    if (!cell.n) next.push(idx(x, y - 1));
+    if (!cell.e) next.push(idx(x + 1, y));
+    if (!cell.s) next.push(idx(x, y + 1));
+    if (!cell.w) next.push(idx(x - 1, y));
+    for (const n of next) {
+      if (!seen[n]) { seen[n] = true; prev[n] = c; queue.push(n); }
+    }
+  }
+  const path = [];
+  let c = cols * rows - 1;
+  while (c !== -1) {
+    path.push({ x: c % cols, y: Math.floor(c / cols) });
+    c = prev[c];
+  }
+  return path.reverse();
+}
+
 // Wände als achsenparallele Rechtecke {x, y, w, h} in Weltkoordinaten.
 // Wände liegen zentriert auf den Gitterlinien, Dopplungen werden vermieden
 // (Nord-/Westwand nur am Rand, sonst reichen Ost- und Südwände).

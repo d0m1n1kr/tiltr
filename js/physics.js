@@ -14,6 +14,7 @@ export class World {
     this.ball = ball;
     this.goal = goal;        // {x,y,r}
     this.holes = holes;      // [{x,y,r}] – Ball fällt hinein, wenn sein Mittelpunkt darüber rollt
+    this.windZones = [];     // [{x,y,w,h,fx,fy}] – konstante Windkraft im Rechteck
     this.accel = 2600;       // px/s² bei voller Neigung
     this.friction = 1.4;     // Roll-Dämpfung pro Sekunde
     this.restitution = 0.38; // Abprall-Energieanteil
@@ -31,6 +32,12 @@ export class World {
     for (let i = 0; i < steps; i++) {
       b.vx += tilt.x * this.accel * h;
       b.vy += tilt.y * this.accel * h;
+      for (const z of this.windZones) {
+        if (b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h) {
+          b.vx += z.fx * h;
+          b.vy += z.fy * h;
+        }
+      }
       const damp = Math.exp(-this.friction * h);
       b.vx *= damp; b.vy *= damp;
       const sp = b.speed;
@@ -48,7 +55,7 @@ export class World {
         const dx = hole.x - b.x, dy = hole.y - b.y;
         const d = Math.hypot(dx, dy);
         if (d < hole.r + b.r && d > 1e-6) {
-          const pull = this.accel * 0.9 * (1 - d / (hole.r + b.r));
+          const pull = this.accel * 0.55 * (1 - d / (hole.r + b.r));
           b.vx += (dx / d) * pull * h;
           b.vy += (dy / d) * pull * h;
         }

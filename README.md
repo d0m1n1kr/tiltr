@@ -19,7 +19,12 @@ Web-Standards. Damit ist die Machbarkeit aller kritischen Bausteine isoliert
 | Haptik | Vibration API (Android; iOS Safari unterstützt sie nicht → Audio kompensiert) | `js/haptics.js` |
 | Physik | eigene 2D-Physik (Kreis vs. Rechteck, Substeps gegen Tunneln) | `js/physics.js` |
 | Labyrinth | Recursive Backtracker | `js/maze.js` |
-| Gefahr: Löcher | unsichtbar, verraten durch Wind (Bandpass-Rauschen mit Böen-LFO, Panning) + Warnvibration; Sturz = fallender Ton + Respawn | `js/physics.js`, `js/audio.js` |
+| Spatial Audio | HRTF-`PannerNode`: Ziel-Ping, Loch-Grollen, Wind & Impacts kommen räumlich aus der richtigen Richtung (Kopfhörer!) | `js/audio.js` |
+| Gefahr: Löcher | unsichtbar, verraten durch dunkles Grollen + Warnvibration; Sturz = fallender Ton + Respawn am letzten Checkpoint | `js/physics.js`, `js/audio.js` |
+| Windzonen | unsichtbare Zellen mit konstanter Windkraft, gegen die man anhalten muss; hörbar als Böen-Rauschen aus Richtung der Zone | `js/physics.js`, `js/audio.js` |
+| Checkpoints | 2 Stück auf dem Lösungsweg (BFS), Doppelklang + Vibration, dienen als Respawn-Punkt | `js/main.js`, `js/maze.js` |
+| Brüchige Wände | einige Innenwände knirschen bei harten Treffern und stürzen nach 3 Treffern ein (öffnet Abkürzungen) | `js/main.js`, `js/audio.js` |
+| Zeit | laufende Rundenzeit im HUD, Bestzeit in `localStorage` | `js/main.js` |
 | Visuelles „Echo" | Canvas 2D, dunkler Screen, berührte Wände verblassen | `js/render.js` |
 | PWA | Web App Manifest + Service Worker (stale-while-revalidate) | `manifest.webmanifest`, `sw.js` |
 
