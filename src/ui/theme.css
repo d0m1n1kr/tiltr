@@ -118,6 +118,21 @@
   box-shadow: var(--glow-accent);
 }
 
+/* Auswahl-Chip (z. B. Schwierigkeits-Preset): Pill, aktiv in Akzentfarbe. */
+.chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: var(--border-strong);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  font-size: var(--fs-small);
+}
+.chip.active {
+  background: rgba(75, 224, 200, 0.15);
+  border: 1px solid rgba(75, 224, 200, 0.4);
+  color: var(--accent);
+}
+
 /* --- Flächen ------------------------------------------------------------ */
 
 .panel {

@@ -69,9 +69,16 @@ export function setupInstallHint(): void {
   });
   window.addEventListener('appinstalled', hide);
 
-  // iOS Safari: kein beforeinstallprompt – Anleitung zeigen.
+  // iOS Safari: kein beforeinstallprompt – Anleitung zeigen. Das Teilen-Symbol
+  // (Quadrat mit Pfeil nach oben) gibt es nicht als Unicode, daher Inline-SVG.
   if (isIOS()) {
-    label.textContent = 'Als App installieren: Teilen-Symbol (□↑) tippen, dann „Zum Home-Bildschirm".';
+    const shareIcon =
+      '<svg width="14" height="17" viewBox="0 0 14 17" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" ' +
+      'style="vertical-align:-3px;margin:0 1px" aria-label="Teilen-Symbol" role="img">' +
+      '<path d="M4.5 6H3a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 3 16h8a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11 6H9.5"/>' +
+      '<path d="M7 10.5V1.5"/><path d="M4.2 4.2 7 1.4l2.8 2.8"/></svg>';
+    label.innerHTML = `Als App installieren: Teilen-Symbol ${shareIcon} tippen, dann „Zum Home-Bildschirm".`;
     installBtn.classList.add('hidden');
     hint.classList.remove('hidden');
   }

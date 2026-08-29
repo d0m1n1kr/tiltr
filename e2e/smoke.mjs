@@ -54,7 +54,7 @@ const check = (name, cond) => {
   check(`Element-Galerie zeigt Einträge (${galleryItems})`, galleryItems >= 6);
   await page.click('#galleryClose');
 
-  await page.click('#startBtn');
+  await page.click('#quickBtn');
   await page.waitForTimeout(3600); // Kalibrier-Countdown
 
   check('HUD sichtbar', !(await page.locator('#hud').getAttribute('class')).includes('hidden'));
@@ -83,7 +83,7 @@ const check = (name, cond) => {
       window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: b, gamma: g }));
     }, [beta, gamma]);
 
-  await page.click('#startBtn');
+  await page.click('#quickBtn');
   await fire(65, 1); // Handy steil zum Gesicht beim Tippen
   await page.waitForTimeout(1500);
   await fire(20, 0); // während des Countdowns flach hinlegen
@@ -101,7 +101,40 @@ const check = (name, cond) => {
   await page.close();
 }
 
-// --- Lauf 3: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
+// --- Lauf 3: Tutorial-Flow – Intro, Level 1 gewinnen, Ergebnis, Fortschritt ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+
+  const progress = (await page.textContent('#tutorialProgress')).trim();
+  check(`Tutorial-Fortschritt im Menü ("${progress}")`, progress === '(0/8)');
+
+  await page.click('#tutorialBtn');
+  await page.waitForTimeout(3300); // Kalibrier-Countdown
+  const introTitle = (await page.textContent('#interTitle')).trim();
+  check(`Tutorial-Intro erscheint ("${introTitle}")`, introTitle.includes('Rollen & Lauschen'));
+
+  await page.click('#interPrimary'); // "Los!"
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(2600); // 3x2-Korridor: nach rechts rollen genügt
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(2200); // Sieg-Reveal + Ergebnis-Karte
+
+  const resultTitle = (await page.textContent('#interTitle')).trim();
+  const resultShown = !(await page.locator('#interstitial').getAttribute('class')).includes('hidden');
+  check(`Ergebnis-Karte nach Sieg ("${resultTitle}")`, resultShown && resultTitle.includes('geschafft'));
+  const nextLabel = (await page.textContent('#interPrimary')).trim();
+  check(`Weiter-Knopf führt zum nächsten Level ("${nextLabel}")`, nextLabel === 'Weiter');
+
+  // Fortschritt wurde persistiert -> zurück im Menü steht (1/8)
+  await page.click('#interSecondary'); // "Menü"
+  const progress2 = (await page.textContent('#tutorialProgress')).trim();
+  check(`Fortschritt persistiert ("${progress2}")`, progress2 === '(1/8)');
+  await page.close();
+}
+
+// --- Lauf 4: Installations-Hinweis (Android-Pfad synthetisch, iOS per User-Agent) ---
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
   page.on('pageerror', (e) => errors.push(String(e)));

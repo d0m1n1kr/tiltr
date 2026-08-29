@@ -2,14 +2,16 @@ import './ui/theme.css';
 import { CELL } from './core/constants';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, WindZone } from './core/types';
-import type { World } from './core/physics';
-import type { Ball } from './core/physics';
+import type { Ball, World } from './core/physics';
 import { TiltInput } from './input/tilt';
 import { GameAudio } from './audio/audio';
 import { haptics } from './audio/haptics';
 import { Renderer } from './render/renderer';
 import { loadLevel } from './levels/loader';
-import { generateQuickLevel } from './levels/quick';
+import { generateQuickLevel, PRESETS, type Preset } from './levels/quick';
+import { TUTORIAL_LEVELS } from './levels/tutorial';
+import type { LevelDef } from './levels/schema';
+import { profile } from './profile';
 import { setupUpdates } from './ui/update';
 import { setupGallery } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
@@ -26,9 +28,16 @@ const hud = $('hud');
 const statusEl = $('status');
 const timerEl = $('timer');
 const pingsEl = $('pings');
-const startBtn = $('startBtn');
+const quickBtn = $('quickBtn');
+const tutorialBtn = $('tutorialBtn');
 const calibrateBtn = $('calibrateBtn');
 const debugBtn = $('debugBtn');
+const homeBtn = $('homeBtn');
+const interstitial = $('interstitial');
+const interTitle = $('interTitle');
+const interText = $('interText');
+const interPrimary = $<HTMLButtonElement>('interPrimary');
+const interSecondary = $<HTMLButtonElement>('interSecondary');
 
 $('version').textContent = `v${__APP_VERSION__} · ${__BUILD_TIME__.slice(0, 16).replace('T', ' ')} UTC`;
 setupUpdates();
@@ -40,9 +49,15 @@ const renderer = new Renderer(canvas);
 setupGallery(audio);
 
 type GameState = 'menu' | 'playing' | 'fell' | 'won';
+type Mode = { kind: 'quick' } | { kind: 'tutorial'; index: number };
+
+const TUT_IDS = TUTORIAL_LEVELS.map((l) => l.id);
 
 let world: World | null = null;
 let state: GameState = 'menu';
+let mode: Mode | null = null;
+let currentDef: LevelDef | null = null;
+let sensorsReady = false;
 let debug = false;
 let revealUntil = 0;
 let maxDist = 1;
@@ -66,8 +81,139 @@ const flash = (text: string, ms = 1800) => {
   messageUntil = performance.now() + ms;
 };
 
-function newGame(): void {
-  const loaded = loadLevel(generateQuickLevel(nextSeed()));
+const fmtTime = (s: number) => `${s.toFixed(1)} s`;
+
+/* --- Interstitial (Intro-/Ergebnis-Karte) -------------------------------- */
+
+interface InterAction {
+  label: string;
+  onClick: () => void;
+}
+
+function showInterstitial(opts: { title: string; text: string; primary?: InterAction; secondary?: InterAction }): void {
+  interTitle.textContent = opts.title;
+  interText.textContent = opts.text;
+  for (const [btn, action] of [
+    [interPrimary, opts.primary],
+    [interSecondary, opts.secondary],
+  ] as const) {
+    if (action) {
+      btn.textContent = action.label;
+      btn.onclick = () => {
+        hideInterstitial();
+        action.onClick();
+      };
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+      btn.onclick = null;
+    }
+  }
+  interstitial.classList.remove('hidden');
+}
+
+function hideInterstitial(): void {
+  interstitial.classList.add('hidden');
+}
+
+// Nach dem Menü-Tap erst kalibrieren: Beim Tippen hält man das Handy steil
+// zum Gesicht – würde diese Lage als Null gelten, wäre die Vor/Zurück-Achse
+// beim flachen Spielen dauerhaft am Anschlag (Ball klebt an der Wand).
+async function calibrationCountdown(): Promise<void> {
+  interPrimary.classList.add('hidden');
+  interSecondary.classList.add('hidden');
+  interTitle.textContent = 'Kalibrierung';
+  interstitial.classList.remove('hidden');
+  for (let i = 3; i > 0; i--) {
+    interText.innerHTML = `Halte das Handy jetzt <b>flach wie ein Tablett</b> –<br>so, wie du spielen willst.<br><br><span style="font-size:34px">${i}</span>`;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  hideInterstitial();
+}
+
+/* --- Menü ----------------------------------------------------------------- */
+
+const presetChips = [...document.querySelectorAll<HTMLButtonElement>('#presetRow .chip')];
+
+function refreshMenu(): void {
+  const { done, total } = profile.tutorialProgress(TUT_IDS.length);
+  $('tutorialProgress').textContent = `(${done}/${total})`;
+  for (const chip of presetChips) {
+    chip.classList.toggle('active', chip.dataset.preset === profile.preset);
+  }
+  const best = profile.bestFor(`quick-${profile.preset}`);
+  $('quickBest').textContent = best !== null ? `Bestzeit (${PRESETS[profile.preset].label}): ${fmtTime(best)}` : '';
+}
+
+for (const chip of presetChips) {
+  chip.addEventListener('click', () => {
+    profile.preset = chip.dataset.preset as Preset;
+    refreshMenu();
+  });
+}
+
+function showMenu(): void {
+  state = 'menu';
+  mode = null;
+  world = null;
+  currentDef = null;
+  audio.setRolling(0);
+  audio.setWind(0, 0, 0);
+  audio.setHoleRumble(0, 0, 0);
+  hideInterstitial();
+  hud.classList.add('hidden');
+  overlay.classList.remove('hidden');
+  refreshMenu();
+}
+
+async function startMode(m: Mode): Promise<void> {
+  mode = m;
+  overlay.classList.add('hidden');
+  hideInstallHint(); // im Spiel nicht im Weg stehen
+  if (!sensorsReady) {
+    await Promise.all([input.start(), audio.start()]);
+    sensorsReady = true;
+    await calibrationCountdown();
+  } else {
+    await audio.start();
+  }
+  hud.classList.remove('hidden');
+  beginLevel();
+}
+
+quickBtn.addEventListener('click', () => void startMode({ kind: 'quick' }));
+tutorialBtn.addEventListener('click', () =>
+  void startMode({ kind: 'tutorial', index: profile.nextTutorialIndex(TUT_IDS) }),
+);
+
+calibrateBtn.addEventListener('click', () => input.calibrate());
+debugBtn.addEventListener('click', () => {
+  debug = !debug;
+});
+homeBtn.addEventListener('click', showMenu);
+
+window.addEventListener('resize', () => renderer.resize());
+
+/* --- Level-Lebenszyklus ---------------------------------------------------- */
+
+function beginLevel(): void {
+  if (!mode) return;
+  const def = mode.kind === 'tutorial' ? TUTORIAL_LEVELS[mode.index]! : generateQuickLevel(nextSeed(), profile.preset);
+  currentDef = def;
+  if (def.intro) {
+    showInterstitial({
+      title: mode.kind === 'tutorial' ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${def.name}` : def.name,
+      text: def.intro,
+      primary: { label: 'Los!', onClick: () => launch(def) },
+      secondary: { label: 'Menü', onClick: showMenu },
+    });
+  } else {
+    launch(def);
+  }
+}
+
+function launch(def: LevelDef): void {
+  const loaded = loadLevel(def);
   world = loaded.world;
   pingMax = loaded.pingBudget;
   pings = pingMax;
@@ -78,11 +224,12 @@ function newGame(): void {
   t0 = performance.now();
   state = 'playing';
   revealUntil = 0;
+  statusEl.textContent = '';
   input.calibrate();
 }
 
 function respawn(): void {
-  if (!world) return;
+  if (!world || state !== 'fell') return;
   const b = world.ball;
   b.x = respawnPoint.x;
   b.y = respawnPoint.y;
@@ -92,43 +239,52 @@ function respawn(): void {
   statusEl.textContent = '';
 }
 
-function bestTime(newSeconds: number): boolean {
-  try {
-    const prev = parseFloat(localStorage.getItem('tiltr.best') ?? '');
-    if (!isFinite(prev) || newSeconds < prev) {
-      localStorage.setItem('tiltr.best', String(newSeconds));
-      return isFinite(prev); // Rekord nur melden, wenn es schon eine Zeit gab
-    }
-  } catch {
-    /* Storage kann fehlen (Private Mode) */
+function onWin(seconds: number): void {
+  if (!mode || !currentDef) return;
+  const def = currentDef;
+  if (mode.kind === 'tutorial') {
+    profile.markTutorialDone(def.id);
+    const isRecord = profile.submitTime(def.id, seconds);
+    const index = TUT_IDS.indexOf(def.id);
+    const hasNext = index + 1 < TUTORIAL_LEVELS.length;
+    const { done, total } = profile.tutorialProgress(TUT_IDS.length);
+    setTimeout(() => {
+      showInterstitial({
+        title: `${def.name} – geschafft! 🎉`,
+        text:
+          `Zeit: ${fmtTime(seconds)}${isRecord ? ' – neue Bestzeit!' : ''}\n` +
+          (hasNext ? `Tutorial: ${done}/${total}` : 'Tutorial abgeschlossen – du bist bereit für die Dunkelheit!'),
+        primary: hasNext
+          ? {
+              label: 'Weiter',
+              onClick: () => {
+                mode = { kind: 'tutorial', index: index + 1 };
+                beginLevel();
+              },
+            }
+          : { label: 'Zum Menü', onClick: showMenu },
+        secondary: hasNext ? { label: 'Menü', onClick: showMenu } : undefined,
+      });
+    }, 1800);
+  } else {
+    const isRecord = profile.submitTime(`quick-${profile.preset}`, seconds);
+    const best = profile.bestFor(`quick-${profile.preset}`);
+    setTimeout(() => {
+      showInterstitial({
+        title: `Ziel in ${fmtTime(seconds)} 🎉`,
+        text: isRecord
+          ? 'Neue Bestzeit!'
+          : best !== null
+            ? `Bestzeit (${PRESETS[profile.preset].label}): ${fmtTime(best)}`
+            : '',
+        primary: { label: '⟳ Nochmal', onClick: beginLevel },
+        secondary: { label: 'Menü', onClick: showMenu },
+      });
+    }, 1800);
   }
-  return false;
 }
 
-// Nach dem Start-Tap erst kalibrieren: Beim Tippen hält man das Handy steil
-// zum Gesicht – würde diese Lage als Null gelten, wäre die Vor/Zurück-Achse
-// beim flachen Spielen dauerhaft am Anschlag (Ball klebt an der Wand).
-startBtn.addEventListener('click', async () => {
-  hideInstallHint(); // im Spiel nicht im Weg stehen
-  await Promise.all([input.start(), audio.start()]);
-  startBtn.classList.add('hidden');
-  $('sensorNote').classList.add('hidden');
-  const text = overlay.querySelector('p')!;
-  for (let i = 3; i > 0; i--) {
-    text.innerHTML = `Halte das Handy jetzt <b>flach wie ein Tablett</b> –<br>so, wie du spielen willst.<br><br><span style="font-size:34px">${i}</span>`;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  overlay.classList.add('hidden');
-  hud.classList.remove('hidden');
-  newGame(); // kalibriert auf die aktuelle, flache Haltung
-});
-
-calibrateBtn.addEventListener('click', () => input.calibrate());
-debugBtn.addEventListener('click', () => {
-  debug = !debug;
-});
-
-window.addEventListener('resize', () => renderer.resize());
+/* --- Atmende Löcher & Echo-Ping -------------------------------------------- */
 
 // Atem-Zyklus der Löcher: öffnen (Rampe) -> offen -> schließen (Rampe) -> zu.
 function updateHoles(nowMs: number): void {
@@ -200,6 +356,8 @@ function zoneProximity(z: WindZone, b: Ball): { dist: number; dx: number; dy: nu
   const dy = inside ? z.fy : cy - b.y;
   return { dist, dx, dy };
 }
+
+/* --- Hauptschleife ---------------------------------------------------------- */
 
 let last = performance.now();
 function frame(now: number): void {
@@ -290,7 +448,7 @@ function frame(now: number): void {
       }
     }
 
-    timerEl.textContent = ((now - t0) / 1000).toFixed(1) + ' s';
+    timerEl.textContent = fmtTime((now - t0) / 1000);
     pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(Math.max(0, pingMax - pings));
 
     const fallen = world.fallenHole();
@@ -311,16 +469,13 @@ function frame(now: number): void {
       audio.setHoleRumble(0, 0, 0);
       audio.win();
       haptics.win();
-      statusEl.textContent = `Ziel in ${seconds.toFixed(1)} s! 🎉${bestTime(seconds) ? ' Neue Bestzeit!' : ''}`;
-      setTimeout(() => {
-        statusEl.textContent = '';
-        newGame();
-      }, 4000);
+      statusEl.textContent = `Ziel in ${fmtTime(seconds)} 🎉`;
+      onWin(seconds);
     } else if (messageUntil > now) {
       statusEl.textContent = message;
     } else {
-      const mode = input.hasSensor ? 'Neigung' : 'Tasten (WASD/Pfeile)';
-      statusEl.textContent = debug ? `Debug · ${mode} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)}` : '';
+      const modeLabel = input.hasSensor ? 'Neigung' : 'Tasten (WASD/Pfeile)';
+      statusEl.textContent = debug ? `Debug · ${modeLabel} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)}` : '';
     }
   }
 
@@ -332,4 +487,6 @@ function frame(now: number): void {
     y: world.ball.y,
   };
 }
+
+refreshMenu();
 requestAnimationFrame(frame);

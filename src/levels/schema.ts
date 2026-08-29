@@ -61,7 +61,9 @@ export const floorSchema = z.object({
     carve: z.array(wallEdge).default([]),
     /** Wände nachträglich schließen */
     add: z.array(wallEdge).default([]),
-    /** Anteil brüchiger Innenwände (0 = keine) */
+    /** Gezielt brüchige Wandkanten (müssen existieren) */
+    brittle: z.array(wallEdge).default([]),
+    /** Anteil zufällig brüchiger Innenwände (0 = keine) */
     brittleChance: z.number().min(0).max(1).default(0),
     /** Treffer bis zum Einsturz */
     brittleHits: z.number().int().min(1).default(3),
@@ -76,6 +78,8 @@ export type FloorDef = z.infer<typeof floorSchema>;
 export const levelSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  /** Kurzer Text vor Levelstart (Tutorial, Kampagne) */
+  intro: z.string().optional(),
   parTimeS: z.number().positive().optional(),
   /** Echo-Pings zu Rundenbeginn */
   pingBudget: z.number().int().min(0).default(3),

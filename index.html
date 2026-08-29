@@ -63,6 +63,36 @@
     }
     #overlay p { max-width: 420px; line-height: 1.5; font-size: var(--fs-body); opacity: 0.85; }
     #sensorNote { font-size: var(--fs-small); opacity: 0.55; }
+    #menuButtons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    #presetRow { display: flex; gap: var(--space-2); }
+    .menu-meta { font-size: var(--fs-small); opacity: 0.55; min-height: 1.2em; }
+    #interstitial {
+      position: fixed; inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 7, 15, 0.72);
+      padding: var(--space-5);
+      z-index: var(--z-overlay);
+    }
+    .inter-card {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      padding: var(--space-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      background: var(--bg-raised);
+    }
+    .inter-card h2 { font-size: var(--fs-h2); }
+    .inter-card p { font-size: var(--fs-body); line-height: 1.55; opacity: 0.9; }
+    .inter-buttons { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-2); }
     #version { font-size: var(--fs-caption); opacity: 0.4; }
     #galleryLink { color: var(--accent-2); font-size: var(--fs-body-s); opacity: 0.8; }
 
@@ -115,6 +145,7 @@
     <span>
       <button id="calibrateBtn" class="btn btn-ghost" title="Neigung neu kalibrieren">⌖</button>
       <button id="debugBtn" class="btn btn-ghost" title="Debug-Ansicht (Labyrinth zeigen)">👁</button>
+      <button id="homeBtn" class="btn btn-ghost" title="Zurück zum Menü">🏠</button>
     </span>
   </div>
 
@@ -122,17 +153,34 @@
     <h1>tiltr</h1>
     <p>
       Ein Ball. Ein unsichtbares Labyrinth.<br>
-      Neige dein Handy, um den Ball zu rollen. Höre auf das Echo der Wände,
-      spüre die Kollisionen, folge dem Ping des Ziels.<br>
-      Tippe aufs Display für einen <b>Echo-Ping</b> – dein Vorrat ist knapp.<br>
-      Und wenn dein Herz schneller schlägt: Ein Loch atmet in deiner Nähe.<br>
+      Klang, Vibration und Licht zeigen dir den Weg.<br>
       <b>Am besten mit Kopfhörern.</b>
     </p>
-    <button id="startBtn" class="btn btn-primary btn-lg">Spiel starten</button>
+    <div id="menuButtons">
+      <button id="quickBtn" class="btn btn-primary btn-lg">⚡ Schnelles Spiel</button>
+      <div id="presetRow">
+        <button class="btn chip" data-preset="easy">Leicht</button>
+        <button class="btn chip" data-preset="normal">Mittel</button>
+        <button class="btn chip" data-preset="hard">Schwer</button>
+      </div>
+      <p id="quickBest" class="menu-meta"></p>
+      <button id="tutorialBtn" class="btn btn-ghost">🎓 Tutorial <span id="tutorialProgress"></span></button>
+    </div>
     <p id="sensorNote">Beim Start werden Bewegungssensoren &amp; Audio aktiviert.<br>
        Desktop-Fallback: Pfeiltasten / WASD, Leertaste = Ping.</p>
     <a id="galleryLink" href="#gallery">🧩 Element-Galerie</a>
     <p id="version"></p>
+  </div>
+
+  <div id="interstitial" class="hidden">
+    <div class="panel inter-card">
+      <h2 id="interTitle"></h2>
+      <p id="interText"></p>
+      <div class="inter-buttons">
+        <button id="interSecondary" class="btn btn-ghost hidden"></button>
+        <button id="interPrimary" class="btn btn-primary hidden"></button>
+      </div>
+    </div>
   </div>
 
   <div id="gallery" class="hidden">

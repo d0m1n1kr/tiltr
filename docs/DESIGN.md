@@ -99,7 +99,9 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.btn-ghost` | Sekundär/neutral (dunkle Fläche, feiner Rand): HUD, Schließen, Dismiss |
 | `.btn-soft` | Leise Inline-Aktion in Karten (Teal-Outline), z. B. „Anhören" |
 | `.btn-lg` | Hero-Variante des Primary (größer, Glow) |
+| `.chip` (+ `.active`) | Auswahl-Pill in einer Gruppe (z. B. Schwierigkeits-Preset); aktiv = Teal-Outline |
 | `.panel` | Karte/Fläche: subtiler Rand, Radius L |
+| `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
 | `.hidden` | Einziges Sichtbarkeits-Utility (`display:none !important`) |
 

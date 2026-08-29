@@ -68,13 +68,22 @@ export function setWall(
   if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) cells[idx(nx, ny)]![opp] = present;
 }
 
-// Lösungsweg von (0,0) nach (cols-1, rows-1) per BFS – für Checkpoint-Platzierung.
-export function solveMaze(cells: Cell[], cols: number, rows: number): Array<{ x: number; y: number }> {
+// Lösungsweg per BFS (Default: (0,0) -> (cols-1, rows-1)).
+// Liefert [] wenn das Ziel unerreichbar ist.
+export function solveMaze(
+  cells: Cell[],
+  cols: number,
+  rows: number,
+  start: { x: number; y: number } = { x: 0, y: 0 },
+  goal: { x: number; y: number } = { x: cols - 1, y: rows - 1 },
+): Array<{ x: number; y: number }> {
   const idx = (x: number, y: number) => y * cols + x;
+  const startIdx = idx(start.x, start.y);
+  const goalIdx = idx(goal.x, goal.y);
   const prev = new Array<number>(cols * rows).fill(-1);
   const seen = new Array<boolean>(cols * rows).fill(false);
-  const queue = [0];
-  seen[0] = true;
+  const queue = [startIdx];
+  seen[startIdx] = true;
   while (queue.length) {
     const c = queue.shift()!;
     const x = c % cols,
@@ -93,8 +102,9 @@ export function solveMaze(cells: Cell[], cols: number, rows: number): Array<{ x:
       }
     }
   }
+  if (!seen[goalIdx]) return [];
   const path: Array<{ x: number; y: number }> = [];
-  let c = cols * rows - 1;
+  let c = goalIdx;
   while (c !== -1) {
     path.push({ x: c % cols, y: Math.floor(c / cols) });
     c = prev[c]!;
