@@ -67,7 +67,7 @@ describe('Kampagne', () => {
       const openDoors = new Set<string>();
 
       const reachFloor0 = (): Set<string> => {
-        const cells = buildFloorCells(floor0, { brittleOpen: true, doorsOpen: false });
+        const cells = buildFloorCells(floor0, { brittleOpen: true, doorsOpen: false }, def.mirror);
         for (const el of floor0.elements) {
           if (el.type === 'door' && openDoors.has(el.id)) {
             setWall(cells, cols, rows, el.edge[0][0], el.edge[0][1], el.edge[1], false);
@@ -116,7 +116,7 @@ describe('Kampagne', () => {
   it('Wächter-Patrouillen verlaufen achsenparallel durch offene Gänge', () => {
     for (const def of CAMPAIGN_LEVELS) {
       def.floors.forEach((floor, fl) => {
-        const cells = buildFloorCells(floor, { brittleOpen: false, doorsOpen: false });
+        const cells = buildFloorCells(floor, { brittleOpen: false, doorsOpen: false }, def.mirror);
         const cols = floor.size[0];
         for (const el of floor.elements) {
           if (el.type !== 'guard') continue;

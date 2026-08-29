@@ -34,7 +34,11 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 - `src/levels/` – Levelformat (zod), Loader, Tutorial-/Kampagnen-Level,
   Quick-Generator. Jedes neue Level braucht einen Lösbarkeits-Test
   (siehe tests/campaign.test.ts – inkl. Tür-Semantik: Schlüssel vor der
-  Tür erreichbar).
+  Tür erreichbar). Handgebaute Level werden per `mirrorLevel`
+  (src/levels/mirror.ts) gespiegelt, damit Starts/Ziele nicht alle oben
+  links/unten rechts liegen – Achse passend zu Richtungsbezügen im
+  Intro-Text wählen ('x' erhält oben/unten, 'y' links/rechts);
+  tests/mirror.test.ts erzwingt die Ecken-Verteilung.
 - Audio ist das Leitmedium: Jedes Element hat eine eindeutige, räumlich
   ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound.
 

@@ -1,7 +1,7 @@
 // Gemeinsame Test-Helfer: Zellen wie im Loader aufbauen und Erreichbarkeit
 // über (Ebene, Zelle) prüfen – Transporter sind GERICHTETE Kanten.
 
-import { generateMaze, setWall, type Cell } from '../src/core/maze';
+import { generateMaze, mirrorCells, setWall, type Cell } from '../src/core/maze';
 import { mulberry32 } from '../src/core/rng';
 import type { FloorDef, LevelDef } from '../src/levels/schema';
 
@@ -12,9 +12,11 @@ export interface CellConfig {
   openDoorIds?: Set<string>;
 }
 
-export function buildFloorCells(floor: FloorDef, cfg: CellConfig): Cell[] {
+export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: LevelDef['mirror']): Cell[] {
   const [cols, rows] = floor.size;
-  const cells = generateMaze(cols, rows, mulberry32(floor.maze.seed));
+  let cells = generateMaze(cols, rows, mulberry32(floor.maze.seed));
+  // Wie der Loader: Rauschen spiegeln, Def-Koordinaten sind schon gespiegelt.
+  if (mirror) cells = mirrorCells(cells, cols, rows, mirror);
   for (const [[x, y], dir] of floor.maze.carve) setWall(cells, cols, rows, x, y, dir, false);
   for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
   if (cfg.brittleOpen) {
@@ -31,7 +33,7 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig): Cell[] {
 
 export function reachable(def: LevelDef, cfg: CellConfig): Set<string> {
   const floors = def.floors.map((f) => ({
-    cells: buildFloorCells(f, cfg),
+    cells: buildFloorCells(f, cfg, def.mirror),
     cols: f.size[0],
     rows: f.size[1],
     jumps: f.elements

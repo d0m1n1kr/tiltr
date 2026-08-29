@@ -68,6 +68,27 @@ export function setWall(
   if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) cells[idx(nx, ny)]![opp] = present;
 }
 
+// Spiegelt das Zellgitter (x = horizontal, y = vertikal, xy = beides).
+// Zusammen mit gespiegelten Def-Koordinaten (src/levels/mirror.ts) entsteht
+// ein exaktes Spiegelbild eines Levels – alle Invarianten bleiben erhalten.
+export function mirrorCells(cells: Cell[], cols: number, rows: number, axis: 'x' | 'y' | 'xy'): Cell[] {
+  const fx = axis.includes('x');
+  const fy = axis.includes('y');
+  const out: Cell[] = new Array(cols * rows);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const src = cells[(fy ? rows - 1 - y : y) * cols + (fx ? cols - 1 - x : x)]!;
+      out[y * cols + x] = {
+        n: fy ? src.s : src.n,
+        s: fy ? src.n : src.s,
+        e: fx ? src.w : src.e,
+        w: fx ? src.e : src.w,
+      };
+    }
+  }
+  return out;
+}
+
 // Lösungsweg per BFS (Default: (0,0) -> (cols-1, rows-1)).
 // Liefert [] wenn das Ziel unerreichbar ist.
 export function solveMaze(

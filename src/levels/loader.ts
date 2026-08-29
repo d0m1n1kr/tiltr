@@ -3,7 +3,7 @@
 // Kennt Elemente nur über die Registry.
 
 import { CELL, WALL_T, BALL_R } from '../core/constants';
-import { generateMaze, mazeToWalls, setWall } from '../core/maze';
+import { generateMaze, mazeToWalls, mirrorCells, setWall } from '../core/maze';
 import { Ball, World } from '../core/physics';
 import { mulberry32 } from '../core/rng';
 import { buildElements } from '../elements';
@@ -41,7 +41,10 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
     const [cols, rows] = floor.size;
     const rng = mulberry32(floor.maze.seed);
 
-    const cells = generateMaze(cols, rows, rng);
+    // mirror: Def-Koordinaten sind bereits gespiegelt (mirrorLevel), hier
+    // wird das Maze-Rauschen nachgezogen -> exaktes Spiegelbild des Designs.
+    let cells = generateMaze(cols, rows, rng);
+    if (def.mirror) cells = mirrorCells(cells, cols, rows, def.mirror);
     for (const [[x, y], dir] of floor.maze.carve) setWall(cells, cols, rows, x, y, dir, false);
     for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
     const walls = mazeToWalls(cells, cols, rows, CELL, WALL_T);

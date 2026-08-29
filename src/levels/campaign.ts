@@ -9,6 +9,7 @@
 
 import type { LevelDef } from './schema';
 import { parseLevel } from './schema';
+import { mirrorLevel, type MirrorAxis } from './mirror';
 
 type Dir = 'n' | 'e' | 's' | 'w';
 type Edge = [[number, number], Dir];
@@ -475,9 +476,36 @@ const defs2: unknown[] = [
   },
 ];
 
+// Spiegelachsen pro Level, damit Start/Ziel nicht immer oben links/unten
+// rechts liegen. Achse passend zum Intro-Text gewählt: 'x' erhält oben/unten,
+// 'y' erhält links/rechts ("im oberen Gang" bleibt bei 'x' oben). w1-01
+// bleibt ungespiegelt (Text beschreibt links/unten/rechts wörtlich).
+const MIRRORS: Record<string, MirrorAxis> = {
+  'w1-02': 'x',
+  'w1-03': 'x',
+  'w1-04': 'xy',
+  'w1-05': 'y',
+  'w1-06': 'x',
+  'w1-07': 'x',
+  'w1-08': 'y',
+  'w1-09': 'x',
+  'w1-10': 'y',
+  'w2-01': 'y',
+  'w2-02': 'x',
+  'w2-03': 'xy',
+  'w2-04': 'xy',
+  'w2-05': 'x',
+};
+
+const build = (d: unknown): LevelDef => {
+  const def = parseLevel(d);
+  const axis = MIRRORS[def.id];
+  return axis ? mirrorLevel(def, axis) : def;
+};
+
 export const WORLDS: Array<{ name: string; levels: LevelDef[] }> = [
-  { name: 'Welt 1 – Die Tiefe erwacht', levels: defs.map(parseLevel) },
-  { name: 'Welt 2 – Zwischen den Ebenen', levels: defs2.map(parseLevel) },
+  { name: 'Welt 1 – Die Tiefe erwacht', levels: defs.map(build) },
+  { name: 'Welt 2 – Zwischen den Ebenen', levels: defs2.map(build) },
 ];
 
 export const CAMPAIGN_LEVELS: LevelDef[] = WORLDS.flatMap((w) => w.levels);

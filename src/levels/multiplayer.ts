@@ -7,6 +7,7 @@
 
 import type { LevelDef } from './schema';
 import { parseLevel } from './schema';
+import { mirrorLevel, type MirrorAxis } from './mirror';
 
 type Dir = 'n' | 'e' | 's' | 'w';
 type Edge = [[number, number], Dir];
@@ -283,5 +284,26 @@ const raceDefs: unknown[] = [
   },
 ];
 
-export const COOP_LEVELS: LevelDef[] = coopDefs.map(parseLevel);
-export const RACE_LEVELS: LevelDef[] = raceDefs.map(parseLevel);
+// Spiegelachsen: Startecken variieren (coop-01 bleibt ungespiegelt – das
+// Einstiegslevel, auf dessen Choreografie auch der Multiplayer-E2E fußt).
+// 'x' erhält oben/unten in den Intro-Texten ("ganz oben am Start").
+const MIRRORS: Record<string, MirrorAxis> = {
+  'coop-02': 'y',
+  'coop-03': 'x',
+  'coop-04': 'xy',
+  'coop-05': 'x',
+  'race-01': 'y',
+  'race-02': 'xy',
+  'race-03': 'y',
+  'race-04': 'x',
+  'race-05': 'xy',
+};
+
+const build = (d: unknown): LevelDef => {
+  const def = parseLevel(d);
+  const axis = MIRRORS[def.id];
+  return axis ? mirrorLevel(def, axis) : def;
+};
+
+export const COOP_LEVELS: LevelDef[] = coopDefs.map(build);
+export const RACE_LEVELS: LevelDef[] = raceDefs.map(build);

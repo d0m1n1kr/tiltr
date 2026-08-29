@@ -147,6 +147,13 @@ export const levelSchema = z.object({
   pingBudget: z.number().int().min(0).default(3),
   /** Ebene 0 ist die Start-Ebene; höherer Index = tiefer. */
   floors: z.array(floorSchema).min(1).max(4),
+  /**
+   * Gesetzt von mirrorLevel (src/levels/mirror.ts): Alle Def-Koordinaten
+   * sind bereits gespiegelt; Loader/Test-Helfer spiegeln zusätzlich das
+   * generierte Maze-Rauschen (mirrorCells) – zusammen ein exaktes
+   * Spiegelbild des Original-Designs. NICHT von Hand setzen.
+   */
+  mirror: z.enum(['x', 'y', 'xy']).optional(),
 });
 export type LevelDef = z.infer<typeof levelSchema>;
 
