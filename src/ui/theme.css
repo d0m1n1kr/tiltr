@@ -89,6 +89,7 @@
   background: none;
   transition: transform var(--t-tap) ease-out;
   cursor: pointer;
+  white-space: nowrap; /* Button-Beschriftungen brechen nie um */
 }
 .btn:active {
   transform: scale(0.97);
@@ -174,8 +175,8 @@
 }
 .mode-item .mode-icon { font-size: 22px; flex-shrink: 0; }
 .mode-item .mode-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.mode-item .mode-title { font-size: var(--fs-body); font-weight: 600; }
-.mode-item .mode-sub { font-size: var(--fs-small); opacity: 0.6; }
+.mode-item .mode-title { font-size: var(--fs-body); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mode-item .mode-sub { font-size: var(--fs-small); opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode-item .mode-meta { font-size: var(--fs-small); opacity: 0.8; color: var(--warning); white-space: nowrap; }
 /* Empfehlung für Neue (Tutorial noch offen): Teal-Rand wie .chip.active */
 .mode-item.suggest { border: 1px solid rgba(75, 224, 200, 0.4); }

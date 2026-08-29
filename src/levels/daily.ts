@@ -104,8 +104,9 @@ export function generateDailyLevel(date: string): LevelDef {
   const gemsPer = deal(p.gems);
   const guardsPer = deal(p.guards);
 
-  // Landepunkte der Transporter-Kette vorab würfeln (Ebene k -> k+1).
-  const landings: Array<[number, number]> = [[0, 0]];
+  // Landepunkte der Transporter-Kette vorab würfeln (Ebene k -> k+1);
+  // auch der Start auf Ebene 1 ist zufällig, nicht immer oben links.
+  const landings: Array<[number, number]> = [pickCell(rng, cols, rows, new Set())];
   for (let f = 1; f < p.floors; f++) {
     const forbidden = new Set<number>();
     landings.push(pickCell(rng, cols, rows, forbidden));
@@ -123,8 +124,13 @@ export function generateDailyLevel(date: string): LevelDef {
     // Ankunft auf einer tieferen Ebene ist automatisch ein Checkpoint.
     if (f > 0) elements.push({ type: 'checkpoint', cell: landing, r: 30 });
 
-    // Ausgang: Transporter hinab bzw. Ziel auf der letzten Ebene.
-    const exit = pickCell(rng, cols, rows, forbidden);
+    // Ausgang: Transporter hinab bzw. Ziel auf der letzten Ebene – mit
+    // Mindestabstand zur Ankunft, damit die Ebene wirklich bespielt wird.
+    let exit = pickCell(rng, cols, rows, forbidden);
+    for (let i = 0; i < 40; i++) {
+      if (Math.abs(exit[0] - landing[0]) + Math.abs(exit[1] - landing[1]) >= Math.max(cols, rows) - 1) break;
+      exit = pickCell(rng, cols, rows, forbidden);
+    }
     if (!isLast) {
       elements.push({ type: 'transporter', cell: exit, target: { floor: f + 1, cell: landings[f + 1]! }, r: 32 });
     }

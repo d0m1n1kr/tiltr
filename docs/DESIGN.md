@@ -30,7 +30,8 @@ benutzt **Tokens und Komponenten-Klassen, keine Magic Values**:
 | Token | Wert | Verwendung |
 |---|---|---|
 | `--bg-deep` | `#05070f` | Spielfeld-Hintergrund (Canvas) |
-| `--bg` | `#0b1020` | App-/Body-Hintergrund, Vollflächen-Screens |
+| `--bg` | `#0b1020` | Vollflächen-Screens (Panels, Menü-Verlauf) |
+| Body-Grundton | `--bg-deep` | html/body und `#game`: Falls die Plattform (installierte PWA, Rotation) einen Streifen neben dem Canvas zeigt, ist er dunkel wie das Spielfeld |
 | `--bg-raised` | `#101a33` | Verlaufsmitte des Start-Overlays |
 | `--bg-panel` | `#16223f` | Banner/Toasts |
 | Panels/Karten | `rgba(255,255,255,0.04)` + `--border-subtle` | `.panel` |

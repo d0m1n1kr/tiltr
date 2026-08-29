@@ -36,7 +36,15 @@ export class Renderer {
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
     this.resize();
+    // window.resize allein reicht nicht: Bei Rotation (und beim Einrichten des
+    // Viewports in der installierten PWA) feuert es teils BEVOR das Layout
+    // steht – das Backing behielte die alte Größe und alles wäre verzerrt.
+    // Der ResizeObserver meldet das echte Element-Rect nach dem Layout.
     window.addEventListener('resize', () => this.resize());
+    window.visualViewport?.addEventListener('resize', () => this.resize());
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => this.resize()).observe(this.canvas);
+    }
   }
 
   resize(): void {
@@ -45,9 +53,14 @@ export class Renderer {
     // Layout-Viewport – auch in der installierten PWA der ganze Bildschirm,
     // wo innerHeight/100vh je nach Plattform danebenliegen können.
     const rect = this.canvas.getBoundingClientRect();
-    this.canvas.width = Math.round(rect.width * dpr);
-    this.canvas.height = Math.round(rect.height * dpr);
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
+    if (w <= 0 || h <= 0) return;
+    if (w === this.canvas.width && h === this.canvas.height && dpr === this.dpr) return;
+    this.canvas.width = w;
+    this.canvas.height = h;
     this.dpr = dpr;
+    // Folge-Kamera zentriert sich über follow() im nächsten Frame neu.
     if (this.worldW) this.computeScale();
   }
 

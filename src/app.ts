@@ -325,6 +325,15 @@ calibrateBtn.addEventListener('click', () => input.calibrate());
 debugBtn.addEventListener('click', () => {
   debug = !debug;
 });
+
+// Debug-Ansicht ist versteckt: 5 Taps auf die Versionsnummer schalten sie frei.
+let versionTaps = 0;
+$('version').addEventListener('click', () => {
+  if (!debugBtn.classList.contains('hidden')) return;
+  if (++versionTaps < 5) return;
+  debugBtn.classList.remove('hidden');
+  $('version').textContent += ' · 🔧';
+});
 homeBtn.addEventListener('click', showMenu);
 
 window.addEventListener('resize', () => renderer.resize());

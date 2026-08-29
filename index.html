@@ -17,7 +17,10 @@
     html, body {
       height: 100%;
       overflow: hidden;
-      background: var(--bg, #0b1020);
+      /* Spielfeld-Ton als Grundfarbe: Falls die Plattform (installierte PWA,
+         Rotation, Overscroll) irgendwo einen Streifen neben dem Canvas zeigt,
+         ist er dunkel wie das Spielfeld – Screens bringen ihr eigenes --bg mit. */
+      background: var(--bg-deep, #05070f);
       color: var(--text, #cfd8ea);
       font-family: var(--font, system-ui, sans-serif);
       touch-action: pan-x pan-y;
@@ -28,7 +31,7 @@
     }
     /* width/height nötig: Canvas ist ein replaced element und streckt sich
        mit inset:0 allein NICHT; 100% bemisst sich bei fixed am Layout-Viewport. */
-    #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: var(--bg-deep, #05070f); }
 
     #hud {
       position: fixed;
@@ -43,6 +46,9 @@
       opacity: 0.8;
     }
     #hud .btn { pointer-events: auto; margin-left: var(--space-2); }
+    /* Status links darf gekürzt werden, die Buttons rechts brechen nie um. */
+    #hud > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #hud > span:last-child { flex-shrink: 0; white-space: nowrap; }
     #floor { color: var(--accent-2); }
     #pings { color: var(--accent); }
     #gems { color: var(--warning); }
@@ -282,7 +288,7 @@
     <span><b id="timer"></b> <span id="floor"></span> <span id="pings"></span> <span id="gems"></span> <span id="status"></span></span>
     <span>
       <button id="calibrateBtn" class="btn btn-ghost" data-i18n-title="hud.calibrate">⌖</button>
-      <button id="debugBtn" class="btn btn-ghost" data-i18n-title="hud.debug">👁</button>
+      <button id="debugBtn" class="btn btn-ghost hidden" data-i18n-title="hud.debug">👁</button>
       <button id="homeBtn" class="btn btn-ghost" data-i18n-title="hud.home">🏠</button>
     </span>
   </div>

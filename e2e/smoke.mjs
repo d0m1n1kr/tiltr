@@ -43,7 +43,7 @@ const check = (name, cond) => {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?seed=42&nosplash`);
+  await page.goto(`${BASE}/?seed=28&nosplash`);
 
   const version = (await page.textContent('#version')).trim();
   check(`Version auf Startscreen ("${version}")`, /^v\d+\.\d+\.\d+/.test(version));
@@ -65,11 +65,12 @@ const check = (name, cond) => {
   const pingsAfter = (await page.textContent('#pings')).trim();
   check(`Echo-Ping verbraucht ("${pingsBefore}" -> "${pingsAfter}")`, pingsBefore !== pingsAfter);
 
+  const p0 = await page.evaluate(() => window.__tiltrBall);
   await page.keyboard.down('ArrowRight');
   await page.waitForTimeout(600);
   await page.keyboard.up('ArrowRight');
   const pos = await page.evaluate(() => window.__tiltrBall);
-  check(`Ball rollt per Tastatur (x=${pos.x.toFixed(0)})`, pos.x > 70);
+  check(`Ball rollt per Tastatur (dx=${(pos.x - p0.x).toFixed(0)})`, pos.x > p0.x + 40);
   await page.close();
 }
 
@@ -77,7 +78,7 @@ const check = (name, cond) => {
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${BASE}/?seed=42&nosplash`);
+  await page.goto(`${BASE}/?seed=28&nosplash`);
   const fire = (beta, gamma) =>
     page.evaluate(([b, g]) => {
       window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: b, gamma: g }));
@@ -89,6 +90,7 @@ const check = (name, cond) => {
   await fire(20, 0); // während des Countdowns flach hinlegen
   await page.waitForTimeout(2300); // Countdown endet -> Kalibrierung auf beta=20
 
+  const p0 = await page.evaluate(() => window.__tiltrBall);
   await fire(32, 0); // +12° nach vorn -> Ball rollt nach unten
   await page.waitForTimeout(700);
   const p1 = await page.evaluate(() => window.__tiltrBall);
@@ -96,8 +98,19 @@ const check = (name, cond) => {
   await page.waitForTimeout(700);
   const p2 = await page.evaluate(() => window.__tiltrBall);
 
-  check(`Vertikal gerollt (y=${p1.y.toFixed(0)})`, p1.y > 60);
-  check(`Horizontal gerollt (x=${p2.x.toFixed(0)})`, p2.x > p1.x + 10);
+  check(`Vertikal gerollt (dy=${(p1.y - p0.y).toFixed(0)})`, p1.y > p0.y + 40);
+  check(`Horizontal gerollt (dx=${(p2.x - p1.x).toFixed(0)})`, p2.x > p1.x + 10);
+
+  // Rotation mitten im Spiel: das Canvas-Backing muss dem neuen Element-Rect
+  // folgen (sonst ist alles verzerrt) – der ResizeObserver sichert das ab.
+  await page.setViewportSize({ width: 800, height: 400 });
+  await page.waitForTimeout(400);
+  const m = await page.evaluate(() => {
+    const c = document.getElementById('game');
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    return { w: c.width, h: c.height, ew: Math.round(c.clientWidth * dpr), eh: Math.round(c.clientHeight * dpr) };
+  });
+  check(`Rotation: Canvas folgt dem Viewport (${m.w}x${m.h} = ${m.ew}x${m.eh})`, m.w === m.ew && m.h === m.eh && m.w > m.h);
   await page.close();
 }
 
@@ -483,6 +496,16 @@ const check = (name, cond) => {
   );
   await page.waitForTimeout(3400); // Auto-Fade nach ~2,6 s + Ausblenden
   check('Splash verschwindet von selbst', (await page.locator('#splash').count()) === 0);
+
+  // Debug-Ansicht ist versteckt und wird mit 5 Taps auf die Version freigeschaltet.
+  const debugHidden = (await page.locator('#debugBtn').getAttribute('class')).includes('hidden');
+  for (let i = 0; i < 5; i++) await page.click('#version');
+  const debugShown = !(await page.locator('#debugBtn').getAttribute('class')).includes('hidden');
+  check('Debug-Knopf erst nach 5 Version-Taps', debugHidden && debugShown);
+
+  // Grundton = Spielfeld-Ton: kein heller Streifen neben dem Canvas möglich.
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check(`Body-Grundton ist bg-deep (${bg})`, bg === 'rgb(5, 7, 15)');
   await page.close();
 }
 

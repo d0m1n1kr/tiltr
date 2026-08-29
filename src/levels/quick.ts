@@ -80,15 +80,30 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
   const mazeSeed = Math.floor(rng() * 0x7fffffff);
   const breathPeriod = p.breath.open + p.breath.closed + 2 * p.breath.ramp;
 
+  // Start & Ziel zufällig (seeded) statt immer oben links -> unten rechts;
+  // Mindestabstand (Manhattan) hält die Strecke lang, Fallback: Ecken.
+  const minDist = Math.max(cols, rows);
+  let start: [number, number] = [0, 0];
+  let goal: [number, number] = [cols - 1, rows - 1];
+  for (let i = 0; i < 80; i++) {
+    const s: [number, number] = [Math.floor(rng() * cols), Math.floor(rng() * rows)];
+    const g: [number, number] = [Math.floor(rng() * cols), Math.floor(rng() * rows)];
+    if (Math.abs(s[0] - g[0]) + Math.abs(s[1] - g[1]) >= minDist) {
+      start = s;
+      goal = g;
+      break;
+    }
+  }
+
   // Dasselbe Maze wie im Loader erzeugen, um Checkpoints auf den Lösungsweg zu legen.
   const cells = generateMaze(cols, rows, mulberry32(mazeSeed));
-  const path = solveMaze(cells, cols, rows);
+  const path = solveMaze(cells, cols, rows, { x: start[0], y: start[1] }, { x: goal[0], y: goal[1] });
   const cpCells: Array<[number, number]> = [
     [path[Math.floor(path.length / 3)]!.x, path[Math.floor(path.length / 3)]!.y],
     [path[Math.floor((2 * path.length) / 3)]!.x, path[Math.floor((2 * path.length) / 3)]!.y],
   ];
 
-  const forbidden = new Set<number>([0, (rows - 1) * cols + (cols - 1)]);
+  const forbidden = new Set<number>([start[1] * cols + start[0], goal[1] * cols + goal[0]]);
   for (const [x, y] of cpCells) forbidden.add(y * cols + x);
 
   const elements: ElementDef[] = cpCells.map((cell) => ({ type: 'checkpoint', cell, r: 30 }));
@@ -116,8 +131,8 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
         size: [cols, rows],
         maze: { seed: mazeSeed, carve: [], add: [], brittle: [], brittleChance: p.brittleChance, brittleHits: 3 },
         elements,
-        start: [0, 0],
-        goal: [cols - 1, rows - 1],
+        start,
+        goal,
       },
     ],
   };
