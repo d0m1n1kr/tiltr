@@ -8,8 +8,9 @@ export interface Wall {
   /** Rest-Treffer einer brüchigen Wand; undefined = massiv */
   hp?: number;
   cracked?: boolean;
-  /** Verschlossene Tür – verschwindet, wenn der passende Schlüssel gesammelt wird */
-  door?: { id: string };
+  /** Verschlossene Tür. Schlüssel entfernen sie dauerhaft; Coop-Türen
+   *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird. */
+  door?: { id: string; open?: boolean };
   /** Aufleuchten frühestens ab (ms, performance.now-Zeitbasis) – Ping-Wellenfront */
   litFrom?: number;
   /** Aufleuchten bis (ms) */
@@ -96,6 +97,18 @@ export interface Collectible {
 export interface Key extends Collectible {
   /** Tür-ID, die dieser Schlüssel öffnet */
   opens: string;
+}
+
+export interface Plate {
+  x: number;
+  y: number;
+  r: number;
+  /** Tür-ID, die diese Druckplatte (solange gehalten) öffnet */
+  opens: string;
+  /** wird gerade von einem Spieler gehalten (lokal ODER remote) */
+  held: boolean;
+  litFrom?: number;
+  litUntil?: number;
 }
 
 export interface Transporter {

@@ -357,6 +357,116 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 9: Multiplayer Coop – zwei Tabs über den LocalTransport
+// (BroadcastChannel, Raumcode "TEST…"): Host + QR/Code, Beitritt, Bereit-Flow,
+// Druckplatte öffnet die Tür des Partners, beide im Ziel, Rematch, Disconnect. ---
+{
+  const ctx = await browser.newContext({ viewport: { width: 400, height: 800 } });
+  const pageA = await ctx.newPage(); // Host
+  const pageB = await ctx.newPage(); // Gast
+  for (const p of [pageA, pageB]) {
+    p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+    p.on('pageerror', (e) => errors.push(String(e)));
+  }
+
+  await pageA.goto(`${BASE}/?mpcode=TESTE2E`);
+  await pageA.click('#mpBtn');
+  const coopCount = await pageA.locator('#mpLevelList .level-item').count();
+  await pageA.click('[data-mpmode="race"]');
+  const raceCount = await pageA.locator('#mpLevelList .level-item').count();
+  await pageA.click('[data-mpmode="coop"]');
+  check(`MP-Panel: 5 Coop- und 5 Race-Level (${coopCount}/${raceCount})`, coopCount === 5 && raceCount === 5);
+
+  await pageA.locator('#mpLevelList .level-item').first().click(); // coop-01 Schleuse
+  await pageA.waitForTimeout(300);
+  const qrHtml = await pageA.innerHTML('#mpQr');
+  const codeShown = (await pageA.textContent('#mpCode')).trim();
+  check(`Lobby zeigt QR-Code + Raumcode ("${codeShown}")`, qrHtml.includes('<svg') && codeShown === 'TESTE2E');
+
+  await pageB.goto(`${BASE}/`);
+  await pageB.click('#mpBtn');
+  await pageB.fill('#mpCodeInput', 'TESTE2E');
+  await pageB.click('#mpJoinBtn');
+  await pageB.waitForTimeout(600);
+
+  const introA = (await pageA.textContent('#interTitle')).trim();
+  const introB = (await pageB.textContent('#interTitle')).trim();
+  check(`Beide sehen das Coop-Intro ("${introA}")`, introA.includes('Schleuse') && introB.includes('Schleuse'));
+
+  await pageA.click('#interPrimary'); // Bereit!
+  await pageB.click('#interPrimary');
+  await pageA.waitForTimeout(4200); // Kalibrier-Countdown beider Seiten
+
+  const hudA = !(await pageA.locator('#hud').getAttribute('class')).includes('hidden');
+  const hudB = !(await pageB.locator('#hud').getAttribute('class')).includes('hidden');
+  const overlayA = (await pageA.locator('#overlay').getAttribute('class')).includes('hidden');
+  const overlayB = (await pageB.locator('#overlay').getAttribute('class')).includes('hidden');
+  check('Coop startet auf beiden Seiten (HUD sichtbar, Menü zu)', hudA && hudB && overlayA && overlayB);
+
+  // A rollt nach rechts – B empfängt die Position (Datenbasis des Partner-Halos).
+  await pageA.keyboard.down('ArrowRight');
+  await pageA.waitForTimeout(2600);
+  await pageA.keyboard.up('ArrowRight');
+  await pageA.waitForTimeout(400);
+  const remoteAtB = await pageB.evaluate(() => window.__tiltrMp?.remote);
+  check(`B kennt A's Position für den Halo (x=${remoteAtB?.x?.toFixed(0)})`, !!remoteAtB && remoteAtB.x > 200);
+
+  // B rollt zur äußeren Druckplatte: rechts, runter (die Tür stoppt ihn),
+  // dann links in die Sackgassen-Nische [4,4].
+  await pageB.keyboard.down('ArrowRight');
+  await pageB.waitForTimeout(2600);
+  await pageB.keyboard.up('ArrowRight');
+  await pageB.keyboard.down('ArrowDown');
+  await pageB.waitForTimeout(2600);
+  await pageB.keyboard.up('ArrowDown');
+  await pageB.keyboard.down('ArrowLeft');
+  await pageB.waitForTimeout(1000);
+  await pageB.keyboard.up('ArrowLeft');
+  await pageB.waitForTimeout(800);
+  const holdsB = await pageB.evaluate(() => window.__tiltrMp?.localHolds ?? []);
+  const remoteHoldsA = await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []);
+  check(`B hält die Platte, A's Tür ist offen (${JSON.stringify(holdsB)})`, holdsB.includes('g1') && remoteHoldsA.includes('g1'));
+
+  // A rollt durch die offene Tür ins Ziel, friert ein und hält die innere Platte.
+  await pageA.keyboard.down('ArrowDown');
+  await pageA.waitForTimeout(2600);
+  await pageA.keyboard.up('ArrowDown');
+  await pageA.waitForTimeout(600);
+  const finA = await pageA.evaluate(() => window.__tiltrMp?.localFinished);
+  const statusA = (await pageA.textContent('#status')).trim();
+  check(`A ist im Ziel und wartet ("${statusA}")`, finA === true && statusA.includes('Warte auf deinen Partner'));
+
+  // B verlässt die Platte – die Tür bleibt offen, weil A im Ziel die innere hält.
+  await pageB.keyboard.down('ArrowRight');
+  await pageB.waitForTimeout(1000);
+  await pageB.keyboard.up('ArrowRight');
+  await pageB.keyboard.down('ArrowDown');
+  await pageB.waitForTimeout(1600);
+  await pageB.keyboard.up('ArrowDown');
+  await pageB.waitForTimeout(2600); // Ergebnis-Karte erscheint nach 1,8 s
+
+  const resultA = (await pageA.textContent('#interTitle')).trim();
+  const resultB = (await pageB.textContent('#interTitle')).trim();
+  check(`Coop-Sieg auf beiden Seiten ("${resultA}")`, resultA.includes('Gemeinsam geschafft') && resultB.includes('Gemeinsam geschafft'));
+
+  // Rematch: beide klicken "Nochmal" – startet sofort neu (ohne Countdown).
+  await pageA.click('#interPrimary');
+  await pageB.click('#interPrimary');
+  await pageA.waitForTimeout(800);
+  const rematchPhase = await pageA.evaluate(() => window.__tiltrMp?.phase);
+  check(`Rematch startet sofort (phase=${rematchPhase})`, rematchPhase === 'playing');
+
+  // Disconnect: B geht weg (pagehide -> @bye) -> A zeigt den 10s-Countdown.
+  // Synthetisch ausgelöst: beim echten Tab-Schließen flusht der
+  // BroadcastChannel nicht zuverlässig, der Handler ist derselbe.
+  await pageB.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  await pageA.waitForTimeout(800);
+  const statusGone = (await pageA.textContent('#status')).trim();
+  check(`Disconnect-Countdown bei A ("${statusGone}")`, statusGone.includes('Verbindung verloren'));
+
+  await ctx.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

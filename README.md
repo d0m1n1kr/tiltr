@@ -29,7 +29,7 @@ Fürs Testen am Handy braucht es HTTPS: am einfachsten die Live-Seite, sonst
 `npx vite --host` mit [`@vitejs/plugin-basic-ssl`](https://www.npmjs.com/package/@vitejs/plugin-basic-ssl)
 oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 
-### Spielelemente (Stand M6)
+### Spielelemente (Stand M7)
 
 | Element | Signatur |
 |---|---|
@@ -45,6 +45,8 @@ oder ein Tunnel. `?seed=<zahl|text>` in der URL macht Läufe reproduzierbar.
 | Gems | optionale Sammelkristalle mit eigener Ping-Antwort; alle gesammelt = dritter Stern |
 | Transporter | trägt den Ball auf andere Ebenen (oder als Portal quer über die Map); schwebender Doppelton in der Nähe, Warp klingt abwärts fallend bzw. aufwärts steigend; Ziel-Beacon klingt auf fremden Ebenen gedämpft wie durch den Boden |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
+| Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Tür des Partners, Loslassen schließt sie wieder; Klick beim Betreten, Tür gleitet hörbar auf/zu |
+| Partner-Halo | pulsierender Lichtring an der Position des Mitspielers; außerhalb des Screens (oder auf anderer Ebene) an den Rand geklemmt, mit Ebenen-Label |
 | Zeit | Rundenzeit im HUD, Bestzeit in `localStorage` |
 
 Auf dem Handy: „Spiel starten" tippen (aktiviert Sensor-Permission und Audio),
@@ -56,7 +58,18 @@ kalibrieren, `👁` Debug-Ansicht (Labyrinth einblenden).
 Siehe [`docs/PLAN.md`](docs/PLAN.md): M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓
 → M3 Tutorial & Schnelles Spiel ✓ → M4 Kampagne Welt 1 (Wächter, Schlüssel/Tür, Gems,
 Sterne) ✓ → M5 Ebenen/Transporter + Welt 2 ✓ → M6 Tages-Challenge + Herausfordern ✓
-→ M7 Multiplayer (WebRTC).
+→ M7 Multiplayer Coop & Race ✓.
+
+**Multiplayer (2 Spieler):** P2P über WebRTC ([trystero](https://github.com/dmotz/trystero),
+Handshake über eine feste Liste von 8 etablierten Nostr-Relays – kein eigener Server).
+Beitritt per QR-Code (In-App-Scanner oder Kamera-App, der Code ist ein `#join=`-Link)
+oder 6-stelligem Raumcode. **Coop:** Druckplatten öffnen Türen für den Partner –
+jede Tür verschließt eine versiegelte Kammer mit einer Platte außen und einer innen
+(wer im Ziel liegt, hält die Zielplatte für den Nachzügler); gewonnen ist erst, wenn
+beide im Ziel sind. **Race:** identisches Level, wer zuerst ankommt, gewinnt. Der
+Partner-Halo zeigt in beiden Modi, wo der andere steckt. Bei Verbindungsverlust
+läuft ein 10-Sekunden-Countdown (Rejoin möglich), dann geht's zurück ins Menü.
+Für E2E-Tests gibt es einen `BroadcastChannel`-Transport (Raumcodes mit `TEST`-Präfix).
 
 **Tages-Challenge:** Seed = UTC-Datum → jeden Tag ein neues, für alle identisches
 Multi-Ebenen-Level, komplett serverlos. Der erste Zieleinlauf zählt als Tageswert

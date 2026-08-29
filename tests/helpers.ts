@@ -8,6 +8,8 @@ import type { FloorDef, LevelDef } from '../src/levels/schema';
 export interface CellConfig {
   brittleOpen: boolean;
   doorsOpen: boolean;
+  /** Nur diese Tür-IDs gelten als offen (wenn doorsOpen false ist). */
+  openDoorIds?: Set<string>;
 }
 
 export function buildFloorCells(floor: FloorDef, cfg: CellConfig): Cell[] {
@@ -20,7 +22,8 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig): Cell[] {
   }
   if (!cfg.doorsOpen) {
     for (const el of floor.elements) {
-      if (el.type === 'door') setWall(cells, cols, rows, el.edge[0][0], el.edge[0][1], el.edge[1], true);
+      if (el.type === 'door' && !cfg.openDoorIds?.has(el.id))
+        setWall(cells, cols, rows, el.edge[0][0], el.edge[0][1], el.edge[1], true);
     }
   }
   return cells;
@@ -87,4 +90,27 @@ export function expectAllReachable(
       }
     }
   });
+}
+
+/**
+ * Coop-Fixpunkt: Eine Tür gilt als offen, sobald eine ihrer Platten (oder
+ * ein Schlüssel) erreichbar ist – gebannte Türen öffnen nie.
+ */
+export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set()): Set<string> {
+  const openDoorIds = new Set<string>();
+  for (;;) {
+    const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds });
+    let changed = false;
+    def.floors.forEach((floor, fl) => {
+      for (const el of floor.elements) {
+        if ((el.type === 'plate' || el.type === 'key') && !bannedDoors.has(el.opens)) {
+          if (!openDoorIds.has(el.opens) && seen.has(cellKey(fl, el.cell))) {
+            openDoorIds.add(el.opens);
+            changed = true;
+          }
+        }
+      }
+    });
+    if (!changed) return seen;
+  }
 }

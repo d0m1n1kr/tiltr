@@ -76,6 +76,14 @@ export const gemDef = z.object({
   r: z.number().positive().default(14),
 });
 
+export const plateDef = z.object({
+  ...base,
+  type: z.literal('plate'),
+  /** Tür-ID, die diese Platte öffnet, SOLANGE sie gehalten wird (Coop) */
+  opens: z.string().min(1),
+  r: z.number().positive().default(30),
+});
+
 export const transporterDef = z.object({
   ...base,
   type: z.literal('transporter'),
@@ -93,6 +101,7 @@ export const elementDef = z.discriminatedUnion('type', [
   doorDef,
   gemDef,
   transporterDef,
+  plateDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -103,6 +112,7 @@ export type KeyDef = z.infer<typeof keyDef>;
 export type DoorDef = z.infer<typeof doorDef>;
 export type GemDef = z.infer<typeof gemDef>;
 export type TransporterDef = z.infer<typeof transporterDef>;
+export type PlateDef = z.infer<typeof plateDef>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */

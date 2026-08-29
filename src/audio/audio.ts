@@ -332,6 +332,41 @@ export class GameAudio {
     click.stop(t + 0.56);
   }
 
+  // Druckplatte: satter Klick beim Drücken, tieferer beim Loslassen.
+  plate(pressed: boolean): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = pressed ? 620 : 380;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    osc.connect(gain).connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
+  // Tür gleitet wieder zu (Umkehrung von doorOpen).
+  doorClose(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const out = this.spatialOut(dx, dy);
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('brown');
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(700, t);
+    filter.frequency.exponentialRampToValueAtTime(180, t + 0.4);
+    filter.Q.value = 1.5;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    src.connect(filter).connect(gain).connect(out);
+    src.start(t);
+    src.stop(t + 0.5);
+  }
+
   // Gem eingesammelt: funkelnde Arpeggio-Spitze.
   collectGem(): void {
     if (!this.ctx) return;

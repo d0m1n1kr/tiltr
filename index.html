@@ -159,6 +159,38 @@
       cursor: pointer;
     }
     .level-item.locked { opacity: 0.45; cursor: default; }
+    #mp { position: fixed; inset: 0; z-index: var(--z-panel); background: var(--bg); overflow-y: auto;
+      padding: calc(var(--safe-top) + var(--space-4)) var(--space-4) calc(var(--safe-bottom) + var(--space-4));
+      touch-action: pan-y; }
+    #mp header { display: flex; justify-content: space-between; align-items: center; max-width: 560px; margin: 0 auto var(--space-3); }
+    #mp h2 { font-size: var(--fs-h2); }
+    #mpContent { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-3); }
+    #mpChoose { display: grid; gap: var(--space-3); justify-items: center; }
+    #mpModeRow { display: flex; gap: var(--space-2); }
+    #mpLevelList { display: grid; gap: var(--space-2); width: 100%; }
+    #mpJoinRow { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+    #mpCodeInput {
+      background: var(--bg-panel);
+      border: var(--border-strong);
+      color: var(--text);
+      border-radius: var(--radius-m);
+      min-height: var(--touch-min);
+      padding: 0 var(--space-3);
+      font: 600 var(--fs-body) var(--font);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      width: 150px;
+      text-align: center;
+    }
+    #mpLobby { display: grid; gap: var(--space-3); justify-items: center; text-align: center; }
+    #mpLobby h3 { font-size: var(--fs-body); }
+    #mpQr { width: min(60vw, 260px); background: white; border-radius: var(--radius-l); padding: var(--space-3); }
+    #mpQr svg { display: block; width: 100%; height: auto; }
+    .mp-code { font: 700 26px var(--font); letter-spacing: 6px; color: var(--accent); }
+    #scanner { position: fixed; inset: 0; z-index: var(--z-banner); background: #000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); }
+    #scannerVideo { width: 100%; max-height: 70%; object-fit: cover; }
+    #scannerHint { font-size: var(--fs-body-s); opacity: 0.8; }
     .level-item .level-meta { font-size: var(--fs-small); opacity: 0.8; color: var(--warning); white-space: nowrap; }
     .gallery-item { display: flex; align-items: flex-start; gap: 14px; }
     .gallery-item canvas { border-radius: var(--radius-s); flex-shrink: 0; width: 96px; height: auto; }
@@ -201,6 +233,7 @@
       <button id="dailyBtn" class="btn btn-ghost">📅 Tages-Challenge</button>
       <p id="dailyStatus" class="menu-meta"></p>
       <button id="campaignBtn" class="btn btn-ghost">🌍 Kampagne <span id="campaignStars"></span></button>
+      <button id="mpBtn" class="btn btn-ghost">👥 Multiplayer</button>
       <button id="tutorialBtn" class="btn btn-ghost">🎓 Tutorial <span id="tutorialProgress"></span></button>
     </div>
     <p id="sensorNote">Beim Start werden Bewegungssensoren &amp; Audio aktiviert.<br>
@@ -234,6 +267,44 @@
       <button id="campaignClose" class="btn btn-ghost">Schließen</button>
     </header>
     <div id="campaignList"></div>
+  </div>
+
+  <div id="mp" class="hidden">
+    <header>
+      <h2>👥 Multiplayer</h2>
+      <button id="mpClose" class="btn btn-ghost">Schließen</button>
+    </header>
+    <div id="mpContent">
+      <div id="mpChoose">
+        <p class="menu-label">Modus</p>
+        <div id="mpModeRow">
+          <button class="btn chip active" data-mpmode="coop">🤝 Coop</button>
+          <button class="btn chip" data-mpmode="race">🏁 Race</button>
+        </div>
+        <p id="mpModeHint" class="menu-meta"></p>
+        <p class="menu-label">Level wählen = Raum eröffnen</p>
+        <div id="mpLevelList"></div>
+        <p class="menu-label">Oder einem Raum beitreten</p>
+        <div id="mpJoinRow">
+          <input id="mpCodeInput" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="10" placeholder="RAUMCODE">
+          <button id="mpJoinBtn" class="btn btn-primary">Beitreten</button>
+          <button id="mpScanBtn" class="btn btn-ghost">📷 Scannen</button>
+        </div>
+      </div>
+      <div id="mpLobby" class="hidden">
+        <h3 id="mpLobbyTitle"></h3>
+        <div id="mpQr"></div>
+        <p id="mpCode" class="mp-code"></p>
+        <p id="mpLobbyStatus" class="menu-meta"></p>
+        <button id="mpCancelBtn" class="btn btn-ghost">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scanner" class="hidden">
+    <video id="scannerVideo" playsinline muted></video>
+    <div id="scannerHint">QR-Code des Raums vor die Kamera halten</div>
+    <button id="scannerClose" class="btn btn-ghost">Abbrechen</button>
   </div>
 
   <div id="banners">

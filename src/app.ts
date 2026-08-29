@@ -12,6 +12,10 @@ import { generateQuickLevel, PRESETS, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import { generateDailyLevel, todayUTC, formatDate } from './levels/daily';
+import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
+import { connect, makeRoomCode, type Transport } from './net/transport';
+import { scanRoomCode } from './ui/scanner';
+import { renderSVG } from 'uqr';
 import type { LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
@@ -59,7 +63,30 @@ type Mode =
   | { kind: 'quick' }
   | { kind: 'tutorial'; index: number }
   | { kind: 'campaign'; index: number }
-  | { kind: 'daily'; date: string; target?: number };
+  | { kind: 'daily'; date: string; target?: number }
+  | { kind: 'mp' };
+
+type MpMode = 'coop' | 'race';
+interface MpSession {
+  transport: Transport;
+  code: string;
+  host: boolean;
+  mode: MpMode;
+  level: LevelDef | null;
+  phase: 'lobby' | 'intro' | 'playing' | 'done';
+  selfReady: boolean;
+  peerReady: boolean;
+  rematchSelf: boolean;
+  rematchPeer: boolean;
+  remote: { x: number; y: number; floor: number; finished: boolean; elapsed: number | null };
+  localFinished: boolean;
+  localElapsed: number | null;
+  localHolds: Set<string>;
+  remoteHolds: Set<string>;
+  lastStateSent: number;
+  disconnectedAt: number | null;
+}
+let mp: MpSession | null = null;
 
 const TUT_IDS = TUTORIAL_LEVELS.map((l) => l.id);
 
@@ -231,6 +258,10 @@ for (const chip of presetChips) {
 }
 
 function showMenu(): void {
+  if (mp) {
+    mp.transport.leave();
+    mp = null;
+  }
   state = 'menu';
   mode = null;
   world = null;
@@ -617,6 +648,15 @@ async function shareDaily(date: string, seconds: number): Promise<void> {
 
 // Empfangene Herausforderung (#daily=DATUM&t=SEKUNDEN) anbieten.
 function checkChallengeHash(): void {
+  const joinMatch = location.hash.match(/^#join=([A-Za-z0-9-]{4,12})$/);
+  if (joinMatch) {
+    history.replaceState(null, '', location.pathname + location.search);
+    refreshMpPanel();
+    mpPanel.classList.remove('hidden');
+    mpCodeInput.value = joinMatch[1]!.toUpperCase();
+    void mpJoin(joinMatch[1]!);
+    return;
+  }
   const m = location.hash.match(/^#daily=(\d{4}-\d{2}-\d{2})(?:&t=([\d.]+))?$/);
   if (!m) return;
   const date = m[1]!;
@@ -633,6 +673,383 @@ function checkChallengeHash(): void {
 }
 checkChallengeHash();
 
+
+/* --- Multiplayer ------------------------------------------------------------ */
+
+const mpPanel = $('mp');
+const mpChoose = $('mpChoose');
+const mpLobby = $('mpLobby');
+const mpLevelList = $('mpLevelList');
+const mpCodeInput = $<HTMLInputElement>('mpCodeInput');
+let mpModeSel: MpMode = 'coop';
+
+const MP_MODE_HINTS: Record<MpMode, string> = {
+  coop: 'Gemeinsam: Druckplatten öffnen die Tür des Partners. Gewonnen ist erst, wenn BEIDE im Ziel sind.',
+  race: 'Gegeneinander: identisches Level, wer zuerst im Ziel ist, gewinnt. Der Halo zeigt den Gegner.',
+};
+
+function refreshMpPanel(): void {
+  mpChoose.classList.remove('hidden');
+  mpLobby.classList.add('hidden');
+  $('mpModeHint').textContent = MP_MODE_HINTS[mpModeSel];
+  for (const chip of document.querySelectorAll<HTMLButtonElement>('#mpModeRow .chip')) {
+    chip.classList.toggle('active', chip.dataset.mpmode === mpModeSel);
+  }
+  mpLevelList.replaceChildren();
+  const levels = mpModeSel === 'coop' ? COOP_LEVELS : RACE_LEVELS;
+  levels.forEach((def, i) => {
+    const item = document.createElement('button');
+    item.className = 'panel level-item';
+    const name = document.createElement('span');
+    name.textContent = `${i + 1}. ${def.name}`;
+    const meta = document.createElement('span');
+    meta.className = 'level-meta';
+    const [c, r] = def.floors[0]!.size;
+    meta.textContent = `${def.floors.length > 1 ? `${def.floors.length} Ebenen · ` : ''}${c}×${r}`;
+    item.append(name, meta);
+    item.addEventListener('click', () => void mpHost(def));
+    mpLevelList.append(item);
+  });
+}
+
+function mpShowLobby(status: string): void {
+  mpChoose.classList.add('hidden');
+  mpLobby.classList.remove('hidden');
+  $('mpLobbyStatus').textContent = status;
+}
+
+function mpJoinUrl(code: string): string {
+  return `${location.origin}${location.pathname}#join=${code}`;
+}
+
+async function mpHost(level: LevelDef): Promise<void> {
+  // ?mpcode=TEST… erzwingt den Raumcode (E2E: TEST-Präfix wählt den LocalTransport)
+  const code = new URLSearchParams(location.search).get('mpcode')?.toUpperCase() ?? makeRoomCode();
+  const transport = await connect(code);
+  mpInit(transport, code, true, mpModeSel, level);
+  $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${level.name}`;
+  $('mpQr').innerHTML = renderSVG(mpJoinUrl(code));
+  $('mpQr').classList.remove('hidden');
+  $('mpCode').textContent = code;
+  mpShowLobby('Warte auf Mitspieler – QR scannen oder Code eingeben …');
+}
+
+async function mpJoin(code: string): Promise<void> {
+  const transport = await connect(code.toUpperCase());
+  mpInit(transport, code.toUpperCase(), false, 'coop', null);
+  $('mpLobbyTitle').textContent = 'Beitreten';
+  $('mpQr').classList.add('hidden');
+  $('mpCode').textContent = code.toUpperCase();
+  mpShowLobby('Verbinde …');
+}
+
+function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMode, level: LevelDef | null): void {
+  mp?.transport.leave();
+  mp = {
+    transport,
+    code,
+    host,
+    mode: mpmode,
+    level,
+    phase: 'lobby',
+    selfReady: false,
+    peerReady: false,
+    rematchSelf: false,
+    rematchPeer: false,
+    remote: { x: 0, y: 0, floor: 0, finished: false, elapsed: null },
+    localFinished: false,
+    localElapsed: null,
+    localHolds: new Set(),
+    remoteHolds: new Set(),
+    lastStateSent: 0,
+    disconnectedAt: null,
+  };
+  transport.onPeer((event) => {
+    if (!mp) return;
+    if (event === 'join') {
+      if (mp.disconnectedAt !== null) {
+        // Kurzer Aussetzer: weiterspielen, aktuelle Platten erneut melden
+        mp.disconnectedAt = null;
+        for (const id of mp.localHolds) mp.transport.send('plate', { id, held: true });
+        flash('Partner wieder da! 🎉');
+        return;
+      }
+      if (mp.host && mp.level) {
+        mp.transport.send('setup', { mode: mp.mode, levelId: mp.level.id });
+        $('mpLobbyStatus').textContent = 'Partner verbunden!';
+        mpShowIntro();
+      } else {
+        $('mpLobbyStatus').textContent = 'Verbunden – warte auf Level …';
+      }
+    } else {
+      mpPeerLeft();
+    }
+  });
+  transport.onMessage((type, payload) => mpOnMessage(type, payload));
+}
+
+function mpPeerLeft(): void {
+  if (!mp) return;
+  if (mp.phase === 'playing' || mp.phase === 'done') {
+    mp.disconnectedAt = performance.now();
+  } else {
+    $('mpLobbyStatus').textContent = 'Partner hat den Raum verlassen.';
+    if (interstitial && !interstitial.classList.contains('hidden')) hideInterstitial();
+    mpPanel.classList.remove('hidden');
+    mpShowLobby('Partner hat den Raum verlassen – warte weiter …');
+  }
+}
+
+function mpOnMessage(type: string, payload: unknown): void {
+  if (!mp) return;
+  if (type === 'setup') {
+    const p = payload as { mode: MpMode; levelId: string };
+    const pool = p.mode === 'coop' ? COOP_LEVELS : RACE_LEVELS;
+    const level = pool.find((l) => l.id === p.levelId);
+    if (!level) return;
+    mp.mode = p.mode;
+    mp.level = level;
+    mpShowIntro();
+  } else if (type === 'ready') {
+    mp.peerReady = true;
+    mpMaybeStart();
+  } else if (type === 'state') {
+    const p = payload as { x: number; y: number; f: number; fin: boolean };
+    mp.remote.x = p.x;
+    mp.remote.y = p.y;
+    mp.remote.floor = p.f;
+    mp.remote.finished = p.fin;
+  } else if (type === 'plate') {
+    const p = payload as { id: string; held: boolean };
+    if (p.held) mp.remoteHolds.add(p.id);
+    else mp.remoteHolds.delete(p.id);
+  } else if (type === 'finish') {
+    const p = payload as { elapsed: number };
+    if (!mp.remote.finished) flash('Partner ist im Ziel!');
+    mp.remote.finished = true;
+    mp.remote.elapsed = p.elapsed;
+    mpCheckResult();
+  } else if (type === 'rematch') {
+    mp.rematchPeer = true;
+    mpMaybeRematch();
+  }
+}
+
+function mpShowIntro(): void {
+  if (!mp?.level) return;
+  mp.phase = 'intro';
+  mpPanel.classList.add('hidden');
+  const icon = mp.mode === 'coop' ? '🤝' : '🏁';
+  showInterstitial({
+    title: `${icon} ${mp.level.name}`,
+    text: `${mp.level.intro ?? ''}\n\n${MP_MODE_HINTS[mp.mode]}`,
+    primary: {
+      label: 'Bereit!',
+      onClick: () => {
+        void (async () => {
+          if (!mp) return;
+          if (!sensorsReady) {
+            await Promise.all([input.start(), audio.start()]);
+            sensorsReady = true;
+            await calibrationCountdown();
+          } else {
+            await audio.start();
+          }
+          mp.selfReady = true;
+          mp.transport.send('ready', null);
+          if (!mpMaybeStart()) {
+            showInterstitial({ title: 'Bereit ✓', text: 'Warte auf deinen Partner …' });
+          }
+        })();
+      },
+    },
+    secondary: { label: 'Verlassen', onClick: showMenu },
+  });
+}
+
+function mpMaybeStart(): boolean {
+  if (!mp?.level || !mp.selfReady || !mp.peerReady || mp.phase === 'playing') return false;
+  mp.phase = 'playing';
+  mp.localFinished = false;
+  mp.localElapsed = null;
+  mp.rematchSelf = false;
+  mp.rematchPeer = false;
+  mp.localHolds = new Set();
+  mp.remoteHolds = new Set();
+  mp.remote = { x: 0, y: 0, floor: 0, finished: false, elapsed: null };
+  mode = { kind: 'mp' };
+  hideInterstitial();
+  overlay.classList.add('hidden');
+  hideInstallHint();
+  hud.classList.remove('hidden');
+  launch(mp.level);
+  return true;
+}
+
+function mpMaybeRematch(): void {
+  if (!mp || !mp.rematchSelf || !mp.rematchPeer) return;
+  mp.selfReady = true;
+  mp.peerReady = true;
+  mp.phase = 'intro';
+  mpMaybeStart();
+}
+
+// Pro Frame im MP: Zustand senden, Platten/Türen synchronisieren.
+function mpFrame(now: number): void {
+  if (!mp || !world || !loaded) return;
+
+  if (now - mp.lastStateSent > 80) {
+    mp.lastStateSent = now;
+    mp.transport.send('state', {
+      x: world.ball.x,
+      y: world.ball.y,
+      f: activeFloor,
+      fin: mp.localFinished,
+    });
+  }
+
+  // Lokale Platten unter dem Ball (auch ein Ball im Ziel hält seine Platte!)
+  const holds = new Set(world.platesUnderBall().map((p) => p.opens));
+  for (const id of holds) {
+    if (!mp.localHolds.has(id)) {
+      mp.transport.send('plate', { id, held: true });
+      audio.plate(true);
+      haptics.hit(0.3);
+    }
+  }
+  for (const id of mp.localHolds) {
+    if (!holds.has(id)) {
+      mp.transport.send('plate', { id, held: false });
+      audio.plate(false);
+    }
+  }
+  mp.localHolds = holds;
+
+  // Türen über alle Ebenen: offen, solange irgendwer eine passende Platte hält
+  for (const floor of loaded.floors) {
+    for (const w of floor.world.walls) {
+      if (!w.door) continue;
+      const shouldOpen = holds.has(w.door.id) || mp.remoteHolds.has(w.door.id);
+      if (shouldOpen !== (w.door.open ?? false)) {
+        w.door.open = shouldOpen;
+        w.litFrom = 0;
+        w.litUntil = now + 1500;
+        if (floor.world === world) {
+          const dx = w.x + w.w / 2 - world.ball.x;
+          const dy = w.y + w.h / 2 - world.ball.y;
+          if (shouldOpen) audio.doorOpen(dx, dy);
+          else audio.doorClose(dx, dy);
+        }
+      }
+    }
+    for (const pl of floor.world.plates) {
+      pl.held = holds.has(pl.opens) || mp.remoteHolds.has(pl.opens);
+    }
+  }
+}
+
+function mpLocalFinish(now: number): void {
+  if (!mp || mp.localFinished) return;
+  mp.localFinished = true;
+  mp.localElapsed = (now - t0) / 1000;
+  if (world) {
+    world.ball.vx = 0;
+    world.ball.vy = 0;
+  }
+  audio.checkpoint();
+  haptics.checkpoint();
+  mp.transport.send('finish', { elapsed: mp.localElapsed });
+  mpCheckResult();
+}
+
+function mpCheckResult(): void {
+  if (!mp || mp.phase !== 'playing' || !mp.localFinished || !mp.remote.finished) return;
+  mp.phase = 'done';
+  state = 'won';
+  revealUntil = performance.now() + 4000;
+  audio.setRolling(0);
+  audio.setWind(0, 0, 0);
+  audio.setHoleRumble(0, 0, 0);
+  audio.setGuard(0, 0, 0);
+  audio.setPortal(0, 0, 0);
+  const mine = mp.localElapsed ?? 0;
+  const theirs = mp.remote.elapsed ?? 0;
+  let title: string;
+  let text: string;
+  if (mp.mode === 'coop') {
+    audio.win();
+    haptics.win();
+    title = '🤝 Gemeinsam geschafft!';
+    text = `Team-Zeit: ${fmtTime(Math.max(mine, theirs))}\nDu: ${fmtTime(mine)} · Partner: ${fmtTime(theirs)}`;
+  } else {
+    const won = mine < theirs;
+    if (won) {
+      audio.win();
+      haptics.win();
+    } else {
+      audio.caught();
+    }
+    title = mine === theirs ? '🤝 Unentschieden!' : won ? '🏆 Gewonnen!' : 'Verloren …';
+    text = `Du: ${fmtTime(mine)}\nGegner: ${fmtTime(theirs)}`;
+  }
+  setTimeout(() => {
+    if (!mp) return;
+    showInterstitial({
+      title,
+      text,
+      primary: {
+        label: '⟳ Nochmal',
+        onClick: () => {
+          if (!mp) return;
+          mp.rematchSelf = true;
+          mp.transport.send('rematch', null);
+          if (mp.rematchPeer) mpMaybeRematch();
+          else showInterstitial({ title: '⟳ Nochmal', text: 'Warte auf deinen Partner …', secondary: { label: 'Menü', onClick: showMenu } });
+        },
+      },
+      secondary: { label: 'Menü', onClick: showMenu },
+    });
+  }, 1800);
+}
+
+$('mpBtn').addEventListener('click', () => {
+  refreshMpPanel();
+  mpPanel.classList.remove('hidden');
+});
+$('mpClose').addEventListener('click', () => {
+  if (mp && mp.phase === 'lobby') {
+    mp.transport.leave();
+    mp = null;
+  }
+  mpPanel.classList.add('hidden');
+});
+$('mpCancelBtn').addEventListener('click', () => {
+  mp?.transport.leave();
+  mp = null;
+  refreshMpPanel();
+});
+for (const chip of document.querySelectorAll<HTMLButtonElement>('#mpModeRow .chip')) {
+  chip.addEventListener('click', () => {
+    mpModeSel = chip.dataset.mpmode as MpMode;
+    refreshMpPanel();
+  });
+}
+$('mpJoinBtn').addEventListener('click', () => {
+  const code = mpCodeInput.value.trim().toUpperCase();
+  if (code.length >= 4) void mpJoin(code);
+});
+// Tab/App wird geschlossen: dem Partner sofort Bescheid geben statt Timeout.
+window.addEventListener('pagehide', () => mp?.transport.leave());
+
+$('mpScanBtn').addEventListener('click', () => {
+  void scanRoomCode().then((code) => {
+    if (code) {
+      mpCodeInput.value = code;
+      void mpJoin(code);
+    }
+  });
+});
+
 let last = performance.now();
 function frame(now: number): void {
   requestAnimationFrame(frame);
@@ -644,8 +1061,11 @@ function frame(now: number): void {
   world.pings = world.pings.filter((p) => ((now - p.start) / 1000) * p.speed < p.range);
 
   if (state === 'playing') {
-    const tilt = input.tilt;
-    const hits = world.step(dt, tilt);
+    // MP: Ball im Ziel liegt still; bei Verbindungsverlust pausiert das Spiel.
+    const frozen = mp?.localFinished === true;
+    const disconnected = mp?.disconnectedAt != null;
+    const tilt = frozen || disconnected ? { x: 0, y: 0 } : input.tilt;
+    const hits = frozen || disconnected ? [] : world.step(dt, tilt);
 
     for (const hit of hits) {
       const wall = hit.wall;
@@ -790,7 +1210,7 @@ function frame(now: number): void {
     if (!warpReady && !world.transporters.some((t) => Math.hypot(t.x - world!.ball.x, t.y - world!.ball.y) < t.r + world!.ball.r + 10)) {
       warpReady = true;
     }
-    const pad = warpReady ? world.transporterHit() : null;
+    const pad = warpReady && !frozen && !disconnected ? world.transporterHit() : null;
     if (pad) {
       pad.litFrom = 0;
       pad.litUntil = now + 1200;
@@ -800,6 +1220,21 @@ function frame(now: number): void {
       return;
     }
 
+    if (mp && mp.phase === 'playing' && !disconnected) mpFrame(now);
+    if (mp && disconnected) {
+      const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
+      if (remaining <= 0) {
+        const wasCoop = mp.mode === 'coop';
+        showMenu();
+        showInterstitial({
+          title: 'Verbindung verloren',
+          text: wasCoop ? 'Dein Partner ist weg – Coop braucht euch beide.' : 'Dein Gegner ist weg.',
+          primary: { label: 'OK', onClick: () => undefined },
+        });
+        return;
+      }
+    }
+
     timerEl.textContent = fmtTime((now - t0) / 1000);
     pingsEl.textContent = '● '.repeat(pings) + '○ '.repeat(Math.max(0, pingMax - pings));
     const allGems = loaded!.floors.flatMap((f) => f.world.gems);
@@ -807,8 +1242,8 @@ function frame(now: number): void {
       ? `💎 ${allGems.filter((g) => g.collected).length}/${allGems.length}`
       : '';
 
-    const fallen = world.fallenHole();
-    const caught = fallen ? null : world.guardCaught();
+    const fallen = frozen || disconnected ? null : world.fallenHole();
+    const caught = fallen || frozen || disconnected ? null : world.guardCaught();
     if (fallen) {
       state = 'fell';
       falls++;
@@ -827,7 +1262,14 @@ function frame(now: number): void {
       haptics.fall();
       statusEl.textContent = 'Erwischt! 👁';
       setTimeout(respawn, 1300);
-    } else if (world.goalReached()) {
+    } else if (mp && !frozen && !disconnected && world.goalReached()) {
+      mpLocalFinish(now);
+    } else if (mp && disconnected) {
+      const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
+      statusEl.textContent = `Verbindung verloren … ${remaining.toFixed(0)}s`;
+    } else if (frozen && state === 'playing') {
+      statusEl.textContent = mp?.mode === 'coop' ? 'Im Ziel! Warte auf deinen Partner …' : 'Im Ziel! Der Gegner rollt noch …';
+    } else if (!mp && world.goalReached()) {
       state = 'won';
       revealUntil = now + 4000;
       const seconds = (now - t0) / 1000;
@@ -849,12 +1291,30 @@ function frame(now: number): void {
   }
 
   renderer.follow(world.ball.x, world.ball.y);
-  renderer.draw(world, { debug, revealAll: revealUntil > now, now });
-  // Testbarkeits-Hook für E2E
+  const buddy =
+    mp && (mp.phase === 'playing' || mp.phase === 'done')
+      ? {
+          x: mp.remote.x,
+          y: mp.remote.y,
+          sameFloor: mp.remote.floor === activeFloor,
+          floorLabel: mp.remote.floor === activeFloor ? undefined : `E${mp.remote.floor + 1}`,
+        }
+      : null;
+  renderer.draw(world, { debug, revealAll: revealUntil > now, now, buddy });
+  // Testbarkeits-Hooks für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {
     x: world.ball.x,
     y: world.ball.y,
   };
+  (window as unknown as { __tiltrMp?: unknown }).__tiltrMp = mp
+    ? {
+        phase: mp.phase,
+        remote: { ...mp.remote },
+        localFinished: mp.localFinished,
+        localHolds: [...mp.localHolds],
+        remoteHolds: [...mp.remoteHolds],
+      }
+    : null;
 }
 
 refreshMenu();

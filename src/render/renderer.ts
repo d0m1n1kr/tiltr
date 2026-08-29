@@ -8,6 +8,9 @@ export interface DrawOptions {
   debug?: boolean;
   revealAll?: boolean;
   now?: number;
+  /** Partner im Multiplayer: Position (Weltkoordinaten der EIGENEN Ebene
+   *  nur wenn sameFloor), sonst wird der Halo an den Rand geklemmt. */
+  buddy?: { x: number; y: number; sameFloor: boolean; floorLabel?: string } | null;
 }
 
 interface Bucket {
@@ -117,7 +120,15 @@ export class Renderer {
       if (w.litUntil && w.litUntil > now) return Math.min(1, (w.litUntil - now) / 1200) * 0.9;
       return 0;
     };
+    // Aufdeckbare Objekte: sichtbar bei Debug/Reveal oder nach Ping (litFrom/litUntil).
+    const revealAlpha = (o: { litFrom?: number; litUntil?: number }, base: number): number => {
+      if (debug || revealAll) return base;
+      if (o.litFrom && now < o.litFrom) return 0;
+      if (o.litUntil && o.litUntil > now) return Math.min(1, (o.litUntil - now) / 1200) * base;
+      return 0;
+    };
     for (const w of world.walls) {
+      if (w.door?.open) continue; // offene Türen unten als Umriss, nicht als Fläche
       const color = w.door ? WORLD.door : w.hp !== undefined || w.cracked ? WORLD.brittle : WORLD.wall;
       addRect(w, wallAlpha(w), color);
     }
@@ -172,6 +183,32 @@ export class Renderer {
       ctx.stroke();
     }
 
+    // Offene Coop-Türen: nur ein gestrichelter Umriss – der Weg ist frei.
+    for (const w of world.walls) {
+      if (!w.door?.open) continue;
+      const alpha = debug || revealAll ? 0.5 : w.litUntil && w.litUntil > now ? 0.5 : 0.25;
+      ctx.strokeStyle = `rgba(${WORLD.door}, ${alpha})`;
+      ctx.lineWidth = 1.5 * this.dpr;
+      ctx.setLineDash([6 * this.dpr, 6 * this.dpr]);
+      ctx.strokeRect(tx(w.x), ty(w.y), w.w * s, w.h * s);
+      ctx.setLineDash([]);
+    }
+
+    // Druckplatten: goldener Rahmen, gefüllt solange gehalten.
+    for (const pl of world.plates) {
+      const alpha = debug || revealAll ? 0.9 : revealAlpha(pl, 0.9);
+      if (alpha <= 0.01 && !pl.held) continue;
+      const a = Math.max(alpha, pl.held ? 0.9 : 0);
+      const r = pl.r * s;
+      ctx.strokeStyle = `rgba(${WORLD.plate}, ${a})`;
+      ctx.lineWidth = 2.5 * this.dpr;
+      ctx.strokeRect(tx(pl.x) - r, ty(pl.y) - r, r * 2, r * 2);
+      if (pl.held) {
+        ctx.fillStyle = `rgba(${WORLD.plate}, 0.35)`;
+        ctx.fillRect(tx(pl.x) - r + 3, ty(pl.y) - r + 3, r * 2 - 6, r * 2 - 6);
+      }
+    }
+
     // Löcher: tiefschwarz mit schwachem Rand – sichtbar bei Debug/Reveal, nach
     // einem Absturz oder Echo-Ping. Der Radius atmet mit dem Öffnungsgrad.
     for (const hole of world.holes) {
@@ -190,13 +227,6 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // Aufdeckbare Objekte: sichtbar bei Debug/Reveal oder nach Ping (litFrom/litUntil).
-    const revealAlpha = (o: { litFrom?: number; litUntil?: number }, base: number): number => {
-      if (debug || revealAll) return base;
-      if (o.litFrom && now < o.litFrom) return 0;
-      if (o.litUntil && o.litUntil > now) return Math.min(1, (o.litUntil - now) / 1200) * base;
-      return 0;
-    };
 
     // Schlüssel: goldene Raute.
     for (const key of world.keys) {
@@ -331,5 +361,44 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
     ctx.fill();
+
+    // Partner-Halo (Multiplayer): auf dem Screen als Ring an seiner Position,
+    // außerhalb (oder auf anderer Ebene) an den Rand geklemmt.
+    const buddy = opts.buddy;
+    if (buddy) {
+      const margin = 26 * this.dpr;
+      let px = tx(buddy.x);
+      let py = ty(buddy.y);
+      const offscreen =
+        !buddy.sameFloor ||
+        px < margin ||
+        py < margin ||
+        px > this.canvas.width - margin ||
+        py > this.canvas.height - margin;
+      if (offscreen) {
+        px = Math.max(margin, Math.min(this.canvas.width - margin, px));
+        py = Math.max(margin, Math.min(this.canvas.height - margin, py));
+      }
+      const r = 16 * this.dpr;
+      const pulse = 0.7 + 0.3 * Math.sin(now / 250);
+      const glow = ctx.createRadialGradient(px, py, 0, px, py, r * 2.4);
+      glow.addColorStop(0, `rgba(${WORLD.buddy}, ${0.35 * pulse})`);
+      glow.addColorStop(1, `rgba(${WORLD.buddy}, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(px, py, r * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${WORLD.buddy}, ${offscreen ? 0.9 : 0.75})`;
+      ctx.lineWidth = 2.5 * this.dpr;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.stroke();
+      if (buddy.floorLabel) {
+        ctx.fillStyle = `rgba(${WORLD.buddy}, 0.9)`;
+        ctx.font = `${11 * this.dpr}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(buddy.floorLabel, px, py + 4 * this.dpr);
+      }
+    }
   }
 }

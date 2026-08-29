@@ -10,6 +10,7 @@ import type {
   Hole,
   Key,
   PingWave,
+  Plate,
   Tilt,
   Transporter,
   Wall,
@@ -37,6 +38,7 @@ export class World {
   keys: Key[] = [];
   gems: Collectible[] = [];
   transporters: Transporter[] = [];
+  plates: Plate[] = [];
   debris: Wall[] = [];
   pings: PingWave[] = [];
   accel = 2600; // px/s² bei voller Neigung
@@ -81,6 +83,7 @@ export class World {
       b.y += b.vy * h;
 
       for (const wall of this.walls) {
+        if (wall.door?.open) continue; // offene Coop-Tür ist passierbar
         const hit = this.collideCircleRect(b, wall);
         if (hit) hits.push(hit);
       }
@@ -217,6 +220,14 @@ export class World {
     if (!g) return false;
     const b = this.ball;
     return Math.hypot(b.x - g.x, b.y - g.y) < g.r;
+  }
+
+  // Druckplatten, auf denen der Ball gerade steht.
+  platesUnderBall(): Plate[] {
+    // Gedrückt, sobald der Ball deutlich auf der Platte steht – auch wenn er
+    // in einer Ecke an der Wand lehnt (halber Ballradius Toleranz).
+    const b = this.ball;
+    return this.plates.filter((pl) => Math.hypot(pl.x - b.x, pl.y - b.y) < pl.r + b.r / 2);
   }
 
   // Transporter, auf dem der Ball gerade steht, sonst null.
