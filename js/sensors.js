@@ -49,13 +49,21 @@ export class TiltInput {
   }
 
   // {x,y} in [-1,1]; +x = Ball rollt nach rechts, +y = nach unten (zum Nutzer).
+  // Die Achsen werden nach Screen-Orientierung gedreht, damit Querformat stimmt.
   get tilt() {
     if (this.hasSensor) {
       const clamp = (v) => Math.max(-1, Math.min(1, v));
-      return {
-        x: clamp((this.gamma - this.gamma0) / this.maxAngle),
-        y: clamp((this.beta - this.beta0) / this.maxAngle),
-      };
+      const dead = (v) => (Math.abs(v) < 0.04 ? 0 : v); // Totzone gegen Sensor-Drift
+      const gx = (this.gamma - this.gamma0) / this.maxAngle;
+      const gy = (this.beta - this.beta0) / this.maxAngle;
+      const raw = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
+      const angle = ((raw % 360) + 360) % 360;
+      let x, y;
+      if (angle === 90) { x = gy; y = -gx; }
+      else if (angle === 180) { x = -gx; y = -gy; }
+      else if (angle === 270) { x = -gy; y = gx; }
+      else { x = gx; y = gy; }
+      return { x: clamp(dead(x)), y: clamp(dead(y)) };
     }
     const k = this.keys;
     const t = this._keyTilt;

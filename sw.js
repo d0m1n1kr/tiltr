@@ -1,5 +1,5 @@
 /* tiltr service worker – App-Shell-Caching (stale-while-revalidate) */
-const CACHE = 'tiltr-v2';
+const CACHE = 'tiltr-v3';
 const ASSETS = [
   './',
   './index.html',

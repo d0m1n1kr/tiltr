@@ -68,11 +68,21 @@ function respawn() {
   statusEl.textContent = '';
 }
 
+// Nach dem Start-Tap erst kalibrieren: Beim Tippen hält man das Handy steil
+// zum Gesicht – würde diese Lage als Null gelten, wäre die Vor/Zurück-Achse
+// beim flachen Spielen dauerhaft am Anschlag (Ball klebt an der Wand).
 startBtn.addEventListener('click', async () => {
   await Promise.all([input.start(), audio.start()]);
+  startBtn.classList.add('hidden');
+  document.getElementById('sensorNote').classList.add('hidden');
+  const text = overlay.querySelector('p');
+  for (let i = 3; i > 0; i--) {
+    text.innerHTML = `Halte das Handy jetzt <b>flach wie ein Tablett</b> –<br>so, wie du spielen willst.<br><br><span style="font-size:34px">${i}</span>`;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   overlay.classList.add('hidden');
   hud.classList.remove('hidden');
-  newGame();
+  newGame(); // kalibriert auf die aktuelle, flache Haltung
 });
 
 calibrateBtn.addEventListener('click', () => input.calibrate());
@@ -90,7 +100,8 @@ function frame(now) {
   if (!world) return;
 
   if (state === 'playing') {
-    const hits = world.step(dt, input.tilt);
+    const tilt = input.tilt;
+    const hits = world.step(dt, tilt);
 
     for (const hit of hits) {
       hit.wall.litUntil = now + 1200; // Echo: berührte Wand kurz sichtbar machen
@@ -134,10 +145,13 @@ function frame(now) {
       setTimeout(() => { statusEl.textContent = ''; newGame(); }, 4000);
     } else {
       const mode = input.hasSensor ? 'Neigung' : 'Tasten (WASD/Pfeile)';
-      statusEl.textContent = debug ? `Debug · ${mode}` : '';
+      statusEl.textContent = debug
+        ? `Debug · ${mode} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)}`
+        : '';
     }
   }
 
   renderer.draw(world, { debug, revealAll: revealUntil > now, now });
+  window.__tiltrBall = { x: world.ball.x, y: world.ball.y }; // Testbarkeits-Hook
 }
 requestAnimationFrame(frame);
