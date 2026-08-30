@@ -177,3 +177,43 @@ und QA-Checkliste – und ist die Vorstufe eines Level-Editors.
 | **M8** | Design-Politur (Startscreen, Splash mit Credits) + i18n DE/EN/FR/ES (Auto-Detect + Umschalter) | internationale, polierte App |
 
 Jeder Meilenstein endet deploybar (Pages) und mit grüner Test-Suite.
+
+## Ausbau nach 1.0 (Singleplayer)
+
+Leitplanken wie immer: Jedes Element braucht eine eindeutige, räumlich
+ortbare Klang-Signatur (Audio first), Determinismus im Core und eine
+beweisbare Lösbarkeits-Invariante für die Testsuite (plus Galerie-Eintrag,
+zod-Schema, Weltfarbe nach DESIGN.md: eine Farbe = eine Bedeutung).
+
+| Baustein | Idee | Klang | Testbarkeit |
+|---|---|---|---|
+| **Schiebewand** | Wand öffnet/schließt zyklisch (Wand-Gegenstück zu atmenden Löchern) | rhythmisches Steinschleifen, Takt beschleunigt vorm Schließen | wie atmende Löcher: offen = passierbar |
+| **Zeitschloss-Schalter** | Betreten öffnet verknüpfte Tür für N Sekunden (SP-Druckplatte) | tickender Countdown, hektischer zum Ende | Platten/Tür-Fixpunkt existiert; zusätzlich beweisbar: Pfadlänge Schalter→Tür ÷ Maxspeed ≤ Timer |
+| **Strömung/Förderband** | unüberwindbar starker Schub = Einbahnstraße | pulsierendes, gerichtetes Rauschen | gerichtete Kante im Erreichbarkeits-Modell (wie Transporter) |
+| **Horcher** | Wächter, der sich nur bewegt, während DU rollst; stillstehen = sicher | Schnüffeln/Knistern, schwillt mit eigener Rollgeschwindigkeit an | Patrouillenfrei; Fangverhalten deterministisch aus Ballbewegung |
+| **Nebelzone** | dämpft ALLE Klänge (Lowpass), auch den Beacon | – (das Element IST die Klangveränderung) | kein Physik-Einfluss |
+| **Eisfläche** | reibungsarme Zellen, Ball gleitet | kristallines Sirren beim Gleiten | kein Einfluss auf Erreichbarkeit |
+| **Echo-Kristall** | Pickup: +1 Ping | heller Glockenton, klare Ping-Antwort | Erreichbarkeit wie Gems |
+| **Sog-Anker** | zieht den Ball im Radius an (violett = Gefahr) | elektrisches Brummen, steigt mit Nähe | Platzierung abseits des Pflichtwegs prüfen |
+| **Glasboden** | Zelle zerbricht beim 2. Überrollen zum Loch (1. Mal: Knacken) | Knacken → Splittern | konservativ als „einmal passierbar" modellieren |
+
+Level & Features:
+
+- **Welt 3 „Das Räderwerk"** (6 Level): Schiebewände, Zeitschlösser,
+  Strömungen – Rhythmus-Welt, Finale „Taktstraße" (Multi-Screen).
+- **Welt 4 „Die Stille"** (6 Level): Horcher, Nebel, Eis, Glas –
+  Schleich-Welt, Finale „Das Ohr" (3 Ebenen, Nebelkern, zwei Horcher).
+- **Geist-Replay**: Bestzeit rollt als blasser Halo mit (Partner-Halo-
+  Rendering wiederverwenden); deterministische Aufzeichnung in
+  localStorage; wirkt in Quick, Daily und Kampagne.
+- **Blind-Stern**: vierter, optionaler Stern pro Kampagnen-Level –
+  geschafft ohne einen einzigen Echo-Ping.
+- Generatoren (Quick/Daily) nehmen neue Elemente stufenweise auf.
+
+Schnitte:
+
+| Meilenstein | Inhalt | Ergebnis |
+|---|---|---|
+| **M9 „Räderwerk"** | Schiebewand + Zeitschloss + Strömung, Welt 3, Geist-Replay | Timing-Gameplay + Wiederspielwert |
+| **M10 „Stille"** | Horcher + Nebel + Eis, Welt 4, Blind-Stern | Schleich-Gameplay, Audio-Design-Schau |
+| **M11** | Echo-Kristall, Sog-Anker, Glasboden, Generator-Integration | Würze für alle Modi |
