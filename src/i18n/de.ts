@@ -122,6 +122,7 @@ export const de = {
   'ed.removeFloor': 'Aktive Ebene entfernen',
   'ed.transporterTarget': 'Transporter: Ziel antippen – Ebenenwechsel über die Tabs erlaubt.',
   'ed.transporterSame': 'Ziel muss eine andere Zelle sein.',
+  'ed.cellTaken': 'Feld ist belegt – Elemente brauchen ein freies Feld.',
   'share.title': '🛠 Geteiltes Level',
   'share.text': 'Jemand teilt „{name}" mit dir. Ausprobieren – oder gleich in deine Werkstatt übernehmen?',
   'share.try': 'Ausprobieren',

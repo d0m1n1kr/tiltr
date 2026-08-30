@@ -209,7 +209,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     try {
       loaded = loadLevel(parseLevel(draft));
       loadError = null;
-      flash('');
+      // Status hier NICHT löschen: frische Hinweise aus der laufenden Aktion
+      // („Feld belegt", Wächter-/Transporter-Schritt 2) müssen stehen bleiben
+      // – aufgeräumt wird zu Beginn der nächsten Aktion (act).
     } catch (e) {
       loadError = e instanceof Error ? e.message : String(e);
       flash(loadError, true);
@@ -251,6 +253,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       activeFloor,
       carve: floor().maze.carve.length,
       add: floor().maze.add.length,
+      selected,
       loadError,
     };
     renderer.setManualView(view.scale, view.ox, view.oy);
@@ -351,6 +354,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
 
   function act(wx: number, wy: number): void {
     if (!draft) return;
+    flash(''); // alte Meldung räumen – die Aktion setzt ggf. eine neue
     const [cols, rows] = floor().size;
     // Wand-Werkzeug und Kanten-Elemente: nächste Kante gewinnt immer.
     const wantsEdge = tool === 'wall' || (tool === 'place' && EDGE_TYPES.has(placeType));
@@ -372,12 +376,30 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
         floor().goal = target.cell;
       }
     } else if (tool === 'place') {
-      placeAt(target);
+      // Bestehendes Element antippen = AUSWÄHLEN statt doppelt besetzen –
+      // außer ein Zwei-Tap-Ablauf (Wächter/Transporter) wartet auf Schritt 2.
+      const hit = pendingGuard || pendingTransporter ? -1 : elementAt(target);
+      if (hit !== -1) {
+        selected = hit;
+        renderProps();
+      } else {
+        placeAt(target);
+      }
     } else {
       selected = elementAt(target);
       renderProps();
     }
     rebuild();
+  }
+
+  // Frei = keine Element-Zelle (inkl. Wächter-Wegpunkte) und nicht Start/Ziel
+  // der aktiven Ebene. Elemente werden NUR in freie Felder gesetzt.
+  function cellFree(cell: [number, number]): boolean {
+    if (elementAt({ kind: 'cell', cell }) !== -1) return false;
+    const f = floor();
+    if (f.start[0] === cell[0] && f.start[1] === cell[1]) return false;
+    if (f.goal && f.goal[0] === cell[0] && f.goal[1] === cell[1]) return false;
+    return true;
   }
 
   // Kante zyklisch: Seed-Zustand -> offen (carve) -> zu (add) -> brüchig -> Seed.
@@ -427,6 +449,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       selected = els.length - 1;
     } else if (placeType === 'transporter') {
       if (target.kind !== 'cell') return;
+      if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
       if (!pendingTransporter) {
         pendingTransporter = { floor: activeFloor, cell: target.cell! };
         flash(t('ed.transporterTarget'));
@@ -446,6 +469,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       flash('');
     } else if (placeType === 'guard') {
       if (target.kind !== 'cell') return;
+      if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
       if (!pendingGuard) {
         pendingGuard = target.cell!;
         flash(t('ed.guardSecond'));
@@ -464,6 +488,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       flash('');
     } else {
       if (target.kind !== 'cell') return;
+      if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
       const el: RawEl = { type: placeType, cell: target.cell! };
       if (placeType === 'windZone' || placeType === 'current') el.dir = pickOpenDir(target.cell!);
       if (placeType === 'key' || placeType === 'timedSwitch') el.opens = doorIds().at(-1) ?? 'tor1';

@@ -719,6 +719,24 @@ const check = (name, cond) => {
   const propsText = (await page.textContent('#edProps')).trim();
   check(`Element platziert (${before} -> ${after})`, before === 0 && after === 1 && propsText.includes('Auswahl'));
 
+  // Belegt-Regeln: dieselbe Zelle nochmal antippen wählt das Element AUS
+  // statt ein zweites zu stapeln; Start-/Zielzellen bleiben ganz frei.
+  await page.mouse.click(pt.x, pt.y);
+  await page.waitForTimeout(300);
+  const sameCell = await page.evaluate(() => ({ n: window.__tiltrEd.elements, sel: window.__tiltrEd.selected }));
+  check(`Tap auf bestehendes Element wählt aus statt zu stapeln (n=${sameCell.n}, sel=${sameCell.sel})`,
+    sameCell.n === 1 && sameCell.sel === 0);
+  const ptStart = await page.evaluate(() => {
+    const ed = window.__tiltrEd;
+    const box = document.getElementById('edCanvas').getBoundingClientRect();
+    return { x: box.left + (ed.ox + 50 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 50 * ed.scale) / ed.dpr };
+  });
+  await page.mouse.click(ptStart.x, ptStart.y);
+  await page.waitForTimeout(300);
+  const startTry = await page.evaluate(() => window.__tiltrEd.elements);
+  const takenMsg = (await page.textContent('#edStatus')).trim();
+  check(`Start-Zelle bleibt frei ("${takenMsg}")`, startTry === 1 && takenMsg.includes('belegt'));
+
   // Preview: Testen -> echte Spielschleife mit ✏️-Rücksprung.
   await page.click('#edTest');
   await page.waitForTimeout(3600); // Kalibrier-Countdown

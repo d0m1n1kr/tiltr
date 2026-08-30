@@ -118,6 +118,7 @@ export const en: Dict = {
   'ed.removeFloor': 'Remove active floor',
   'ed.transporterTarget': 'Transporter: tap the target – switching floors via the tabs is allowed.',
   'ed.transporterSame': 'The target must be a different cell.',
+  'ed.cellTaken': 'Cell is taken – elements need a free cell.',
   'share.title': '🛠 Shared level',
   'share.text': 'Someone is sharing “{name}” with you. Try it – or add it straight to your workshop?',
   'share.try': 'Try it',

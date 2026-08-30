@@ -118,6 +118,7 @@ export const es: Dict = {
   'ed.removeFloor': 'Quitar piso activo',
   'ed.transporterTarget': 'Transportador: toca el destino – puedes cambiar de piso con las pestañas.',
   'ed.transporterSame': 'El destino debe ser otra celda.',
+  'ed.cellTaken': 'Celda ocupada – los elementos necesitan una celda libre.',
   'share.title': '🛠 Nivel compartido',
   'share.text': 'Alguien comparte «{name}» contigo. ¿Probarlo – o añadirlo directo a tu taller?',
   'share.try': 'Probarlo',

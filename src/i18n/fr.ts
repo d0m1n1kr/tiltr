@@ -118,6 +118,7 @@ export const fr: Dict = {
   'ed.removeFloor': 'Supprimer l’étage actif',
   'ed.transporterTarget': 'Transporteur : touche la cible – changer d’étage via les onglets est permis.',
   'ed.transporterSame': 'La cible doit être une autre case.',
+  'ed.cellTaken': 'Case occupée – un élément a besoin d’une case libre.',
   'share.title': '🛠 Niveau partagé',
   'share.text': 'Quelqu’un partage « {name} » avec toi. L’essayer – ou l’ajouter directement à ton atelier ?',
   'share.try': 'Essayer',
