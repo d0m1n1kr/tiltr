@@ -217,3 +217,112 @@ Schnitte:
 | **M9 „Räderwerk"** ✓ | Schiebewand + Zeitschloss + Strömung, Welt 3, Geist-Replay | Timing-Gameplay + Wiederspielwert (v1.1.0) |
 | **M10 „Stille"** ✓ | Horcher + Nebel + Eis, Welt 4, Blind-Stern | Schleich-Gameplay, Audio-Design-Schau (v1.2.0) |
 | **M11** ✓ | Echo-Kristall, Sog-Anker, Glasboden, Generator-Integration | Würze für alle Modi (v1.3.0) |
+
+## M12 „Werkstatt" – Level-Editor (Planung)
+
+Eigene Level bauen, lokal sammeln, testen und serverlos teilen. Leitidee:
+Der Editor erfindet NICHTS neu – er editiert rohe LevelDefs und nutzt
+dieselben Bausteine wie das Spiel: zod-Schema als Formularquelle, Loader +
+Renderer für die Vorschau, die Lösbarkeits-Beweise der Testsuite als
+Live-Validierung. Tablet-first (drei Spalten), Phone funktioniert.
+
+### Datenmodell & Speicherung (localStorage)
+
+- `tiltr.workshop.v1` = `{ levels: CustomLevel[] }`, fehlertolerant wie
+  das Profil (Private Mode: Editor läuft, warnt nur beim Speichern).
+- `CustomLevel = { id: 'custom-<base36>', def: <rohe LevelDef>,
+  createdAt, updatedAt, format: 1 }` – `def.id === id`, `def.name` ist der
+  Anzeigename. Ein handgebautes Level hat ~2–10 KB JSON; localStorage
+  (~5 MB) trägt hunderte.
+- Bestzeiten/Geister/`?unlock` funktionieren automatisch: alles hängt an
+  der Level-ID, `custom-*` reiht sich neben `quick-*`/`daily-*` ein.
+  Kampagnen-Sterne bleiben unberührt (keine `custom`-IDs in CAMPAIGN_IDS).
+
+### Bibliothek („🛠 Werkstatt" im Startmenü)
+
+Levelliste im Kampagnen-Look (`.level-item`): Name, Größe/Ebenen,
+Validierungs-Badge (✓ lösbar / ⚠ Fehler), Bestzeit. Aktionen pro Level:
+Spielen · Bearbeiten · Duplizieren · Teilen · Exportieren · Löschen
+(mit Rückfrage). Kopfzeile: Neu (leer 6×8 oder „aus Zufallslevel" – der
+Quick-Generator liefert das Grundgerüst) · Importieren.
+
+### Editor-Kern
+
+- **Quelle der Wahrheit**: die rohe Def. Jede Änderung läuft durch
+  `parseLevel` → `loadLevel` → `Renderer.draw(world, { debug: true })`.
+  Die Vorschau IST das Spiel-Rendering (Weltfarben, Schiebewand-Zyklen
+  eingefroren offen); wirft der Loader, bleibt das letzte gültige Bild
+  stehen und ein Banner nennt den Fehler (z. B. „Tür-Kante ist zu").
+  Darüber liegt eine Editor-Ebene: Gridlinien, Auswahl, Verknüpfungslinien.
+- **Layout Tablet-first**: ab ~900 px drei Spalten – links Palette
+  (Werkzeuge + alle Registry-Elemente mit Galerie-Miniaturen), Mitte
+  Canvas (Pinch-Zoom + Zwei-Finger-Pan), rechts Eigenschaften. Unter
+  ~900 px: Palette als horizontale Chip-Leiste, Eigenschaften als
+  Bottom-Sheet – gleiche Bausteine, andere Anordnung (theme.css-Tokens,
+  Safe-Area-Regeln gelten unverändert).
+- **Werkzeuge** (Chips, ein Modus aktiv): Auswählen · Platzieren
+  (gewähltes Element) · Wand · Radieren · Start · Ziel. Wand-Werkzeug:
+  Tap nahe einer Kante schaltet zyklisch offen (carve) → zu (add) →
+  brüchig → Seed-Zustand; Tap-Ziel-Erkennung Kante vs. Zelle über die
+  Distanz zum Zellzentrum (auf dem Tablet mit Zoom präzise). Dazu
+  „Maze neu würfeln" (neuer Seed, Edits bleiben).
+- **Eigenschaften-Panel**: aus dem zod-Schema abgeleitete Felder des
+  ausgewählten Elements (Radius, Timer, Richtung, Atem-Zyklus, Kraft …)
+  plus Level-Metadaten (Name, Intro, Par-Zeit, Ping-Budget).
+- **Verknüpfungs-Modus**: Tür/Zeitschloss/Schlüssel auswählen → Ziel
+  antippen setzt `opens`; Transporter → Ebenen-Tab + Zelle. Goldene
+  gestrichelte Linien zeigen bestehende Verknüpfungen.
+- **Ebenen**: Tabs für bis zu 4 Ebenen (Schema-Limit), je Ebene Größe
+  2–64. Druckplatten bleiben ausgeblendet (Multiplayer-Element ohne
+  SP-Semantik – das Zeitschloss ist das SP-Pendant).
+
+### Live-Validierung = Testsuite im Spiel
+
+Das Erreichbarkeits-Modell zieht von `tests/helpers.ts` nach
+`src/levels/validate.ts` um (die Tests re-exportieren von dort – EINE
+Quelle der Wahrheit für Beweise in CI und Editor). Der Editor zeigt
+Badges, live nach jeder Änderung: Ziel erreichbar · Schlüssel/Schalter
+vor ihrer Tür · Zeitschloss-Timer reicht (2,5×-Schranke) · kein Softlock
+(Öffner-Fixpunkt, gerichtete Strömungen) · Anker/Glas abseits des
+Pflichtwegs. Teilen/Exportieren ist erst mit grünen Pflicht-Badges
+möglich – geteilte Level sind damit beweisbar lösbar.
+
+### Preview-Modus
+
+„▶ Testen" startet das Level in der ECHTEN Spielschleife (neuer Modus
+`{ kind: 'custom' }`): Sensoren/Tastatur, Audio, Geist, HUD – alles wie
+im Spiel, plus ein ✏️-Knopf, der ohne Umweg zurück in den Editor führt
+(Entwurf bleibt erhalten). Debug-Ansicht 👁 wie gehabt.
+
+### Import / Export / Share-Link (serverlos)
+
+- **Export**: JSON-Datei `{ format: 'tiltr-level', version: 1, def }`
+  per Blob-Download; **Import**: Datei-Picker UND Einfüge-Textfeld
+  (Tablet-freundlich), `parseLevel`-validiert, ID-Kollision ⇒ neue ID.
+- **Share-Link**: `#level=<base64url(deflate(JSON))>` – wie die
+  Daily-Challenge komplett serverlos. Kompression über das native
+  `CompressionStream('deflate-raw')` (iOS ≥ 16.4; Fallback:
+  unkomprimiert). Typische Links 1–3 KB; ab ~8 KB warnt der Editor.
+  Empfang im bestehenden Hash-Handler: Interstitial „Level ‚X'
+  ausprobieren / in die Werkstatt übernehmen" – Hash wird wie bei
+  `#daily`/`#join` aus der URL entfernt. Teilen über Web Share API,
+  sonst Zwischenablage.
+
+### Tests & E2E
+
+- Unit: validate.ts-Umzug (bestehende Beweise bleiben grün), Storage-
+  Roundtrip, Share-Codec-Roundtrip (encode→decode = identische Def,
+  deterministisch; CompressionStream gibt es in Node ≥ 18), Import
+  weist kaputte/fremde JSONs ab.
+- E2E: Werkstatt-Lauf (Neu → Element platzieren → Badge grün → Testen →
+  Ball-Hook → zurück → Speichern → Bibliothek zeigt Eintrag),
+  Share-Roundtrip über zwei Pages (`#level=…`), Tablet-Layout
+  (1024×768 ⇒ drei Spalten sichtbar) + Phone-Gegenprobe (400×800 ⇒
+  Leisten-Layout). Neue Zusicherungen einmal rot sehen.
+
+### Schnitte
+
+| Meilenstein | Inhalt | Ergebnis |
+|---|---|---|
+| **M12a „Werkstatt-Kern"** | Bibliothek + Editor (eine Ebene): Platzieren, Wände, Eigenschaften, Live-Validierung, Preview, Speichern | Eigene Level bauen & spielen (v1.4.0) |
+| **M12b „Teilen"** | Mehr-Ebenen + Verknüpfungs-Modus, Import/Export, Share-Link + Empfang, Pinch-Zoom-Feinschliff | Level-Tausch ohne Server (v1.5.0) |
