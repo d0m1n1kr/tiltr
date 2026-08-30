@@ -341,6 +341,7 @@ function showMenu(): void {
   hideInterstitial();
   hud.classList.add('hidden');
   $('editBtn').classList.add('hidden');
+  homeBtn.classList.remove('hidden');
   overlay.classList.remove('hidden');
   refreshMenu();
 }
@@ -501,8 +502,12 @@ function launch(def: LevelDef): void {
   state = 'playing';
   revealUntil = 0;
   statusEl.textContent = '';
-  // ✏️ nur im Editor-Preview: schneller Rücksprung in die Werkstatt.
-  $('editBtn').classList.toggle('hidden', !(mode?.kind === 'custom' && customFromEditor));
+  // Editor-Preview: der EINZIGE Weg hinaus führt zurück in den Editor –
+  // ✏️ ersetzt 🏠, damit niemand versehentlich im Hauptmenü landet
+  // (der ungespeicherte Entwurf lebt nur im Editor).
+  const editorPreview = mode?.kind === 'custom' && customFromEditor;
+  $('editBtn').classList.toggle('hidden', !editorPreview);
+  homeBtn.classList.toggle('hidden', editorPreview);
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   input.calibrate();
 }
@@ -667,7 +672,9 @@ function onWin(seconds: number): void {
               },
             }
           : { label: t('common.again'), onClick: beginLevel },
-        secondary: { label: t('common.menu'), onClick: showMenu },
+        // Im Editor-Preview gibt es KEINEN Menü-Ausstieg: zurück geht es
+        // immer in den Editor (verlassen wird der über ‹).
+        secondary: fromEditor ? undefined : { label: t('common.menu'), onClick: showMenu },
       });
     }, 1800);
   } else {

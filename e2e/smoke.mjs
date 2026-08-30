@@ -724,8 +724,9 @@ const check = (name, cond) => {
   await page.waitForTimeout(3600); // Kalibrier-Countdown
   const hudShown = !(await page.locator('#hud').getAttribute('class')).includes('hidden');
   const editBtnShown = !(await page.locator('#editBtn').getAttribute('class')).includes('hidden');
+  const homeHidden = (await page.locator('#homeBtn').getAttribute('class')).includes('hidden');
   const ball = await page.evaluate(() => window.__tiltrBall);
-  check('Preview läuft in der Spielschleife (HUD + ✏️ + Ball)', hudShown && editBtnShown && !!ball);
+  check('Preview läuft in der Spielschleife (HUD + ✏️ + Ball, 🏠 versteckt)', hudShown && editBtnShown && homeHidden && !!ball);
   await page.click('#editBtn');
   await page.waitForTimeout(300);
   const backInEditor = !(await page.locator('#editor').getAttribute('class')).includes('hidden');
@@ -743,6 +744,15 @@ const check = (name, cond) => {
   const count = (await page.textContent('#workshopCount')).trim();
   check(`Speichern + Bibliothek ("${savedMsg}" / "${wsName}" / ${count})`,
     savedMsg.includes('Gespeichert') && items === 1 && wsName === 'Mein Level' && count === '(1)');
+
+  // Normales Spielen aus der Bibliothek (kein Editor-Preview): 🏠 ist wieder
+  // da, ✏️ nicht – nur der Preview bindet den Rückweg an den Editor.
+  await page.click('#workshopBtn');
+  await page.locator('#workshopList .ws-actions .btn-primary').first().click(); // ▶ Spielen
+  await page.waitForTimeout(600);
+  const homeShown = !(await page.locator('#homeBtn').getAttribute('class')).includes('hidden');
+  const editHidden = (await page.locator('#editBtn').getAttribute('class')).includes('hidden');
+  check('Bibliothek-Spielen: 🏠 sichtbar, ✏️ versteckt', homeShown && editHidden);
   await page.close();
 }
 {
