@@ -6,7 +6,9 @@
 import { parseLevel } from '../levels/schema';
 import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
-import { blankLevel, newCustomId, workshop, type CustomLevel } from '../workshop';
+import { validateLevel, isShareable } from '../levels/validate';
+import { encodeLevel } from '../levels/shareCodec';
+import { blankLevel, exportPayload, importLevel, newCustomId, workshop, type CustomLevel } from '../workshop';
 import { profile } from '../profile';
 import { t, formatDate } from '../i18n';
 import type { RawLevel } from './editor';
@@ -50,6 +52,38 @@ export function setupWorkshopPanel(opts: {
       workshop.duplicate(level.id, t('ed.copySuffix'));
       render();
     });
+    const share = btn('🔗', 'btn-ghost', () => {
+      // Teilen nur mit grünen Pflicht-Badges: geteilte Level sind beweisbar lösbar.
+      if (!isShareable(validateLevel(level.def))) {
+        share.textContent = `🔗 ${t('ed.shareBlocked')}`;
+        setTimeout(() => (share.textContent = '🔗'), 2500);
+        return;
+      }
+      void (async () => {
+        const url = `${location.origin}${location.pathname}#level=${await encodeLevel(level.def)}`;
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: String(level.def.name ?? ''), url });
+          } else {
+            await navigator.clipboard.writeText(url);
+            share.textContent = `🔗 ${t('ed.shareCopied')}`;
+            setTimeout(() => (share.textContent = '🔗'), 2500);
+          }
+        } catch {
+          /* abgebrochen */
+        }
+      })();
+    });
+    share.title = t('ed.share');
+    const exp = btn('⇩', 'btn-ghost', () => {
+      const blob = new Blob([exportPayload(level.def)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `tiltr-level-${String(level.def.name ?? level.id).replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    exp.title = t('ed.export');
     const del = btn(`🗑 ${t('ed.delete')}`, 'btn-ghost', () => {
       if (del.dataset.armed === '1') {
         workshop.remove(level.id);
@@ -110,6 +144,30 @@ export function setupWorkshopPanel(opts: {
     panel.classList.add('hidden');
     opts.onEdit(blankLevel(t('ed.untitled')) as RawLevel);
   });
+  /* --- Import: Datei ODER Einfüge-Textfeld (Tablet-freundlich) --- */
+  const importBox = $('wsImportBox');
+  const importText = $<HTMLTextAreaElement>('wsImportText');
+  const importStatus = $('wsImportStatus');
+  const finishImport = (level: CustomLevel | null): void => {
+    importStatus.textContent = level ? t('ed.importOk', { name: String(level.def.name ?? level.id) }) : t('ed.importBad');
+    if (level) {
+      importText.value = '';
+      render();
+    }
+  };
+  $('wsImportBtn').addEventListener('click', () => {
+    importBox.classList.toggle('hidden');
+    importStatus.textContent = '';
+  });
+  $('wsImportGo').addEventListener('click', () => finishImport(importLevel(importText.value)));
+  $('wsImportFile').addEventListener('click', () => $('wsImportInput').click());
+  $<HTMLInputElement>('wsImportInput').addEventListener('change', (ev) => {
+    const file = (ev.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    void file.text().then((text) => finishImport(importLevel(text)));
+    (ev.target as HTMLInputElement).value = '';
+  });
+
   $('wsNewRandomBtn').addEventListener('click', () => {
     // Quick-Generator als Grundgerüst: neue ID + editierbarer Name.
     const def = JSON.parse(JSON.stringify(generateQuickLevel(randomSeed(), profile.preset))) as RawLevel;

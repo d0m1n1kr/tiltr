@@ -758,6 +758,88 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 13: Werkstatt-Teilen – Mehr-Ebenen mit Transporter-Paar, Share-Link
+// (deflate im Hash), Empfang auf zweiter Seite, Import per Einfügen. ---
+{
+  const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  const pageA = await ctx.newPage();
+  pageA.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  pageA.on('pageerror', (e) => errors.push(String(e)));
+  await pageA.goto(`${BASE}/?nosplash`);
+  await pageA.click('#workshopBtn');
+  await pageA.click('#wsNewBtn');
+  await pageA.waitForTimeout(500);
+
+  // Zweite Ebene anlegen (Tab ＋) -> aktiv ist E2.
+  await pageA.locator('#edFloorTabs .chip', { hasText: '＋' }).click();
+  await pageA.waitForTimeout(300);
+  const floors = await pageA.evaluate(() => ({ n: window.__tiltrEd?.floors, active: window.__tiltrEd?.activeFloor }));
+  check(`Ebenen-Tabs: zweite Ebene angelegt (E${(floors.active ?? 0) + 1} von ${floors.n})`, floors.n === 2 && floors.active === 1);
+
+  // Transporter-Paar: E1 -> E2 und zurück (Zwei-Tap mit Tab-Wechsel).
+  const tapCell = async (cx, cy) => {
+    const pt = await pageA.evaluate(([x, y]) => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById('edCanvas').getBoundingClientRect();
+      return { x: box.left + (ed.ox + x * ed.scale) / ed.dpr, y: box.top + (ed.oy + y * ed.scale) / ed.dpr };
+    }, [cx * 100 + 50, cy * 100 + 50]);
+    await pageA.mouse.click(pt.x, pt.y);
+    await pageA.waitForTimeout(250);
+  };
+  const tab = (label) => pageA.locator('#edFloorTabs .chip', { hasText: label }).first();
+  await pageA.locator('.ed-tile', { hasText: 'Transporter' }).click();
+  await tab('E1').click();
+  await tapCell(2, 2); // Pad auf E1 …
+  await tab('E2').click();
+  await tapCell(1, 1); // … Ziel auf E2
+  await tapCell(4, 4); // Rückweg-Pad auf E2 …
+  await tab('E1').click();
+  await tapCell(3, 3); // … Ziel auf E1
+  await pageA.waitForTimeout(600);
+  const e1Count = await pageA.evaluate(() => window.__tiltrEd?.elements);
+  const failCount = await pageA.locator('#edBadges .ed-badge.fail').count();
+  check(`Transporter-Paar über zwei Ebenen, alle Beweise grün (E1: ${e1Count} Element, ${failCount} rot)`,
+    e1Count === 1 && failCount === 0);
+
+  // Share-Link erzeugen (nur mit grünen Pflicht-Badges möglich).
+  await pageA.fill('#edName', 'Ebenen-Probe');
+  await pageA.dispatchEvent('#edName', 'change');
+  await pageA.click('#edShare');
+  await pageA.waitForTimeout(400);
+  const shareUrl = await pageA.evaluate(() => window.__tiltrShareUrl);
+  check(`Share-Link erzeugt (deflate, ${shareUrl?.length ?? 0} Zeichen)`,
+    typeof shareUrl === 'string' && shareUrl.includes('#level=1') && shareUrl.length < 4000);
+
+  // Empfang auf einer zweiten Seite: Interstitial -> in die Werkstatt übernehmen.
+  const pageB = await ctx.newPage();
+  pageB.on('pageerror', (e) => errors.push(String(e)));
+  await pageB.goto(shareUrl.replace(BASE, '') ? shareUrl : shareUrl); // vollständige URL inkl. Hash
+  await pageB.waitForTimeout(600);
+  const shareTitle = (await pageB.textContent('#interTitle')).trim();
+  const shareText = (await pageB.textContent('#interText')).trim();
+  check(`Geteiltes Level wird angeboten ("${shareTitle}")`,
+    shareTitle.includes('Geteiltes Level') && shareText.includes('Ebenen-Probe'));
+  check('Level-Hash wurde aus der URL entfernt', await pageB.evaluate(() => location.hash === ''));
+  await pageB.click('#interSecondary'); // In die Werkstatt
+  await pageB.waitForTimeout(300);
+  const wsOpen = !(await pageB.locator('#workshop').getAttribute('class')).includes('hidden');
+  const wsName = (await pageB.textContent('.ws-name')).trim();
+  check(`Übernommen: Werkstatt zeigt "${wsName}"`, wsOpen && wsName === 'Ebenen-Probe');
+
+  // Import per Einfügen (Tablet-Weg ohne Datei).
+  await pageB.click('#wsImportBtn');
+  await pageB.fill('#wsImportText', JSON.stringify({
+    id: 'custom-e2e-import', name: 'Import-Probe', pingBudget: 3,
+    floors: [{ size: [4, 4], maze: { seed: 5 }, elements: [], start: [0, 0], goal: [3, 3] }],
+  }));
+  await pageB.click('#wsImportGo');
+  await pageB.waitForTimeout(200);
+  const importMsg = (await pageB.textContent('#wsImportStatus')).trim();
+  const wsItems = await pageB.locator('.ws-item').count();
+  check(`Import per Einfügen ("${importMsg}", ${wsItems} Level)`, importMsg.includes('importiert') && wsItems === 2);
+  await ctx.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

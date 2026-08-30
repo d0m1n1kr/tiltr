@@ -53,10 +53,15 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   zum Wiederverbinden.
 - **🛠 Werkstatt** – eigene Level im Touch-Editor bauen (auf Tablets als
   Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
-  schalten, Eigenschaften feilen – während die Lösbarkeits-Beweise der
-  Testsuite live als Badges mitlaufen (Ziel erreichbar, kein Softlock,
-  Timer reicht …). Entwürfe in der echten Spielschleife testen und mit
-  einem Tap zurückspringen; die Bibliothek liegt lokal auf dem Gerät.
+  schalten, mehrstöckige Karten mit Transportern bauen, Eigenschaften
+  feilen – während die Lösbarkeits-Beweise der Testsuite live als Badges
+  mitlaufen (Ziel erreichbar, kein Softlock, Timer reicht …). Entwürfe in
+  der echten Spielschleife testen und mit einem Tap zurückspringen; die
+  Bibliothek liegt lokal auf dem Gerät. Fertige Level teilst du über
+  einen serverlosen Link (das Level reist deflate-komprimiert im
+  URL-Hash – Teilen geht erst, wenn alle Pflicht-Badges grün sind:
+  geteilte Level sind beweisbar lösbar) oder als JSON-Datei (Export +
+  Import per Datei oder Einfügen).
 - **🎓 Tutorial** – acht Micro-Level, die die Klangsprache beibringen,
   ein Element nach dem anderen.
 - **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und
@@ -147,7 +152,8 @@ M9 Welt 3 „Das Räderwerk" (Schiebewände, Zeitschlösser, Strömungen) +
 Geist-Replay ✓ → M10 Welt 4 „Die Stille" (Horcher, Nebel, Eis) +
 Blind-Stern ✓ → M11 Echo-Kristall, Sog-Anker, Glasboden +
 Generator-Integration ✓ → M12a Werkstatt: Level-Editor mit
-Live-Lösbarkeits-Beweisen, Bibliothek & Spiel-Preview ✓
+Live-Lösbarkeits-Beweisen, Bibliothek & Spiel-Preview ✓ → M12b Teilen:
+serverlose Level-Links, JSON-Import/-Export, Mehr-Ebenen-Editor ✓
 
 ---
 

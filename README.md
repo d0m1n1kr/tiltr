@@ -51,10 +51,15 @@ automatically via GitHub Actions (tests → build → pages).
   10-second reconnect window.
 - **🛠 Workshop** — build your own levels in a touch-first editor
   (three-pane layout on tablets): place elements from the full registry,
-  toggle walls, tweak properties — while the test suite's solvability
-  proofs run live as badges (goal reachable, no softlock, timer fits …).
-  Test drafts in the real game loop and jump back with one tap; levels are
-  stored locally in your library.
+  toggle walls, build multi-floor maps with transporters, tweak properties
+  — while the test suite's solvability proofs run live as badges (goal
+  reachable, no softlock, timer fits …). Test drafts in the real game loop
+  and jump back with one tap; levels live locally in your library. Share
+  finished levels via a serverless link (the level itself travels
+  deflate-compressed in the URL hash — sharing unlocks only once all
+  required proof badges are green, so shared levels are provably
+  solvable), or exchange them as JSON files (export + import via file or
+  paste).
 - **🎓 Tutorial** — eight micro-levels that teach the sound language, one
   element at a time.
 - **🧩 Element Gallery** — living documentation: every element with its
@@ -143,7 +148,8 @@ M9 world 3 "The Clockwork" (sliding walls, time locks, currents) + ghost
 replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓ →
 M11 echo crystal, pull anchor, glass floor + generator integration ✓ →
 M12a workshop: level editor with live solvability proofs, library &
-in-game preview ✓
+in-game preview ✓ → M12b sharing: serverless level links, JSON
+import/export, multi-floor editing ✓
 
 ---
 

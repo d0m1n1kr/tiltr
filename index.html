@@ -329,6 +329,15 @@
     #edBadges { display: flex; gap: var(--space-1); flex-wrap: wrap; }
     #edHeaderBtns { display: flex; gap: var(--space-2); margin-left: auto; }
     #edStatus { min-height: 1.2em; text-align: center; }
+    #edFloorRow { display: flex; align-items: center; gap: var(--space-2); }
+    #edFloorTabs { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+    #edFit { margin-left: auto; }
+    #wsImportBox { display: grid; gap: var(--space-2); padding: var(--space-3); }
+    #wsImportText {
+      background: var(--bg-panel); border: var(--border-strong); color: var(--text);
+      border-radius: var(--radius-m); padding: var(--space-2);
+      font: 500 var(--fs-small) ui-monospace, monospace; resize: vertical;
+    }
     #edBody { flex: 1; min-height: 0; display: grid; gap: var(--space-3); grid-template-columns: 200px minmax(0, 1fr) 250px; }
     #edPalette { overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); }
     #edCanvasWrap { position: relative; min-height: 0; border-radius: var(--radius-l); overflow: hidden; background: var(--bg-deep); }
@@ -541,6 +550,16 @@
       <div id="workshopActions">
         <button id="wsNewBtn" class="btn btn-primary" data-i18n="ed.new">＋ Neues Level</button>
         <button id="wsNewRandomBtn" class="btn btn-ghost" data-i18n="ed.newRandom">🎲 Aus Zufallslevel</button>
+        <button id="wsImportBtn" class="btn btn-ghost" data-i18n="ed.import">⇪ Importieren</button>
+      </div>
+      <div id="wsImportBox" class="panel hidden">
+        <textarea id="wsImportText" rows="4" data-i18n-ph="ed.importPh" spellcheck="false"></textarea>
+        <div class="ws-actions">
+          <button id="wsImportFile" class="btn btn-ghost" data-i18n="ed.importFile">📄 Datei wählen</button>
+          <button id="wsImportGo" class="btn btn-primary" data-i18n="ed.importGo">Übernehmen</button>
+        </div>
+        <p id="wsImportStatus" class="menu-meta"></p>
+        <input id="wsImportInput" type="file" accept=".json,application/json" class="hidden">
       </div>
       <p id="wsEmpty" class="menu-meta hidden" data-i18n="ed.empty"></p>
       <div id="workshopList"></div>
@@ -555,11 +574,17 @@
       <input id="edName" type="text" maxlength="40" autocomplete="off" spellcheck="false" data-i18n-ph="ed.namePh">
       <span id="edBadges"></span>
       <span id="edHeaderBtns">
+        <button id="edShare" class="btn btn-ghost" data-i18n-title="ed.share">🔗</button>
+        <button id="edExport" class="btn btn-ghost" data-i18n-title="ed.export">⇩</button>
         <button id="edTest" class="btn btn-ghost" data-i18n="ed.test">▶ Testen</button>
         <button id="edSave" class="btn btn-primary" data-i18n="ed.save">Speichern</button>
       </span>
     </header>
     <p id="edStatus" class="menu-meta"></p>
+    <div id="edFloorRow">
+      <span id="edFloorTabs"></span>
+      <button id="edFit" class="btn btn-ghost" data-i18n-title="ed.fit">⤢</button>
+    </div>
     <div id="edBody">
       <div id="edPalette"></div>
       <div id="edCanvasWrap"><canvas id="edCanvas"></canvas></div>

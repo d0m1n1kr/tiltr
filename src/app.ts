@@ -28,7 +28,8 @@ import { setupGallery } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
-import { workshop } from './workshop';
+import { newCustomId, workshop } from './workshop';
+import { decodeLevel } from './levels/shareCodec';
 
 const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
 const WIND_HEAR = CELL * 1.8;
@@ -884,8 +885,50 @@ async function shareDaily(date: string, seconds: number): Promise<void> {
   }
 }
 
+// Geteiltes Werkstatt-Level (#level=TOKEN): dekodieren, anbieten.
+function offerSharedLevel(token: string): void {
+  history.replaceState(null, '', location.pathname + location.search);
+  void (async () => {
+    let raw: Record<string, unknown>;
+    let def: LevelDef;
+    try {
+      raw = await decodeLevel(token);
+      def = parseLevel(raw);
+    } catch {
+      showInterstitial({
+        title: t('share.title'),
+        text: t('share.bad'),
+        primary: { label: t('common.ok'), onClick: () => undefined },
+      });
+      return;
+    }
+    showInterstitial({
+      title: t('share.title'),
+      text: t('share.text', { name: def.name }),
+      primary: { label: t('share.try'), onClick: () => startCustom(raw as never, false) },
+      secondary: {
+        label: t('share.keep'),
+        onClick: () => {
+          // Fremde/kollidierende IDs bekommen eine frische Werkstatt-ID.
+          if (typeof raw.id !== 'string' || !raw.id.startsWith('custom-') || workshop.get(raw.id)) {
+            raw.id = newCustomId();
+          }
+          workshop.save(raw);
+          refreshMenu();
+          workshopPanel.show();
+        },
+      },
+    });
+  })();
+}
+
 // Empfangene Herausforderung (#daily=DATUM&t=SEKUNDEN) anbieten.
 function checkChallengeHash(): void {
+  const levelMatch = location.hash.match(/^#level=([A-Za-z0-9_-]{8,})$/);
+  if (levelMatch) {
+    offerSharedLevel(levelMatch[1]!);
+    return;
+  }
   const joinMatch = location.hash.match(/^#join=([A-Za-z0-9-]{4,12})$/);
   if (joinMatch) {
     history.replaceState(null, '', location.pathname + location.search);

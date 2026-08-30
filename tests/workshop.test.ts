@@ -7,6 +7,8 @@ const backing = new Map<string, string>();
 let workshop: typeof import('../src/workshop').workshop;
 let blankLevel: typeof import('../src/workshop').blankLevel;
 let newCustomId: typeof import('../src/workshop').newCustomId;
+let importLevel: typeof import('../src/workshop').importLevel;
+let exportPayload: typeof import('../src/workshop').exportPayload;
 
 beforeAll(async () => {
   (globalThis as Record<string, unknown>).localStorage = {
@@ -14,7 +16,7 @@ beforeAll(async () => {
     setItem: (k: string, v: string) => void backing.set(k, v),
     removeItem: (k: string) => void backing.delete(k),
   };
-  ({ workshop, blankLevel, newCustomId } = await import('../src/workshop'));
+  ({ workshop, blankLevel, newCustomId, importLevel, exportPayload } = await import('../src/workshop'));
 });
 
 describe('Werkstatt-Store', () => {
@@ -56,5 +58,28 @@ describe('Werkstatt-Store', () => {
   it('blankLevel ist parsebar und lösbar-strukturiert; IDs eindeutig', () => {
     expect(blankLevel('X').id).not.toBe(blankLevel('X').id);
     expect(newCustomId().startsWith('custom-')).toBe(true);
+  });
+
+  it('Export-Hülle -> Import: Roundtrip; Import akzeptiert auch nackte Defs', () => {
+    const def = blankLevel('Roundtrip');
+    const viaWrapper = importLevel(exportPayload(def));
+    expect(viaWrapper).not.toBeNull();
+    expect(viaWrapper!.def.name).toBe('Roundtrip');
+    // nackte Def, fremde ID -> bekommt eine frische Werkstatt-ID
+    const bare = { ...blankLevel('Nackt'), id: 'w1-01' };
+    const imported = importLevel(JSON.stringify(bare));
+    expect(imported).not.toBeNull();
+    expect(imported!.id.startsWith('custom-')).toBe(true);
+  });
+
+  it('Import: ID-Kollision bekommt neue ID, Müll wird abgewiesen', () => {
+    const def = blankLevel('Original');
+    workshop.save(def);
+    const again = importLevel(JSON.stringify(def));
+    expect(again).not.toBeNull();
+    expect(again!.id).not.toBe(def.id); // Kollision -> frische ID
+    expect(importLevel('kein json')).toBeNull();
+    expect(importLevel('{"format":"tiltr-level","def":{"kaputt":true}}')).toBeNull();
+    expect(importLevel('{"nur":"irgendwas"}')).toBeNull();
   });
 });

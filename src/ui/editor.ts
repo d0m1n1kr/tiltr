@@ -13,9 +13,10 @@ import { Renderer } from '../render/renderer';
 import { WORLD } from '../render/palette';
 import { loadLevel, type LoadedLevel } from '../levels/loader';
 import { parseLevel } from '../levels/schema';
-import { validateLevel, buildFloorCells, type CheckResult } from '../levels/validate';
+import { validateLevel, isShareable, buildFloorCells, type CheckResult } from '../levels/validate';
+import { encodeLevel, SHARE_WARN_BYTES } from '../levels/shareCodec';
 import { galleryEntries } from '../elements';
-import { workshop } from '../workshop';
+import { exportPayload, workshop } from '../workshop';
 import { t, applyI18n, type Dict } from '../i18n';
 
 type Dir = 'n' | 'e' | 's' | 'w';
@@ -37,6 +38,7 @@ interface RawFloor {
   start: [number, number];
   goal: [number, number] | null;
 }
+const MAX_FLOORS = 4; // Schema-Limit
 export interface RawLevel {
   id: string;
   name: string;
@@ -79,7 +81,7 @@ const edgeKey = (e: Edge) => `${e[0][0]},${e[0][1]},${e[1]}`;
 
 type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal';
 
-/** Palette in M12a: alles außer Druckplatte (MP-only) und Transporter (M12b). */
+/** Palette: alles außer Druckplatte (MP-only ohne Singleplayer-Semantik). */
 const PLACEABLE = [
   'hole',
   'windZone',
@@ -97,6 +99,7 @@ const PLACEABLE = [
   'guard',
   'listener',
   'anchor',
+  'transporter',
 ] as const;
 const EDGE_TYPES = new Set(['door', 'slidingWall']);
 
@@ -125,13 +128,16 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   let loadError: string | null = null;
   let tool: Tool = 'place';
   let placeType: string = 'hole';
-  let selected = -1; // Index in floor.elements
+  let activeFloor = 0;
+  let selected = -1; // Index in floor.elements (der AKTIVEN Ebene)
   let pendingGuard: [number, number] | null = null;
+  /** Transporter-Platzierung: Pad gesetzt, Ziel-Tap steht aus (Ebenenwechsel erlaubt). */
+  let pendingTransporter: { floor: number; cell: [number, number] } | null = null;
   let view = { scale: 1, ox: 0, oy: 0 }; // Canvas-Pixel pro Welteinheit + Offset
   let checks: CheckResult[] = [];
   let validateTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const floor = (): RawFloor => draft!.floors[0]!;
+  const floor = (): RawFloor => draft!.floors[activeFloor]!;
   const flash = (text: string, error = false): void => {
     statusEl.textContent = text;
     statusEl.style.color = error ? 'var(--warning)' : '';
@@ -149,7 +155,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   const edgeOpen = (e: Edge): boolean => {
     try {
       const def = parseLevel(draft);
-      const f = def.floors[0]!;
+      const f = def.floors[activeFloor]!;
       const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
       const c = cells[e[0][1] * f.size[0] + e[0][0]]!;
       return e[1] === 'e' ? !c.e : !c.s;
@@ -234,11 +240,14 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       oy: view.oy,
       dpr: renderer.dpr,
       elements: floor().elements.length,
+      floors: draft.floors.length,
+      activeFloor,
       loadError,
     };
     renderer.setManualView(view.scale, view.ox, view.oy);
     if (loaded) {
-      renderer.draw(loaded.world, { debug: true, now: performance.now() });
+      const world = loaded.floors[Math.min(activeFloor, loaded.floors.length - 1)]!.world;
+      renderer.draw(world, { debug: true, now: performance.now() });
     } else {
       overlay.fillStyle = WORLD.bgDeep;
       overlay.fillRect(0, 0, canvas.width, canvas.height);
@@ -305,6 +314,20 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       }
     }
 
+    // Transporter-Platzierung: Pad wartet auf sein Ziel (magenta markiert)
+    if (pendingTransporter && pendingTransporter.floor === activeFloor) {
+      overlay.strokeStyle = `rgba(${WORLD.portal}, 0.9)`;
+      overlay.lineWidth = 2 * dpr;
+      overlay.setLineDash([4 * dpr, 4 * dpr]);
+      overlay.strokeRect(
+        tx(pendingTransporter.cell[0] * CELL),
+        ty(pendingTransporter.cell[1] * CELL),
+        CELL * s,
+        CELL * s,
+      );
+      overlay.setLineDash([]);
+    }
+
     // Wächter-Platzierung: erster Wegpunkt wartet auf den zweiten
     if (pendingGuard) {
       overlay.strokeStyle = `rgba(${WORLD.guard}, 0.9)`;
@@ -330,8 +353,13 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       eraseAt(target);
     } else if (tool === 'start' || tool === 'goal') {
       if (target.kind !== 'cell') return;
-      if (tool === 'start') floor().start = target.cell;
-      else floor().goal = target.cell;
+      if (tool === 'start') {
+        floor().start = target.cell;
+      } else {
+        // Ein-Ziel-Invariante über alle Ebenen: das neue Ziel gewinnt.
+        for (const f of draft.floors) f.goal = null;
+        floor().goal = target.cell;
+      }
     } else if (tool === 'place') {
       placeAt(target);
     } else {
@@ -386,6 +414,25 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       }
       els.push(placeType === 'door' ? { type: 'door', id: nextDoorId(), edge: e } : { type: 'slidingWall', edge: e });
       selected = els.length - 1;
+    } else if (placeType === 'transporter') {
+      if (target.kind !== 'cell') return;
+      if (!pendingTransporter) {
+        pendingTransporter = { floor: activeFloor, cell: target.cell! };
+        flash(t('ed.transporterTarget'));
+        return;
+      }
+      const origin = pendingTransporter;
+      pendingTransporter = null;
+      if (origin.floor === activeFloor && origin.cell[0] === target.cell![0] && origin.cell[1] === target.cell![1]) {
+        return flash(t('ed.transporterSame'), true);
+      }
+      draft!.floors[origin.floor]!.elements.push({
+        type: 'transporter',
+        cell: origin.cell,
+        target: { floor: activeFloor, cell: target.cell! },
+      } as RawEl);
+      selected = origin.floor === activeFloor ? floor().elements.length - 1 : -1;
+      flash('');
     } else if (placeType === 'guard') {
       if (target.kind !== 'cell') return;
       if (!pendingGuard) {
@@ -420,7 +467,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   function pickOpenDir(cell: [number, number]): Dir {
     try {
       const def = parseLevel(draft);
-      const f = def.floors[0]!;
+      const f = def.floors[activeFloor]!;
       const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
       const c = cells[cell[1] * f.size[0] + cell[0]]!;
       for (const d of ['e', 's', 'w', 'n'] as const) if (!c[d]) return d;
@@ -452,6 +499,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       b.addEventListener('click', () => {
         tool = tl;
         pendingGuard = null;
+        pendingTransporter = null;
         renderPalette();
       });
       paletteEl.append(b);
@@ -478,6 +526,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
         tool = 'place';
         placeType = type;
         pendingGuard = null;
+        pendingTransporter = null;
         renderPalette();
       });
       paletteEl.append(b);
@@ -740,6 +789,123 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     paint();
   });
 
+  /* --- Ebenen-Tabs (bis 4 Ebenen, Schema-Limit) -------------------------------- */
+
+  function switchFloor(index: number): void {
+    activeFloor = index;
+    selected = -1;
+    pendingGuard = null;
+    renderFloorTabs();
+    renderProps();
+    fitView();
+    paint();
+  }
+
+  function renderFloorTabs(): void {
+    if (!draft) return;
+    const tabs = $('edFloorTabs');
+    tabs.replaceChildren();
+    draft.floors.forEach((_, i) => {
+      const b = document.createElement('button');
+      b.className = 'btn chip' + (i === activeFloor ? ' active' : '');
+      b.textContent = `E${i + 1}`;
+      b.addEventListener('click', () => switchFloor(i));
+      tabs.append(b);
+    });
+    if (draft.floors.length < MAX_FLOORS) {
+      const add = document.createElement('button');
+      add.className = 'btn chip';
+      add.textContent = '＋';
+      add.title = t('ed.addFloor');
+      add.addEventListener('click', () => {
+        const cur = floor();
+        draft!.floors.push({
+          size: [...cur.size] as [number, number],
+          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [] },
+          elements: [],
+          start: [0, 0],
+          goal: null,
+        });
+        switchFloor(draft!.floors.length - 1);
+        rebuild();
+      });
+      tabs.append(add);
+    }
+    if (draft.floors.length > 1) {
+      const rm = document.createElement('button');
+      rm.className = 'btn chip';
+      rm.textContent = '−';
+      rm.title = t('ed.removeFloor');
+      rm.addEventListener('click', () => {
+        const removed = activeFloor;
+        const hadGoal = draft!.floors[removed]!.goal !== null;
+        draft!.floors.splice(removed, 1);
+        // Transporter aufräumen: Ziele auf die Ebene fallen weg, höhere rutschen nach.
+        for (const f of draft!.floors) {
+          f.elements = f.elements.filter((el) => {
+            const target = (el as { target?: { floor: number } }).target;
+            return !(el.type === 'transporter' && target?.floor === removed);
+          });
+          for (const el of f.elements) {
+            const target = (el as { target?: { floor: number } }).target;
+            if (el.type === 'transporter' && target && target.floor > removed) target.floor--;
+          }
+        }
+        // Ein-Ziel-Invariante retten: das Ziel wandert notfalls auf Ebene 1.
+        if (hadGoal) {
+          const f0 = draft!.floors[0]!;
+          f0.goal = [f0.size[0] - 1, f0.size[1] - 1];
+        }
+        pendingTransporter = null;
+        switchFloor(Math.max(0, removed - 1));
+        rebuild();
+      });
+      tabs.append(rm);
+    }
+  }
+
+  $('edFit').addEventListener('click', () => {
+    fitView();
+    paint();
+  });
+
+  /* --- Teilen / Export ---------------------------------------------------------- */
+
+  $('edShare').addEventListener('click', () => {
+    if (!draft) return;
+    if (loadError || !isShareable(checks)) return flash(t('ed.shareBlocked'), true);
+    draft.name = nameInput.value.trim() || t('ed.untitled');
+    const def = draft as unknown as Record<string, unknown>;
+    void (async () => {
+      const token = await encodeLevel(def);
+      const url = `${location.origin}${location.pathname}#level=${token}`;
+      // Testbarkeits-Hook: der Link, den Teilen erzeugt hätte.
+      (window as unknown as { __tiltrShareUrl?: string }).__tiltrShareUrl = url;
+      if (token.length > SHARE_WARN_BYTES) flash(t('ed.shareBig'), true);
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: draft!.name, url });
+        } else {
+          await navigator.clipboard.writeText(url);
+          flash(t('ed.shareCopied'));
+        }
+      } catch {
+        /* abgebrochen */
+      }
+    })();
+  });
+
+  $('edExport').addEventListener('click', () => {
+    if (!draft) return;
+    draft.name = nameInput.value.trim() || t('ed.untitled');
+    const blob = new Blob([exportPayload(draft as unknown as Record<string, unknown>)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `tiltr-level-${draft.name.replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
   /* --- Kopfzeile --------------------------------------------------------------- */
 
   nameInput.addEventListener('change', () => {
@@ -770,14 +936,17 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   return {
     open(def: RawLevel): void {
       draft = JSON.parse(JSON.stringify(def)) as RawLevel;
+      activeFloor = 0;
       selected = -1;
       pendingGuard = null;
+      pendingTransporter = null;
       tool = 'place';
       placeType = 'hole';
       nameInput.value = String(draft.name ?? '');
       panel.classList.remove('hidden');
       applyI18n(panel);
       renderPalette();
+      renderFloorTabs();
       renderProps();
       // Erst nach dem Layout passt das Canvas-Rect (ResizeObserver des
       // Renderers setzt das Backing) – dann einpassen und zeichnen.

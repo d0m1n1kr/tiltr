@@ -3,7 +3,12 @@
 // sichtbar fehl. Gespeichert wird die ROHE Def (unparsed): der Editor und
 // der Loader validieren beim Laden über parseLevel/loadLevel.
 
+import { parseLevel } from './levels/schema';
+
 const KEY = 'tiltr.workshop.v1';
+
+/** Dateiformat für Export/Import. */
+export const FILE_FORMAT = 'tiltr-level';
 
 export interface CustomLevel {
   /** 'custom-<base36>' – identisch mit def.id */
@@ -93,6 +98,37 @@ export const workshop = {
     return level;
   },
 };
+
+/** Export-Hülle um eine rohe Def. */
+export function exportPayload(def: Record<string, unknown>): string {
+  return JSON.stringify({ format: FILE_FORMAT, version: 1, def }, null, 2);
+}
+
+/**
+ * Import aus Datei/Zwischenablage: akzeptiert die Export-Hülle ODER eine
+ * nackte Def, validiert per parseLevel, vergibt bei fremden/kollidierenden
+ * IDs eine frische Werkstatt-ID und speichert. null = kein gültiges Level.
+ */
+export function importLevel(text: string): CustomLevel | null {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (typeof data !== 'object' || data === null) return null;
+  const obj = data as Record<string, unknown>;
+  const raw = obj.format === FILE_FORMAT && typeof obj.def === 'object' && obj.def ? (obj.def as Record<string, unknown>) : obj;
+  try {
+    parseLevel(raw);
+  } catch {
+    return null;
+  }
+  if (typeof raw.id !== 'string' || !raw.id.startsWith('custom-') || workshop.get(raw.id)) {
+    raw.id = newCustomId();
+  }
+  return workshop.save(raw) ? workshop.get(String(raw.id)) : null;
+}
 
 /** Leeres Startgerüst für ein neues Level (6x8, zufälliger Maze-Seed). */
 export function blankLevel(name: string): Record<string, unknown> {
