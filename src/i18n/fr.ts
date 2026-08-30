@@ -13,7 +13,7 @@ export const fr: Dict = {
   'menu.daily.done': 'Aujourd’hui : {time}',
   'menu.daily.streak': ' · 🔥 {n} jours',
   'menu.campaign': 'Campagne',
-  'menu.campaign.sub': '2 mondes, 16 niveaux',
+  'menu.campaign.sub': '3 mondes, 22 niveaux',
   'menu.mp': 'Multijoueur',
   'menu.mp.sub': 'Coop & course – à deux, par QR code',
   'menu.tutorial': 'Tutoriel',
@@ -58,6 +58,7 @@ export const fr: Dict = {
   'st.floorUp': '⬆ Étage {n}',
   'st.portal': '✦ Portail',
   'st.wallDown': 'Mur effondré ! 🧱',
+  'st.switch': '⏱ Serrure horlogère : porte ouverte {n} s !',
 
   /* --- Cartes de résultat --- */
   'res.time': 'Temps : {time}',
@@ -188,10 +189,20 @@ export const fr: Dict = {
     'Impulsion sonar active (tap/Espace, réserve limitée) : un front d’onde révèle les environs, les réflexions reviennent retardées par la distance – murs clairs, trous graves.',
   'el.heart.title': 'Battement de cœur',
   'el.heart.desc': 'S’accélère et se renforce à l’approche d’un trou ouvert. Quand le pouls retombe, la voie est libre.',
+  'el.slidingWall.title': 'Mur coulissant',
+  'el.slidingWall.desc':
+    'Un mur qui s’ouvre et se referme en cadence – la voie n’est libre que lorsqu’il est grand ouvert. Signature : un raclement de pierre rythmé à l’ouverture et à la fermeture, plus un tic-tac qui s’accélère juste avant qu’il ne se referme.',
+  'el.timedSwitch.title': 'Interrupteur à minuterie',
+  'el.timedSwitch.desc':
+    'Le franchir ouvre la porte liée – mais pour quelques secondes seulement. Un tic-tac égrène le temps et s’affole quand il se fait rare ; puis la porte se referme bruyamment. Repassez dessus pour remonter le mécanisme.',
+  'el.current.title': 'Courant',
+  'el.current.desc':
+    'Un flux qui pousse plus fort que votre inclinaison – un sens unique. Ce qui reste derrière le courant reste derrière vous. Signature : un souffle pulsé et directionnel, plus grave et plus pressant que le vent.',
 
   /* --- Mondes & niveaux --- */
   'world.w1': 'Monde 1 – Les profondeurs s’éveillent',
   'world.w2': 'Monde 2 – Entre les étages',
+  'world.w3': 'Monde 3 – Les Rouages',
 
   'lv.tut-1.name': 'Rouler & écouter',
   'lv.tut-1.intro':
@@ -264,6 +275,25 @@ export const fr: Dict = {
   'lv.w2-06.name': 'L’Immensité',
   'lv.w2-06.intro':
     'L’immensité : plus grand que ton écran. Longe le bord à travers l’obscurité – les checkpoints sécurisent le long voyage, et à l’écart du chemin, ça scintille.',
+
+  'lv.w3-01.name': 'Sens du rythme',
+  'lv.w3-01.intro':
+    'Tu entends ce raclement de pierre ? Ici, des murs coulissent en cadence – on ne passe que lorsqu’ils sont grand ouverts. Quand le tic-tac s’accélère, ils vont se refermer. Attends. Écoute. Roule.',
+  'lv.w3-02.name': 'Serrure horlogère',
+  'lv.w3-02.intro':
+    'L’interrupteur sur ton chemin remonte un mécanisme : la porte devant l’arrivée s’ouvre – mais pour neuf temps seulement. Le tic-tac compte avec toi et s’affole quand le temps manque. Alors fonce !',
+  'lv.w3-03.name': 'Les rapides',
+  'lv.w3-03.intro':
+    'Un souffle qui pulse : des courants. Ils poussent plus fort que ton inclinaison – des sens uniques. Ce qui reste derrière un courant reste derrière toi. Ramasse d’abord, saute ensuite.',
+  'lv.w3-04.name': 'Jeu d’écluses',
+  'lv.w3-04.intro':
+    'D’abord la cadence, puis l’horloge : deux murs coulissants se franchissent en rythme, puis une minuterie ouvre l’écluse devant l’arrivée – pour huit temps. Sauras-tu enchaîner les deux ?',
+  'lv.w3-05.name': 'Mécanisme',
+  'lv.w3-05.intro':
+    'Tous les rouages s’engrènent : les murs coulissants cadencent la descente, un courant t’emporte vers l’interrupteur, et la minuterie ne tient la chambre d’arrivée ouverte que six temps. Une sentinelle fait sa ronde.',
+  'lv.w3-06.name': 'La route cadencée',
+  'lv.w3-06.intro':
+    'Le finale des Rouages, plus vaste que ton écran : des courants t’emportent d’écluse en écluse, des murs coulissants battent la mesure, et tout au bout la minuterie égrène le temps devant la chambre d’arrivée. Écoute le rythme – et danse avec.',
 
   'lv.coop-01.name': 'Le sas',
   'lv.coop-01.intro':

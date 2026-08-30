@@ -22,4 +22,8 @@ export const WORLD = {
   portal: '240, 130, 230',
   plate: '255, 214, 90',
   buddy: '210, 225, 255',
+  /** Schiebewand: helles Stein-Perlgrau – Wand, die sich bewegt */
+  slider: '235, 224, 200',
+  /** Strömung: Chartreuse – gerichteter, unüberwindbarer Fluss */
+  current: '168, 232, 84',
 } as const;

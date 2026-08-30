@@ -26,9 +26,13 @@ export class GameAudio {
   private guardPanner!: PannerNode;
   private portalGain!: GainNode;
   private portalPanner!: PannerNode;
+  private currentGain!: GainNode;
+  private currentPanner!: PannerNode;
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
+  private nextTock = 0;
+  private tockHigh = false;
 
   // Aus User-Geste aufrufen (Autoplay-Policy).
   async start(): Promise<void> {
@@ -135,6 +139,120 @@ export class GameAudio {
       osc.start();
     }
     this.portalGain.connect(this.portalPanner).connect(this.master);
+
+    // Strömung: tiefes, PULSIERENDES gerichtetes Rauschen – drängender als
+    // Wind (dessen Böen-LFO die Filterfrequenz moduliert; hier pulsiert die
+    // Lautstärke selbst im 2,4-Hz-Takt).
+    const flow = this.ctx.createBufferSource();
+    flow.buffer = this.noiseBuffer('brown');
+    flow.loop = true;
+    const flowFilter = this.ctx.createBiquadFilter();
+    flowFilter.type = 'bandpass';
+    flowFilter.frequency.value = 260;
+    flowFilter.Q.value = 1.6;
+    const pulse = this.ctx.createOscillator();
+    pulse.frequency.value = 2.4;
+    const pulseGain = this.ctx.createGain();
+    pulseGain.gain.value = 0.5;
+    const pulseBase = this.ctx.createGain();
+    pulseBase.gain.value = 0.5;
+    pulse.connect(pulseGain).connect(pulseBase.gain);
+    this.currentGain = this.ctx.createGain();
+    this.currentGain.gain.value = 0;
+    this.currentPanner = this.panner();
+    flow.connect(flowFilter).connect(pulseBase).connect(this.currentGain);
+    this.currentGain.connect(this.currentPanner).connect(this.master);
+    flow.start();
+    pulse.start();
+  }
+
+  // Strömung: closeness01 = 1 mittendrin, 0 = außer Hörweite.
+  setCurrent(closeness01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.currentGain.gain.setTargetAtTime(Math.min(0.7, closeness01 ** 1.4 * 0.8), t, 0.1);
+    if (closeness01 > 0) this.place(this.currentPanner, dx, dy);
+  }
+
+  // Schiebewand schleift auf (rising) bzw. zu (falling): körniges Steinreiben,
+  // tiefer und rauer als das Tür-Gleiten.
+  slideGrind(dx: number, dy: number, opening: boolean): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const out = this.spatialOut(dx, dy);
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('brown');
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 2.2;
+    filter.frequency.setValueAtTime(opening ? 90 : 320, t);
+    filter.frequency.exponentialRampToValueAtTime(opening ? 320 : 90, t + 0.55);
+    const wobble = this.ctx.createOscillator();
+    wobble.frequency.value = 11;
+    const wobbleGain = this.ctx.createGain();
+    wobbleGain.gain.value = 45;
+    wobble.connect(wobbleGain).connect(filter.frequency);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.55, t + 0.07);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    src.connect(filter).connect(gain).connect(out);
+    src.start(t);
+    src.stop(t + 0.65);
+    wobble.start(t);
+    wobble.stop(t + 0.65);
+  }
+
+  // Warn-Takt der Schiebewand: kurzer, steinerner Klack aus ihrer Richtung.
+  slideTick(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(300, t);
+    osc.frequency.exponentialRampToValueAtTime(140, t + 0.05);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    osc.connect(gain).connect(this.spatialOut(dx, dy));
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
+  // Zeitschloss ausgelöst: federnder Aufzieh-Klick (heller als die Druckplatte).
+  switchPress(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [740, 1180].forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      gain.gain.setValueAtTime(0.16, t + i * 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.07);
+      osc.connect(gain).connect(this.master);
+      osc.start(t + i * 0.06);
+      osc.stop(t + i * 0.06 + 0.09);
+    });
+  }
+
+  // Zeitschloss-Countdown: Tick-Tock (zwei alternierende Höhen), Rate und
+  // Schärfe steigen mit der Dringlichkeit. Pro Frame aufrufen; intern getaktet.
+  switchTick(urgency01: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (t < this.nextTock) return;
+    this.nextTock = t + 0.72 - urgency01 * 0.5;
+    this.tockHigh = !this.tockHigh;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = this.tockHigh ? 1320 : 990;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.1 + urgency01 * 0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    osc.connect(gain).connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.07);
   }
 
   // Transporter-Schweben: closeness01 = 1 auf dem Pad, 0 = außer Hörweite.
@@ -593,6 +711,7 @@ export class GameAudio {
     this.setWind(0, 0, 0);
     this.setGuard(0, 0, 0);
     this.setPortal(0, 0, 0);
+    this.setCurrent(0, 0, 0);
     this.setRolling(0);
   }
 

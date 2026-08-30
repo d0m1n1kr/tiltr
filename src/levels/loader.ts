@@ -117,9 +117,17 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
     if (!doorIds.has(key.opens)) throw new Error(`Level ${def.id}: Schlüssel öffnet unbekannte Tür "${key.opens}"`);
   }
   const allPlates = floors.flatMap((f) => f.world.plates);
+  const allSwitches = floors.flatMap((f) => f.world.switches);
   for (const id of doorIds) {
-    if (!allKeys.some((k) => k.opens === id) && !allPlates.some((p) => p.opens === id))
-      throw new Error(`Level ${def.id}: Tür "${id}" hat weder Schlüssel noch Druckplatte`);
+    if (
+      !allKeys.some((k) => k.opens === id) &&
+      !allPlates.some((p) => p.opens === id) &&
+      !allSwitches.some((s) => s.opens === id)
+    )
+      throw new Error(`Level ${def.id}: Tür "${id}" hat weder Schlüssel noch Druckplatte noch Zeitschloss`);
+  }
+  for (const sw of allSwitches) {
+    if (!doorIds.has(sw.opens)) throw new Error(`Level ${def.id}: Zeitschloss öffnet unbekannte Tür "${sw.opens}"`);
   }
 
   const first = floors[0]!;

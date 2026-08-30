@@ -13,7 +13,7 @@ export const es: Dict = {
   'menu.daily.done': 'Hoy: {time}',
   'menu.daily.streak': ' · 🔥 {n} días',
   'menu.campaign': 'Campaña',
-  'menu.campaign.sub': '2 mundos, 16 niveles',
+  'menu.campaign.sub': '3 mundos, 22 niveles',
   'menu.mp': 'Multijugador',
   'menu.mp.sub': 'Coop y carrera – para dos, por código QR',
   'menu.tutorial': 'Tutorial',
@@ -58,6 +58,7 @@ export const es: Dict = {
   'st.floorUp': '⬆ Piso {n}',
   'st.portal': '✦ Portal',
   'st.wallDown': '¡Muro derrumbado! 🧱',
+  'st.switch': '⏱ Cerradura de tiempo: ¡puerta abierta {n} s!',
 
   /* --- Tarjetas de resultado --- */
   'res.time': 'Tiempo: {time}',
@@ -188,10 +189,20 @@ export const es: Dict = {
     'Impulso sonar activo (toque/espacio, reserva limitada): un frente de onda revela el entorno y las reflexiones vuelven retrasadas por la distancia; muros claros, agujeros graves.',
   'el.heart.title': 'Latido',
   'el.heart.desc': 'Se acelera y sube cuanto más cerca está un agujero abierto. Si el pulso baja, el camino está libre.',
+  'el.slidingWall.title': 'Muro corredizo',
+  'el.slidingWall.desc':
+    'Un muro que se abre y se cierra al compás – solo con la abertura completa el paso queda libre. Firma: un roce de piedra rítmico al abrirse y cerrarse, más un tictac que se acelera como aviso justo antes de cerrarse.',
+  'el.timedSwitch.title': 'Interruptor con temporizador',
+  'el.timedSwitch.desc':
+    'Pisarlo abre la puerta vinculada – pero solo durante unos segundos. Un tictac descuenta el tiempo y se vuelve frenético cuando escasea; después la puerta se cierra de forma audible. Písalo de nuevo para dar cuerda al mecanismo.',
+  'el.current.title': 'Corriente',
+  'el.current.desc':
+    'Un flujo que empuja más fuerte de lo que puedes inclinar – un sentido único. Lo que queda tras la corriente, queda atrás. Firma: un rumor pulsante y direccional, más grave y apremiante que el viento.',
 
   /* --- Mundos y niveles --- */
   'world.w1': 'Mundo 1 – Las profundidades despiertan',
   'world.w2': 'Mundo 2 – Entre los pisos',
+  'world.w3': 'Mundo 3 – El Engranaje',
 
   'lv.tut-1.name': 'Rodar y escuchar',
   'lv.tut-1.intro':
@@ -264,6 +275,25 @@ export const es: Dict = {
   'lv.w2-06.name': 'La Inmensidad',
   'lv.w2-06.intro':
     'La inmensidad: más grande que tu pantalla. Sigue el borde a través de la oscuridad; los checkpoints aseguran el largo viaje, y fuera del camino algo brilla.',
+
+  'lv.w3-01.name': 'Sentido del ritmo',
+  'lv.w3-01.intro':
+    '¿Oyes ese roce de piedra? Aquí los muros se deslizan al compás – solo pasas cuando están del todo abiertos. Si el tictac se acelera, están a punto de cerrarse. Espera. Escucha. Rueda.',
+  'lv.w3-02.name': 'Cerradura de tiempo',
+  'lv.w3-02.intro':
+    'El interruptor del camino da cuerda a un mecanismo: la puerta ante la meta se abre – pero solo nueve compases. El tictac cuenta contigo y se vuelve frenético cuando el tiempo escasea. ¡Entonces rueda a toda prisa!',
+  'lv.w3-03.name': 'Los rápidos',
+  'lv.w3-03.intro':
+    'Un rumor que pulsa: corrientes. Empujan más fuerte de lo que puedes inclinar – sentidos únicos. Lo que queda tras una corriente, queda atrás. Primero recoge, después salta.',
+  'lv.w3-04.name': 'Juego de esclusas',
+  'lv.w3-04.intro':
+    'Primero el compás, luego el reloj: dos muros corredizos se cruzan al ritmo, y después una cerradura de tiempo abre la esclusa ante la meta – durante ocho compases. ¿Puedes con ambos de una tirada?',
+  'lv.w3-05.name': 'Mecanismo',
+  'lv.w3-05.intro':
+    'Todo el engranaje encaja: los muros corredizos marcan el descenso, una corriente te arrastra al interruptor y la cerradura de tiempo solo mantiene la cámara de la meta abierta seis compases. Un guardián hace su ronda.',
+  'lv.w3-06.name': 'La calle del compás',
+  'lv.w3-06.intro':
+    'El final del Engranaje, más ancho que tu pantalla: las corrientes te arrastran de esclusa en esclusa, los muros corredizos marcan el compás y, al final, la cerradura de tiempo hace tictac ante la cámara de la meta. Oye el ritmo – y baila con él.',
 
   'lv.coop-01.name': 'La esclusa',
   'lv.coop-01.intro':

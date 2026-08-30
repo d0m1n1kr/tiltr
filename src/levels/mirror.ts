@@ -42,7 +42,10 @@ function mirrorFloor(floor: FloorDef, axis: MirrorAxis, sizes: ReadonlyArray<rea
         return { ...el, patrol: el.patrol.map(mc) };
       case 'door':
         return { ...el, edge: me(el.edge as Edge) };
+      case 'slidingWall':
+        return { ...el, edge: me(el.edge as Edge) };
       case 'windZone':
+      case 'current':
         return { ...el, cell: mc(el.cell), dir: mirrorLevelDir(el.dir, axis) };
       case 'hole':
         return {

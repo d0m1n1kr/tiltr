@@ -25,11 +25,13 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
   (`#daily=DATUM&t=ZEIT`) fordern Freunde heraus, deine Zeit zu schlagen –
   auch für vergangene Tage.
-- **🌍 Kampagne** – zwei handgebaute Welten (16 Level): Wächter, Schlüssel
+- **🌍 Kampagne** – drei handgebaute Welten (22 Level): Wächter, Schlüssel
   und Türen, Gems, atmende Löcher, Wind, brüchige Wände, mehrstöckige
   Karten mit Transportern und Multi-Screen-Weiten, über die die Kamera
-  scrollt. Bis zu drei Sterne pro Level (geschafft,
-  Par-Zeit, alle Gems).
+  scrollt. Welt 3 „Das Räderwerk" dreht sich ums Timing: Schiebewände,
+  Zeitschloss-Schalter und Einbahn-Strömungen. Bis zu drei Sterne pro
+  Level (geschafft, Par-Zeit, alle Gems) – und die eigene Bestzeit rollt
+  bei späteren Versuchen als blasser Geist-Halo mit.
 - **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
   ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über
   eine feste Liste von 8 etablierten Nostr-Relays, kein eigener Server).
@@ -78,6 +80,10 @@ Leertaste für den Ping.
 | Schlüssel & Tür | Schlüssel klimpert in Hörweite, Einsammeln lässt die Tür hörbar aufgleiten |
 | Gems | optionale Sammelkristalle mit eigener Ping-Antwort; alle gesammelt = dritter Stern |
 | Transporter | trägt den Ball auf andere Ebenen (oder als Portal quer über die Map); schwebender Doppelton in der Nähe, Warp klingt abwärts fallend bzw. aufwärts steigend; Ziel-Beacon klingt auf fremden Ebenen gedämpft wie durch den Boden |
+| Schiebewand | schiebt sich im Takt auf und zu – nur voll geöffnet passierbar; rhythmisches Steinschleifen plus beschleunigender Warn-Takt kurz vorm Schließen |
+| Zeitschloss-Schalter | Betreten öffnet die verknüpfte Tür für ein paar Sekunden; ein Tick-Tock zählt herunter und wird hektisch, wenn die Zeit knapp wird |
+| Strömung | schiebt stärker, als man neigen kann – eine Einbahnstraße; pulsierendes, gerichtetes Rauschen, tiefer und drängender als Wind |
+| Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Halo mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
 | Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
 | Partner-Halo | pulsierender Lichtring an der Position des Mitspielers; außer Sicht an den Screenrand geklemmt (mit Ebenen-Label) |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
@@ -118,7 +124,9 @@ sonst `npx vite --host` mit lokalem TLS-Plugin oder einem Tunnel.
 M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓ → M3 Tutorial &
 Schnelles Spiel ✓ → M4 Kampagne Welt 1 ✓ → M5 Ebenen/Transporter + Welt 2 ✓
 → M6 Tages-Challenge + Herausfordern ✓ → M7 Multiplayer Coop & Race ✓ →
-M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉
+M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉 →
+M9 Welt 3 „Das Räderwerk" (Schiebewände, Zeitschlösser, Strömungen) +
+Geist-Replay ✓
 
 ---
 

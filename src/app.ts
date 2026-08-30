@@ -12,7 +12,8 @@ import { generateQuickLevel, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import { generateDailyLevel, todayUTC } from './levels/daily';
-import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang } from './i18n';
+import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang, type Dict } from './i18n';
+import { GhostRecorder, loadGhost, saveGhost, sampleGhost, type GhostData } from './ghost';
 import { showSplash } from './ui/splash';
 import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
@@ -33,6 +34,8 @@ const PING_SPEED = 600; // px/s – Wellenfront visuell & Echo-Verzögerung
 const GUARD_HEAR = CELL * 2.2;
 const KEY_HEAR = CELL * 2.5;
 const PORTAL_HEAR = CELL * 2;
+const CURRENT_HEAR = CELL * 2; // Hörweite des Strömungs-Pulsierens
+const SLIDE_HEAR = CELL * 2.2; // Hörweite von Schleifen/Warn-Takt der Schiebewände
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -118,6 +121,9 @@ let pingMax = 3;
 let falls = 0;
 let levelCols = 0;
 let levelRows = 0;
+// Geist-Replay: Bestzeit-Spur des aktuellen Levels + Rekorder des Laufs
+let ghost: GhostData | null = null;
+let ghostRecorder: GhostRecorder | null = null;
 
 // Seed aus der URL (?seed=…) macht Läufe reproduzierbar (Tests, später Daily).
 function nextSeed(): number {
@@ -237,10 +243,21 @@ function refreshCampaignList(): void {
   WORLDS.forEach((world, wi) => {
     const header = document.createElement('h3');
     header.className = 'world-header';
-    header.textContent = t(wi === 0 ? 'world.w1' : 'world.w2');
+    header.textContent = t(`world.w${wi + 1}` as keyof Dict);
     campaignList.append(header);
     world.levels.forEach((def, local) => appendLevelItem(def, flat++, local + 1));
   });
+}
+
+// Flachen Kampagnen-Index in (Welt, lokale Nummer) auflösen.
+function campaignPos(index: number): { world: number; local: number } {
+  let i = index;
+  for (let w = 0; w < WORLDS.length; w++) {
+    const n = WORLDS[w]!.levels.length;
+    if (i < n) return { world: w, local: i };
+    i -= n;
+  }
+  return { world: 0, local: index };
 }
 
 function appendLevelItem(def: LevelDef, i: number, num: number): void {
@@ -297,6 +314,7 @@ function showMenu(): void {
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
   audio.setPortal(0, 0, 0);
+  audio.setCurrent(0, 0, 0);
   hideInterstitial();
   hud.classList.add('hidden');
   overlay.classList.remove('hidden');
@@ -372,8 +390,8 @@ function beginLevel(): void {
         : mode.kind === 'tutorial'
         ? `${TUT_IDS.indexOf(def.id) + 1}/${TUT_IDS.length} · ${lvName(def)}`
         : mode.kind === 'campaign'
-          ? `${t(mode.index < WORLDS[0]!.levels.length ? 'world.w1' : 'world.w2').split(' – ')[0]} · ${t('common.level')} ${
-              mode.index < WORLDS[0]!.levels.length ? mode.index + 1 : mode.index + 1 - WORLDS[0]!.levels.length
+          ? `${t(`world.w${campaignPos(mode.index).world + 1}` as keyof Dict).split(' – ')[0]} · ${t('common.level')} ${
+              campaignPos(mode.index).local + 1
             } · ${lvName(def)}`
           : lvName(def);
     const targetLine =
@@ -404,6 +422,12 @@ function activateFloor(index: number): void {
 
 function launch(def: LevelDef): void {
   loaded = loadLevel(def);
+  // Geist-Replay: nur in Quick/Daily/Kampagne (nicht Tutorial, nicht MP) –
+  // die Level-ID trägt bei Quick den Seed, der Geist erscheint also nur auf
+  // exakt demselben Level.
+  const ghostable = mode !== null && (mode.kind === 'quick' || mode.kind === 'daily' || mode.kind === 'campaign');
+  ghost = ghostable ? loadGhost(def.id) : null;
+  ghostRecorder = ghostable ? new GhostRecorder() : null;
   pingMax = loaded.pingBudget;
   pings = pingMax;
   falls = 0;
@@ -462,6 +486,11 @@ function respawn(): void {
 function onWin(seconds: number): void {
   if (!mode || !currentDef) return;
   const def = currentDef;
+  // Geist-Replay: die schnellste Spur pro Level-ID aufheben.
+  if (ghostRecorder && (ghost === null || seconds < ghost.time)) {
+    const frames = ghostRecorder.result();
+    if (frames) saveGhost(def.id, seconds, frames);
+  }
   if (mode.kind === 'daily') {
     const date = mode.date;
     const target = mode.target;
@@ -590,6 +619,51 @@ function updateHoles(nowMs: number): void {
   }
 }
 
+// Schiebewände: Zyklus wie die atmenden Löcher (openness 1 = Lücke offen),
+// dazu die Klang-Steuerung – Schleifen bei jedem Zustandswechsel, in den
+// letzten Sekunden des offenen Plateaus ein beschleunigender Warn-Takt.
+function updateSlidingWalls(nowMs: number): void {
+  const b = world!.ball;
+  for (const w of world!.walls) {
+    const sl = w.slide;
+    if (!sl) continue;
+    const c = sl.cycle;
+    const period = c.ramp * 2 + c.open + c.closed;
+    const cyc = (nowMs / 1000 + c.offset) % period;
+    let state: NonNullable<typeof sl.lastState>;
+    if (cyc < c.ramp) {
+      sl.openness = cyc / c.ramp;
+      state = 'opening';
+    } else if (cyc < c.ramp + c.open) {
+      sl.openness = 1;
+      state = 'open';
+    } else if (cyc < c.ramp * 2 + c.open) {
+      sl.openness = 1 - (cyc - c.ramp - c.open) / c.ramp;
+      state = 'closing';
+    } else {
+      sl.openness = 0;
+      state = 'closed';
+    }
+    const cx = Math.max(w.x, Math.min(b.x, w.x + w.w));
+    const cy = Math.max(w.y, Math.min(b.y, w.y + w.h));
+    const dx = cx - b.x,
+      dy = cy - b.y;
+    const audible = Math.hypot(dx, dy) < SLIDE_HEAR;
+    if (state !== sl.lastState) {
+      if (audible && (state === 'opening' || state === 'closing')) audio.slideGrind(dx, dy, state === 'opening');
+      sl.lastState = state;
+      sl.nextTick = undefined;
+    }
+    if (state === 'open' && audible) {
+      const remaining = c.ramp + c.open - cyc;
+      if (remaining < 1.3 && (sl.nextTick === undefined || nowMs >= sl.nextTick)) {
+        audio.slideTick(dx, dy);
+        sl.nextTick = nowMs + 130 + remaining * 220;
+      }
+    }
+  }
+}
+
 // Echo-Ping: Umgebung im Radius aufdecken (als Wellenfront) und die
 // Reflexionen verzögert & räumlich zurückkommen lassen.
 function firePing(now: number): void {
@@ -606,7 +680,8 @@ function firePing(now: number): void {
     if (dist > PING_RANGE) continue;
     w.litFrom = now + (dist / PING_SPEED) * 1000;
     w.litUntil = w.litFrom + 1000;
-    reflections.push({ dx: cx - b.x, dy: cy - b.y, dist, freq: 950 });
+    // Schiebewände antworten tiefer, steinerner als normale Wände.
+    reflections.push({ dx: cx - b.x, dy: cy - b.y, dist, freq: w.slide ? 500 : 950 });
   }
   for (const h of world.holes) {
     const dist = Math.max(0, Math.hypot(b.x - h.x, b.y - h.y) - h.r);
@@ -625,6 +700,8 @@ function firePing(now: number): void {
   for (const key of world.keys) if (!key.collected) reveal(key, 1650);
   for (const gem of world.gems) if (!gem.collected) reveal(gem, 2093, true);
   for (const g of world.guards) reveal(g, 240);
+  // Zeitschloss-Schalter: dumpfes Tick-Tock als Doppel-Blip.
+  for (const sw of world.switches) reveal(sw, 520, true);
   for (const t of world.transporters) {
     const dist = Math.hypot(b.x - t.x, b.y - t.y);
     if (dist > PING_RANGE) continue;
@@ -1067,6 +1144,7 @@ function mpCheckResult(): void {
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
   audio.setPortal(0, 0, 0);
+  audio.setCurrent(0, 0, 0);
   const mine = mp.localElapsed ?? 0;
   const theirs = mp.remote.elapsed ?? 0;
   let title: string;
@@ -1160,6 +1238,7 @@ function frame(now: number): void {
   if (!world) return;
 
   updateHoles(now);
+  updateSlidingWalls(now);
   world.pings = world.pings.filter((p) => ((now - p.start) / 1000) * p.speed < p.range);
 
   if (state === 'playing') {
@@ -1281,6 +1360,67 @@ function frame(now: number): void {
       audio.setWind(Math.max(0, 1 - bestZone.dist / WIND_HEAR), bestZone.dx, bestZone.dy);
     }
 
+    // Strömungen: pulsierendes Rauschen in Hörweite (Richtung wie beim Wind).
+    let bestCurrent: { dist: number; dx: number; dy: number } | null = null;
+    for (const z of world.currents) {
+      const p = zoneProximity(z, world.ball);
+      if (!bestCurrent || p.dist < bestCurrent.dist) bestCurrent = p;
+    }
+    if (bestCurrent) {
+      audio.setCurrent(Math.max(0, 1 - bestCurrent.dist / CURRENT_HEAR), bestCurrent.dx, bestCurrent.dy);
+    }
+
+    // Zeitschloss-Schalter: Betreten spannt das Uhrwerk (Draufbleiben frischt
+    // stumm auf); die verknüpften Türen laufen unten über alle Ebenen synchron.
+    for (const sw of world.switches) {
+      const on = Math.hypot(sw.x - world.ball.x, sw.y - world.ball.y) < sw.r + world.ball.r / 2;
+      if (on) {
+        sw.openUntil = now + sw.durationS * 1000;
+        if (!sw.held) {
+          sw.held = true;
+          sw.litFrom = 0;
+          sw.litUntil = now + 2000;
+          audio.switchPress();
+          haptics.hit(0.4);
+          flash(t('st.switch', { n: sw.durationS }));
+        }
+      } else {
+        sw.held = false;
+      }
+    }
+    if (!mp) {
+      const allSwitches = loaded!.floors.flatMap((f) => f.world.switches);
+      if (allSwitches.length) {
+        const switchIds = new Set(allSwitches.map((s) => s.opens));
+        const openIds = new Set<string>();
+        let urgency = 0; // dringlichster laufender Timer (0 = keiner aktiv)
+        for (const s of allSwitches) {
+          if (s.openUntil !== null && s.openUntil > now) {
+            openIds.add(s.opens);
+            urgency = Math.max(urgency, 1 - (s.openUntil - now) / (s.durationS * 1000));
+          }
+        }
+        for (const floor of loaded!.floors) {
+          for (const w of floor.world.walls) {
+            if (!w.door || !switchIds.has(w.door.id)) continue;
+            const shouldOpen = openIds.has(w.door.id);
+            if (shouldOpen !== (w.door.open ?? false)) {
+              w.door.open = shouldOpen;
+              w.litFrom = 0;
+              w.litUntil = now + 1500;
+              if (floor.world === world) {
+                const ddx = w.x + w.w / 2 - world.ball.x;
+                const ddy = w.y + w.h / 2 - world.ball.y;
+                if (shouldOpen) audio.doorOpen(ddx, ddy);
+                else audio.doorClose(ddx, ddy);
+              }
+            }
+          }
+        }
+        if (openIds.size) audio.switchTick(urgency);
+      }
+    }
+
     // Checkpoints: einmalig aktivieren, wird neuer Respawn-Punkt
     for (const cp of world.checkpoints) {
       if (cp.reached) continue;
@@ -1337,6 +1477,9 @@ function frame(now: number): void {
       }
     }
 
+    // Geist-Replay: eigenen Lauf auf dem 8-Hz-Raster mitschreiben.
+    ghostRecorder?.add((now - t0) / 1000, activeFloor, world.ball.x, world.ball.y);
+
     timerEl.textContent = fmtTime((now - t0) / 1000);
     // Nur bei Änderung schreiben: erspart Layout-Arbeit pro Frame.
     const pingsTxt = '●'.repeat(pings) + '○'.repeat(Math.max(0, pingMax - pings));
@@ -1383,6 +1526,7 @@ function frame(now: number): void {
       audio.setHoleRumble(0, 0, 0);
       audio.setGuard(0, 0, 0);
       audio.setPortal(0, 0, 0);
+      audio.setCurrent(0, 0, 0);
       audio.win();
       haptics.win();
       statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
@@ -1405,12 +1549,18 @@ function frame(now: number): void {
           floorLabel: mp.remote.floor === activeFloor ? undefined : `E${mp.remote.floor + 1}`,
         }
       : null;
-  renderer.draw(world, { debug, revealAll: revealUntil > now, now, buddy });
+  // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
+  const ghostPos = ghost && state === 'playing' ? sampleGhost(ghost, (now - t0) / 1000) : null;
+  const ghostOpt = ghostPos ? { x: ghostPos.x, y: ghostPos.y, sameFloor: ghostPos.floor === activeFloor } : null;
+  renderer.draw(world, { debug, revealAll: revealUntil > now, now, buddy, ghost: ghostOpt });
   // Testbarkeits-Hooks für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {
     x: world.ball.x,
     y: world.ball.y,
   };
+  (window as unknown as { __tiltrGhost?: unknown }).__tiltrGhost = ghost
+    ? { time: ghost.time, active: ghostPos !== null }
+    : null;
   (window as unknown as { __tiltrMp?: unknown }).__tiltrMp = mp
     ? {
         phase: mp.phase,

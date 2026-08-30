@@ -92,6 +92,32 @@ export const transporterDef = z.object({
   r: z.number().positive().default(32),
 });
 
+export const slidingWallDef = z.object({
+  type: z.literal('slidingWall'),
+  /** Wandkante, auf der die Schiebewand sitzt – muss im Maze OFFEN sein */
+  edge: wallEdge,
+  /** Zyklus wie atmende Löcher: open = Sekunden PASSIERBAR */
+  cycle: breathingSchema.default({ open: 2.6, closed: 2.2, ramp: 0.6, offset: 0 }),
+});
+
+export const timedSwitchDef = z.object({
+  ...base,
+  type: z.literal('timedSwitch'),
+  /** Tür-ID, die der Schalter für durationS Sekunden öffnet */
+  opens: z.string().min(1),
+  durationS: z.number().positive().default(6),
+  r: z.number().positive().default(30),
+});
+
+export const currentDef = z.object({
+  ...base,
+  type: z.literal('current'),
+  /** Fließrichtung – die Kante dorthin muss OFFEN sein (sonst Dauer-Pin) */
+  dir: wallDir,
+  /** px/s² – MUSS über der Neigungs-Beschleunigung (2600) liegen: Einbahnstraße */
+  force: z.number().min(3000).default(3400),
+});
+
 export const elementDef = z.discriminatedUnion('type', [
   holeDef,
   windZoneDef,
@@ -102,6 +128,9 @@ export const elementDef = z.discriminatedUnion('type', [
   gemDef,
   transporterDef,
   plateDef,
+  slidingWallDef,
+  timedSwitchDef,
+  currentDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -113,6 +142,9 @@ export type DoorDef = z.infer<typeof doorDef>;
 export type GemDef = z.infer<typeof gemDef>;
 export type TransporterDef = z.infer<typeof transporterDef>;
 export type PlateDef = z.infer<typeof plateDef>;
+export type SlidingWallDef = z.infer<typeof slidingWallDef>;
+export type TimedSwitchDef = z.infer<typeof timedSwitchDef>;
+export type CurrentDef = z.infer<typeof currentDef>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */

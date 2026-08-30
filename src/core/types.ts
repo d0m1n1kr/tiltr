@@ -11,6 +11,14 @@ export interface Wall {
   /** Verschlossene Tür. Schlüssel entfernen sie dauerhaft; Coop-Türen
    *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird. */
   door?: { id: string; open?: boolean };
+  /** Schiebewand: öffnet/schließt zyklisch (openness 1 = Lücke, passierbar).
+   *  lastState/nextTick sind Laufzeit-Zustand der Klang-Steuerung. */
+  slide?: {
+    cycle: Breathing;
+    openness: number;
+    lastState?: 'opening' | 'open' | 'closing' | 'closed';
+    nextTick?: number;
+  };
   /** Aufleuchten frühestens ab (ms, performance.now-Zeitbasis) – Ping-Wellenfront */
   litFrom?: number;
   /** Aufleuchten bis (ms) */
@@ -109,6 +117,32 @@ export interface Plate {
   held: boolean;
   litFrom?: number;
   litUntil?: number;
+}
+
+export interface TimedSwitch {
+  x: number;
+  y: number;
+  r: number;
+  /** Tür-ID, die der Schalter für durationS Sekunden öffnet */
+  opens: string;
+  durationS: number;
+  /** Tür offen bis (ms, performance.now-Zeitbasis); null = nie ausgelöst */
+  openUntil: number | null;
+  /** Ball steht gerade drauf (verhindert Dauer-Klick, erlaubt Auffrischen) */
+  held: boolean;
+  litFrom?: number;
+  litUntil?: number;
+}
+
+/** Strömung: Zellen-Zone, deren Schub stärker ist als die Neigung – Einbahnstraße. */
+export interface Current {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fx: number;
+  fy: number;
+  dir: 'n' | 'e' | 's' | 'w';
 }
 
 export interface Transporter {

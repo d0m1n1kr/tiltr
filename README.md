@@ -24,11 +24,13 @@ automatically via GitHub Actions (tests → build → pages).
   the daily score, streaks 🔥 reward playing daily. Share links
   (`#daily=DATE&t=TIME`) challenge friends to beat your time — for past
   days too.
-- **🌍 Campaign** — two hand-built worlds (16 levels): guards, keys and
+- **🌍 Campaign** — three hand-built worlds (22 levels): guards, keys and
   doors, gems, breathing holes, wind, brittle walls, multi-floor maps
   connected by transporters, and multi-screen expanses the camera scrolls
-  across. Up to three stars per level (finish, par
-  time, all gems).
+  across. World 3 "The Clockwork" is all about timing: sliding walls,
+  time-lock switches and one-way currents. Up to three stars per level
+  (finish, par time, all gems) — and your best run rolls along as a faint
+  ghost halo on later attempts.
 - **👥 Multiplayer** — two players, peer-to-peer over WebRTC
   ([trystero](https://github.com/dmotz/trystero); the handshake runs over a
   fixed list of 8 established Nostr relays, no server of our own). Join via
@@ -75,6 +77,10 @@ On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 | Key & door | the key jingles within earshot, collecting it audibly slides the door open |
 | Gems | optional crystals with their own ping response; collect all for the third star |
 | Transporter | carries the ball to other floors (or across the map as a portal); hovering double tone nearby, the warp falls or rises in pitch; the goal beacon sounds muffled through the floor on other levels |
+| Sliding wall | slides open and shut to a beat — only fully open is it passable; rhythmic stone grinding plus an accelerating warning tick just before it closes |
+| Time-lock switch | stepping on it opens the linked door for a few seconds; a tick-tock counts down and turns frantic as time runs out |
+| Current | pushes harder than you can tilt — a one-way street; pulsing directional rush, deeper and more urgent than wind |
+| Ghost replay | your best time per level rolls along as a faint halo (quick game, daily and campaign); stored locally, beaten only by a faster run |
 | Pressure plate | multiplayer element: held, it opens the linked partner door — release and it closes; click on entry, the door audibly slides |
 | Partner halo | pulsing ring of light at your partner's position; clamped to the screen edge (with floor label) when out of view |
 | Goal beacon | sonar ping: closer = faster, louder, higher |
@@ -114,7 +120,9 @@ browser. Phone testing needs HTTPS: easiest via the live page, otherwise
 M1 foundation ✓ → M2 element registry + level format ✓ → M3 tutorial &
 quick game ✓ → M4 campaign world 1 ✓ → M5 floors/transporters + world 2 ✓
 → M6 daily challenge + share links ✓ → M7 multiplayer co-op & race ✓ →
-M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉
+M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉 →
+M9 world 3 "The Clockwork" (sliding walls, time locks, currents) + ghost
+replay ✓
 
 ---
 

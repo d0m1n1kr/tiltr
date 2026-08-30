@@ -5,6 +5,7 @@
 import type {
   Checkpoint,
   Collectible,
+  Current,
   Goal,
   Guard,
   Hole,
@@ -12,6 +13,7 @@ import type {
   PingWave,
   Plate,
   Tilt,
+  TimedSwitch,
   Transporter,
   Wall,
   WallHit,
@@ -33,6 +35,8 @@ export class Ball {
 
 export class World {
   windZones: WindZone[] = [];
+  currents: Current[] = [];
+  switches: TimedSwitch[] = [];
   checkpoints: Checkpoint[] = [];
   guards: Guard[] = [];
   keys: Key[] = [];
@@ -71,6 +75,13 @@ export class World {
           b.vy += z.fy * h;
         }
       }
+      // Strömung: wie Wind, aber stärker als die Neigung – unüberwindbar.
+      for (const z of this.currents) {
+        if (b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h) {
+          b.vx += z.fx * h;
+          b.vy += z.fy * h;
+        }
+      }
       const damp = Math.exp(-this.friction * h);
       b.vx *= damp;
       b.vy *= damp;
@@ -84,6 +95,9 @@ export class World {
 
       for (const wall of this.walls) {
         if (wall.door?.open) continue; // offene Coop-Tür ist passierbar
+        // Schiebewand: nur im voll geöffneten Plateau passierbar – während der
+        // Rampe gilt der Spalt als zu schmal (und die Wand schiebt den Ball raus).
+        if (wall.slide && wall.slide.openness >= 0.999) continue;
         const hit = this.collideCircleRect(b, wall);
         if (hit) hits.push(hit);
       }
@@ -228,6 +242,16 @@ export class World {
     // in einer Ecke an der Wand lehnt (halber Ballradius Toleranz).
     const b = this.ball;
     return this.plates.filter((pl) => Math.hypot(pl.x - b.x, pl.y - b.y) < pl.r + b.r / 2);
+  }
+
+  // Zeitschloss-Schalter, auf dem der Ball gerade steht, sonst null
+  // (gleiche Toleranz wie Druckplatten).
+  switchUnderBall(): TimedSwitch | null {
+    const b = this.ball;
+    for (const sw of this.switches) {
+      if (Math.hypot(sw.x - b.x, sw.y - b.y) < sw.r + b.r / 2) return sw;
+    }
+    return null;
   }
 
   // Transporter, auf dem der Ball gerade steht, sonst null.

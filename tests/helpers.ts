@@ -1,5 +1,9 @@
 // Gemeinsame Test-Helfer: Zellen wie im Loader aufbauen und Erreichbarkeit
-// über (Ebene, Zelle) prüfen – Transporter sind GERICHTETE Kanten.
+// über (Ebene, Zelle) prüfen – Transporter sind GERICHTETE Kanten, ebenso
+// Strömungen: Aus einer Strömungszelle geht es nur in Fließrichtung hinaus,
+// und niemand betritt sie gegen den Strom. Schiebewände zählen als offen
+// (sie öffnen sich zyklisch – Warten genügt). Zeitschloss-Schalter sind im
+// Fixpunkt-Modell Tür-Öffner wie Schlüssel/Platten.
 
 import { generateMaze, mirrorCells, setWall, type Cell } from '../src/core/maze';
 import { mulberry32 } from '../src/core/rng';
@@ -31,7 +35,14 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: Level
   return cells;
 }
 
-export function reachable(def: LevelDef, cfg: CellConfig): Set<string> {
+export interface StartPos {
+  floor: number;
+  cell: readonly [number, number];
+}
+
+const OPPOSITE = { n: 's', s: 'n', e: 'w', w: 'e' } as const;
+
+export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<string> {
   const floors = def.floors.map((f) => ({
     cells: buildFloorCells(f, cfg, def.mirror),
     cols: f.size[0],
@@ -39,26 +50,45 @@ export function reachable(def: LevelDef, cfg: CellConfig): Set<string> {
     jumps: f.elements
       .filter((e) => e.type === 'transporter')
       .map((t) => ({ from: t.cell, toFloor: t.target.floor, toCell: t.target.cell })),
+    // Strömungszelle -> Fließrichtung (konservativ: nur diese Kante hinaus)
+    currents: new Map(
+      f.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * f.size[0] + c.cell[0], c.dir]),
+    ),
   }));
   const key = (fl: number, x: number, y: number) => `${fl}:${x},${y}`;
-  const start = def.floors[0]!.start;
-  const seen = new Set<string>([key(0, start[0], start[1])]);
-  const stack: Array<[number, number, number]> = [[0, start[0], start[1]]];
+  const start = from ?? { floor: 0, cell: def.floors[0]!.start };
+  const seen = new Set<string>([key(start.floor, start.cell[0], start.cell[1])]);
+  const stack: Array<[number, number, number]> = [[start.floor, start.cell[0], start.cell[1]]];
   while (stack.length) {
     const [fl, x, y] = stack.pop()!;
     const floor = floors[fl]!;
     const c = floor.cells[y * floor.cols + x]!;
-    const push = (nfl: number, nx: number, ny: number) => {
+    const push = (nfl: number, nx: number, ny: number, dir?: 'n' | 'e' | 's' | 'w') => {
+      // Gegen den Strom betritt man eine Strömungszelle nicht.
+      if (dir) {
+        const targetCurrent = floors[nfl]!.currents.get(ny * floors[nfl]!.cols + nx);
+        if (targetCurrent && dir === OPPOSITE[targetCurrent]) return;
+      }
       const k = key(nfl, nx, ny);
       if (!seen.has(k)) {
         seen.add(k);
         stack.push([nfl, nx, ny]);
       }
     };
-    if (!c.n && y > 0) push(fl, x, y - 1);
-    if (!c.e && x < floor.cols - 1) push(fl, x + 1, y);
-    if (!c.s && y < floor.rows - 1) push(fl, x, y + 1);
-    if (!c.w && x > 0) push(fl, x - 1, y);
+    const flow = floor.currents.get(y * floor.cols + x);
+    if (flow) {
+      // Aus der Strömung nur in Fließrichtung (konservativ: keine Seitenwege,
+      // keine Transporter – der Sog reißt den Ball mit).
+      if (flow === 'n' && !c.n && y > 0) push(fl, x, y - 1, 'n');
+      if (flow === 'e' && !c.e && x < floor.cols - 1) push(fl, x + 1, y, 'e');
+      if (flow === 's' && !c.s && y < floor.rows - 1) push(fl, x, y + 1, 's');
+      if (flow === 'w' && !c.w && x > 0) push(fl, x - 1, y, 'w');
+      continue;
+    }
+    if (!c.n && y > 0) push(fl, x, y - 1, 'n');
+    if (!c.e && x < floor.cols - 1) push(fl, x + 1, y, 'e');
+    if (!c.s && y < floor.rows - 1) push(fl, x, y + 1, 's');
+    if (!c.w && x > 0) push(fl, x - 1, y, 'w');
     for (const j of floor.jumps) {
       if (j.from[0] === x && j.from[1] === y) push(j.toFloor, j.toCell[0], j.toCell[1]);
     }
@@ -95,17 +125,19 @@ export function expectAllReachable(
 }
 
 /**
- * Coop-Fixpunkt: Eine Tür gilt als offen, sobald eine ihrer Platten (oder
- * ein Schlüssel) erreichbar ist – gebannte Türen öffnen nie.
+ * Öffner-Fixpunkt: Eine Tür gilt als offen, sobald einer ihrer Öffner
+ * (Platte, Schlüssel oder Zeitschloss-Schalter) erreichbar ist – gebannte
+ * Türen öffnen nie. Optional von einer beliebigen Position aus (Softlock-
+ * Beweise: der Schalter ist wieder-erreichbar, die Tür also wieder-öffenbar).
  */
-export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set()): Set<string> {
+export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set(), from?: StartPos): Set<string> {
   const openDoorIds = new Set<string>();
   for (;;) {
-    const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds });
+    const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds }, from);
     let changed = false;
     def.floors.forEach((floor, fl) => {
       for (const el of floor.elements) {
-        if ((el.type === 'plate' || el.type === 'key') && !bannedDoors.has(el.opens)) {
+        if ((el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') && !bannedDoors.has(el.opens)) {
           if (!openDoorIds.has(el.opens) && seen.has(cellKey(fl, el.cell))) {
             openDoorIds.add(el.opens);
             changed = true;

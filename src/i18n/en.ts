@@ -13,7 +13,7 @@ export const en: Dict = {
   'menu.daily.done': 'Today: {time}',
   'menu.daily.streak': ' · 🔥 {n} days',
   'menu.campaign': 'Campaign',
-  'menu.campaign.sub': '2 worlds, 16 levels',
+  'menu.campaign.sub': '3 worlds, 22 levels',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Co-op & race – two players, via QR code',
   'menu.tutorial': 'Tutorial',
@@ -58,6 +58,7 @@ export const en: Dict = {
   'st.floorUp': '⬆ Floor {n}',
   'st.portal': '✦ Portal',
   'st.wallDown': 'Wall collapsed! 🧱',
+  'st.switch': '⏱ Time lock: door open for {n}s!',
 
   /* --- Result cards --- */
   'res.time': 'Time: {time}',
@@ -188,10 +189,20 @@ export const en: Dict = {
     'Active sonar pulse (tap/Space, limited supply): a wavefront reveals your surroundings, reflections return delayed by distance – walls bright, holes deep.',
   'el.heart.title': 'Heartbeat',
   'el.heart.desc': 'Gets faster and louder the closer an open hole is. When the pulse drops, the way is clear.',
+  'el.slidingWall.title': 'Sliding wall',
+  'el.slidingWall.desc':
+    'A wall that slides open and shut to a beat – only fully open is the way clear. Signature: rhythmic stone grinding as it opens and closes, plus an accelerating tick as a warning just before it shuts.',
+  'el.timedSwitch.title': 'Time-lock switch',
+  'el.timedSwitch.desc':
+    'Stepping on it opens the linked door – but only for a few seconds. A ticking counts down and grows frantic as time runs out; then the door audibly falls shut again. Step on it again to rewind the clockwork.',
+  'el.current.title': 'Current',
+  'el.current.desc':
+    'A flow that pushes harder than you can tilt – a one-way street. Whatever lies behind the current stays behind you. Signature: pulsing, directional rush, deeper and more urgent than wind.',
 
   /* --- Worlds & levels --- */
   'world.w1': 'World 1 – The Deep Awakes',
   'world.w2': 'World 2 – Between the Floors',
+  'world.w3': 'World 3 – The Clockwork',
 
   'lv.tut-1.name': 'Roll & Listen',
   'lv.tut-1.intro':
@@ -264,6 +275,25 @@ export const en: Dict = {
   'lv.w2-06.name': 'The Expanse',
   'lv.w2-06.intro':
     'The expanse: bigger than your screen. Follow the edge through the dark – checkpoints secure the long journey, and off the path something sparkles.',
+
+  'lv.w3-01.name': 'Sense of Rhythm',
+  'lv.w3-01.intro':
+    'Hear that stone grinding? Walls here slide open and shut to a beat – you only get through when they are fully open. When the ticking speeds up, they are about to close. Wait. Listen. Roll.',
+  'lv.w3-02.name': 'Time Lock',
+  'lv.w3-02.intro':
+    'The switch on your way winds up a clockwork: the door before the goal springs open – but only for nine beats. The ticking counts along and turns frantic as time runs out. Then roll like the wind!',
+  'lv.w3-03.name': 'Rapids',
+  'lv.w3-03.intro':
+    'A rushing sound that pulses: currents. They push harder than you can tilt – one-way streets. Whatever lies behind a current stays behind you. Collect first, then jump.',
+  'lv.w3-04.name': 'Lock Works',
+  'lv.w3-04.intro':
+    'First the beat, then the clock: two sliding walls want to be passed in rhythm, then a time lock opens the sluice before the goal – for eight beats. Can you do both in one go?',
+  'lv.w3-05.name': 'Clockwork',
+  'lv.w3-05.intro':
+    'The whole clockwork meshes together: sliding walls pace the descent, a current sweeps you to the switch, and the time lock holds the goal chamber open for just six beats. A guard makes its rounds.',
+  'lv.w3-06.name': 'Rhythm Road',
+  'lv.w3-06.intro':
+    'The clockwork finale, wider than your screen: currents sweep you from lock to lock, sliding walls set the beat, and at the very end the time lock ticks before the goal chamber. Hear the rhythm – and dance along.',
 
   'lv.coop-01.name': 'Airlock',
   'lv.coop-01.intro':

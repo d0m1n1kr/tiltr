@@ -66,7 +66,12 @@ Alpha-Werte interpoliert (Echo-Fade). Ball `#4be0c8`, Wand Blau, brüchige
 Wand Bernstein, Loch-Füllung `#000` mit Violett-Ring, Ziel Grün, Ping Teal,
 Wind Hellblau, Herzschlag Rot (`255, 110, 130`), Wächter Rot (`255, 92, 92`),
 Schlüssel/Tür Gold (`255, 214, 90`), Gem Eisblau (`190, 240, 255`),
-Transporter/Portal Magenta (`240, 130, 230`).
+Transporter/Portal Magenta (`240, 130, 230`), Partner-Halo Silberblau
+(`210, 225, 255` – auch der Geist der eigenen Bestzeit, nur blasser),
+Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
+Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss).
+Der Zeitschloss-Schalter gehört zur Tür-Mechanik und bleibt in der
+Gold-Familie (`255, 214, 90`).
 
 ## Typografie
 

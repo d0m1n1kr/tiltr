@@ -44,6 +44,7 @@ describe('Wörterbücher', () => {
     for (const [lang, dict] of Object.entries(dicts)) {
       expect(dict['world.w1'], lang).toContain(' – ');
       expect(dict['world.w2'], lang).toContain(' – ');
+      expect(dict['world.w3'], lang).toContain(' – ');
     }
   });
 });

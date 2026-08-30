@@ -1,14 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import { CAMPAIGN_LEVELS, WORLDS } from '../src/levels/campaign';
 import { loadLevel } from '../src/levels/loader';
-import { setWall } from '../src/core/maze';
-import { buildFloorCells, cellKey, reachable } from './helpers';
+import { setWall, type Cell } from '../src/core/maze';
+import type { DoorDef, FloorDef, LevelDef } from '../src/levels/schema';
+import { buildFloorCells, cellKey, coopReachable, reachable } from './helpers';
+
+// BFS-Distanzen in Zellen auf EINER Ebene im offenen, gerichteten Modell
+// (Türen offen, Strömungen nur in Fließrichtung) – für den Zeitschloss-Beweis.
+function directedDistances(def: LevelDef, floor: FloorDef, from: readonly [number, number]): Map<string, number> {
+  const [cols, rows] = floor.size;
+  const cells: Cell[] = buildFloorCells(floor, { brittleOpen: true, doorsOpen: true }, def.mirror);
+  const currents = new Map(
+    floor.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * cols + c.cell[0], c.dir]),
+  );
+  const opposite = { n: 's', s: 'n', e: 'w', w: 'e' } as const;
+  const dist = new Map<string, number>([[`${from[0]},${from[1]}`, 0]]);
+  const queue: Array<[number, number]> = [[from[0], from[1]]];
+  while (queue.length) {
+    const [x, y] = queue.shift()!;
+    const d = dist.get(`${x},${y}`)!;
+    const c = cells[y * cols + x]!;
+    const flow = currents.get(y * cols + x);
+    const tryMove = (dir: 'n' | 'e' | 's' | 'w', nx: number, ny: number, open: boolean) => {
+      if (!open || nx < 0 || ny < 0 || nx >= cols || ny >= rows) return;
+      if (flow && dir !== flow) return; // aus der Strömung nur in Fließrichtung
+      const target = currents.get(ny * cols + nx);
+      if (target && dir === opposite[target]) return; // nie gegen den Strom hinein
+      const k = `${nx},${ny}`;
+      if (!dist.has(k)) {
+        dist.set(k, d + 1);
+        queue.push([nx, ny]);
+      }
+    };
+    tryMove('n', x, y - 1, !c.n);
+    tryMove('e', x + 1, y, !c.e);
+    tryMove('s', x, y + 1, !c.s);
+    tryMove('w', x - 1, y, !c.w);
+  }
+  return dist;
+}
 
 describe('Kampagne', () => {
-  it('Welt 1 hat 10, Welt 2 hat 6 Level; IDs eindeutig, Intro + Par überall', () => {
+  it('Welt 1 hat 10, Welt 2 und 3 haben je 6 Level; IDs eindeutig, Intro + Par überall', () => {
     expect(WORLDS[0]!.levels).toHaveLength(10);
     expect(WORLDS[1]!.levels).toHaveLength(6);
-    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(16);
+    expect(WORLDS[2]!.levels).toHaveLength(6);
+    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(22);
     for (const l of CAMPAIGN_LEVELS) {
       expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
       expect(l.parTimeS, l.id).toBeGreaterThan(0);
@@ -21,16 +58,62 @@ describe('Kampagne', () => {
     }
   });
 
-  it('jeder Schlüssel ist VOR seiner Tür erreichbar (über Ebenen hinweg)', () => {
+  it('jeder Schlüssel und jeder Zeitschloss-Schalter ist VOR seiner Tür erreichbar', () => {
     for (const def of CAMPAIGN_LEVELS) {
       const preDoor = reachable(def, { brittleOpen: true, doorsOpen: false });
       def.floors.forEach((floor, fl) => {
         for (const el of floor.elements) {
-          if (el.type === 'key') {
-            expect(preDoor.has(cellKey(fl, el.cell)), `${def.id}: Schlüssel E${fl} ${el.cell}`).toBe(true);
+          if (el.type === 'key' || el.type === 'timedSwitch') {
+            expect(preDoor.has(cellKey(fl, el.cell)), `${def.id}: ${el.type} E${fl} ${el.cell}`).toBe(true);
           }
         }
       });
+    }
+  });
+
+  it('Zeitschloss-Beweis: Strecke Schalter→Tür ist im Timer machbar (2,5× Sicherheitsfaktor)', () => {
+    const MAX_SPEED = 900; // World.maxSpeed in px/s, Zelle = 100 px
+    const NEIGHBOR = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] } as const;
+    for (const def of CAMPAIGN_LEVELS) {
+      def.floors.forEach((floor) => {
+        for (const el of floor.elements) {
+          if (el.type !== 'timedSwitch') continue;
+          const doors = floor.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens);
+          expect(doors.length, `${def.id}: Zeitschloss ohne Tür auf derselben Ebene`).toBeGreaterThan(0);
+          const dist = directedDistances(def, floor, el.cell);
+          for (const door of doors) {
+            const [[dx, dy], ddir] = door.edge;
+            const [ox, oy] = NEIGHBOR[ddir];
+            // Näherer der beiden Zellen an der Türkante + 1 Schritt hindurch.
+            const steps = Math.min(
+              dist.get(`${dx},${dy}`) ?? Infinity,
+              dist.get(`${dx + ox},${dy + oy}`) ?? Infinity,
+            );
+            expect(steps, `${def.id}: Tür ${door.id} vom Schalter unerreichbar`).toBeLessThan(Infinity);
+            const minSeconds = ((steps + 1) * 100) / MAX_SPEED;
+            expect(minSeconds * 2.5, `${def.id}: Timer ${el.durationS}s zu knapp für ${steps + 1} Zellen`).toBeLessThanOrEqual(el.durationS);
+          }
+        }
+      });
+    }
+  });
+
+  it('kein Softlock: von JEDER erreichbaren Zelle bleibt das Ziel erreichbar (Öffner-Fixpunkt, gerichtete Strömungen)', () => {
+    // Strömungen sind Einbahnstraßen und Zeitschloss-Türen fallen wieder zu –
+    // dieser Beweis läuft den Öffner-Fixpunkt von jeder erreichbaren Zelle:
+    // Wo immer der Ball strandet, lässt sich jede nötige Tür wieder öffnen
+    // und das Ziel erreichen.
+    for (const def of CAMPAIGN_LEVELS) {
+      const goalFl = def.floors.findIndex((f) => f.goal);
+      const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);
+      const states = coopReachable(def);
+      expect(states.has(goalKey), `${def.id}: Ziel vom Start unerreichbar`).toBe(true);
+      for (const k of states) {
+        const [fl, xy] = k.split(':');
+        const [x, y] = xy!.split(',').map(Number);
+        const seen = coopReachable(def, new Set(), { floor: Number(fl), cell: [x!, y!] });
+        expect(seen.has(goalKey), `${def.id}: Softlock bei ${k}`).toBe(true);
+      }
     }
   });
 

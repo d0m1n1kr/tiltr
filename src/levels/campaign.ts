@@ -1,5 +1,6 @@
-// Kampagne: Welt 1 (10 Level, eine Ebene) und Welt 2 (5 Level, mehrere
-// Ebenen mit Transportern und Portalen).
+// Kampagne: Welt 1 (10 Level, eine Ebene), Welt 2 (6 Level, mehrere Ebenen
+// mit Transportern und Portalen) und Welt 3 „Das Räderwerk" (6 Level:
+// Schiebewände, Zeitschlösser, Strömungen – die Rhythmus-Welt).
 // Jedes Level carvt sich einen garantierten "Spine"-Korridor durch das
 // Seed-Maze (L-Form o. ä.) und platziert seine Elemente daran – die
 // Lösbarkeit aller Level sichert tests/campaign.test.ts ab.
@@ -522,6 +523,199 @@ const defs2: unknown[] = [
   },
 ];
 
+// Welt 3 „Das Räderwerk": Timing-Gameplay. Schiebewände sitzen auf gecarvten
+// Spine-Kanten (offen = passierbar, Lösbarkeit unberührt), Strömungen sind
+// gerichtete Einbahn-Kanten (tests beweisen: kein Softlock, Ziel bleibt von
+// überall erreichbar), Zeitschloss-Türen kommen mit Timer-Beweis
+// (Pfadlänge Schalter→Tür ÷ Maxspeed « Timer).
+const defs3: unknown[] = [
+  {
+    id: 'w3-01',
+    name: 'Taktgefühl',
+    intro:
+      'Hörst du das Steinschleifen? Hier schieben sich Wände im Takt auf und zu – nur voll geöffnet kommst du durch. Wenn der Takt schneller klackt, schließt sie gleich. Warte. Lausche. Roll.',
+    parTimeS: 65,
+    pingBudget: 3,
+    floors: [
+      {
+        size: [5, 7],
+        maze: { seed: 310, carve: [...down(0, 0, 6), ...right(6, 0, 4)] },
+        elements: [
+          { type: 'slidingWall', edge: [[0, 2], 's'], cycle: { open: 3.4, closed: 2.2, ramp: 0.5, offset: 0 } },
+          { type: 'slidingWall', edge: [[1, 6], 'e'], cycle: { open: 3.4, closed: 2.2, ramp: 0.5, offset: 3 } },
+          { type: 'checkpoint', cell: [0, 6] },
+          { type: 'gem', cell: [2, 3] },
+        ],
+        start: [0, 0],
+        goal: [4, 6],
+      },
+    ],
+  },
+  {
+    id: 'w3-02',
+    name: 'Zeitschloss',
+    intro:
+      'Der Schalter auf dem Weg spannt ein Uhrwerk: Die Tür vor dem Ziel springt auf – aber nur für neun Takte. Das Ticken zählt mit und wird hektisch, wenn die Zeit knapp wird. Dann roll, was das Zeug hält!',
+    parTimeS: 75,
+    pingBudget: 3,
+    floors: [
+      {
+        size: [6, 7],
+        maze: { seed: 320, carve: [...down(0, 0, 6), ...right(6, 0, 5)] },
+        elements: [
+          { type: 'door', id: 'takt', edge: [[3, 6], 'e'] },
+          { type: 'timedSwitch', cell: [0, 3], opens: 'takt', durationS: 9 },
+          { type: 'checkpoint', cell: [0, 6] },
+          { type: 'hole', cell: [3, 2], breathing: { offset: 1 } },
+          { type: 'gem', cell: [5, 0] },
+        ],
+        start: [0, 0],
+        goal: [5, 6],
+      },
+    ],
+  },
+  {
+    id: 'w3-03',
+    name: 'Stromschnellen',
+    intro:
+      'Ein Rauschen, das pulst: Strömungen. Sie schieben stärker, als du neigen kannst – Einbahnstraßen. Was hinter einer Strömung liegt, bleibt hinter dir. Sammle zuerst, spring dann.',
+    parTimeS: 80,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 8],
+        maze: { seed: 330, carve: [...down(0, 0, 7), ...right(7, 0, 5)] },
+        elements: [
+          { type: 'current', cell: [0, 2], dir: 's' },
+          { type: 'current', cell: [1, 7], dir: 'e' },
+          { type: 'current', cell: [3, 7], dir: 'e' },
+          { type: 'checkpoint', cell: [0, 7] },
+          { type: 'hole', cell: [5, 4], breathing: { offset: 0 } },
+          { type: 'hole', cell: [2, 5], breathing: { offset: 2.5 } },
+          { type: 'gem', cell: [4, 1] },
+          { type: 'gem', cell: [3, 4] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+    ],
+  },
+  {
+    id: 'w3-04',
+    name: 'Schleusenwerk',
+    intro:
+      'Erst der Takt, dann die Uhr: Zwei Schiebewände wollen im Rhythmus passiert werden, danach öffnet ein Zeitschloss die Schleuse vor dem Ziel – für acht Takte. Schaffst du beides in einem Zug?',
+    parTimeS: 105,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 9],
+        maze: { seed: 340, carve: [...right(0, 0, 6), ...down(6, 0, 8)] },
+        elements: [
+          { type: 'slidingWall', edge: [[1, 0], 'e'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 0 } },
+          { type: 'slidingWall', edge: [[3, 0], 'e'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 2.7 } },
+          { type: 'door', id: 'schleuse', edge: [[6, 7], 's'] },
+          { type: 'timedSwitch', cell: [6, 2], opens: 'schleuse', durationS: 8 },
+          { type: 'checkpoint', cell: [6, 0] },
+          { type: 'checkpoint', cell: [6, 5] },
+          { type: 'hole', cell: [2, 2], breathing: { offset: 0.5 } },
+          { type: 'hole', cell: [4, 6], breathing: { offset: 2 } },
+          { type: 'gem', cell: [0, 4] },
+          { type: 'gem', cell: [3, 8] },
+        ],
+        start: [0, 0],
+        goal: [6, 8],
+      },
+    ],
+  },
+  {
+    id: 'w3-05',
+    name: 'Uhrwerk',
+    intro:
+      'Das ganze Räderwerk greift ineinander: Schiebewände takten den Abstieg, eine Strömung reißt dich zum Schalter, und das Zeitschloss hält die Zielkammer nur sechs Takte offen. Eine Wache dreht ihre Runden.',
+    parTimeS: 140,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 10],
+        maze: {
+          seed: 350,
+          carve: [...down(0, 0, 9), ...right(9, 0, 6), ...right(0, 2, 5)],
+          // Zielkammer [6,9] versiegeln – die Zeitschloss-Tür ist der einzige Eingang
+          add: [[[6, 8], 's']],
+        },
+        elements: [
+          { type: 'slidingWall', edge: [[0, 3], 's'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 0 } },
+          { type: 'slidingWall', edge: [[0, 6], 's'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 2.8 } },
+          { type: 'door', id: 'kammer', edge: [[5, 9], 'e'] },
+          { type: 'timedSwitch', cell: [3, 9], opens: 'kammer', durationS: 6 },
+          { type: 'current', cell: [1, 9], dir: 'e' },
+          { type: 'guard', patrol: [[2, 0], [5, 0]], speed: 85 },
+          { type: 'checkpoint', cell: [0, 5] },
+          { type: 'checkpoint', cell: [0, 9] },
+          { type: 'hole', cell: [4, 5], breathing: { offset: 0 } },
+          { type: 'hole', cell: [2, 7], breathing: { offset: 2 } },
+          { type: 'gem', cell: [3, 3] },
+          { type: 'gem', cell: [6, 0] },
+        ],
+        start: [0, 0],
+        goal: [6, 9],
+      },
+    ],
+  },
+  {
+    id: 'w3-06',
+    name: 'Taktstraße',
+    intro:
+      'Das Finale des Räderwerks, weiter als dein Bildschirm: Strömungen reißen dich von Schleuse zu Schleuse, Schiebewände geben den Takt vor, und ganz am Ende tickt das Zeitschloss vor der Zielkammer. Hör den Rhythmus – und tanz mit.',
+    parTimeS: 220,
+    pingBudget: 5,
+    floors: [
+      {
+        // Multi-Screen-Finale: 13x15 Zellen. Spine als U: oberste Zeile quer
+        // (Rundweg zu den fernen Gems), Spalte 0 hinab, dann die „Taktstraße"
+        // – die unterste Zeile mit Strömungen und Schiebewänden im Wechsel.
+        // Der obere Korridor hält auch die vom Kammer-Siegel ([12,13],'s')
+        // abgetrennte Ost-Seite deterministisch am Start angebunden.
+        size: [13, 15],
+        maze: {
+          seed: 360,
+          carve: [...right(0, 0, 12), ...down(0, 0, 14), ...right(14, 0, 12)],
+          add: [[[12, 13], 's']],
+        },
+        elements: [
+          { type: 'slidingWall', edge: [[0, 4], 's'], cycle: { open: 3.4, closed: 2.2, ramp: 0.5, offset: 0 } },
+          { type: 'slidingWall', edge: [[0, 9], 's'], cycle: { open: 3.4, closed: 2.2, ramp: 0.5, offset: 2.4 } },
+          { type: 'slidingWall', edge: [[4, 14], 'e'], cycle: { open: 3, closed: 2.4, ramp: 0.5, offset: 1.2 } },
+          { type: 'slidingWall', edge: [[7, 14], 'e'], cycle: { open: 3, closed: 2.4, ramp: 0.5, offset: 3.6 } },
+          { type: 'current', cell: [2, 14], dir: 'e' },
+          { type: 'current', cell: [6, 14], dir: 'e' },
+          { type: 'current', cell: [9, 14], dir: 'e' },
+          { type: 'door', id: 'endtor', edge: [[11, 14], 'e'] },
+          { type: 'timedSwitch', cell: [10, 14], opens: 'endtor', durationS: 6 },
+          // Wache auf dem Spine zwischen den Schiebewänden – wer den Takt
+          // verpasst, wartet mit ihr im selben Gang.
+          { type: 'guard', patrol: [[0, 10], [0, 13]], speed: 80 },
+          { type: 'checkpoint', cell: [0, 7] },
+          { type: 'checkpoint', cell: [5, 14] },
+          { type: 'checkpoint', cell: [11, 14] },
+          { type: 'hole', cell: [2, 5], breathing: { offset: 0 } },
+          { type: 'hole', cell: [7, 3], breathing: { offset: 2 } },
+          { type: 'hole', cell: [11, 9], breathing: { offset: 4 } },
+          { type: 'hole', cell: [4, 12], breathing: { offset: 1 } },
+          { type: 'gem', cell: [3, 2] },
+          { type: 'gem', cell: [7, 9] },
+          { type: 'gem', cell: [12, 0] },
+          { type: 'gem', cell: [5, 11] },
+          { type: 'gem', cell: [9, 6] },
+        ],
+        start: [0, 0],
+        goal: [12, 14],
+      },
+    ],
+  },
+];
+
 // Spiegelachsen pro Level, damit Start/Ziel nicht immer oben links/unten
 // rechts liegen. Achse passend zum Intro-Text gewählt: 'x' erhält oben/unten,
 // 'y' erhält links/rechts ("im oberen Gang" bleibt bei 'x' oben). w1-01
@@ -542,6 +736,13 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'w2-04': 'xy',
   'w2-05': 'x',
   'w2-06': 'y',
+  // Welt 3: Intros ohne Richtungsbezug – Achsen frei für die Ecken-Streuung.
+  'w3-01': 'x',
+  'w3-02': 'y',
+  'w3-03': 'xy',
+  'w3-04': 'x',
+  'w3-05': 'y',
+  'w3-06': 'xy',
 };
 
 const build = (d: unknown): LevelDef => {
@@ -553,6 +754,7 @@ const build = (d: unknown): LevelDef => {
 export const WORLDS: Array<{ name: string; levels: LevelDef[] }> = [
   { name: 'Welt 1 – Die Tiefe erwacht', levels: defs.map(build) },
   { name: 'Welt 2 – Zwischen den Ebenen', levels: defs2.map(build) },
+  { name: 'Welt 3 – Das Räderwerk', levels: defs3.map(build) },
 ];
 
 export const CAMPAIGN_LEVELS: LevelDef[] = WORLDS.flatMap((w) => w.levels);

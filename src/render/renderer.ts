@@ -11,6 +11,8 @@ export interface DrawOptions {
   /** Partner im Multiplayer: Position (Weltkoordinaten der EIGENEN Ebene
    *  nur wenn sameFloor), sonst wird der Halo an den Rand geklemmt. */
   buddy?: { x: number; y: number; sameFloor: boolean; floorLabel?: string } | null;
+  /** Geist-Replay der Bestzeit: gleicher Halo wie der Partner, nur blasser. */
+  ghost?: { x: number; y: number; sameFloor: boolean } | null;
 }
 
 interface Bucket {
@@ -142,6 +144,16 @@ export class Renderer {
     };
     for (const w of world.walls) {
       if (w.door?.open) continue; // offene Türen unten als Umriss, nicht als Fläche
+      // Schiebewand: fährt sichtbar auf – die gezeichnete Länge schrumpft mit
+      // dem Öffnungsgrad (verankert am n/w-Ende); voll offen nur als Umriss.
+      if (w.slide) {
+        const f = 1 - w.slide.openness;
+        if (f > 0.02) {
+          const rect = w.w > w.h ? { ...w, w: w.w * f } : { ...w, h: w.h * f };
+          addRect(rect, wallAlpha(w), WORLD.slider);
+        }
+        continue;
+      }
       const color = w.door ? WORLD.door : w.hp !== undefined || w.cracked ? WORLD.brittle : WORLD.wall;
       addRect(w, wallAlpha(w), color);
     }
@@ -161,17 +173,17 @@ export class Renderer {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.globalCompositeOperation = 'source-over';
 
-    // Windzonen: nur bei Debug/Reveal als Fläche mit Richtungspfeil.
+    // Wind- und Strömungszonen: nur bei Debug/Reveal, Fläche mit Richtungspfeil.
     if (debug || revealAll) {
-      for (const z of world.windZones) {
-        ctx.fillStyle = `rgba(${WORLD.wind}, 0.08)`;
+      const drawZone = (z: { x: number; y: number; w: number; h: number; fx: number; fy: number }, color: string) => {
+        ctx.fillStyle = `rgba(${color}, 0.08)`;
         ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
         const cx = tx(z.x + z.w / 2),
           cy = ty(z.y + z.h / 2);
         const f = Math.hypot(z.fx, z.fy) || 1;
         const dx = (z.fx / f) * z.w * s * 0.3,
           dy = (z.fy / f) * z.h * s * 0.3;
-        ctx.strokeStyle = `rgba(${WORLD.wind}, 0.6)`;
+        ctx.strokeStyle = `rgba(${color}, 0.6)`;
         ctx.lineWidth = 2 * this.dpr;
         ctx.beginPath();
         ctx.moveTo(cx - dx, cy - dy);
@@ -180,7 +192,9 @@ export class Renderer {
         ctx.moveTo(cx + dx, cy + dy);
         ctx.lineTo(cx + dx - (dx - dy) * 0.35, cy + dy - (dy + dx) * 0.35);
         ctx.stroke();
-      }
+      };
+      for (const z of world.windZones) drawZone(z, WORLD.wind);
+      for (const z of world.currents) drawZone(z, WORLD.current);
     }
 
     // Checkpoints: Ring – sichtbar bei Debug/Reveal oder kurz nach Aktivierung.
@@ -196,11 +210,13 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // Offene Coop-Türen: nur ein gestrichelter Umriss – der Weg ist frei.
+    // Offene Coop-Türen und voll aufgefahrene Schiebewände: nur ein
+    // gestrichelter Umriss – der Weg ist frei.
     for (const w of world.walls) {
-      if (!w.door?.open) continue;
+      const openSlide = w.slide !== undefined && w.slide.openness > 0.98;
+      if (!w.door?.open && !openSlide) continue;
       const alpha = debug || revealAll ? 0.5 : w.litUntil && w.litUntil > now ? 0.5 : 0.25;
-      ctx.strokeStyle = `rgba(${WORLD.door}, ${alpha})`;
+      ctx.strokeStyle = `rgba(${openSlide ? WORLD.slider : WORLD.door}, ${alpha})`;
       ctx.lineWidth = 1.5 * this.dpr;
       ctx.setLineDash([6 * this.dpr, 6 * this.dpr]);
       ctx.strokeRect(tx(w.x), ty(w.y), w.w * s, w.h * s);
@@ -220,6 +236,28 @@ export class Renderer {
         ctx.fillStyle = `rgba(${WORLD.plate}, 0.35)`;
         ctx.fillRect(tx(pl.x) - r + 3, ty(pl.y) - r + 3, r * 2 - 6, r * 2 - 6);
       }
+    }
+
+    // Zeitschloss-Schalter: goldenes Zifferblatt; solange der Timer läuft,
+    // leert sich der Bogen im Uhrzeigersinn.
+    for (const sw of world.switches) {
+      const active = sw.openUntil !== null && sw.openUntil > now;
+      const alpha = debug || revealAll ? 0.9 : Math.max(revealAlpha(sw, 0.9), active ? 0.9 : 0);
+      if (alpha <= 0.01) continue;
+      const cx = tx(sw.x),
+        cy = ty(sw.y);
+      const r = sw.r * s;
+      ctx.strokeStyle = `rgba(${WORLD.plate}, ${alpha})`;
+      ctx.lineWidth = 2.5 * this.dpr;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      const frac = active ? Math.max(0, (sw.openUntil! - now) / (sw.durationS * 1000)) : 1;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy - r * 0.75);
+      if (active) ctx.arc(cx, cy, r * 0.75, -Math.PI / 2, -Math.PI / 2 + (1 - frac) * Math.PI * 2);
+      ctx.stroke();
     }
 
     // Löcher: tiefschwarz mit schwachem Rand – sichtbar bei Debug/Reveal, nach
@@ -375,43 +413,53 @@ export class Renderer {
     ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
     ctx.fill();
 
-    // Partner-Halo (Multiplayer): auf dem Screen als Ring an seiner Position,
-    // außerhalb (oder auf anderer Ebene) an den Rand geklemmt.
-    const buddy = opts.buddy;
-    if (buddy) {
-      const margin = 26 * this.dpr;
-      let px = tx(buddy.x);
-      let py = ty(buddy.y);
-      const offscreen =
-        !buddy.sameFloor ||
-        px < margin ||
-        py < margin ||
-        px > this.canvas.width - margin ||
-        py > this.canvas.height - margin;
-      if (offscreen) {
-        px = Math.max(margin, Math.min(this.canvas.width - margin, px));
-        py = Math.max(margin, Math.min(this.canvas.height - margin, py));
-      }
-      const r = 16 * this.dpr;
-      const pulse = 0.7 + 0.3 * Math.sin(now / 250);
-      const glow = ctx.createRadialGradient(px, py, 0, px, py, r * 2.4);
-      glow.addColorStop(0, `rgba(${WORLD.buddy}, ${0.35 * pulse})`);
-      glow.addColorStop(1, `rgba(${WORLD.buddy}, 0)`);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(px, py, r * 2.4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(${WORLD.buddy}, ${offscreen ? 0.9 : 0.75})`;
-      ctx.lineWidth = 2.5 * this.dpr;
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.stroke();
-      if (buddy.floorLabel) {
-        ctx.fillStyle = `rgba(${WORLD.buddy}, 0.9)`;
-        ctx.font = `${11 * this.dpr}px system-ui, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(buddy.floorLabel, px, py + 4 * this.dpr);
-      }
+    // Halos: Geist-Replay (blass) unter dem Partner-Halo (Multiplayer) –
+    // auf dem Screen als Ring an der Position, außerhalb (oder auf anderer
+    // Ebene) an den Rand geklemmt.
+    if (opts.ghost) this.drawHalo(opts.ghost, now, 0.45, 13);
+    if (opts.buddy) this.drawHalo(opts.buddy, now, 1, 16, opts.buddy.floorLabel);
+  }
+
+  private drawHalo(
+    pos: { x: number; y: number; sameFloor: boolean },
+    now: number,
+    alphaScale: number,
+    radiusPx: number,
+    floorLabel?: string,
+  ): void {
+    const ctx = this.ctx;
+    const margin = 26 * this.dpr;
+    let px = this.offsetX + pos.x * this.scale;
+    let py = this.offsetY + pos.y * this.scale;
+    const offscreen =
+      !pos.sameFloor ||
+      px < margin ||
+      py < margin ||
+      px > this.canvas.width - margin ||
+      py > this.canvas.height - margin;
+    if (offscreen) {
+      px = Math.max(margin, Math.min(this.canvas.width - margin, px));
+      py = Math.max(margin, Math.min(this.canvas.height - margin, py));
+    }
+    const r = radiusPx * this.dpr;
+    const pulse = 0.7 + 0.3 * Math.sin(now / 250);
+    const glow = ctx.createRadialGradient(px, py, 0, px, py, r * 2.4);
+    glow.addColorStop(0, `rgba(${WORLD.buddy}, ${0.35 * pulse * alphaScale})`);
+    glow.addColorStop(1, `rgba(${WORLD.buddy}, 0)`);
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(px, py, r * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${WORLD.buddy}, ${(offscreen ? 0.9 : 0.75) * alphaScale})`;
+    ctx.lineWidth = 2.5 * this.dpr;
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.stroke();
+    if (floorLabel) {
+      ctx.fillStyle = `rgba(${WORLD.buddy}, 0.9)`;
+      ctx.font = `${11 * this.dpr}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(floorLabel, px, py + 4 * this.dpr);
     }
   }
 }

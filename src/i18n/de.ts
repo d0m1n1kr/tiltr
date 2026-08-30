@@ -16,7 +16,7 @@ export const de = {
   'menu.daily.done': 'Heute: {time}',
   'menu.daily.streak': ' · 🔥 {n} Tage',
   'menu.campaign': 'Kampagne',
-  'menu.campaign.sub': '2 Welten, 16 Level',
+  'menu.campaign.sub': '3 Welten, 22 Level',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Coop & Race – zu zweit, per QR-Code',
   'menu.tutorial': 'Tutorial',
@@ -61,6 +61,7 @@ export const de = {
   'st.floorUp': '⬆ Ebene {n}',
   'st.portal': '✦ Portal',
   'st.wallDown': 'Wand eingestürzt! 🧱',
+  'st.switch': '⏱ Zeitschloss: Tür {n} s offen!',
 
   /* --- Ergebnis-Karten --- */
   'res.time': 'Zeit: {time}',
@@ -191,10 +192,20 @@ export const de = {
     'Aktiver Sonar-Impuls (Tap/Leertaste, begrenzter Vorrat): Wellenfront deckt die Umgebung auf, Reflexionen kommen entfernungs-verzögert zurück – Wände hell, Löcher tief.',
   'el.heart.title': 'Herzschlag',
   'el.heart.desc': 'Wird schneller und lauter, je näher ein offenes Loch ist. Fällt der Puls, ist der Weg frei.',
+  'el.slidingWall.title': 'Schiebewand',
+  'el.slidingWall.desc':
+    'Eine Wand, die sich im Takt auf- und zuschiebt – nur voll geöffnet ist der Weg frei. Signatur: rhythmisches Steinschleifen beim Öffnen und Schließen, dazu ein beschleunigender Takt als Warnung, kurz bevor sie zufährt.',
+  'el.timedSwitch.title': 'Zeitschloss-Schalter',
+  'el.timedSwitch.desc':
+    'Betreten öffnet die verknüpfte Tür – aber nur für ein paar Sekunden. Ein Ticken zählt die Zeit herunter und wird hektischer, je knapper sie wird; dann fällt die Tür hörbar wieder zu. Erneutes Betreten spannt das Uhrwerk neu.',
+  'el.current.title': 'Strömung',
+  'el.current.desc':
+    'Ein Sog, der stärker schiebt, als du neigen kannst – eine Einbahnstraße. Was hinter der Strömung liegt, bleibt hinter dir. Signatur: pulsierendes, gerichtetes Rauschen, tiefer und drängender als Wind.',
 
   /* --- Welten & Level --- */
   'world.w1': 'Welt 1 – Die Tiefe erwacht',
   'world.w2': 'Welt 2 – Zwischen den Ebenen',
+  'world.w3': 'Welt 3 – Das Räderwerk',
 
   'lv.tut-1.name': 'Rollen & Lauschen',
   'lv.tut-1.intro':
@@ -267,6 +278,25 @@ export const de = {
   'lv.w2-06.name': 'Die Weite',
   'lv.w2-06.intro':
     'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, und abseits des Weges funkelt es.',
+
+  'lv.w3-01.name': 'Taktgefühl',
+  'lv.w3-01.intro':
+    'Hörst du das Steinschleifen? Hier schieben sich Wände im Takt auf und zu – nur voll geöffnet kommst du durch. Wenn der Takt schneller klackt, schließt sie gleich. Warte. Lausche. Roll.',
+  'lv.w3-02.name': 'Zeitschloss',
+  'lv.w3-02.intro':
+    'Der Schalter auf dem Weg spannt ein Uhrwerk: Die Tür vor dem Ziel springt auf – aber nur für neun Takte. Das Ticken zählt mit und wird hektisch, wenn die Zeit knapp wird. Dann roll, was das Zeug hält!',
+  'lv.w3-03.name': 'Stromschnellen',
+  'lv.w3-03.intro':
+    'Ein Rauschen, das pulst: Strömungen. Sie schieben stärker, als du neigen kannst – Einbahnstraßen. Was hinter einer Strömung liegt, bleibt hinter dir. Sammle zuerst, spring dann.',
+  'lv.w3-04.name': 'Schleusenwerk',
+  'lv.w3-04.intro':
+    'Erst der Takt, dann die Uhr: Zwei Schiebewände wollen im Rhythmus passiert werden, danach öffnet ein Zeitschloss die Schleuse vor dem Ziel – für acht Takte. Schaffst du beides in einem Zug?',
+  'lv.w3-05.name': 'Uhrwerk',
+  'lv.w3-05.intro':
+    'Das ganze Räderwerk greift ineinander: Schiebewände takten den Abstieg, eine Strömung reißt dich zum Schalter, und das Zeitschloss hält die Zielkammer nur sechs Takte offen. Eine Wache dreht ihre Runden.',
+  'lv.w3-06.name': 'Taktstraße',
+  'lv.w3-06.intro':
+    'Das Finale des Räderwerks, weiter als dein Bildschirm: Strömungen reißen dich von Schleuse zu Schleuse, Schiebewände geben den Takt vor, und ganz am Ende tickt das Zeitschloss vor der Zielkammer. Hör den Rhythmus – und tanz mit.',
 
   'lv.coop-01.name': 'Schleuse',
   'lv.coop-01.intro':

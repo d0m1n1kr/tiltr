@@ -86,6 +86,74 @@ describe('Wächter', () => {
   });
 });
 
+describe('Schiebewände', () => {
+  const cycle = { open: 3, closed: 2, ramp: 0.5, offset: 0 };
+
+  it('blockiert geschlossen und lässt nur das voll geöffnete Plateau passieren', () => {
+    const wall = { x: 195, y: 0, w: 10, h: 100, slide: { cycle, openness: 0 } };
+    const world = new World([wall], new Ball(150, 50, 22), { x: 500, y: 50, r: 30 });
+    for (let i = 0; i < 60; i++) world.step(1 / 60, { x: 1, y: 0 });
+    expect(world.ball.x).toBeLessThan(195); // zu: prallt ab
+
+    wall.slide.openness = 0.9; // Rampe: Spalt zu schmal, weiterhin solide
+    world.ball.x = 150;
+    world.ball.vx = 0;
+    for (let i = 0; i < 60; i++) world.step(1 / 60, { x: 1, y: 0 });
+    expect(world.ball.x).toBeLessThan(195);
+
+    wall.slide.openness = 1; // offen: durchrollen
+    world.ball.x = 150;
+    world.ball.vx = 0;
+    for (let i = 0; i < 90; i++) world.step(1 / 60, { x: 1, y: 0 });
+    expect(world.ball.x).toBeGreaterThan(250);
+  });
+
+  it('schiebt einen Ball im Spalt beim Schließen wieder hinaus', () => {
+    const wall = { x: 195, y: 0, w: 10, h: 100, slide: { cycle, openness: 1 } };
+    const world = new World([wall], new Ball(200, 50, 22), { x: 500, y: 50, r: 30 });
+    wall.slide.openness = 0; // schließt, Ball steht mitten in der Kante
+    world.step(1 / 60, { x: 0, y: 0 });
+    expect(Math.abs(world.ball.x - 200)).toBeGreaterThan(10); // ausgestoßen
+  });
+});
+
+describe('Strömungen', () => {
+  it('ist gegen volle Neigung unüberwindbar – Wind mit derselben Lage nicht', () => {
+    // Ball am stromabwärtigen Rand, volle Neigung GEGEN die Strömung: er
+    // kommt nie am stromaufwärtigen Rand (x=100) hinaus.
+    const strong = new World([], new Ball(190, 150, 22), { x: 500, y: 500, r: 30 });
+    strong.currents = [{ x: 100, y: 100, w: 100, h: 100, fx: 3400, fy: 0, dir: 'e' }];
+    let minX = strong.ball.x;
+    for (let i = 0; i < 240; i++) {
+      strong.step(1 / 60, { x: -1, y: 0 });
+      minX = Math.min(minX, strong.ball.x);
+    }
+    expect(minX).toBeGreaterThan(100);
+    // Gegenprobe: eine Windzone (schwächer als die Neigung) verliert.
+    const wind = new World([], new Ball(190, 150, 22), { x: 500, y: 500, r: 30 });
+    wind.windZones = [{ x: 100, y: 100, w: 100, h: 100, fx: 1150, fy: 0 }];
+    for (let i = 0; i < 240; i++) wind.step(1 / 60, { x: -1, y: 0 });
+    expect(wind.ball.x).toBeLessThan(100);
+  });
+
+  it('reißt einen ruhenden Ball mit', () => {
+    const world = new World([], new Ball(150, 150, 22), { x: 500, y: 500, r: 30 });
+    world.currents = [{ x: 100, y: 100, w: 100, h: 100, fx: 3400, fy: 0, dir: 'e' }];
+    world.step(0.1, { x: 0, y: 0 });
+    expect(world.ball.vx).toBeGreaterThan(100);
+  });
+});
+
+describe('Zeitschloss-Schalter', () => {
+  it('switchUnderBall nutzt die Platten-Toleranz (halber Ballradius)', () => {
+    const world = new World([], new Ball(100, 50, 22), { x: 900, y: 900, r: 30 });
+    world.switches.push({ x: 200, y: 50, r: 30, opens: 'tor', durationS: 6, openUntil: null, held: false });
+    expect(world.switchUnderBall()).toBeNull();
+    world.ball.x = 165; // Abstand 35 < 30 + 11
+    expect(world.switchUnderBall()).not.toBeNull();
+  });
+});
+
 describe('Windzonen', () => {
   it('schieben den Ball innerhalb der Zone', () => {
     const world = new World([], new Ball(150, 150, 22), { x: 500, y: 500, r: 30 });

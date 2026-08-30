@@ -163,9 +163,9 @@ const check = (name, cond) => {
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
   const items = page.locator('.level-item');
-  check(`Kampagnen-Liste zeigt 16 Level (${await items.count()})`, (await items.count()) === 16);
+  check(`Kampagnen-Liste zeigt 22 Level (${await items.count()})`, (await items.count()) === 22);
   const lockedCount = await page.locator('.level-item.locked').count();
-  check(`nur Level 1 ist freigeschaltet (${16 - lockedCount} offen)`, lockedCount === 15);
+  check(`nur Level 1 ist freigeschaltet (${22 - lockedCount} offen)`, lockedCount === 21);
 
   await items.first().click();
   await page.waitForTimeout(3300); // Kalibrier-Countdown
@@ -189,7 +189,19 @@ const check = (name, cond) => {
   await page.click('#campaignBtn');
   await page.waitForTimeout(200);
   const lockedAfter = await page.locator('.level-item.locked').count();
-  check(`Level 2 nach Sieg freigeschaltet (${16 - lockedAfter} offen)`, lockedAfter === 14);
+  check(`Level 2 nach Sieg freigeschaltet (${22 - lockedAfter} offen)`, lockedAfter === 20);
+
+  // Geist-Replay: derselbe Level nochmal – die eben gespeicherte Bestzeit
+  // rollt jetzt als blasser Halo mit (Hook: __tiltrGhost).
+  await page.locator('.level-item').first().click(); // Sensoren sind schon aktiv: kein Countdown
+  await page.waitForTimeout(400);
+  await page.click('#interPrimary'); // Los!
+  await page.waitForTimeout(600);
+  const ghostInfo = await page.evaluate(() => window.__tiltrGhost);
+  check(
+    `Geist-Replay der Bestzeit läuft mit (time=${ghostInfo?.time?.toFixed?.(1)})`,
+    !!ghostInfo && typeof ghostInfo.time === 'number' && ghostInfo.active === true,
+  );
   await page.close();
 }
 
@@ -203,7 +215,7 @@ const check = (name, cond) => {
   await page.waitForTimeout(200);
   const items = await page.locator('.level-item').count();
   const headers = await page.locator('.world-header').count();
-  check(`Kampagne: 16 Level in 2 Welten (${items}/${headers})`, items === 16 && headers === 2);
+  check(`Kampagne: 22 Level in 3 Welten (${items}/${headers})`, items === 22 && headers === 3);
   const locked = await page.locator('.level-item.locked').count();
   check('?unlock schaltet alles frei', locked === 0);
 

@@ -104,6 +104,77 @@ describe('Loader', () => {
   });
 });
 
+describe('M9-Elemente (Schiebewand, Zeitschloss, Strömung)', () => {
+  const withFloor = (floor: Record<string, unknown>) => ({
+    ...minimalLevel,
+    floors: [{ ...minimalLevel.floors[0], ...floor }],
+  });
+
+  it('Schiebewand braucht eine offene Kante und startet geschlossen', () => {
+    const ok = withFloor({
+      maze: { seed: 7, carve: [[[1, 1], 'e']] },
+      elements: [{ type: 'slidingWall', edge: [[1, 1], 'e'] }],
+    });
+    const { world } = loadLevel(ok);
+    const slider = world.walls.find((w) => w.slide);
+    expect(slider).toBeDefined();
+    expect(slider!.slide!.openness).toBe(0);
+    expect(slider!.slide!.cycle.open).toBeGreaterThan(0); // Defaults gefüllt
+
+    const bad = withFloor({
+      maze: { seed: 7, add: [[[1, 1], 'e']] },
+      elements: [{ type: 'slidingWall', edge: [[1, 1], 'e'] }],
+    });
+    expect(() => loadLevel(bad)).toThrow(/nicht offen/);
+  });
+
+  it('Strömung verlangt eine offene Kante in Fließrichtung (kein Dauer-Pin)', () => {
+    const ok = withFloor({
+      maze: { seed: 7, carve: [[[1, 1], 'e']] },
+      elements: [{ type: 'current', cell: [1, 1], dir: 'e' }],
+    });
+    expect(loadLevel(ok).world.currents).toHaveLength(1);
+
+    const pinned = withFloor({
+      maze: { seed: 7, add: [[[1, 1], 'e']] },
+      elements: [{ type: 'current', cell: [1, 1], dir: 'e' }],
+    });
+    expect(() => loadLevel(pinned)).toThrow(/Dauer-Pin/);
+
+    // Randzelle mit Fluss nach außen: Außenwand blockiert -> gleicher Fehler.
+    const border = withFloor({
+      maze: { seed: 7 },
+      elements: [{ type: 'current', cell: [3, 1], dir: 'e' }],
+    });
+    expect(() => loadLevel(border)).toThrow(/Dauer-Pin/);
+  });
+
+  it('Zeitschloss zählt als Tür-Öffner; unbekannte Tür-ID knallt', () => {
+    const ok = withFloor({
+      maze: { seed: 7, carve: [[[2, 2], 'e']] },
+      elements: [
+        { type: 'door', id: 'takt', edge: [[2, 2], 'e'] },
+        { type: 'timedSwitch', cell: [0, 1], opens: 'takt' },
+      ],
+    });
+    const { world } = loadLevel(ok);
+    expect(world.switches).toHaveLength(1);
+    expect(world.switches[0]!.durationS).toBe(6); // Default
+
+    const orphanDoor = withFloor({
+      maze: { seed: 7, carve: [[[2, 2], 'e']] },
+      elements: [{ type: 'door', id: 'takt', edge: [[2, 2], 'e'] }],
+    });
+    expect(() => loadLevel(orphanDoor)).toThrow(/weder Schlüssel/);
+
+    const orphanSwitch = withFloor({
+      maze: { seed: 7 },
+      elements: [{ type: 'timedSwitch', cell: [0, 1], opens: 'nix' }],
+    });
+    expect(() => loadLevel(orphanSwitch)).toThrow(/unbekannte Tür/);
+  });
+});
+
 describe('Maze-Edits (carve/add)', () => {
   it('setWall hält Nachbarzellen konsistent', () => {
     const cells = generateMaze(3, 3, mulberry32(1));
