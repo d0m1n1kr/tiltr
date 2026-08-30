@@ -25,13 +25,16 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
   (`#daily=DATUM&t=ZEIT`) fordern Freunde heraus, deine Zeit zu schlagen –
   auch für vergangene Tage.
-- **🌍 Kampagne** – drei handgebaute Welten (22 Level): Wächter, Schlüssel
+- **🌍 Kampagne** – vier handgebaute Welten (28 Level): Wächter, Schlüssel
   und Türen, Gems, atmende Löcher, Wind, brüchige Wände, mehrstöckige
   Karten mit Transportern und Multi-Screen-Weiten, über die die Kamera
   scrollt. Welt 3 „Das Räderwerk" dreht sich ums Timing: Schiebewände,
-  Zeitschloss-Schalter und Einbahn-Strömungen. Bis zu drei Sterne pro
-  Level (geschafft, Par-Zeit, alle Gems) – und die eigene Bestzeit rollt
-  bei späteren Versuchen als blasser Geist-Halo mit.
+  Zeitschloss-Schalter und Einbahn-Strömungen. Welt 4 „Die Stille" ist die
+  Schleich-Welt: Horcher, die nur jagen, solange du rollst, Nebel, der
+  jeden Klang dämpft, und Eis, über das du gleitest. Bis zu drei Sterne
+  pro Level (geschafft, Par-Zeit, alle Gems), dazu ein optionaler
+  Blind-Stern 🌑 fürs Durchkommen ohne einen einzigen Echo-Ping – und die
+  eigene Bestzeit rollt bei späteren Versuchen als blasser Geist-Halo mit.
 - **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
   ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über
   eine feste Liste von 8 etablierten Nostr-Relays, kein eigener Server).
@@ -83,6 +86,10 @@ Leertaste für den Ping.
 | Schiebewand | schiebt sich im Takt auf und zu – nur voll geöffnet passierbar; rhythmisches Steinschleifen plus beschleunigender Warn-Takt kurz vorm Schließen |
 | Zeitschloss-Schalter | Betreten öffnet die verknüpfte Tür für ein paar Sekunden; ein Tick-Tock zählt herunter und wird hektisch, wenn die Zeit knapp wird |
 | Strömung | schiebt stärker, als man neigen kann – eine Einbahnstraße; pulsierendes, gerichtetes Rauschen, tiefer und drängender als Wind |
+| Horcher | jagt dich, solange du rollst – er hört dich sogar durch Wände; stehst du still, zieht er sich zurück; Schnüffeln schwillt mit deinem Tempo an |
+| Nebelzone | dämpft ALLE Klänge (auch den Ziel-Sonar) über einen globalen Lowpass; kein Physik-Einfluss – sie nimmt dir nur die Ohren |
+| Eisfläche | reibungsarmer Boden: du gleitest weiter, Bremsen und Lenken werden schwammig; kristallines Sirren unter dem Ball |
+| Blind-Stern 🌑 | optionaler vierter Stern pro Kampagnen-Level: geschafft ohne einen einzigen Echo-Ping |
 | Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Halo mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
 | Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
 | Partner-Halo | pulsierender Lichtring an der Position des Mitspielers; außer Sicht an den Screenrand geklemmt (mit Ebenen-Label) |
@@ -126,7 +133,8 @@ Schnelles Spiel ✓ → M4 Kampagne Welt 1 ✓ → M5 Ebenen/Transporter + Welt 
 → M6 Tages-Challenge + Herausfordern ✓ → M7 Multiplayer Coop & Race ✓ →
 M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉 →
 M9 Welt 3 „Das Räderwerk" (Schiebewände, Zeitschlösser, Strömungen) +
-Geist-Replay ✓
+Geist-Replay ✓ → M10 Welt 4 „Die Stille" (Horcher, Nebel, Eis) +
+Blind-Stern ✓
 
 ---
 

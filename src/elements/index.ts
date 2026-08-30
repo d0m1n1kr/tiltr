@@ -12,6 +12,9 @@ import './plate';
 import './slidingWall';
 import './timedSwitch';
 import './current';
+import './listener';
+import './fogZone';
+import './ice';
 
 export { buildElements, galleryEntries, registerElement } from './registry';
 export type { BuildContext, ElementModule, GalleryEntry } from './registry';

@@ -13,7 +13,7 @@ export const es: Dict = {
   'menu.daily.done': 'Hoy: {time}',
   'menu.daily.streak': ' · 🔥 {n} días',
   'menu.campaign': 'Campaña',
-  'menu.campaign.sub': '3 mundos, 22 niveles',
+  'menu.campaign.sub': '4 mundos, 28 niveles',
   'menu.mp': 'Multijugador',
   'menu.mp.sub': 'Coop y carrera – para dos, por código QR',
   'menu.tutorial': 'Tutorial',
@@ -66,6 +66,7 @@ export const es: Dict = {
   'res.newBestLine': '¡Nuevo récord!',
   'res.par': ' (par {n} s)',
   'res.falls': 'Caídas: {n}',
+  'res.blind': '🌑 Estrella ciega – ¡sin un solo ping!',
   'res.tutTitle': '{name} – ¡conseguido! 🎉',
   'res.tutProgress': 'Tutorial: {done}/{total}',
   'res.tutDone': 'Tutorial completado: ¡estás listo para la oscuridad!',
@@ -198,11 +199,21 @@ export const es: Dict = {
   'el.current.title': 'Corriente',
   'el.current.desc':
     'Un flujo que empuja más fuerte de lo que puedes inclinar – un sentido único. Lo que queda tras la corriente, queda atrás. Firma: un rumor pulsante y direccional, más grave y apremiante que el viento.',
+  'el.listener.title': 'El Escucha',
+  'el.listener.desc':
+    'Te caza mientras ruedas – te oye incluso a través de los muros. Si te quedas quieto, pierde tu rastro y se retira. Firma: un olfateo crepitante que crece con tu propia velocidad. El silencio es tu camuflaje.',
+  'el.fogZone.title': 'Zona de niebla',
+  'el.fogZone.desc':
+    'En la niebla TODO suena como a través de algodón – muros, peligros, incluso el sonar de la meta. No empuja ni traga, pero te quita los oídos. Memoriza el rumbo antes de sumergirte.',
+  'el.ice.title': 'Placa de hielo',
+  'el.ice.desc':
+    'Liso como un espejo: una vez en marcha, sigues deslizándote – frenar se vuelve pesado, girar impreciso. Firma: un zumbido cristalino bajo la bola que crece con la velocidad. Planea el impulso antes de tomarlo.',
 
   /* --- Mundos y niveles --- */
   'world.w1': 'Mundo 1 – Las profundidades despiertan',
   'world.w2': 'Mundo 2 – Entre los pisos',
   'world.w3': 'Mundo 3 – El Engranaje',
+  'world.w4': 'Mundo 4 – El Silencio',
 
   'lv.tut-1.name': 'Rodar y escuchar',
   'lv.tut-1.intro':
@@ -294,6 +305,25 @@ export const es: Dict = {
   'lv.w3-06.name': 'La calle del compás',
   'lv.w3-06.intro':
     'El final del Engranaje, más ancho que tu pantalla: las corrientes te arrastran de esclusa en esclusa, los muros corredizos marcan el compás y, al final, la cerradura de tiempo hace tictac ante la cámara de la meta. Oye el ritmo – y baila con él.',
+
+  'lv.w4-01.name': 'Puesto de escucha',
+  'lv.w4-01.intro':
+    'Algo olfatea. El escucha oye tu rodar – incluso a través de los muros – y te caza mientras te mueves. Si te quedas quieto, pierde tu rastro y se retira. Rueda por etapas.',
+  'lv.w4-02.name': 'Banco de niebla',
+  'lv.w4-02.intro':
+    'En la niebla todo suena como a través de algodón – incluso el sonar de la meta. Memoriza el rumbo antes de sumergirte y confía en tu instinto hasta que los oídos se despejen.',
+  'lv.w4-03.name': 'Hielo de espejo',
+  'lv.w4-03.intro':
+    'Hielo liso como un espejo: una vez en marcha, sigues deslizándote – frenar se vuelve pesado, girar impreciso. Escucha el zumbido bajo la bola y planea el impulso antes de tomarlo.',
+  'lv.w4-04.name': 'Marcha sigilosa',
+  'lv.w4-04.intro':
+    'Marcha sigilosa: un escucha ronda el terreno y los bancos de niebla se tragan tu orientación. Muévete a impulsos cortos – y en las pausas escucha dónde está el olfateo.',
+  'lv.w4-05.name': 'Caza sobre hielo',
+  'lv.w4-05.intro':
+    'La caza sobre hielo: en el hielo te deslizas – y el escucha oye cada deslizamiento. Quien patina no puede quedarse quieto. Toma impulso con cuidado y frena antes de que muerda.',
+  'lv.w4-06.name': 'El Oído',
+  'lv.w4-06.intro':
+    'El Oído: tres pisos abajo, en el núcleo de niebla, todo suena como algodón y dos escuchas acechan. Al fondo, en plena niebla, pulsa la meta. Muévete como un susurro.',
 
   'lv.coop-01.name': 'La esclusa',
   'lv.coop-01.intro':

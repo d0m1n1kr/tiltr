@@ -118,6 +118,24 @@ export const currentDef = z.object({
   force: z.number().min(3000).default(3400),
 });
 
+export const listenerDef = z.object({
+  ...base,
+  type: z.literal('listener'),
+  /** Jagdgeschwindigkeit in px/s (nur während sich der Ball bewegt) */
+  speed: z.number().positive().default(95),
+  r: z.number().positive().default(26),
+});
+
+export const fogZoneDef = z.object({
+  ...base,
+  type: z.literal('fogZone'),
+});
+
+export const iceDef = z.object({
+  ...base,
+  type: z.literal('ice'),
+});
+
 export const elementDef = z.discriminatedUnion('type', [
   holeDef,
   windZoneDef,
@@ -131,6 +149,9 @@ export const elementDef = z.discriminatedUnion('type', [
   slidingWallDef,
   timedSwitchDef,
   currentDef,
+  listenerDef,
+  fogZoneDef,
+  iceDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -145,6 +166,9 @@ export type PlateDef = z.infer<typeof plateDef>;
 export type SlidingWallDef = z.infer<typeof slidingWallDef>;
 export type TimedSwitchDef = z.infer<typeof timedSwitchDef>;
 export type CurrentDef = z.infer<typeof currentDef>;
+export type ListenerDef = z.infer<typeof listenerDef>;
+export type FogZoneDef = z.infer<typeof fogZoneDef>;
+export type IceDef = z.infer<typeof iceDef>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */

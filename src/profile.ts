@@ -11,6 +11,8 @@ export interface ProfileData {
   best: Record<string, number>;
   /** Beste Sternewertung pro Kampagnen-Level (0–3) */
   stars: Record<string, number>;
+  /** Blind-Stern 🌑: Kampagnen-Level ohne einen einzigen Echo-Ping geschafft */
+  blind: string[];
   preset: Preset;
   /** Tages-Challenge: erster Zieleinlauf zählt, Rest ist Training */
   daily: { date: string; first: number | null; best: number | null; attempts: number } | null;
@@ -22,6 +24,7 @@ const DEFAULTS: ProfileData = {
   tutorialDone: [],
   best: {},
   stars: {},
+  blind: [],
   preset: 'normal',
   daily: null,
   streak: null,
@@ -38,6 +41,7 @@ function load(): ProfileData {
       tutorialDone: Array.isArray(parsed.tutorialDone) ? parsed.tutorialDone : [],
       best: typeof parsed.best === 'object' && parsed.best ? parsed.best : {},
       stars: typeof parsed.stars === 'object' && parsed.stars ? parsed.stars : {},
+      blind: Array.isArray(parsed.blind) ? parsed.blind : [],
       preset: parsed.preset === 'easy' || parsed.preset === 'hard' ? parsed.preset : 'normal',
       daily: parsed.daily && typeof parsed.daily.date === 'string' ? parsed.daily : null,
       streak: parsed.streak && typeof parsed.streak.last === 'string' ? parsed.streak : null,
@@ -94,6 +98,20 @@ export const profile = {
   },
   totalStars(ids: string[]): number {
     return ids.reduce((sum, id) => sum + (data.stars[id] ?? 0), 0);
+  },
+
+  /* --- Blind-Stern 🌑: ohne einen einzigen Ping geschafft --- */
+  isBlind(id: string): boolean {
+    return data.blind.includes(id);
+  },
+  markBlind(id: string): void {
+    if (!data.blind.includes(id)) {
+      data.blind.push(id);
+      save();
+    }
+  },
+  blindCount(ids: string[]): number {
+    return ids.filter((id) => data.blind.includes(id)).length;
   },
 
   /** Gespeicherter Stand für die Challenge dieses Datums (sonst null). */

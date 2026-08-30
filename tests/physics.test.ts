@@ -154,6 +154,66 @@ describe('Zeitschloss-Schalter', () => {
   });
 });
 
+describe('Horcher', () => {
+  const withListener = () => {
+    const world = new World([], new Ball(500, 300, 22), { x: 900, y: 900, r: 30 });
+    world.listeners.push({ x: 100, y: 300, r: 26, speed: 100, home: { x: 100, y: 300 } });
+    return world;
+  };
+
+  it('bewegt sich NUR, solange der Ball rollt (deterministisch aus der Ballbewegung)', () => {
+    const world = withListener();
+    const l = world.listeners[0]!;
+    for (let i = 0; i < 60; i++) world.step(1 / 60, { x: 0, y: 0 }); // Ball still
+    expect(l.x).toBe(100);
+    world.ball.vx = 400; // Ball rollt -> er jagt
+    for (let i = 0; i < 30; i++) world.step(1 / 60, { x: 1, y: 0 });
+    expect(l.x).toBeGreaterThan(120);
+  });
+
+  it('zieht sich bei Stille zum Heimatpunkt zurück', () => {
+    const world = withListener();
+    const l = world.listeners[0]!;
+    l.x = 300; // war schon auf der Jagd
+    for (let i = 0; i < 240; i++) world.step(1 / 60, { x: 0, y: 0 });
+    expect(l.x).toBeLessThan(150); // wieder fast daheim
+  });
+
+  it('fängt den Ball bei Berührung', () => {
+    const world = withListener();
+    expect(world.listenerCaught()).toBeNull();
+    world.listeners[0]!.x = world.ball.x - 30;
+    world.listeners[0]!.y = world.ball.y;
+    expect(world.listenerCaught()).not.toBeNull();
+  });
+});
+
+describe('Eisflächen', () => {
+  it('auf Eis gleitet der Ball weiter (weniger Reibung), daneben bremst er normal', () => {
+    const roll = (ice: boolean) => {
+      const world = new World([], new Ball(150, 150, 22), { x: 900, y: 900, r: 30 });
+      if (ice) world.ice = [{ x: 0, y: 0, w: 1000, h: 1000 }];
+      world.ball.vx = 400;
+      for (let i = 0; i < 60; i++) world.step(1 / 60, { x: 0, y: 0 }); // 1 s ausrollen
+      return world.ball.vx;
+    };
+    const onIce = roll(true);
+    const offIce = roll(false);
+    expect(onIce).toBeGreaterThan(offIce * 2); // Eis hält die Fahrt
+    expect(offIce).toBeLessThan(150);
+  });
+
+  it('Lenken ist auf Eis schwammig (reduzierter Grip)', () => {
+    const accel = (ice: boolean) => {
+      const world = new World([], new Ball(150, 150, 22), { x: 900, y: 900, r: 30 });
+      if (ice) world.ice = [{ x: 0, y: 0, w: 1000, h: 1000 }];
+      world.step(0.1, { x: 1, y: 0 });
+      return world.ball.vx;
+    };
+    expect(accel(true)).toBeLessThan(accel(false) * 0.6);
+  });
+});
+
 describe('Windzonen', () => {
   it('schieben den Ball innerhalb der Zone', () => {
     const world = new World([], new Ball(150, 150, 22), { x: 500, y: 500, r: 30 });

@@ -36,6 +36,7 @@ const KEY_HEAR = CELL * 2.5;
 const PORTAL_HEAR = CELL * 2;
 const CURRENT_HEAR = CELL * 2; // Hörweite des Strömungs-Pulsierens
 const SLIDE_HEAR = CELL * 2.2; // Hörweite von Schleifen/Warn-Takt der Schiebewände
+const LISTENER_HEAR = CELL * 2.4; // Hörweite des Horcher-Schnüffelns
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -118,6 +119,7 @@ let message = '';
 let messageUntil = 0;
 let pings = 0;
 let pingMax = 3;
+let pingsUsed = 0; // Blind-Stern: Kampagnen-Sieg ohne einen einzigen Ping
 let falls = 0;
 let levelCols = 0;
 let levelRows = 0;
@@ -207,7 +209,9 @@ function refreshMenu(): void {
   const best = profile.bestFor(`quick-${profile.preset}`);
   $('quickBest').textContent =
     best !== null ? t('menu.quick.best', { preset: t(`preset.${profile.preset}`), time: fmtTime(best) }) : '';
-  $('campaignStars').textContent = `(${profile.totalStars(CAMPAIGN_IDS)}/${CAMPAIGN_IDS.length * 3}★)`;
+  const blind = profile.blindCount(CAMPAIGN_IDS);
+  $('campaignStars').textContent =
+    `(${profile.totalStars(CAMPAIGN_IDS)}/${CAMPAIGN_IDS.length * 3}★${blind > 0 ? ` · ${blind}🌑` : ''})`;
   const today = todayUTC();
   const daily = profile.dailyInfo(today);
   const streak = profile.streakInfo();
@@ -272,7 +276,11 @@ function appendLevelItem(def: LevelDef, i: number, num: number): void {
     if (unlocked) {
       const stars = profile.starsFor(def.id);
       const best = profile.bestFor(def.id);
-      meta.textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars) + (best !== null ? ` · ${fmtTime(best)}` : '');
+      meta.textContent =
+        '★'.repeat(stars) +
+        '☆'.repeat(3 - stars) +
+        (profile.isBlind(def.id) ? '🌑' : '') +
+        (best !== null ? ` · ${fmtTime(best)}` : '');
     } else {
       meta.textContent = '🔒';
     }
@@ -315,6 +323,9 @@ function showMenu(): void {
   audio.setGuard(0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
+  audio.setListener(0, 0, 0, 0);
+  audio.setIce(0);
+  audio.setFog(0);
   hideInterstitial();
   hud.classList.add('hidden');
   overlay.classList.remove('hidden');
@@ -430,6 +441,7 @@ function launch(def: LevelDef): void {
   ghostRecorder = ghostable ? new GhostRecorder() : null;
   pingMax = loaded.pingBudget;
   pings = pingMax;
+  pingsUsed = 0;
   falls = 0;
   warpReady = true;
   activateFloor(0);
@@ -560,12 +572,15 @@ function onWin(seconds: number): void {
       (def.parTimeS !== undefined && seconds <= def.parTimeS ? 1 : 0) +
       (gemsTotal > 0 ? (gemsGot === gemsTotal ? 1 : 0) : falls === 0 ? 1 : 0);
     profile.submitStars(def.id, stars);
+    // Blind-Stern 🌑: der optionale vierte Stern – ohne einen einzigen Ping.
+    if (pingsUsed === 0) profile.markBlind(def.id);
     const isRecord = profile.submitTime(def.id, seconds);
     const hasNext = index + 1 < CAMPAIGN_LEVELS.length;
     const lines = [
       `${t('res.time', { time: fmtTime(seconds) })}${def.parTimeS ? t('res.par', { n: def.parTimeS }) : ''}${isRecord ? t('res.newBest') : ''}`,
       gemsTotal > 0 ? `💎 ${gemsGot}/${gemsTotal}` : t('res.falls', { n: falls }),
-    ];
+      pingsUsed === 0 ? t('res.blind') : '',
+    ].filter(Boolean);
     setTimeout(() => {
       showInterstitial({
         title: `${lvName(def)} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`,
@@ -669,6 +684,7 @@ function updateSlidingWalls(nowMs: number): void {
 function firePing(now: number): void {
   if (!world || state !== 'playing' || pings <= 0) return;
   pings--;
+  pingsUsed++;
   const b = world.ball;
   world.pings.push({ x: b.x, y: b.y, start: now, speed: PING_SPEED, range: PING_RANGE });
 
@@ -702,6 +718,8 @@ function firePing(now: number): void {
   for (const g of world.guards) reveal(g, 240);
   // Zeitschloss-Schalter: dumpfes Tick-Tock als Doppel-Blip.
   for (const sw of world.switches) reveal(sw, 520, true);
+  // Horcher: dunkler als der Wächter (der antwortet mit 240).
+  for (const l of world.listeners) reveal(l, 360);
   for (const t of world.transporters) {
     const dist = Math.hypot(b.x - t.x, b.y - t.y);
     if (dist > PING_RANGE) continue;
@@ -1145,6 +1163,9 @@ function mpCheckResult(): void {
   audio.setGuard(0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
+  audio.setListener(0, 0, 0, 0);
+  audio.setIce(0);
+  audio.setFog(0);
   const mine = mp.localElapsed ?? 0;
   const theirs = mp.remote.elapsed ?? 0;
   let title: string;
@@ -1312,8 +1333,33 @@ function frame(now: number): void {
     if (nearGuard) audio.setGuard(guardDanger, nearGuard.dx, nearGuard.dy);
     else audio.setGuard(0, 0, 0);
 
+    // Horcher: Schnüffeln schwillt mit der EIGENEN Rollgeschwindigkeit an –
+    // Stillstehen nimmt ihn (fast) aus dem Herzschlag heraus.
+    const activity = Math.min(1, world.ball.speed / 300);
+    let listenerClose = 0;
+    let nearListener: { dx: number; dy: number } | null = null;
+    for (const l of world.listeners) {
+      const d = Math.max(0, Math.hypot(l.x - world.ball.x, l.y - world.ball.y) - l.r);
+      const c = Math.max(0, 1 - d / LISTENER_HEAR);
+      if (c > listenerClose) {
+        listenerClose = c;
+        nearListener = { dx: l.x - world.ball.x, dy: l.y - world.ball.y };
+      }
+    }
+    if (nearListener) audio.setListener(listenerClose, activity, nearListener.dx, nearListener.dy);
+    else audio.setListener(0, 0, 0, 0);
+    const listenerDanger = listenerClose * (0.25 + 0.75 * activity);
+
+    // Nebel: im Kern klingt alles wie durch Watte (ein Lowpass hinter dem Master).
+    const b0 = world.ball;
+    const inFog = world.fogZones.some((z) => b0.x > z.x && b0.x < z.x + z.w && b0.y > z.y && b0.y < z.y + z.h);
+    audio.setFog(inFog ? 1 : 0);
+
+    // Eis: kristallines Sirren, solange der Ball darauf gleitet.
+    audio.setIce(world.onIce() ? Math.min(1, world.ball.speed / 500) : 0);
+
     if (danger > 0.55) haptics.holeWarning(danger);
-    audio.heartbeat(Math.max(danger, guardDanger));
+    audio.heartbeat(Math.max(danger, guardDanger, listenerDanger));
 
     // Schlüssel: Klimpern in Hörweite, Einsammeln öffnet die Tür
     for (const key of world.keys) {
@@ -1492,7 +1538,21 @@ function frame(now: number): void {
 
     const fallen = frozen || disconnected ? null : world.fallenHole();
     const caught = fallen || frozen || disconnected ? null : world.guardCaught();
-    if (fallen) {
+    const heard = fallen || caught || frozen || disconnected ? null : world.listenerCaught();
+    if (heard) {
+      // Horcher hat dich erwischt: zurück zum Checkpoint – und er kehrt heim,
+      // damit der Respawn nicht sofort wieder in seinen Fängen landet.
+      state = 'fell';
+      falls++;
+      heard.litFrom = 0;
+      heard.litUntil = now + 1500;
+      heard.x = heard.home.x;
+      heard.y = heard.home.y;
+      audio.caught();
+      haptics.fall();
+      statusEl.textContent = t('st.caught');
+      setTimeout(respawn, 1300);
+    } else if (fallen) {
       state = 'fell';
       falls++;
       fallen.litFrom = 0;
@@ -1527,6 +1587,9 @@ function frame(now: number): void {
       audio.setGuard(0, 0, 0);
       audio.setPortal(0, 0, 0);
       audio.setCurrent(0, 0, 0);
+      audio.setListener(0, 0, 0, 0);
+      audio.setIce(0);
+      audio.setFog(0);
       audio.win();
       haptics.win();
       statusEl.textContent = t('st.win', { time: fmtTime(seconds) });

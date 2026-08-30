@@ -1,6 +1,7 @@
 // Kampagne: Welt 1 (10 Level, eine Ebene), Welt 2 (6 Level, mehrere Ebenen
-// mit Transportern und Portalen) und Welt 3 „Das Räderwerk" (6 Level:
-// Schiebewände, Zeitschlösser, Strömungen – die Rhythmus-Welt).
+// mit Transportern und Portalen), Welt 3 „Das Räderwerk" (6 Level:
+// Schiebewände, Zeitschlösser, Strömungen – die Rhythmus-Welt) und Welt 4
+// „Die Stille" (6 Level: Horcher, Nebel, Eis – die Schleich-Welt).
 // Jedes Level carvt sich einen garantierten "Spine"-Korridor durch das
 // Seed-Maze (L-Form o. ä.) und platziert seine Elemente daran – die
 // Lösbarkeit aller Level sichert tests/campaign.test.ts ab.
@@ -716,6 +717,206 @@ const defs3: unknown[] = [
   },
 ];
 
+// Welt 4 „Die Stille": Schleich-Gameplay. Horcher jagen nur, solange der
+// Ball rollt (patrouillenfrei – nur ihr Heimatpunkt braucht einen
+// Erreichbarkeits-Beweis), Nebel dämpft alle Klänge (kein Physik-Einfluss),
+// Eis ändert nur Reibung/Grip – die Lösbarkeits-Modelle bleiben unberührt.
+const defs4: unknown[] = [
+  {
+    id: 'w4-01',
+    name: 'Horchposten',
+    intro:
+      'Da schnüffelt etwas. Der Horcher hört dein Rollen – sogar durch Wände – und jagt dich, solange du dich bewegst. Stehst du still, verliert er die Spur und zieht sich zurück. Roll in Etappen.',
+    parTimeS: 75,
+    pingBudget: 3,
+    floors: [
+      {
+        size: [5, 7],
+        maze: { seed: 410, carve: [...down(0, 0, 6), ...right(6, 0, 4)] },
+        elements: [
+          { type: 'listener', cell: [2, 3], speed: 90 },
+          { type: 'checkpoint', cell: [0, 6] },
+          { type: 'gem', cell: [4, 0] },
+        ],
+        start: [0, 0],
+        goal: [4, 6],
+      },
+    ],
+  },
+  {
+    id: 'w4-02',
+    name: 'Nebelbank',
+    intro:
+      'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Präg dir den Kurs ein, bevor du eintauchst, und trau deinem Gefühl, bis die Ohren wieder aufklaren.',
+    parTimeS: 75,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 7],
+        maze: { seed: 420, carve: [...down(0, 0, 6), ...right(6, 0, 5)] },
+        elements: [
+          { type: 'fogZone', cell: [0, 3] },
+          { type: 'fogZone', cell: [1, 3] },
+          { type: 'fogZone', cell: [0, 4] },
+          { type: 'fogZone', cell: [1, 4] },
+          { type: 'fogZone', cell: [2, 6] },
+          { type: 'fogZone', cell: [3, 6] },
+          { type: 'hole', cell: [2, 5], breathing: { offset: 1 } },
+          { type: 'checkpoint', cell: [0, 6] },
+          { type: 'gem', cell: [4, 1] },
+        ],
+        start: [0, 0],
+        goal: [5, 6],
+      },
+    ],
+  },
+  {
+    id: 'w4-03',
+    name: 'Spiegeleis',
+    intro:
+      'Spiegelglattes Eis: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Hör auf das Sirren unter dir und plane den Schwung, bevor du ihn nimmst.',
+    parTimeS: 85,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 8],
+        maze: { seed: 430, carve: [...down(0, 0, 7), ...right(7, 0, 5)] },
+        elements: [
+          { type: 'ice', cell: [0, 3] },
+          { type: 'ice', cell: [0, 4] },
+          { type: 'ice', cell: [1, 7] },
+          { type: 'ice', cell: [2, 7] },
+          { type: 'ice', cell: [3, 7] },
+          { type: 'ice', cell: [4, 7] },
+          { type: 'hole', cell: [0, 5], breathing: { offset: 0 } },
+          { type: 'checkpoint', cell: [0, 7] },
+          { type: 'gem', cell: [5, 2] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+    ],
+  },
+  {
+    id: 'w4-04',
+    name: 'Schleichfahrt',
+    intro:
+      'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Beweg dich in kurzen Stößen – und lausche in den Pausen, wo das Schnüffeln steht.',
+    parTimeS: 120,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 9],
+        maze: { seed: 440, carve: [...right(0, 0, 6), ...down(6, 0, 8)] },
+        elements: [
+          { type: 'listener', cell: [3, 4], speed: 95 },
+          { type: 'fogZone', cell: [6, 3] },
+          { type: 'fogZone', cell: [6, 4] },
+          { type: 'fogZone', cell: [5, 3] },
+          { type: 'fogZone', cell: [5, 4] },
+          { type: 'hole', cell: [2, 2], breathing: { offset: 0.5 } },
+          { type: 'hole', cell: [4, 7], breathing: { offset: 2 } },
+          { type: 'checkpoint', cell: [6, 0] },
+          { type: 'checkpoint', cell: [6, 5] },
+          { type: 'gem', cell: [0, 4] },
+          { type: 'gem', cell: [3, 8] },
+        ],
+        start: [0, 0],
+        goal: [6, 8],
+      },
+    ],
+  },
+  {
+    id: 'w4-05',
+    name: 'Glatteisjagd',
+    intro:
+      'Die Jagd auf Glatteis: Auf dem Eis gleitest du – und der Horcher hört jedes Gleiten. Wer schlittert, kann nicht stillstehen. Nimm Schwung mit Bedacht und bremse, bevor er zubeißt.',
+    parTimeS: 150,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 10],
+        maze: { seed: 450, carve: [...down(0, 0, 9), ...right(9, 0, 6)] },
+        elements: [
+          { type: 'listener', cell: [4, 5], speed: 100 },
+          { type: 'ice', cell: [1, 9] },
+          { type: 'ice', cell: [2, 9] },
+          { type: 'ice', cell: [3, 9] },
+          { type: 'ice', cell: [4, 9] },
+          { type: 'hole', cell: [2, 4], breathing: { offset: 0 } },
+          { type: 'hole', cell: [6, 6], breathing: { offset: 2 } },
+          { type: 'checkpoint', cell: [0, 5] },
+          { type: 'checkpoint', cell: [0, 9] },
+          { type: 'gem', cell: [3, 2] },
+          { type: 'gem', cell: [6, 0] },
+        ],
+        start: [0, 0],
+        goal: [6, 9],
+      },
+    ],
+  },
+  {
+    id: 'w4-06',
+    name: 'Das Ohr',
+    intro:
+      'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel. Beweg dich wie ein Flüstern.',
+    parTimeS: 240,
+    pingBudget: 5,
+    floors: [
+      {
+        size: [7, 8],
+        maze: { seed: 460, carve: right(0, 0, 6) },
+        elements: [
+          { type: 'fogZone', cell: [2, 0] },
+          { type: 'fogZone', cell: [3, 0] },
+          { type: 'hole', cell: [4, 4], breathing: { offset: 1 } },
+          { type: 'gem', cell: [0, 7] },
+          { type: 'transporter', cell: [6, 0], target: { floor: 1, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        size: [6, 6],
+        maze: { seed: 461, carve: [...right(0, 0, 5), ...down(5, 0, 5)] },
+        elements: [
+          { type: 'listener', cell: [2, 4], speed: 95 },
+          { type: 'ice', cell: [2, 2] },
+          { type: 'ice', cell: [3, 2] },
+          { type: 'ice', cell: [2, 3] },
+          { type: 'ice', cell: [3, 3] },
+          { type: 'gem', cell: [0, 5] },
+          { type: 'transporter', cell: [5, 5], target: { floor: 2, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        // Der Nebelkern: 3x3 Watte um die Zielkammer, zwei Horcher lauschen.
+        size: [7, 7],
+        maze: { seed: 462, carve: [...down(0, 0, 6), ...right(6, 0, 6)] },
+        elements: [
+          { type: 'fogZone', cell: [2, 2] },
+          { type: 'fogZone', cell: [3, 2] },
+          { type: 'fogZone', cell: [4, 2] },
+          { type: 'fogZone', cell: [2, 3] },
+          { type: 'fogZone', cell: [3, 3] },
+          { type: 'fogZone', cell: [4, 3] },
+          { type: 'fogZone', cell: [2, 4] },
+          { type: 'fogZone', cell: [3, 4] },
+          { type: 'fogZone', cell: [4, 4] },
+          { type: 'listener', cell: [1, 5], speed: 90 },
+          { type: 'listener', cell: [5, 1], speed: 90 },
+          { type: 'checkpoint', cell: [0, 6] },
+          { type: 'gem', cell: [6, 0] },
+        ],
+        start: [0, 0],
+        goal: [3, 3],
+      },
+    ],
+  },
+];
+
 // Spiegelachsen pro Level, damit Start/Ziel nicht immer oben links/unten
 // rechts liegen. Achse passend zum Intro-Text gewählt: 'x' erhält oben/unten,
 // 'y' erhält links/rechts ("im oberen Gang" bleibt bei 'x' oben). w1-01
@@ -743,6 +944,13 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'w3-04': 'x',
   'w3-05': 'y',
   'w3-06': 'xy',
+  // Welt 4: Intros ohne Richtungsbezug – Achsen frei für die Ecken-Streuung.
+  'w4-01': 'y',
+  'w4-02': 'x',
+  'w4-03': 'xy',
+  'w4-04': 'y',
+  'w4-05': 'x',
+  'w4-06': 'xy',
 };
 
 const build = (d: unknown): LevelDef => {
@@ -755,6 +963,7 @@ export const WORLDS: Array<{ name: string; levels: LevelDef[] }> = [
   { name: 'Welt 1 – Die Tiefe erwacht', levels: defs.map(build) },
   { name: 'Welt 2 – Zwischen den Ebenen', levels: defs2.map(build) },
   { name: 'Welt 3 – Das Räderwerk', levels: defs3.map(build) },
+  { name: 'Welt 4 – Die Stille', levels: defs4.map(build) },
 ];
 
 export const CAMPAIGN_LEVELS: LevelDef[] = WORLDS.flatMap((w) => w.levels);

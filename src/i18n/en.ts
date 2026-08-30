@@ -13,7 +13,7 @@ export const en: Dict = {
   'menu.daily.done': 'Today: {time}',
   'menu.daily.streak': ' · 🔥 {n} days',
   'menu.campaign': 'Campaign',
-  'menu.campaign.sub': '3 worlds, 22 levels',
+  'menu.campaign.sub': '4 worlds, 28 levels',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Co-op & race – two players, via QR code',
   'menu.tutorial': 'Tutorial',
@@ -66,6 +66,7 @@ export const en: Dict = {
   'res.newBestLine': 'New best time!',
   'res.par': ' (par {n} s)',
   'res.falls': 'Falls: {n}',
+  'res.blind': '🌑 Blind star – without a single ping!',
   'res.tutTitle': '{name} – done! 🎉',
   'res.tutProgress': 'Tutorial: {done}/{total}',
   'res.tutDone': 'Tutorial complete – you are ready for the dark!',
@@ -198,11 +199,21 @@ export const en: Dict = {
   'el.current.title': 'Current',
   'el.current.desc':
     'A flow that pushes harder than you can tilt – a one-way street. Whatever lies behind the current stays behind you. Signature: pulsing, directional rush, deeper and more urgent than wind.',
+  'el.listener.title': 'Listener',
+  'el.listener.desc':
+    'Hunts you while you roll – it hears you even through walls. Stand still and it loses your trail and withdraws. Signature: sniffing and crackling that swells with your own rolling speed. Silence is your camouflage.',
+  'el.fogZone.title': 'Fog zone',
+  'el.fogZone.desc':
+    'In the fog EVERYTHING sounds like it is wrapped in cotton – walls, dangers, even the goal sonar. It does not push and does not swallow, but it takes your ears. Memorize your course before you dive in.',
+  'el.ice.title': 'Ice patch',
+  'el.ice.desc':
+    'Mirror-smooth: once you get rolling, you keep gliding – braking turns sluggish, steering mushy. Signature: a crystalline whirring under the ball that swells with speed. Plan your momentum before you take it.',
 
   /* --- Worlds & levels --- */
   'world.w1': 'World 1 – The Deep Awakes',
   'world.w2': 'World 2 – Between the Floors',
   'world.w3': 'World 3 – The Clockwork',
+  'world.w4': 'World 4 – The Silence',
 
   'lv.tut-1.name': 'Roll & Listen',
   'lv.tut-1.intro':
@@ -294,6 +305,25 @@ export const en: Dict = {
   'lv.w3-06.name': 'Rhythm Road',
   'lv.w3-06.intro':
     'The clockwork finale, wider than your screen: currents sweep you from lock to lock, sliding walls set the beat, and at the very end the time lock ticks before the goal chamber. Hear the rhythm – and dance along.',
+
+  'lv.w4-01.name': 'Listening Post',
+  'lv.w4-01.intro':
+    'Something is sniffing. The listener hears your rolling – even through walls – and hunts you while you move. Stand still and it loses your trail and withdraws. Roll in stages.',
+  'lv.w4-02.name': 'Fog Bank',
+  'lv.w4-02.intro':
+    'In the fog everything sounds like it is wrapped in cotton – even the goal sonar. Memorize your course before you dive in, and trust your instincts until your ears clear again.',
+  'lv.w4-03.name': 'Sheet Ice',
+  'lv.w4-03.intro':
+    'Mirror-smooth ice: once you get rolling, you keep gliding – braking turns sluggish, steering mushy. Listen to the whirring beneath you and plan your momentum before you take it.',
+  'lv.w4-04.name': 'Silent Running',
+  'lv.w4-04.intro':
+    'Silent running: a listener roams the grounds, and fog banks swallow your bearings. Move in short bursts – and listen in the pauses for where the sniffing sits.',
+  'lv.w4-05.name': 'Hunt on Ice',
+  'lv.w4-05.intro':
+    'The hunt on sheet ice: on ice you glide – and the listener hears every glide. If you skid, you cannot stand still. Take momentum with care and brake before it strikes.',
+  'lv.w4-06.name': 'The Ear',
+  'lv.w4-06.intro':
+    'The Ear: three floors down into the fog core, where everything sounds like cotton and two listeners are listening. At the very bottom, deep in the fog, the goal pulses. Move like a whisper.',
 
   'lv.coop-01.name': 'Airlock',
   'lv.coop-01.intro':

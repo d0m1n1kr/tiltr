@@ -28,6 +28,12 @@ export class GameAudio {
   private portalPanner!: PannerNode;
   private currentGain!: GainNode;
   private currentPanner!: PannerNode;
+  private fogFilter!: BiquadFilterNode;
+  private listenerGain!: GainNode;
+  private listenerPanner!: PannerNode;
+  private sniffLfo!: OscillatorNode;
+  private iceGain!: GainNode;
+  private iceVibrato!: OscillatorNode;
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
@@ -45,7 +51,12 @@ export class GameAudio {
 
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.9;
-    this.master.connect(this.ctx.destination);
+    // Nebel: EIN Lowpass hinter dem Master dämpft ALLE Klänge (auch den
+    // Beacon) – offen bei 18 kHz, im Nebelkern hinunter bis ~500 Hz.
+    this.fogFilter = this.ctx.createBiquadFilter();
+    this.fogFilter.type = 'lowpass';
+    this.fogFilter.frequency.value = 18000;
+    this.master.connect(this.fogFilter).connect(this.ctx.destination);
 
     // Rollgeräusch: bräunliches Rauschen -> Tiefpass -> Gain (ungepannt, das ist "ich")
     const roll = this.ctx.createBufferSource();
@@ -164,6 +175,82 @@ export class GameAudio {
     this.currentGain.connect(this.currentPanner).connect(this.master);
     flow.start();
     pulse.start();
+
+    // Horcher: Schnüffeln/Knistern – helles Rauschen, von einem Rechteck-LFO
+    // in Schnüffel-Stöße zerhackt; Stoßrate steigt mit der eigenen
+    // Rollgeschwindigkeit (er hört DICH).
+    const sniff = this.ctx.createBufferSource();
+    sniff.buffer = this.noiseBuffer('white');
+    sniff.loop = true;
+    const sniffFilter = this.ctx.createBiquadFilter();
+    sniffFilter.type = 'bandpass';
+    sniffFilter.frequency.value = 1500;
+    sniffFilter.Q.value = 2.8;
+    this.sniffLfo = this.ctx.createOscillator();
+    this.sniffLfo.type = 'square';
+    this.sniffLfo.frequency.value = 3;
+    const sniffDepth = this.ctx.createGain();
+    sniffDepth.gain.value = 0.5;
+    const sniffBase = this.ctx.createGain();
+    sniffBase.gain.value = 0.5;
+    this.sniffLfo.connect(sniffDepth).connect(sniffBase.gain);
+    this.listenerGain = this.ctx.createGain();
+    this.listenerGain.gain.value = 0;
+    this.listenerPanner = this.panner();
+    sniff.connect(sniffFilter).connect(sniffBase).connect(this.listenerGain);
+    this.listenerGain.connect(this.listenerPanner).connect(this.master);
+    sniff.start();
+    this.sniffLfo.start();
+
+    // Eis: kristallines Sirren – zwei leicht verstimmte hohe Sinus mit
+    // Vibrato, ungepannt (es kommt von unter dem eigenen Ball).
+    this.iceGain = this.ctx.createGain();
+    this.iceGain.gain.value = 0;
+    this.iceVibrato = this.ctx.createOscillator();
+    this.iceVibrato.frequency.value = 6;
+    const vibratoDepth = this.ctx.createGain();
+    vibratoDepth.gain.value = 14;
+    this.iceVibrato.connect(vibratoDepth);
+    for (const f of [2350, 2364]) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      vibratoDepth.connect(osc.frequency);
+      const g = this.ctx.createGain();
+      g.gain.value = 0.5;
+      osc.connect(g).connect(this.iceGain);
+      osc.start();
+    }
+    this.iceVibrato.start();
+    this.iceGain.connect(this.master);
+  }
+
+  // Nebel: fog01 = 0 klare Luft, 1 mitten im Nebelkern. Exponentiell von
+  // 18 kHz (offen) auf ~500 Hz (Watte) – weich nachgeführt.
+  setFog(fog01: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const freq = 18000 * Math.pow(500 / 18000, Math.max(0, Math.min(1, fog01)));
+    this.fogFilter.frequency.setTargetAtTime(freq, t, 0.25);
+  }
+
+  // Horcher-Schnüffeln: closeness01 = Nähe, activity01 = eigene Roll-Aktivität
+  // (still = fast lautlos, der Horcher schläft).
+  setListener(closeness01: number, activity01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const g = Math.min(0.5, closeness01 ** 1.4 * (0.12 + 0.88 * activity01) * 0.6);
+    this.listenerGain.gain.setTargetAtTime(g, t, 0.1);
+    this.sniffLfo.frequency.setTargetAtTime(2.5 + activity01 * 6, t, 0.15);
+    if (closeness01 > 0) this.place(this.listenerPanner, dx, dy);
+  }
+
+  // Eis-Sirren: slide01 = Gleitgeschwindigkeit (0 = nicht auf Eis).
+  setIce(slide01: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.iceGain.gain.setTargetAtTime(Math.min(0.22, slide01 * 0.26), t, 0.08);
+    this.iceVibrato.frequency.setTargetAtTime(4 + slide01 * 7, t, 0.15);
   }
 
   // Strömung: closeness01 = 1 mittendrin, 0 = außer Hörweite.
@@ -712,6 +799,8 @@ export class GameAudio {
     this.setGuard(0, 0, 0);
     this.setPortal(0, 0, 0);
     this.setCurrent(0, 0, 0);
+    this.setListener(0, 0, 0, 0);
+    this.setIce(0);
     this.setRolling(0);
   }
 

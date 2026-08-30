@@ -69,7 +69,10 @@ Schlüssel/Tür Gold (`255, 214, 90`), Gem Eisblau (`190, 240, 255`),
 Transporter/Portal Magenta (`240, 130, 230`), Partner-Halo Silberblau
 (`210, 225, 255` – auch der Geist der eigenen Bestzeit, nur blasser),
 Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
-Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss).
+Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
+Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das
+Wächter-Rot), Nebel entsättigtes Blaugrau (`160, 165, 185` – Klangdämpfung,
+keine Gefahr), Eis kaltes Eisweiß (`185, 225, 240` – rutschiger Boden).
 Der Zeitschloss-Schalter gehört zur Tür-Mechanik und bleibt in der
 Gold-Familie (`255, 214, 90`).
 

@@ -6,10 +6,13 @@ import type {
   Checkpoint,
   Collectible,
   Current,
+  FogZone,
   Goal,
   Guard,
   Hole,
+  IcePatch,
   Key,
+  Listener,
   PingWave,
   Plate,
   Tilt,
@@ -39,6 +42,9 @@ export class World {
   switches: TimedSwitch[] = [];
   checkpoints: Checkpoint[] = [];
   guards: Guard[] = [];
+  listeners: Listener[] = [];
+  fogZones: FogZone[] = [];
+  ice: IcePatch[] = [];
   keys: Key[] = [];
   gems: Collectible[] = [];
   transporters: Transporter[] = [];
@@ -49,6 +55,10 @@ export class World {
   friction = 1.4; // Roll-Dämpfung pro Sekunde
   restitution = 0.38; // Abprall-Energieanteil
   maxSpeed = 900;
+  iceFriction = 0.15; // Dämpfung auf Eis: der Ball gleitet weiter
+  iceControl = 0.45; // Anteil der Neigungs-Beschleunigung auf Eis (schwammig)
+  /** Ab dieser Ballgeschwindigkeit gilt "in Bewegung" (Horcher jagt) */
+  listenerWakeSpeed = 40;
 
   constructor(
     public walls: Wall[],
@@ -67,8 +77,12 @@ export class World {
     const h = dt / steps;
 
     for (let i = 0; i < steps; i++) {
-      b.vx += tilt.x * this.accel * h;
-      b.vy += tilt.y * this.accel * h;
+      // Eis: weniger Grip in beide Richtungen – schwächeres Lenken UND
+      // schwächeres Bremsen (niedrigere Reibung unten).
+      const iced = this.onIce();
+      const control = iced ? this.iceControl : 1;
+      b.vx += tilt.x * this.accel * control * h;
+      b.vy += tilt.y * this.accel * control * h;
       for (const z of this.windZones) {
         if (b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h) {
           b.vx += z.fx * h;
@@ -82,7 +96,7 @@ export class World {
           b.vy += z.fy * h;
         }
       }
-      const damp = Math.exp(-this.friction * h);
+      const damp = Math.exp(-(iced ? this.iceFriction : this.friction) * h);
       b.vx *= damp;
       b.vy *= damp;
       const sp = b.speed;
@@ -103,6 +117,7 @@ export class World {
       }
 
       this.updateGuards(h);
+      this.updateListeners(h);
 
       // Offene Löcher ziehen den Ball leicht an, sobald er über den Rand rollt.
       // openness (0 zu, 1 offen) skaliert den Sog; fehlt es, gilt das Loch als offen.
@@ -193,6 +208,41 @@ export class World {
         }
       }
     }
+  }
+
+  // Horcher: jagen den Ball geradlinig (sie hören durch Wände), solange er
+  // rollt; steht er still, ziehen sie sich zum Heimatpunkt zurück.
+  // Deterministisch: hängt nur von Ballzustand und dt ab.
+  private updateListeners(dt: number): void {
+    const b = this.ball;
+    const moving = b.speed > this.listenerWakeSpeed;
+    for (const l of this.listeners) {
+      const target = moving ? b : l.home;
+      // Jagd skaliert mit der Rollgeschwindigkeit; Rückzug mit halber Kraft.
+      const v = moving ? l.speed * Math.min(1, b.speed / 260) : l.speed * 0.5;
+      const dx = target.x - l.x,
+        dy = target.y - l.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 1e-6) continue;
+      const step = Math.min(d, v * dt);
+      l.x += (dx / d) * step;
+      l.y += (dy / d) * step;
+    }
+  }
+
+  /** Liegt der Ballmittelpunkt gerade auf einer Eisfläche? */
+  onIce(): boolean {
+    const b = this.ball;
+    return this.ice.some((z) => b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h);
+  }
+
+  // Horcher, der den Ball gerade berührt, sonst null.
+  listenerCaught(): Listener | null {
+    const b = this.ball;
+    for (const l of this.listeners) {
+      if (Math.hypot(l.x - b.x, l.y - b.y) < l.r + b.r) return l;
+    }
+    return null;
   }
 
   // Wächter, der den Ball gerade berührt, sonst null.

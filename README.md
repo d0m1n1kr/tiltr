@@ -24,13 +24,16 @@ automatically via GitHub Actions (tests → build → pages).
   the daily score, streaks 🔥 reward playing daily. Share links
   (`#daily=DATE&t=TIME`) challenge friends to beat your time — for past
   days too.
-- **🌍 Campaign** — three hand-built worlds (22 levels): guards, keys and
+- **🌍 Campaign** — four hand-built worlds (28 levels): guards, keys and
   doors, gems, breathing holes, wind, brittle walls, multi-floor maps
   connected by transporters, and multi-screen expanses the camera scrolls
   across. World 3 "The Clockwork" is all about timing: sliding walls,
-  time-lock switches and one-way currents. Up to three stars per level
-  (finish, par time, all gems) — and your best run rolls along as a faint
-  ghost halo on later attempts.
+  time-lock switches and one-way currents. World 4 "The Silence" is the
+  stealth world: listeners that hunt you only while you roll, fog that
+  muffles every sound, and sheet ice you glide across. Up to three stars
+  per level (finish, par time, all gems), plus an optional blind star 🌑
+  for finishing without a single echo ping — and your best run rolls along
+  as a faint ghost halo on later attempts.
 - **👥 Multiplayer** — two players, peer-to-peer over WebRTC
   ([trystero](https://github.com/dmotz/trystero); the handshake runs over a
   fixed list of 8 established Nostr relays, no server of our own). Join via
@@ -80,6 +83,10 @@ On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 | Sliding wall | slides open and shut to a beat — only fully open is it passable; rhythmic stone grinding plus an accelerating warning tick just before it closes |
 | Time-lock switch | stepping on it opens the linked door for a few seconds; a tick-tock counts down and turns frantic as time runs out |
 | Current | pushes harder than you can tilt — a one-way street; pulsing directional rush, deeper and more urgent than wind |
+| Listener | hunts you while you roll — it hears you even through walls; stand still and it withdraws; sniffing that swells with your own speed |
+| Fog zone | muffles ALL sounds (even the goal sonar) through one global lowpass; no physics effect — it just takes your ears |
+| Ice patch | low-friction floor: you keep gliding, braking and steering turn mushy; crystalline whirring under the ball |
+| Blind star 🌑 | optional fourth star per campaign level: finish without a single echo ping |
 | Ghost replay | your best time per level rolls along as a faint halo (quick game, daily and campaign); stored locally, beaten only by a faster run |
 | Pressure plate | multiplayer element: held, it opens the linked partner door — release and it closes; click on entry, the door audibly slides |
 | Partner halo | pulsing ring of light at your partner's position; clamped to the screen edge (with floor label) when out of view |
@@ -122,7 +129,7 @@ quick game ✓ → M4 campaign world 1 ✓ → M5 floors/transporters + world 2 
 → M6 daily challenge + share links ✓ → M7 multiplayer co-op & race ✓ →
 M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉 →
 M9 world 3 "The Clockwork" (sliding walls, time locks, currents) + ghost
-replay ✓
+replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓
 
 ---
 

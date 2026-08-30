@@ -145,6 +145,36 @@ export interface Current {
   dir: 'n' | 'e' | 's' | 'w';
 }
 
+/** Horcher: bewegt sich NUR, solange der Ball rollt – Stille = sicher.
+ *  Hört (und jagt) durch Wände; bei Ball-Stille zieht er sich heimwärts zurück. */
+export interface Listener {
+  x: number;
+  y: number;
+  r: number;
+  /** Jagdgeschwindigkeit in px/s */
+  speed: number;
+  /** Heimatpunkt, zu dem er sich bei Stille zurückzieht */
+  home: { x: number; y: number };
+  litFrom?: number;
+  litUntil?: number;
+}
+
+/** Nebelzone: dämpft ALLE Klänge (globaler Lowpass) – kein Physik-Einfluss. */
+export interface FogZone {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Eisfläche: reibungsarme Zelle – der Ball gleitet, Lenken wird schwammig. */
+export interface IcePatch {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface Transporter {
   x: number;
   y: number;

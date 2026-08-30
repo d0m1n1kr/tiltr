@@ -26,4 +26,10 @@ export const WORLD = {
   slider: '235, 224, 200',
   /** Strömung: Chartreuse – gerichteter, unüberwindbarer Fluss */
   current: '168, 232, 84',
+  /** Horcher: Orangerot – lauschender Jäger (satter als Bernstein, wärmer als Wächter-Rot) */
+  listener: '255, 120, 50',
+  /** Nebel: entsättigtes Blaugrau – Klangdämpfung, keine Gefahr */
+  fog: '160, 165, 185',
+  /** Eis: kaltes Eisweiß – rutschiger Boden */
+  ice: '185, 225, 240',
 } as const;

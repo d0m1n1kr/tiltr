@@ -41,11 +41,12 @@ function directedDistances(def: LevelDef, floor: FloorDef, from: readonly [numbe
 }
 
 describe('Kampagne', () => {
-  it('Welt 1 hat 10, Welt 2 und 3 haben je 6 Level; IDs eindeutig, Intro + Par überall', () => {
+  it('Welt 1 hat 10, Welt 2–4 haben je 6 Level; IDs eindeutig, Intro + Par überall', () => {
     expect(WORLDS[0]!.levels).toHaveLength(10);
     expect(WORLDS[1]!.levels).toHaveLength(6);
     expect(WORLDS[2]!.levels).toHaveLength(6);
-    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(22);
+    expect(WORLDS[3]!.levels).toHaveLength(6);
+    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(28);
     for (const l of CAMPAIGN_LEVELS) {
       expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
       expect(l.parTimeS, l.id).toBeGreaterThan(0);
@@ -123,7 +124,9 @@ describe('Kampagne', () => {
       def.floors.forEach((floor, fl) => {
         if (floor.goal) expect(open.has(cellKey(fl, floor.goal)), `${def.id}: Ziel E${fl}`).toBe(true);
         for (const el of floor.elements) {
-          if (el.type === 'gem' || el.type === 'checkpoint' || el.type === 'key') {
+          if (el.type === 'gem' || el.type === 'checkpoint' || el.type === 'key' || el.type === 'listener') {
+            // Horcher: sein Heimatpunkt muss erreichbar sein (er ist
+            // patrouillenfrei – mehr Weg-Beweis braucht er nicht).
             expect(open.has(cellKey(fl, el.cell)), `${def.id}: ${el.type} E${fl} ${el.cell}`).toBe(true);
           }
           if (el.type === 'guard') {
@@ -144,8 +147,8 @@ describe('Kampagne', () => {
   it('Multi-Ebenen-Level sind OHNE Transporter unlösbar (Ebenenwechsel ist Pflicht)', () => {
     // Ohne Sprünge bleibt man auf Ebene 0; Türen öffnen sich nur, wenn ihr
     // Schlüssel dort erreichbar ist (Fixpunkt).
-    for (const def of WORLDS[1]!.levels) {
-      if (def.floors.length === 1) continue; // w2-06 'Die Weite' ist bewusst einstöckig (Multi-Screen)
+    for (const def of CAMPAIGN_LEVELS) {
+      if (def.floors.length === 1) continue; // einstöckige Level (auch Multi-Screen) sind hier nicht gemeint
       const floor0 = def.floors[0]!;
       const [cols, rows] = floor0.size;
       const openDoors = new Set<string>();

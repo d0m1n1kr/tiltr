@@ -175,6 +175,30 @@ describe('M9-Elemente (Schiebewand, Zeitschloss, Strömung)', () => {
   });
 });
 
+describe('M10-Elemente (Horcher, Nebelzone, Eisfläche)', () => {
+  it('Loader baut Horcher (mit Heimatpunkt), Nebel- und Eiszonen', () => {
+    const def = parseLevel({
+      ...minimalLevel,
+      floors: [
+        {
+          ...minimalLevel.floors[0],
+          elements: [
+            { type: 'listener', cell: [2, 1] },
+            { type: 'fogZone', cell: [1, 2] },
+            { type: 'ice', cell: [2, 2] },
+          ],
+        },
+      ],
+    });
+    const { world } = loadLevel(def);
+    expect(world.listeners).toHaveLength(1);
+    expect(world.listeners[0]!.home).toEqual({ x: 250, y: 150 });
+    expect(world.listeners[0]!.speed).toBe(95); // Default
+    expect(world.fogZones).toEqual([{ x: 100, y: 200, w: 100, h: 100 }]);
+    expect(world.ice).toEqual([{ x: 200, y: 200, w: 100, h: 100 }]);
+  });
+});
+
 describe('Maze-Edits (carve/add)', () => {
   it('setWall hält Nachbarzellen konsistent', () => {
     const cells = generateMaze(3, 3, mulberry32(1));

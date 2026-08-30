@@ -16,7 +16,7 @@ export const de = {
   'menu.daily.done': 'Heute: {time}',
   'menu.daily.streak': ' · 🔥 {n} Tage',
   'menu.campaign': 'Kampagne',
-  'menu.campaign.sub': '3 Welten, 22 Level',
+  'menu.campaign.sub': '4 Welten, 28 Level',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Coop & Race – zu zweit, per QR-Code',
   'menu.tutorial': 'Tutorial',
@@ -69,6 +69,7 @@ export const de = {
   'res.newBestLine': 'Neue Bestzeit!',
   'res.par': ' (Par {n} s)',
   'res.falls': 'Stürze: {n}',
+  'res.blind': '🌑 Blind-Stern – ohne einen einzigen Ping!',
   'res.tutTitle': '{name} – geschafft! 🎉',
   'res.tutProgress': 'Tutorial: {done}/{total}',
   'res.tutDone': 'Tutorial abgeschlossen – du bist bereit für die Dunkelheit!',
@@ -201,11 +202,21 @@ export const de = {
   'el.current.title': 'Strömung',
   'el.current.desc':
     'Ein Sog, der stärker schiebt, als du neigen kannst – eine Einbahnstraße. Was hinter der Strömung liegt, bleibt hinter dir. Signatur: pulsierendes, gerichtetes Rauschen, tiefer und drängender als Wind.',
+  'el.listener.title': 'Horcher',
+  'el.listener.desc':
+    'Jagt dich, solange du rollst – er hört dich sogar durch Wände. Stehst du still, verliert er die Spur und zieht sich zurück. Signatur: Schnüffeln und Knistern, das mit deiner eigenen Rollgeschwindigkeit anschwillt. Stille ist deine Tarnung.',
+  'el.fogZone.title': 'Nebelzone',
+  'el.fogZone.desc':
+    'Im Nebel klingt ALLES wie durch Watte – Wände, Gefahren, sogar der Sonar des Ziels. Er schiebt nicht und verschluckt nicht, aber er nimmt dir die Ohren. Präg dir den Kurs ein, bevor du eintauchst.',
+  'el.ice.title': 'Eisfläche',
+  'el.ice.desc':
+    'Spiegelglatt: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Signatur: kristallines Sirren unter dem Ball, das mit dem Tempo anschwillt. Plane den Schwung, bevor du ihn nimmst.',
 
   /* --- Welten & Level --- */
   'world.w1': 'Welt 1 – Die Tiefe erwacht',
   'world.w2': 'Welt 2 – Zwischen den Ebenen',
   'world.w3': 'Welt 3 – Das Räderwerk',
+  'world.w4': 'Welt 4 – Die Stille',
 
   'lv.tut-1.name': 'Rollen & Lauschen',
   'lv.tut-1.intro':
@@ -297,6 +308,25 @@ export const de = {
   'lv.w3-06.name': 'Taktstraße',
   'lv.w3-06.intro':
     'Das Finale des Räderwerks, weiter als dein Bildschirm: Strömungen reißen dich von Schleuse zu Schleuse, Schiebewände geben den Takt vor, und ganz am Ende tickt das Zeitschloss vor der Zielkammer. Hör den Rhythmus – und tanz mit.',
+
+  'lv.w4-01.name': 'Horchposten',
+  'lv.w4-01.intro':
+    'Da schnüffelt etwas. Der Horcher hört dein Rollen – sogar durch Wände – und jagt dich, solange du dich bewegst. Stehst du still, verliert er die Spur und zieht sich zurück. Roll in Etappen.',
+  'lv.w4-02.name': 'Nebelbank',
+  'lv.w4-02.intro':
+    'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Präg dir den Kurs ein, bevor du eintauchst, und trau deinem Gefühl, bis die Ohren wieder aufklaren.',
+  'lv.w4-03.name': 'Spiegeleis',
+  'lv.w4-03.intro':
+    'Spiegelglattes Eis: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Hör auf das Sirren unter dir und plane den Schwung, bevor du ihn nimmst.',
+  'lv.w4-04.name': 'Schleichfahrt',
+  'lv.w4-04.intro':
+    'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Beweg dich in kurzen Stößen – und lausche in den Pausen, wo das Schnüffeln steht.',
+  'lv.w4-05.name': 'Glatteisjagd',
+  'lv.w4-05.intro':
+    'Die Jagd auf Glatteis: Auf dem Eis gleitest du – und der Horcher hört jedes Gleiten. Wer schlittert, kann nicht stillstehen. Nimm Schwung mit Bedacht und bremse, bevor er zubeißt.',
+  'lv.w4-06.name': 'Das Ohr',
+  'lv.w4-06.intro':
+    'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel. Beweg dich wie ein Flüstern.',
 
   'lv.coop-01.name': 'Schleuse',
   'lv.coop-01.intro':

@@ -13,7 +13,7 @@ export const fr: Dict = {
   'menu.daily.done': 'Aujourd’hui : {time}',
   'menu.daily.streak': ' · 🔥 {n} jours',
   'menu.campaign': 'Campagne',
-  'menu.campaign.sub': '3 mondes, 22 niveaux',
+  'menu.campaign.sub': '4 mondes, 28 niveaux',
   'menu.mp': 'Multijoueur',
   'menu.mp.sub': 'Coop & course – à deux, par QR code',
   'menu.tutorial': 'Tutoriel',
@@ -66,6 +66,7 @@ export const fr: Dict = {
   'res.newBestLine': 'Nouveau record !',
   'res.par': ' (par {n} s)',
   'res.falls': 'Chutes : {n}',
+  'res.blind': '🌑 Étoile aveugle – sans le moindre ping !',
   'res.tutTitle': '{name} – réussi ! 🎉',
   'res.tutProgress': 'Tutoriel : {done}/{total}',
   'res.tutDone': 'Tutoriel terminé – tu es prêt pour l’obscurité !',
@@ -198,11 +199,21 @@ export const fr: Dict = {
   'el.current.title': 'Courant',
   'el.current.desc':
     'Un flux qui pousse plus fort que votre inclinaison – un sens unique. Ce qui reste derrière le courant reste derrière vous. Signature : un souffle pulsé et directionnel, plus grave et plus pressant que le vent.',
+  'el.listener.title': 'Le Guetteur',
+  'el.listener.desc':
+    'Il te traque tant que tu roules – il t’entend même à travers les murs. Immobile, tu lui fais perdre ta trace et il se retire. Signature : un reniflement crépitant qui enfle avec ta propre vitesse. Le silence est ton camouflage.',
+  'el.fogZone.title': 'Zone de brume',
+  'el.fogZone.desc':
+    'Dans la brume, TOUT sonne comme à travers de la ouate – les murs, les dangers, même le sonar de l’arrivée. Elle ne pousse pas et n’avale pas, mais elle te prend les oreilles. Mémorise ton cap avant d’y plonger.',
+  'el.ice.title': 'Plaque de glace',
+  'el.ice.desc':
+    'Lisse comme un miroir : une fois lancé, tu continues de glisser – freiner devient laborieux, diriger devient flou. Signature : un sifflement cristallin sous la bille, qui enfle avec la vitesse. Prépare ton élan avant de le prendre.',
 
   /* --- Mondes & niveaux --- */
   'world.w1': 'Monde 1 – Les profondeurs s’éveillent',
   'world.w2': 'Monde 2 – Entre les étages',
   'world.w3': 'Monde 3 – Les Rouages',
+  'world.w4': 'Monde 4 – Le Silence',
 
   'lv.tut-1.name': 'Rouler & écouter',
   'lv.tut-1.intro':
@@ -294,6 +305,25 @@ export const fr: Dict = {
   'lv.w3-06.name': 'La route cadencée',
   'lv.w3-06.intro':
     'Le finale des Rouages, plus vaste que ton écran : des courants t’emportent d’écluse en écluse, des murs coulissants battent la mesure, et tout au bout la minuterie égrène le temps devant la chambre d’arrivée. Écoute le rythme – et danse avec.',
+
+  'lv.w4-01.name': 'Poste d’écoute',
+  'lv.w4-01.intro':
+    'Quelque chose renifle. Le guetteur entend ton roulement – même à travers les murs – et te traque tant que tu bouges. Immobile, tu lui fais perdre ta trace et il se retire. Avance par étapes.',
+  'lv.w4-02.name': 'Banc de brume',
+  'lv.w4-02.intro':
+    'Dans la brume, tout sonne comme à travers de la ouate – même le sonar de l’arrivée. Mémorise ton cap avant d’y plonger, et fie-toi à ton instinct jusqu’à ce que tes oreilles s’éclaircissent.',
+  'lv.w4-03.name': 'Miroir de glace',
+  'lv.w4-03.intro':
+    'Une glace lisse comme un miroir : une fois lancé, tu continues de glisser – freiner devient laborieux, diriger devient flou. Écoute le sifflement sous toi et prépare ton élan avant de le prendre.',
+  'lv.w4-04.name': 'Marche furtive',
+  'lv.w4-04.intro':
+    'Marche furtive : un guetteur rôde dans le secteur et des bancs de brume avalent tes repères. Avance par à-coups – et dans les pauses, écoute où se tient le reniflement.',
+  'lv.w4-05.name': 'Chasse sur glace',
+  'lv.w4-05.intro':
+    'La chasse sur glace : sur la glace tu glisses – et le guetteur entend chaque glissade. Qui dérape ne peut pas s’arrêter. Prends ton élan avec prudence et freine avant qu’il ne morde.',
+  'lv.w4-06.name': 'L’Oreille',
+  'lv.w4-06.intro':
+    'L’Oreille : trois étages plus bas, au cœur de la brume, tout sonne comme de la ouate et deux guetteurs écoutent. Tout en bas, en pleine brume, l’arrivée pulse. Déplace-toi comme un murmure.',
 
   'lv.coop-01.name': 'Le sas',
   'lv.coop-01.intro':

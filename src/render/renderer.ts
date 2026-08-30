@@ -195,6 +195,23 @@ export class Renderer {
       };
       for (const z of world.windZones) drawZone(z, WORLD.wind);
       for (const z of world.currents) drawZone(z, WORLD.current);
+      // Nebel: weicher Schleier; Eis: kalte Fläche mit Schlieren.
+      for (const z of world.fogZones) {
+        ctx.fillStyle = `rgba(${WORLD.fog}, 0.16)`;
+        ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
+      }
+      for (const z of world.ice) {
+        ctx.fillStyle = `rgba(${WORLD.ice}, 0.12)`;
+        ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
+        ctx.strokeStyle = `rgba(${WORLD.ice}, 0.4)`;
+        ctx.lineWidth = 1.5 * this.dpr;
+        ctx.beginPath();
+        ctx.moveTo(tx(z.x + z.w * 0.25), ty(z.y + z.h * 0.7));
+        ctx.lineTo(tx(z.x + z.w * 0.55), ty(z.y + z.h * 0.3));
+        ctx.moveTo(tx(z.x + z.w * 0.55), ty(z.y + z.h * 0.78));
+        ctx.lineTo(tx(z.x + z.w * 0.8), ty(z.y + z.h * 0.42));
+        ctx.stroke();
+      }
     }
 
     // Checkpoints: Ring – sichtbar bei Debug/Reveal oder kurz nach Aktivierung.
@@ -329,6 +346,36 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(tx(g.x), ty(g.y), g.r * s, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Horcher: orangerote Scheibe mit Lausch-Bögen (kein Patrouillen-Pfad –
+    // er hat keinen).
+    for (const l of world.listeners) {
+      const alpha = revealAlpha(l, 0.9);
+      if (alpha <= 0.01) continue;
+      const cx = tx(l.x),
+        cy = ty(l.y);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, l.r * s * 2.2);
+      grad.addColorStop(0, `rgba(${WORLD.listener}, ${alpha * 0.35})`);
+      grad.addColorStop(1, `rgba(${WORLD.listener}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, l.r * s * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(${WORLD.listener}, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, l.r * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${WORLD.listener}, ${alpha * 0.6})`;
+      ctx.lineWidth = 2 * this.dpr;
+      for (const rr of [1.5, 1.9]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, l.r * s * rr, -0.6, 0.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, l.r * s * rr, Math.PI - 0.6, Math.PI + 0.6);
+        ctx.stroke();
+      }
     }
 
     // Transporter: Doppelring mit Richtungs-Glyphe (▼ runter, ▲ hoch, ◆ Portal).
