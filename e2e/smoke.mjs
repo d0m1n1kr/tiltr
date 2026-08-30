@@ -747,14 +747,49 @@ const check = (name, cond) => {
 }
 {
   // Phone-Gegenprobe: unter 900px wird der Editor zur Leisten-Ansicht.
-  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  // Dazu die drei Phone-Regressionen: Karte bleibt nach dem Layout-Settle
+  // und nach Viewport-Resizes sichtbar (Renderer-Backing-Reset löscht den
+  // Canvas – der Editor muss selbst neu malen), der Kopf bleibt kompakt
+  // (einzeilige Badge-Leiste), und das Wand-Werkzeug trifft die NÄCHSTE
+  // Kante statt einer 10-px-Fingerzone.
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: 'de-DE', hasTouch: true });
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`${BASE}/?nosplash`);
   await page.click('#workshopBtn');
   await page.click('#wsNewBtn');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(1200); // Layout-Settle: hier verschwand die Karte
   const cols = await page.evaluate(() => getComputedStyle(document.getElementById('edBody')).gridTemplateColumns);
   check(`Phone-Editor: eine Spalte (${cols})`, cols.split(' ').length === 1);
+
+  // Wand-Blau mit debug-Alpha 0.55 über bgDeep ≈ RGB(62, 95, 147).
+  const mapVisible = () => page.evaluate(() => {
+    const c = document.getElementById('edCanvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 45 && d[i] < 80 && d[i + 1] > 75 && d[i + 1] < 115 && d[i + 2] > 120 && d[i + 2] < 170) return true;
+    }
+    return false;
+  });
+  check('Phone: Karte nach Layout-Settle sichtbar', await mapVisible());
+  await page.setViewportSize({ width: 390, height: 700 }); // Browser-Toolbar-Effekt
+  await page.waitForTimeout(600);
+  check('Phone: Karte nach Toolbar-Resize weiterhin sichtbar', await mapVisible());
+
+  const bodyTop = await page.evaluate(() => document.getElementById('edBody').getBoundingClientRect().top);
+  check(`Phone: kompakter Editor-Kopf (Karte ab y=${bodyTop})`, bodyTop < 240);
+
+  // Wand-Werkzeug: Tap 30 Welteinheiten neben der Gridlinie (alte Zone: 18)
+  // schaltet die nächste Kante trotzdem (carve +1).
+  await page.locator('.ed-tile', { hasText: '▤' }).click();
+  const pt = await page.evaluate(() => {
+    const ed = window.__tiltrEd;
+    const box = document.getElementById('edCanvas').getBoundingClientRect();
+    return { x: box.left + (ed.ox + 130 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 150 * ed.scale) / ed.dpr };
+  });
+  await page.mouse.click(pt.x, pt.y);
+  await page.waitForTimeout(300);
+  const edits = await page.evaluate(() => ({ carve: window.__tiltrEd.carve, add: window.__tiltrEd.add }));
+  check(`Phone: Wand-Tap neben der Linie trifft die nächste Kante (carve=${edits.carve})`, edits.carve === 1 && edits.add === 0);
   await page.close();
 }
 

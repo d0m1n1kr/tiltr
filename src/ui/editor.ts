@@ -51,28 +51,35 @@ export interface RawLevel {
 
 /** Tap-Ziel: Kante, wenn der Punkt nah an einer INNEREN Gridlinie liegt,
  *  sonst Zelle. Kanten kommen kanonisch als ('e' | 's') des linken/oberen
- *  Nachbarn zurück. Exportiert für die Unit-Tests. */
+ *  Nachbarn zurück. preferEdge (Wand-Werkzeug, Tür/Schiebewand): die
+ *  NÄCHSTE innere Kante gewinnt IMMER – auf dem Phone ist die schmale
+ *  Kantenzone sonst mit dem Finger kaum zu treffen. Exportiert für Tests. */
 export function pickTarget(
   wx: number,
   wy: number,
   cols: number,
   rows: number,
+  preferEdge = false,
 ): { kind: 'cell'; cell: [number, number] } | { kind: 'edge'; edge: Edge } | null {
   if (wx < 0 || wy < 0 || wx >= cols * CELL || wy >= rows * CELL) return null;
   const cx = Math.floor(wx / CELL);
   const cy = Math.floor(wy / CELL);
-  const EDGE_ZONE = 18; // Welteinheiten um die Gridlinie
   const dxLeft = wx - cx * CELL;
   const dxRight = (cx + 1) * CELL - wx;
   const dyTop = wy - cy * CELL;
   const dyBottom = (cy + 1) * CELL - wy;
-  const m = Math.min(dxLeft, dxRight, dyTop, dyBottom);
-  if (m < EDGE_ZONE) {
-    // nächste Linie gewinnt; Außenkanten fallen auf die Zelle zurück
-    if (m === dxLeft && cx > 0) return { kind: 'edge', edge: [[cx - 1, cy], 'e'] };
-    if (m === dxRight && cx < cols - 1) return { kind: 'edge', edge: [[cx, cy], 'e'] };
-    if (m === dyTop && cy > 0) return { kind: 'edge', edge: [[cx, cy - 1], 's'] };
-    if (m === dyBottom && cy < rows - 1) return { kind: 'edge', edge: [[cx, cy], 's'] };
+  const EDGE_ZONE = 18; // Welteinheiten um die Gridlinie (Standard-Werkzeuge)
+  // Kandidaten nach Distanz, nur INNERE Kanten (Außenrand ist unantastbar).
+  const candidates: Array<[number, Edge | null]> = [
+    [dxLeft, cx > 0 ? [[cx - 1, cy], 'e'] : null],
+    [dxRight, cx < cols - 1 ? [[cx, cy], 'e'] : null],
+    [dyTop, cy > 0 ? [[cx, cy - 1], 's'] : null],
+    [dyBottom, cy < rows - 1 ? [[cx, cy], 's'] : null],
+  ];
+  candidates.sort((a, b) => a[0] - b[0]);
+  for (const [dist, edge] of candidates) {
+    if (!preferEdge && dist >= EDGE_ZONE) break;
+    if (edge) return { kind: 'edge', edge };
   }
   return { kind: 'cell', cell: [cx, cy] };
 }
@@ -242,6 +249,8 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       elements: floor().elements.length,
       floors: draft.floors.length,
       activeFloor,
+      carve: floor().maze.carve.length,
+      add: floor().maze.add.length,
       loadError,
     };
     renderer.setManualView(view.scale, view.ox, view.oy);
@@ -343,7 +352,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   function act(wx: number, wy: number): void {
     if (!draft) return;
     const [cols, rows] = floor().size;
-    const target = pickTarget(wx, wy, cols, rows);
+    // Wand-Werkzeug und Kanten-Elemente: nächste Kante gewinnt immer.
+    const wantsEdge = tool === 'wall' || (tool === 'place' && EDGE_TYPES.has(placeType));
+    const target = pickTarget(wx, wy, cols, rows, wantsEdge);
     if (!target) return;
 
     if (tool === 'wall') {
@@ -932,6 +943,30 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   window.addEventListener('resize', () => {
     if (!panel.classList.contains('hidden')) paint();
   });
+
+  // Der Renderer setzt sein Backing bei JEDER Layout-Änderung des Canvas neu
+  // (ResizeObserver) – und ein neues Backing ist LEER. Ohne eigenen Repaint
+  // verschwindet die Karte, sobald sich das Layout setzt (Palette/Props
+  // rendern nach, Browser-Toolbar, Tastatur) – sie käme erst beim nächsten
+  // Zoom zurück. Deshalb: nach jeder Größenänderung neu malen, und wenn die
+  // Ansicht dabei aus dem Bild gefallen ist, neu einpassen.
+  const viewLost = (): boolean => {
+    if (!draft) return false;
+    const [cols, rows] = floor().size;
+    const x1 = view.ox + cols * CELL * view.scale;
+    const y1 = view.oy + rows * CELL * view.scale;
+    return view.scale < 0.02 || x1 < 20 || y1 < 20 || view.ox > canvas.width - 20 || view.oy > canvas.height - 20;
+  };
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+      if (panel.classList.contains('hidden') || !draft) return;
+      // Nach dem Frame malen, in dem der Renderer das Backing angepasst hat.
+      requestAnimationFrame(() => {
+        if (viewLost()) fitView();
+        paint();
+      });
+    }).observe(canvas);
+  }
 
   return {
     open(def: RawLevel): void {

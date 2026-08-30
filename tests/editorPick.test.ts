@@ -27,4 +27,18 @@ describe('pickTarget', () => {
     expect(pickTarget(-5, 50, 4, 4)).toBeNull();
     expect(pickTarget(401, 50, 4, 4)).toBeNull();
   });
+
+  it('preferEdge (Wand-Werkzeug): die nächste innere Kante gewinnt IMMER', () => {
+    // Zellmitte (Abstand 50 zur Linie) – ohne preferEdge eine Zelle, mit: Kante
+    expect(pickTarget(150, 250, 4, 4)).toEqual({ kind: 'cell', cell: [1, 2] });
+    expect(pickTarget(160, 250, 4, 4, true)).toEqual({ kind: 'edge', edge: [[1, 2], 'e'] });
+    expect(pickTarget(140, 250, 4, 4, true)).toEqual({ kind: 'edge', edge: [[0, 2], 'e'] });
+    expect(pickTarget(150, 265, 4, 4, true)).toEqual({ kind: 'edge', edge: [[1, 2], 's'] });
+  });
+
+  it('preferEdge am Außenrand: nächste INNERE Kante statt der Außenwand', () => {
+    // nahe der linken Außenwand von (0,1): links gibt es keine innere Kante,
+    // die zweitnächste (oben zu (0,0)) gewinnt
+    expect(pickTarget(10, 110, 4, 4, true)).toEqual({ kind: 'edge', edge: [[0, 0], 's'] });
+  });
 });

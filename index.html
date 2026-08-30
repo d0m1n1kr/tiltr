@@ -344,18 +344,29 @@
     #edCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
     #edProps { overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); }
     @media (max-width: 899px) {
-      /* Phone: Palette als horizontale Leiste, Eigenschaften als Bottom-Sheet. */
-      #edBody { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+      /* Phone: Palette als horizontale Leiste, Eigenschaften als Bottom-Sheet.
+         Die Karte behält eine garantierte Mindesthöhe – Kopf und Props
+         dürfen sie nicht zerquetschen. */
+      #edBody { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(220px, 1fr) auto; }
       #edPalette { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding-bottom: var(--space-1); }
       #edPalette .ed-tile { flex: 0 0 auto; }
-      #edProps { max-height: 34vh; }
+      #edPalette .ed-group-label { align-self: center; flex: 0 0 auto; }
+      #edProps { max-height: 26vh; }
+      /* Kompakter Kopf: Badges als EINZEILIGE Scroll-Leiste in eigener Zeile
+         statt drei Umbruch-Zeilen; Buttons rutschen geordnet in Zeile 3. */
+      #edBadges { order: 3; flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+      #edBadges .ed-badge { flex: 0 0 auto; }
+      #edHeaderBtns { order: 2; }
+      #edName { min-width: 80px; }
     }
     .ed-tile {
       display: flex; align-items: center; gap: var(--space-2);
       color: var(--text); font-size: var(--fs-small); text-align: left;
       min-height: var(--touch-min); padding: var(--space-1) var(--space-2); cursor: pointer;
     }
-    .ed-tile.active { outline: 2px solid var(--accent); border-radius: var(--radius-m); }
+    /* outline-offset nach INNEN: in scrollenden Leisten (overflow hidden)
+       würde ein außen liegender Rahmen oben/unten beschnitten. */
+    .ed-tile.active { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-m); }
     .ed-tile canvas { width: 44px; height: 28px; border-radius: var(--radius-s); flex-shrink: 0; }
     .ed-group-label { font-size: var(--fs-caption); opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
     .ed-badge { font-size: var(--fs-caption); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); }
