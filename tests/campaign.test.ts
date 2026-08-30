@@ -1,44 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CAMPAIGN_LEVELS, WORLDS } from '../src/levels/campaign';
 import { loadLevel } from '../src/levels/loader';
-import { setWall, type Cell } from '../src/core/maze';
-import type { DoorDef, FloorDef, LevelDef } from '../src/levels/schema';
-import { buildFloorCells, cellKey, coopReachable, reachable } from './helpers';
-
-// BFS-Distanzen in Zellen auf EINER Ebene im offenen, gerichteten Modell
-// (Türen offen, Strömungen nur in Fließrichtung) – für den Zeitschloss-Beweis.
-function directedDistances(def: LevelDef, floor: FloorDef, from: readonly [number, number]): Map<string, number> {
-  const [cols, rows] = floor.size;
-  const cells: Cell[] = buildFloorCells(floor, { brittleOpen: true, doorsOpen: true }, def.mirror);
-  const currents = new Map(
-    floor.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * cols + c.cell[0], c.dir]),
-  );
-  const opposite = { n: 's', s: 'n', e: 'w', w: 'e' } as const;
-  const dist = new Map<string, number>([[`${from[0]},${from[1]}`, 0]]);
-  const queue: Array<[number, number]> = [[from[0], from[1]]];
-  while (queue.length) {
-    const [x, y] = queue.shift()!;
-    const d = dist.get(`${x},${y}`)!;
-    const c = cells[y * cols + x]!;
-    const flow = currents.get(y * cols + x);
-    const tryMove = (dir: 'n' | 'e' | 's' | 'w', nx: number, ny: number, open: boolean) => {
-      if (!open || nx < 0 || ny < 0 || nx >= cols || ny >= rows) return;
-      if (flow && dir !== flow) return; // aus der Strömung nur in Fließrichtung
-      const target = currents.get(ny * cols + nx);
-      if (target && dir === opposite[target]) return; // nie gegen den Strom hinein
-      const k = `${nx},${ny}`;
-      if (!dist.has(k)) {
-        dist.set(k, d + 1);
-        queue.push([nx, ny]);
-      }
-    };
-    tryMove('n', x, y - 1, !c.n);
-    tryMove('e', x + 1, y, !c.e);
-    tryMove('s', x, y + 1, !c.s);
-    tryMove('w', x - 1, y, !c.w);
-  }
-  return dist;
-}
+import { setWall } from '../src/core/maze';
+import type { DoorDef } from '../src/levels/schema';
+import { buildFloorCells, cellKey, coopReachable, directedDistances, reachable } from './helpers';
 
 describe('Kampagne', () => {
   it('Welt 1 hat 10, Welt 2–4 haben je 6 Level; IDs eindeutig, Intro + Par überall', () => {

@@ -1,113 +1,21 @@
-// Gemeinsame Test-Helfer: Zellen wie im Loader aufbauen und Erreichbarkeit
-// über (Ebene, Zelle) prüfen – Transporter sind GERICHTETE Kanten, ebenso
-// Strömungen: Aus einer Strömungszelle geht es nur in Fließrichtung hinaus,
-// und niemand betritt sie gegen den Strom. Schiebewände zählen als offen
-// (sie öffnen sich zyklisch – Warten genügt). Zeitschloss-Schalter sind im
-// Fixpunkt-Modell Tür-Öffner wie Schlüssel/Platten.
+// Gemeinsame Test-Helfer. Das Erreichbarkeits-Modell (BFS über Ebenen,
+// gerichtete Transporter-/Strömungs-Kanten, Öffner-Fixpunkt, hazardsBlocked)
+// lebt seit M12 in src/levels/validate.ts – EINE Quelle der Wahrheit für
+// Testsuite UND Editor-Badges. Hier bleiben nur Re-Exports und der
+// Sammel-Helfer expectAllReachable.
 
-import { generateMaze, mirrorCells, setWall, type Cell } from '../src/core/maze';
-import { mulberry32 } from '../src/core/rng';
-import type { FloorDef, LevelDef } from '../src/levels/schema';
+import { cellKey, reachable } from '../src/levels/validate';
+import type { LevelDef } from '../src/levels/schema';
 
-export interface CellConfig {
-  brittleOpen: boolean;
-  doorsOpen: boolean;
-  /** Nur diese Tür-IDs gelten als offen (wenn doorsOpen false ist). */
-  openDoorIds?: Set<string>;
-  /** Konservativ: Glasboden- und Sog-Anker-Zellen als gesperrt behandeln –
-   *  beweist, dass beide nie auf einem Pflichtweg liegen. */
-  hazardsBlocked?: boolean;
-}
-
-export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: LevelDef['mirror']): Cell[] {
-  const [cols, rows] = floor.size;
-  let cells = generateMaze(cols, rows, mulberry32(floor.maze.seed));
-  // Wie der Loader: Rauschen spiegeln, Def-Koordinaten sind schon gespiegelt.
-  if (mirror) cells = mirrorCells(cells, cols, rows, mirror);
-  for (const [[x, y], dir] of floor.maze.carve) setWall(cells, cols, rows, x, y, dir, false);
-  for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
-  if (cfg.brittleOpen) {
-    for (const [[x, y], dir] of floor.maze.brittle) setWall(cells, cols, rows, x, y, dir, false);
-  }
-  if (!cfg.doorsOpen) {
-    for (const el of floor.elements) {
-      if (el.type === 'door' && !cfg.openDoorIds?.has(el.id))
-        setWall(cells, cols, rows, el.edge[0][0], el.edge[0][1], el.edge[1], true);
-    }
-  }
-  return cells;
-}
-
-export interface StartPos {
-  floor: number;
-  cell: readonly [number, number];
-}
-
-const OPPOSITE = { n: 's', s: 'n', e: 'w', w: 'e' } as const;
-
-export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<string> {
-  const floors = def.floors.map((f) => ({
-    cells: buildFloorCells(f, cfg, def.mirror),
-    cols: f.size[0],
-    rows: f.size[1],
-    jumps: f.elements
-      .filter((e) => e.type === 'transporter')
-      .map((t) => ({ from: t.cell, toFloor: t.target.floor, toCell: t.target.cell })),
-    // Strömungszelle -> Fließrichtung (konservativ: nur diese Kante hinaus)
-    currents: new Map(
-      f.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * f.size[0] + c.cell[0], c.dir]),
-    ),
-    blocked: new Set(
-      cfg.hazardsBlocked
-        ? f.elements
-            .filter((e) => e.type === 'glass' || e.type === 'anchor')
-            .map((e) => e.cell[1] * f.size[0] + e.cell[0])
-        : [],
-    ),
-  }));
-  const key = (fl: number, x: number, y: number) => `${fl}:${x},${y}`;
-  const start = from ?? { floor: 0, cell: def.floors[0]!.start };
-  const seen = new Set<string>([key(start.floor, start.cell[0], start.cell[1])]);
-  const stack: Array<[number, number, number]> = [[start.floor, start.cell[0], start.cell[1]]];
-  while (stack.length) {
-    const [fl, x, y] = stack.pop()!;
-    const floor = floors[fl]!;
-    const c = floor.cells[y * floor.cols + x]!;
-    const push = (nfl: number, nx: number, ny: number, dir?: 'n' | 'e' | 's' | 'w') => {
-      if (floors[nfl]!.blocked.has(ny * floors[nfl]!.cols + nx)) return;
-      // Gegen den Strom betritt man eine Strömungszelle nicht.
-      if (dir) {
-        const targetCurrent = floors[nfl]!.currents.get(ny * floors[nfl]!.cols + nx);
-        if (targetCurrent && dir === OPPOSITE[targetCurrent]) return;
-      }
-      const k = key(nfl, nx, ny);
-      if (!seen.has(k)) {
-        seen.add(k);
-        stack.push([nfl, nx, ny]);
-      }
-    };
-    const flow = floor.currents.get(y * floor.cols + x);
-    if (flow) {
-      // Aus der Strömung nur in Fließrichtung (konservativ: keine Seitenwege,
-      // keine Transporter – der Sog reißt den Ball mit).
-      if (flow === 'n' && !c.n && y > 0) push(fl, x, y - 1, 'n');
-      if (flow === 'e' && !c.e && x < floor.cols - 1) push(fl, x + 1, y, 'e');
-      if (flow === 's' && !c.s && y < floor.rows - 1) push(fl, x, y + 1, 's');
-      if (flow === 'w' && !c.w && x > 0) push(fl, x - 1, y, 'w');
-      continue;
-    }
-    if (!c.n && y > 0) push(fl, x, y - 1, 'n');
-    if (!c.e && x < floor.cols - 1) push(fl, x + 1, y, 'e');
-    if (!c.s && y < floor.rows - 1) push(fl, x, y + 1, 's');
-    if (!c.w && x > 0) push(fl, x - 1, y, 'w');
-    for (const j of floor.jumps) {
-      if (j.from[0] === x && j.from[1] === y) push(j.toFloor, j.toCell[0], j.toCell[1]);
-    }
-  }
-  return seen;
-}
-
-export const cellKey = (fl: number, c: readonly [number, number]) => `${fl}:${c[0]},${c[1]}`;
+export {
+  buildFloorCells,
+  cellKey,
+  coopReachable,
+  directedDistances,
+  reachable,
+  type CellConfig,
+  type StartPos,
+} from '../src/levels/validate';
 
 /** Prüft alle Element-Positionen + Ziel eines Levels auf Erreichbarkeit. */
 export function expectAllReachable(
@@ -133,29 +41,4 @@ export function expectAllReachable(
       }
     }
   });
-}
-
-/**
- * Öffner-Fixpunkt: Eine Tür gilt als offen, sobald einer ihrer Öffner
- * (Platte, Schlüssel oder Zeitschloss-Schalter) erreichbar ist – gebannte
- * Türen öffnen nie. Optional von einer beliebigen Position aus (Softlock-
- * Beweise: der Schalter ist wieder-erreichbar, die Tür also wieder-öffenbar).
- */
-export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set(), from?: StartPos): Set<string> {
-  const openDoorIds = new Set<string>();
-  for (;;) {
-    const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds }, from);
-    let changed = false;
-    def.floors.forEach((floor, fl) => {
-      for (const el of floor.elements) {
-        if ((el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') && !bannedDoors.has(el.opens)) {
-          if (!openDoorIds.has(el.opens) && seen.has(cellKey(fl, el.cell))) {
-            openDoorIds.add(el.opens);
-            changed = true;
-          }
-        }
-      }
-    });
-    if (!changed) return seen;
-  }
 }

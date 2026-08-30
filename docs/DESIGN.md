@@ -119,6 +119,10 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.panel` | Karte/Fläche: subtiler Rand, Radius L |
 | `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
+| `.ws-item` | Werkstatt-Bibliothek: Karte mit Name/Meta-Zeile und Aktions-Buttons |
+| `.ed-tile` | Editor-Palette: Werkzeug/Element mit Galerie-Miniatur; `.active` = Teal-Outline (ein Modus aktiv) |
+| `.ed-badge` | Live-Validierungs-Badge im Editor-Kopf: Teal = Beweis grün, `.fail` (Bernstein) = verletzt |
+| `.ed-field` | Editor-Eigenschaften: Label + Input/Select/Textarea aus Tokens; Editor-Layout: Dreispalter ab 900px, darunter Leisten (Media Query in index.html) |
 | `.hidden` | Einziges Sichtbarkeits-Utility (`display:none !important`) |
 
 **Banner-Verhalten:** Alle Banner leben im `#banners`-Container (unten

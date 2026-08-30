@@ -31,6 +31,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `build()` (Loader), Galerie-Eintrag (Visual + Klang-Demo) und zod-Schema
   in `src/levels/schema.ts`. Neue Elemente brauchen alle drei plus eine
   Weltfarbe in `src/render/palette.ts`.
+- `src/levels/validate.ts` – die Lösbarkeits-Beweise (Erreichbarkeit,
+  Öffner-Fixpunkt, Softlock, Timer, hazardsBlocked): EINE Quelle der
+  Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
+  Live-Badges des Editors. Modell-Änderungen nur hier.
+- `src/workshop.ts` + `src/ui/editor.ts` – Werkstatt: eigene Level in
+  localStorage, Editor editiert rohe Defs (Vorschau = parseLevel →
+  loadLevel → Renderer mit debug), Preview läuft in der echten
+  Spielschleife (Modus 'custom', ✏️ zurück).
 - `src/levels/` – Levelformat (zod), Loader, Tutorial-/Kampagnen-Level,
   Quick-Generator. Jedes neue Level braucht einen Lösbarkeits-Test
   (siehe tests/campaign.test.ts – inkl. Tür-Semantik: Schlüssel vor der

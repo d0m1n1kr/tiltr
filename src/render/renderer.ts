@@ -33,6 +33,9 @@ export class Renderer {
   private worldW = 0;
   private worldH = 0;
   private following = false;
+  /** Editor-Modus: Transform kommt von außen (Pinch-Zoom/Pan) statt aus
+   *  Einpassen/Folge-Kamera. */
+  private manualView = false;
   dpr = 1;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -74,7 +77,16 @@ export class Renderer {
     this.computeScale();
   }
 
+  /** Transform direkt setzen (scale = Canvas-Pixel pro Welteinheit). */
+  setManualView(scale: number, offsetX: number, offsetY: number): void {
+    this.manualView = true;
+    this.scale = scale;
+    this.offsetX = offsetX;
+    this.offsetY = offsetY;
+  }
+
   private computeScale(): void {
+    if (this.manualView) return;
     const margin = 24 * this.dpr;
     const fitScale = Math.min(
       (this.canvas.width - margin * 2) / this.worldW,
@@ -91,7 +103,7 @@ export class Renderer {
 
   // Pro Frame aufrufen: hält den Ball im Blick (weich, an den Weltgrenzen geklemmt).
   follow(bx: number, by: number, snap = false): void {
-    if (!this.following) return;
+    if (this.manualView || !this.following) return;
     const margin = 24 * this.dpr;
     const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
     const tx = clamp(this.canvas.width / 2 - bx * this.scale, this.canvas.width - margin - this.worldW * this.scale, margin);

@@ -21,11 +21,14 @@ import { generateMpLevel, parseMpQuickId } from './levels/mpQuick';
 import { connect, makeRoomCode, type Transport } from './net/transport';
 import { scanRoomCode } from './ui/scanner';
 import { renderSVG } from 'uqr';
-import type { LevelDef } from './levels/schema';
+import { parseLevel, type LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
 import { setupGallery } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
+import { setupEditor, type RawLevel } from './ui/editor';
+import { setupWorkshopPanel } from './ui/workshopPanel';
+import { workshop } from './workshop';
 
 const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
 const WIND_HEAR = CELL * 1.8;
@@ -77,6 +80,7 @@ type Mode =
   | { kind: 'tutorial'; index: number }
   | { kind: 'campaign'; index: number }
   | { kind: 'daily'; date: string; target?: number }
+  | { kind: 'custom' }
   | { kind: 'mp' };
 
 type MpMode = 'coop' | 'race';
@@ -127,6 +131,9 @@ let levelRows = 0;
 // Geist-Replay: Bestzeit-Spur des aktuellen Levels + Rekorder des Laufs
 let ghost: GhostData | null = null;
 let ghostRecorder: GhostRecorder | null = null;
+// Werkstatt: aktuelles Custom-Level + ob der Lauf aus dem Editor kam (✏️)
+let customDef: LevelDef | null = null;
+let customFromEditor = false;
 
 // Seed aus der URL (?seed=…) macht Läufe reproduzierbar (Tests, später Daily).
 function nextSeed(): number {
@@ -213,6 +220,8 @@ function refreshMenu(): void {
   const blind = profile.blindCount(CAMPAIGN_IDS);
   $('campaignStars').textContent =
     `(${profile.totalStars(CAMPAIGN_IDS)}/${CAMPAIGN_IDS.length * 3}★${blind > 0 ? ` · ${blind}🌑` : ''})`;
+  const wsCount = workshop.list().length;
+  $('workshopCount').textContent = wsCount > 0 ? `(${wsCount})` : '';
   const today = todayUTC();
   const daily = profile.dailyInfo(today);
   const streak = profile.streakInfo();
@@ -330,6 +339,7 @@ function showMenu(): void {
   audio.setAnchor(0, 0, 0);
   hideInterstitial();
   hud.classList.add('hidden');
+  $('editBtn').classList.add('hidden');
   overlay.classList.remove('hidden');
   refreshMenu();
 }
@@ -350,6 +360,40 @@ async function startMode(m: Mode): Promise<void> {
 }
 
 quickBtn.addEventListener('click', () => void startMode({ kind: 'quick' }));
+
+/* --- Werkstatt: Bibliothek + Editor + Preview ------------------------------ */
+
+// Rohe Def spielen: parseLevel validiert; fromEditor blendet den ✏️-Knopf ein.
+function startCustom(raw: RawLevel, fromEditor: boolean): void {
+  try {
+    customDef = parseLevel(raw);
+  } catch {
+    return; // Bibliothek zeigt kaputte Level mit ⚠, der Editor blockt Testen
+  }
+  customFromEditor = fromEditor;
+  $('editor').classList.add('hidden');
+  $('workshop').classList.add('hidden');
+  void startMode({ kind: 'custom' });
+}
+
+const editorApi = setupEditor({
+  onTest: (def) => startCustom(def, true),
+  onSaved: () => {
+    workshopPanel.refresh();
+    refreshMenu();
+  },
+});
+const workshopPanel = setupWorkshopPanel({
+  onPlay: (def) => startCustom(def, false),
+  onEdit: (def) => editorApi.open(def),
+});
+
+// ✏️ im HUD: aus dem Preview zurück in den Editor (Entwurf bleibt erhalten).
+$('editBtn').addEventListener('click', () => {
+  if (!customFromEditor) return;
+  showMenu();
+  editorApi.reopen();
+});
 $('dailyBtn').addEventListener('click', () => void startMode({ kind: 'daily', date: todayUTC() }));
 tutorialBtn.addEventListener('click', () =>
   void startMode({ kind: 'tutorial', index: profile.nextTutorialIndex(TUT_IDS) }),
@@ -393,7 +437,9 @@ function beginLevel(): void {
         ? CAMPAIGN_LEVELS[mode.index]!
         : mode.kind === 'daily'
           ? generateDailyLevel(mode.date)
-          : generateQuickLevel(nextSeed(), profile.preset);
+          : mode.kind === 'custom'
+            ? customDef!
+            : generateQuickLevel(nextSeed(), profile.preset);
   currentDef = def;
   const intro = lvIntro(def);
   if (intro) {
@@ -438,7 +484,9 @@ function launch(def: LevelDef): void {
   // Geist-Replay: nur in Quick/Daily/Kampagne (nicht Tutorial, nicht MP) –
   // die Level-ID trägt bei Quick den Seed, der Geist erscheint also nur auf
   // exakt demselben Level.
-  const ghostable = mode !== null && (mode.kind === 'quick' || mode.kind === 'daily' || mode.kind === 'campaign');
+  const ghostable =
+    mode !== null &&
+    (mode.kind === 'quick' || mode.kind === 'daily' || mode.kind === 'campaign' || mode.kind === 'custom');
   ghost = ghostable ? loadGhost(def.id) : null;
   ghostRecorder = ghostable ? new GhostRecorder() : null;
   pingMax = loaded.pingBudget;
@@ -452,6 +500,8 @@ function launch(def: LevelDef): void {
   state = 'playing';
   revealUntil = 0;
   statusEl.textContent = '';
+  // ✏️ nur im Editor-Preview: schneller Rücksprung in die Werkstatt.
+  $('editBtn').classList.toggle('hidden', !(mode?.kind === 'custom' && customFromEditor));
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   input.calibrate();
 }
@@ -597,6 +647,26 @@ function onWin(seconds: number): void {
             }
           : { label: t('common.toMenu'), onClick: showMenu },
         secondary: hasNext ? { label: t('common.menu'), onClick: showMenu } : undefined,
+      });
+    }, 1800);
+  } else if (mode.kind === 'custom') {
+    const isRecord = profile.submitTime(def.id, seconds);
+    const best = profile.bestFor(def.id);
+    const fromEditor = customFromEditor;
+    setTimeout(() => {
+      showInterstitial({
+        title: t('res.winTitle', { time: fmtTime(seconds) }),
+        text: isRecord ? t('res.newBestLine') : best !== null ? t('res.time', { time: fmtTime(best) }) : '',
+        primary: fromEditor
+          ? {
+              label: t('ed.backToEditor'),
+              onClick: () => {
+                showMenu();
+                editorApi.reopen();
+              },
+            }
+          : { label: t('common.again'), onClick: beginLevel },
+        secondary: { label: t('common.menu'), onClick: showMenu },
       });
     }, 1800);
   } else {

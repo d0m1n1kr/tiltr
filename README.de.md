@@ -51,6 +51,12 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   pulsierender Halo zeigt den Partner – am Screenrand geklemmt, wenn er
   außer Sicht ist. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
   zum Wiederverbinden.
+- **🛠 Werkstatt** – eigene Level im Touch-Editor bauen (auf Tablets als
+  Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
+  schalten, Eigenschaften feilen – während die Lösbarkeits-Beweise der
+  Testsuite live als Badges mitlaufen (Ziel erreichbar, kein Softlock,
+  Timer reicht …). Entwürfe in der echten Spielschleife testen und mit
+  einem Tap zurückspringen; die Bibliothek liegt lokal auf dem Gerät.
 - **🎓 Tutorial** – acht Micro-Level, die die Klangsprache beibringen,
   ein Element nach dem anderen.
 - **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und
@@ -140,7 +146,8 @@ M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉 →
 M9 Welt 3 „Das Räderwerk" (Schiebewände, Zeitschlösser, Strömungen) +
 Geist-Replay ✓ → M10 Welt 4 „Die Stille" (Horcher, Nebel, Eis) +
 Blind-Stern ✓ → M11 Echo-Kristall, Sog-Anker, Glasboden +
-Generator-Integration ✓
+Generator-Integration ✓ → M12a Werkstatt: Level-Editor mit
+Live-Lösbarkeits-Beweisen, Bibliothek & Spiel-Preview ✓
 
 ---
 

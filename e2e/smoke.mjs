@@ -659,10 +659,10 @@ const check = (name, cond) => {
   const quickEn = (await page.textContent('#quickBtn')).trim();
   check(`Browser-Locale en-US => Englisch (lang=${lang}, "${dailyEn}")`, lang === 'en' && dailyEn === 'Still open today' && quickEn.includes('Quick Game'));
 
-  // Neues Menü: 5 Modus-Karten, Tutorial als Einstieg empfohlen
+  // Neues Menü: 6 Modus-Karten, Tutorial als Einstieg empfohlen
   const modeItems = await page.locator('#modeList .mode-item').count();
   const suggested = await page.locator('#tutorialBtn.suggest').count();
-  check(`Startscreen: 5 Modus-Karten, Tutorial empfohlen (${modeItems}/${suggested})`, modeItems === 5 && suggested === 1);
+  check(`Startscreen: 6 Modus-Karten, Tutorial empfohlen (${modeItems}/${suggested})`, modeItems === 6 && suggested === 1);
 
   // Galerie übersetzt (erster Registry-Eintrag: Loch -> "Hole")
   await page.click('#galleryLink');
@@ -680,6 +680,81 @@ const check = (name, cond) => {
   const dailyFr2 = (await page.textContent('#dailyStatus')).trim();
   const langFr = await page.evaluate(() => document.documentElement.lang);
   check(`FR überlebt Reload (lang=${langFr})`, langFr === 'fr' && dailyFr2.includes('Encore ouvert'));
+  await page.close();
+}
+
+// --- Lauf 12: Werkstatt – Tablet-Dreispalter, Element platzieren, Badges,
+// Preview mit ✏️-Rücksprung, Speichern, Bibliothek; Phone-Gegenprobe. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  await page.click('#workshopBtn');
+  const wsShown = !(await page.locator('#workshop').getAttribute('class')).includes('hidden');
+  check('Werkstatt-Panel öffnet', wsShown);
+  await page.click('#wsNewBtn');
+  await page.waitForTimeout(500);
+  const edShown = !(await page.locator('#editor').getAttribute('class')).includes('hidden');
+  const cols = await page.evaluate(() => getComputedStyle(document.getElementById('edBody')).gridTemplateColumns);
+  check(`Editor öffnet als Tablet-Dreispalter (${cols})`, edShown && cols.split(' ').length === 3);
+
+  // Live-Badges: das leere 6x8-Level ist beweisbar gesund (alle grün).
+  const badges = await page.locator('#edBadges .ed-badge').count();
+  const failed = await page.locator('#edBadges .ed-badge.fail').count();
+  check(`Live-Validierung: ${badges} Badges, ${failed} rot`, badges >= 6 && failed === 0);
+
+  // Loch in die Zellmitte (3,4) setzen – Screen-Punkt exakt aus dem
+  // Editor-Transform berechnet (Hook __tiltrEd).
+  const before = await page.evaluate(() => window.__tiltrEd?.elements);
+  const pt = await page.evaluate(() => {
+    const ed = window.__tiltrEd;
+    const box = document.getElementById('edCanvas').getBoundingClientRect();
+    return { x: box.left + (ed.ox + 350 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 450 * ed.scale) / ed.dpr };
+  });
+  await page.mouse.click(pt.x, pt.y);
+  await page.waitForTimeout(400);
+  const after = await page.evaluate(() => window.__tiltrEd?.elements);
+  const propsText = (await page.textContent('#edProps')).trim();
+  check(`Element platziert (${before} -> ${after})`, before === 0 && after === 1 && propsText.includes('Auswahl'));
+
+  // Preview: Testen -> echte Spielschleife mit ✏️-Rücksprung.
+  await page.click('#edTest');
+  await page.waitForTimeout(3600); // Kalibrier-Countdown
+  const hudShown = !(await page.locator('#hud').getAttribute('class')).includes('hidden');
+  const editBtnShown = !(await page.locator('#editBtn').getAttribute('class')).includes('hidden');
+  const ball = await page.evaluate(() => window.__tiltrBall);
+  check('Preview läuft in der Spielschleife (HUD + ✏️ + Ball)', hudShown && editBtnShown && !!ball);
+  await page.click('#editBtn');
+  await page.waitForTimeout(300);
+  const backInEditor = !(await page.locator('#editor').getAttribute('class')).includes('hidden');
+  const stillOne = await page.evaluate(() => window.__tiltrEd?.elements);
+  check(`✏️ führt zurück in den Editor (Entwurf erhalten: ${stillOne} Element)`, backInEditor && stillOne === 1);
+
+  // Speichern -> Bibliothek zeigt das Level, Menü zählt es.
+  await page.click('#edSave');
+  const savedMsg = (await page.textContent('#edStatus')).trim();
+  await page.click('#edClose');
+  await page.click('#workshopBtn');
+  const items = await page.locator('.ws-item').count();
+  const wsName = (await page.textContent('.ws-name')).trim();
+  await page.click('#workshopClose');
+  const count = (await page.textContent('#workshopCount')).trim();
+  check(`Speichern + Bibliothek ("${savedMsg}" / "${wsName}" / ${count})`,
+    savedMsg.includes('Gespeichert') && items === 1 && wsName === 'Mein Level' && count === '(1)');
+  await page.close();
+}
+{
+  // Phone-Gegenprobe: unter 900px wird der Editor zur Leisten-Ansicht.
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+  await page.click('#workshopBtn');
+  await page.click('#wsNewBtn');
+  await page.waitForTimeout(400);
+  const cols = await page.evaluate(() => getComputedStyle(document.getElementById('edBody')).gridTemplateColumns);
+  check(`Phone-Editor: eine Spalte (${cols})`, cols.split(' ').length === 1);
   await page.close();
 }
 

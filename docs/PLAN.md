@@ -324,5 +324,5 @@ im Spiel, plus ein ✏️-Knopf, der ohne Umweg zurück in den Editor führt
 
 | Meilenstein | Inhalt | Ergebnis |
 |---|---|---|
-| **M12a „Werkstatt-Kern"** | Bibliothek + Editor (eine Ebene): Platzieren, Wände, Eigenschaften, Live-Validierung, Preview, Speichern | Eigene Level bauen & spielen (v1.4.0) |
+| **M12a „Werkstatt-Kern"** ✓ | Bibliothek + Editor (eine Ebene): Platzieren, Wände, Eigenschaften, Live-Validierung, Preview, Speichern | Eigene Level bauen & spielen (v1.4.0) |
 | **M12b „Teilen"** | Mehr-Ebenen + Verknüpfungs-Modus, Import/Export, Share-Link + Empfang, Pinch-Zoom-Feinschliff | Level-Tausch ohne Server (v1.5.0) |

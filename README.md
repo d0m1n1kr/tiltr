@@ -49,6 +49,12 @@ automatically via GitHub Actions (tests → build → pages).
   regenerates the exact same level from the room's level id. A pulsing halo shows your partner — clamped to
   the screen edge when they're out of view. Lost connections get a
   10-second reconnect window.
+- **🛠 Workshop** — build your own levels in a touch-first editor
+  (three-pane layout on tablets): place elements from the full registry,
+  toggle walls, tweak properties — while the test suite's solvability
+  proofs run live as badges (goal reachable, no softlock, timer fits …).
+  Test drafts in the real game loop and jump back with one tap; levels are
+  stored locally in your library.
 - **🎓 Tutorial** — eight micro-levels that teach the sound language, one
   element at a time.
 - **🧩 Element Gallery** — living documentation: every element with its
@@ -135,7 +141,9 @@ quick game ✓ → M4 campaign world 1 ✓ → M5 floors/transporters + world 2 
 M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉 →
 M9 world 3 "The Clockwork" (sliding walls, time locks, currents) + ghost
 replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓ →
-M11 echo crystal, pull anchor, glass floor + generator integration ✓
+M11 echo crystal, pull anchor, glass floor + generator integration ✓ →
+M12a workshop: level editor with live solvability proofs, library &
+in-game preview ✓
 
 ---
 

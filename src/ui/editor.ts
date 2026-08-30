@@ -1,0 +1,801 @@
+// Level-Editor (M12a): editiert eine ROHE LevelDef. Jede Änderung läuft
+// durch parseLevel -> loadLevel -> Renderer.draw({debug}) – die Vorschau IST
+// das Spiel-Rendering; wirft der Loader, bleibt das letzte gültige Bild
+// stehen und #edStatus nennt den Fehler. Darüber liegt die Editor-Ebene
+// (Grid, Auswahl, Verknüpfungslinien). Tablet-first: Pinch-Zoom und
+// Ein-Finger-Pan auf dem Canvas, Tap = Werkzeug-Aktion.
+//
+// M12a bewusst ohne: Mehr-Ebenen, Transporter, Druckplatten (MP-only),
+// Import/Export/Share (M12b).
+
+import { CELL } from '../core/constants';
+import { Renderer } from '../render/renderer';
+import { WORLD } from '../render/palette';
+import { loadLevel, type LoadedLevel } from '../levels/loader';
+import { parseLevel } from '../levels/schema';
+import { validateLevel, buildFloorCells, type CheckResult } from '../levels/validate';
+import { galleryEntries } from '../elements';
+import { workshop } from '../workshop';
+import { t, applyI18n, type Dict } from '../i18n';
+
+type Dir = 'n' | 'e' | 's' | 'w';
+type Edge = [[number, number], Dir];
+
+/* Rohe Def-Ausschnitte – bewusst locker typisiert (Quelle der Wahrheit ist
+   das zod-Schema; der Editor mutiert Rohdaten und lässt parseLevel richten). */
+interface RawEl {
+  type: string;
+  cell?: [number, number];
+  edge?: Edge;
+  patrol?: Array<[number, number]>;
+  [k: string]: unknown;
+}
+interface RawFloor {
+  size: [number, number];
+  maze: { seed: number; carve: Edge[]; add: Edge[]; brittle: Edge[]; [k: string]: unknown };
+  elements: RawEl[];
+  start: [number, number];
+  goal: [number, number] | null;
+}
+export interface RawLevel {
+  id: string;
+  name: string;
+  intro?: string;
+  parTimeS?: number;
+  pingBudget?: number;
+  floors: RawFloor[];
+  [k: string]: unknown;
+}
+
+/** Tap-Ziel: Kante, wenn der Punkt nah an einer INNEREN Gridlinie liegt,
+ *  sonst Zelle. Kanten kommen kanonisch als ('e' | 's') des linken/oberen
+ *  Nachbarn zurück. Exportiert für die Unit-Tests. */
+export function pickTarget(
+  wx: number,
+  wy: number,
+  cols: number,
+  rows: number,
+): { kind: 'cell'; cell: [number, number] } | { kind: 'edge'; edge: Edge } | null {
+  if (wx < 0 || wy < 0 || wx >= cols * CELL || wy >= rows * CELL) return null;
+  const cx = Math.floor(wx / CELL);
+  const cy = Math.floor(wy / CELL);
+  const EDGE_ZONE = 18; // Welteinheiten um die Gridlinie
+  const dxLeft = wx - cx * CELL;
+  const dxRight = (cx + 1) * CELL - wx;
+  const dyTop = wy - cy * CELL;
+  const dyBottom = (cy + 1) * CELL - wy;
+  const m = Math.min(dxLeft, dxRight, dyTop, dyBottom);
+  if (m < EDGE_ZONE) {
+    // nächste Linie gewinnt; Außenkanten fallen auf die Zelle zurück
+    if (m === dxLeft && cx > 0) return { kind: 'edge', edge: [[cx - 1, cy], 'e'] };
+    if (m === dxRight && cx < cols - 1) return { kind: 'edge', edge: [[cx, cy], 'e'] };
+    if (m === dyTop && cy > 0) return { kind: 'edge', edge: [[cx, cy - 1], 's'] };
+    if (m === dyBottom && cy < rows - 1) return { kind: 'edge', edge: [[cx, cy], 's'] };
+  }
+  return { kind: 'cell', cell: [cx, cy] };
+}
+
+const edgeKey = (e: Edge) => `${e[0][0]},${e[0][1]},${e[1]}`;
+
+type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal';
+
+/** Palette in M12a: alles außer Druckplatte (MP-only) und Transporter (M12b). */
+const PLACEABLE = [
+  'hole',
+  'windZone',
+  'current',
+  'ice',
+  'fogZone',
+  'glass',
+  'checkpoint',
+  'gem',
+  'echoCrystal',
+  'key',
+  'door',
+  'timedSwitch',
+  'slidingWall',
+  'guard',
+  'listener',
+  'anchor',
+] as const;
+const EDGE_TYPES = new Set(['door', 'slidingWall']);
+
+export interface EditorApi {
+  open(def: RawLevel): void;
+  /** Nach dem Preview: Panel wieder zeigen, Entwurf unverändert. */
+  reopen(): void;
+  isOpen(): boolean;
+}
+
+export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: () => void }): EditorApi {
+  const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+  const panel = $('editor');
+  const canvas = $<HTMLCanvasElement>('edCanvas');
+  const nameInput = $<HTMLInputElement>('edName');
+  const badgesEl = $('edBadges');
+  const statusEl = $('edStatus');
+  const paletteEl = $('edPalette');
+  const propsEl = $('edProps');
+
+  const renderer = new Renderer(canvas);
+  const overlay = canvas.getContext('2d')!;
+
+  let draft: RawLevel | null = null;
+  let loaded: LoadedLevel | null = null;
+  let loadError: string | null = null;
+  let tool: Tool = 'place';
+  let placeType: string = 'hole';
+  let selected = -1; // Index in floor.elements
+  let pendingGuard: [number, number] | null = null;
+  let view = { scale: 1, ox: 0, oy: 0 }; // Canvas-Pixel pro Welteinheit + Offset
+  let checks: CheckResult[] = [];
+  let validateTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const floor = (): RawFloor => draft!.floors[0]!;
+  const flash = (text: string, error = false): void => {
+    statusEl.textContent = text;
+    statusEl.style.color = error ? 'var(--warning)' : '';
+  };
+
+  /* --- Rohdaten-Helfer ----------------------------------------------------- */
+
+  const inList = (list: Edge[], e: Edge) => list.some((x) => edgeKey(x) === edgeKey(e));
+  const dropFromList = (list: Edge[], e: Edge) => {
+    const i = list.findIndex((x) => edgeKey(x) === edgeKey(e));
+    if (i !== -1) list.splice(i, 1);
+  };
+
+  // Ist die Kante im aktuellen Maze (Seed + Edits) offen?
+  const edgeOpen = (e: Edge): boolean => {
+    try {
+      const def = parseLevel(draft);
+      const f = def.floors[0]!;
+      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
+      const c = cells[e[0][1] * f.size[0] + e[0][0]]!;
+      return e[1] === 'e' ? !c.e : !c.s;
+    } catch {
+      return true; // Def gerade kaputt: nicht zusätzlich blockieren
+    }
+  };
+
+  const nextDoorId = (): string => {
+    const ids = new Set(floor().elements.filter((e) => e.type === 'door').map((e) => String(e.id)));
+    for (let n = 1; ; n++) if (!ids.has(`tor${n}`)) return `tor${n}`;
+  };
+  const doorIds = (): string[] => floor().elements.filter((e) => e.type === 'door').map((e) => String(e.id));
+
+  const elementAt = (target: { kind: string; cell?: [number, number]; edge?: Edge }): number => {
+    const els = floor().elements;
+    for (let i = els.length - 1; i >= 0; i--) {
+      const el = els[i]!;
+      if (target.kind === 'edge' && el.edge && edgeKey(el.edge) === edgeKey(target.edge!)) return i;
+      if (target.kind === 'cell' && el.cell && el.cell[0] === target.cell![0] && el.cell[1] === target.cell![1]) return i;
+      if (target.kind === 'cell' && el.patrol?.some((p) => p[0] === target.cell![0] && p[1] === target.cell![1])) return i;
+    }
+    return -1;
+  };
+
+  /* --- Vorschau + Overlay --------------------------------------------------- */
+
+  function fitView(): void {
+    const [cols, rows] = floor().size;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = rect.width * dpr;
+    const ch = rect.height * dpr;
+    const scale = Math.min((cw - 48) / (cols * CELL), (ch - 48) / (rows * CELL));
+    view = {
+      scale,
+      ox: (cw - cols * CELL * scale) / 2,
+      oy: (ch - rows * CELL * scale) / 2,
+    };
+  }
+
+  function rebuild(): void {
+    if (!draft) return;
+    try {
+      loaded = loadLevel(parseLevel(draft));
+      loadError = null;
+      flash('');
+    } catch (e) {
+      loadError = e instanceof Error ? e.message : String(e);
+      flash(loadError, true);
+    }
+    scheduleValidate();
+    paint();
+  }
+
+  function scheduleValidate(): void {
+    if (validateTimer) clearTimeout(validateTimer);
+    validateTimer = setTimeout(() => {
+      if (!draft) return;
+      checks = validateLevel(draft);
+      renderBadges();
+    }, 250);
+  }
+
+  function renderBadges(): void {
+    badgesEl.replaceChildren();
+    for (const c of checks) {
+      const b = document.createElement('span');
+      b.className = 'ed-badge' + (c.ok ? '' : ' fail');
+      b.textContent = `${c.ok ? '✓' : '✗'} ${t(`ed.check.${c.key}` as keyof Dict)}`;
+      if (c.detail) b.title = c.detail;
+      badgesEl.append(b);
+    }
+  }
+
+  function paint(): void {
+    if (!draft) return;
+    // Testbarkeits-Hook (E2E): Transform + Elementzahl der aktuellen Ebene.
+    (window as unknown as { __tiltrEd?: unknown }).__tiltrEd = {
+      scale: view.scale,
+      ox: view.ox,
+      oy: view.oy,
+      dpr: renderer.dpr,
+      elements: floor().elements.length,
+      loadError,
+    };
+    renderer.setManualView(view.scale, view.ox, view.oy);
+    if (loaded) {
+      renderer.draw(loaded.world, { debug: true, now: performance.now() });
+    } else {
+      overlay.fillStyle = WORLD.bgDeep;
+      overlay.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    drawOverlay();
+  }
+
+  function drawOverlay(): void {
+    const [cols, rows] = floor().size;
+    const s = view.scale;
+    const tx = (x: number) => view.ox + x * s;
+    const ty = (y: number) => view.oy + y * s;
+    const dpr = renderer.dpr;
+
+    // Grid
+    overlay.strokeStyle = 'rgba(110, 168, 255, 0.12)';
+    overlay.lineWidth = 1;
+    overlay.beginPath();
+    for (let x = 0; x <= cols; x++) {
+      overlay.moveTo(tx(x * CELL), ty(0));
+      overlay.lineTo(tx(x * CELL), ty(rows * CELL));
+    }
+    for (let y = 0; y <= rows; y++) {
+      overlay.moveTo(tx(0), ty(y * CELL));
+      overlay.lineTo(tx(cols * CELL), ty(y * CELL));
+    }
+    overlay.stroke();
+
+    // Verknüpfungen: Schlüssel/Zeitschloss -> Tür (goldene gestrichelte Linie)
+    const doors = new Map<string, Edge>();
+    for (const el of floor().elements) if (el.type === 'door' && el.edge) doors.set(String(el.id), el.edge);
+    overlay.strokeStyle = `rgba(${WORLD.door}, 0.5)`;
+    overlay.lineWidth = 1.5 * dpr;
+    overlay.setLineDash([5 * dpr, 5 * dpr]);
+    for (const el of floor().elements) {
+      if ((el.type !== 'key' && el.type !== 'timedSwitch') || !el.cell) continue;
+      const door = doors.get(String(el.opens));
+      if (!door) continue;
+      const [[dx, dy], dir] = door;
+      const ex = dir === 'e' ? (dx + 1) * CELL : (dx + 0.5) * CELL;
+      const ey = dir === 's' ? (dy + 1) * CELL : (dy + 0.5) * CELL;
+      overlay.beginPath();
+      overlay.moveTo(tx((el.cell[0] + 0.5) * CELL), ty((el.cell[1] + 0.5) * CELL));
+      overlay.lineTo(tx(ex), ty(ey));
+      overlay.stroke();
+    }
+    overlay.setLineDash([]);
+
+    // Auswahl
+    const sel = floor().elements[selected];
+    if (sel) {
+      overlay.strokeStyle = `rgba(${WORLD.ballGlow}, 0.9)`;
+      overlay.lineWidth = 2 * dpr;
+      if (sel.edge) {
+        const [[x, y], dir] = sel.edge;
+        const vertical = dir === 'e';
+        const ex = vertical ? (x + 1) * CELL : x * CELL;
+        const ey = vertical ? y * CELL : (y + 1) * CELL;
+        overlay.strokeRect(tx(ex - 8), ty(ey - 8), (vertical ? 16 : CELL + 16) * s, (vertical ? CELL + 16 : 16) * s);
+      } else if (sel.cell) {
+        overlay.strokeRect(tx(sel.cell[0] * CELL), ty(sel.cell[1] * CELL), CELL * s, CELL * s);
+      } else if (sel.patrol?.length) {
+        for (const p of sel.patrol) overlay.strokeRect(tx(p[0] * CELL), ty(p[1] * CELL), CELL * s, CELL * s);
+      }
+    }
+
+    // Wächter-Platzierung: erster Wegpunkt wartet auf den zweiten
+    if (pendingGuard) {
+      overlay.strokeStyle = `rgba(${WORLD.guard}, 0.9)`;
+      overlay.lineWidth = 2 * dpr;
+      overlay.setLineDash([4 * dpr, 4 * dpr]);
+      overlay.strokeRect(tx(pendingGuard[0] * CELL), ty(pendingGuard[1] * CELL), CELL * s, CELL * s);
+      overlay.setLineDash([]);
+    }
+  }
+
+  /* --- Werkzeuge ------------------------------------------------------------ */
+
+  function act(wx: number, wy: number): void {
+    if (!draft) return;
+    const [cols, rows] = floor().size;
+    const target = pickTarget(wx, wy, cols, rows);
+    if (!target) return;
+
+    if (tool === 'wall') {
+      if (target.kind !== 'edge') return flash(t('ed.edgeHint'));
+      cycleWall(target.edge);
+    } else if (tool === 'erase') {
+      eraseAt(target);
+    } else if (tool === 'start' || tool === 'goal') {
+      if (target.kind !== 'cell') return;
+      if (tool === 'start') floor().start = target.cell;
+      else floor().goal = target.cell;
+    } else if (tool === 'place') {
+      placeAt(target);
+    } else {
+      selected = elementAt(target);
+      renderProps();
+    }
+    rebuild();
+  }
+
+  // Kante zyklisch: Seed-Zustand -> offen (carve) -> zu (add) -> brüchig -> Seed.
+  function cycleWall(e: Edge): void {
+    const m = floor().maze;
+    if (inList(m.brittle, e)) {
+      dropFromList(m.brittle, e);
+      dropFromList(m.add, e);
+    } else if (inList(m.add, e)) {
+      m.brittle.push(e);
+    } else if (inList(m.carve, e)) {
+      dropFromList(m.carve, e);
+      m.add.push(e);
+    } else {
+      m.carve.push(e);
+    }
+  }
+
+  function eraseAt(target: { kind: string; cell?: [number, number]; edge?: Edge }): void {
+    const i = elementAt(target);
+    if (i !== -1) {
+      floor().elements.splice(i, 1);
+      if (selected === i) selected = -1;
+      renderProps();
+      return;
+    }
+    if (target.kind === 'edge') {
+      const m = floor().maze;
+      dropFromList(m.carve, target.edge!);
+      dropFromList(m.add, target.edge!);
+      dropFromList(m.brittle, target.edge!);
+    }
+  }
+
+  function placeAt(target: { kind: string; cell?: [number, number]; edge?: Edge }): void {
+    const els = floor().elements;
+    if (EDGE_TYPES.has(placeType)) {
+      if (target.kind !== 'edge') return flash(t('ed.edgeHint'));
+      const e = target.edge!;
+      // Tür/Schiebewand sitzt auf einer OFFENEN Kante – notfalls freischneiden.
+      if (!edgeOpen(e)) {
+        dropFromList(floor().maze.add, e);
+        dropFromList(floor().maze.brittle, e);
+        if (!inList(floor().maze.carve, e)) floor().maze.carve.push(e);
+      }
+      els.push(placeType === 'door' ? { type: 'door', id: nextDoorId(), edge: e } : { type: 'slidingWall', edge: e });
+      selected = els.length - 1;
+    } else if (placeType === 'guard') {
+      if (target.kind !== 'cell') return;
+      if (!pendingGuard) {
+        pendingGuard = target.cell!;
+        flash(t('ed.guardSecond'));
+        return;
+      }
+      const [ax, ay] = pendingGuard;
+      const [bx, by] = target.cell!;
+      if ((ax === bx) === (ay === by)) {
+        // gleiche Zelle oder diagonal: Patrouille muss achsenparallel sein
+        pendingGuard = null;
+        return flash(t('ed.guardBad'), true);
+      }
+      els.push({ type: 'guard', patrol: [[ax, ay], [bx, by]], speed: 85 });
+      pendingGuard = null;
+      selected = els.length - 1;
+      flash('');
+    } else {
+      if (target.kind !== 'cell') return;
+      const el: RawEl = { type: placeType, cell: target.cell! };
+      if (placeType === 'windZone' || placeType === 'current') el.dir = pickOpenDir(target.cell!);
+      if (placeType === 'key' || placeType === 'timedSwitch') el.opens = doorIds().at(-1) ?? 'tor1';
+      if (placeType === 'hole') el.breathing = { offset: Math.random() * 4 };
+      els.push(el);
+      selected = els.length - 1;
+    }
+    renderProps();
+  }
+
+  // Für Strömungen: eine offene Kante als Default-Richtung (kein Dauer-Pin).
+  function pickOpenDir(cell: [number, number]): Dir {
+    try {
+      const def = parseLevel(draft);
+      const f = def.floors[0]!;
+      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
+      const c = cells[cell[1] * f.size[0] + cell[0]]!;
+      for (const d of ['e', 's', 'w', 'n'] as const) if (!c[d]) return d;
+    } catch {
+      /* Def gerade kaputt */
+    }
+    return 'e';
+  }
+
+  /* --- Palette --------------------------------------------------------------- */
+
+  function renderPalette(): void {
+    paletteEl.replaceChildren();
+    const tools: Array<[Tool, string]> = [
+      ['select', `☝ ${t('ed.tool.select')}`],
+      ['wall', `▤ ${t('ed.tool.wall')}`],
+      ['erase', `⌫ ${t('ed.tool.erase')}`],
+      ['start', `● ${t('ed.tool.start')}`],
+      ['goal', `◎ ${t('ed.tool.goal')}`],
+    ];
+    const toolsLabel = document.createElement('p');
+    toolsLabel.className = 'ed-group-label';
+    toolsLabel.textContent = t('ed.tools');
+    paletteEl.append(toolsLabel);
+    for (const [tl, label] of tools) {
+      const b = document.createElement('button');
+      b.className = 'panel ed-tile' + (tool === tl ? ' active' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        tool = tl;
+        pendingGuard = null;
+        renderPalette();
+      });
+      paletteEl.append(b);
+    }
+    const elLabel = document.createElement('p');
+    elLabel.className = 'ed-group-label';
+    elLabel.textContent = t('ed.elements');
+    paletteEl.append(elLabel);
+    const draws = new Map(galleryEntries().map((e) => [e.type, e.draw]));
+    for (const type of PLACEABLE) {
+      const b = document.createElement('button');
+      b.className = 'panel ed-tile' + (tool === 'place' && placeType === type ? ' active' : '');
+      const cv = document.createElement('canvas');
+      cv.width = 66;
+      cv.height = 42;
+      const ctx = cv.getContext('2d')!;
+      ctx.fillStyle = WORLD.bgDeep;
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      draws.get(type)?.(ctx, cv.width, cv.height);
+      const label = document.createElement('span');
+      label.textContent = t(`el.${type}.title` as keyof Dict);
+      b.append(cv, label);
+      b.addEventListener('click', () => {
+        tool = 'place';
+        placeType = type;
+        pendingGuard = null;
+        renderPalette();
+      });
+      paletteEl.append(b);
+    }
+  }
+
+  /* --- Eigenschaften ---------------------------------------------------------- */
+
+  function field(label: string, input: HTMLElement): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'ed-field';
+    const lb = document.createElement('label');
+    lb.textContent = label;
+    wrap.append(lb, input);
+    return wrap;
+  }
+
+  function numInput(value: number, min: number, max: number, step: number, onChange: (v: number) => void): HTMLInputElement {
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.min = String(min);
+    inp.max = String(max);
+    inp.step = String(step);
+    inp.value = String(value);
+    inp.addEventListener('change', () => {
+      const v = Number(inp.value);
+      if (Number.isFinite(v)) {
+        onChange(Math.max(min, Math.min(max, v)));
+        rebuild();
+      }
+    });
+    return inp;
+  }
+
+  function selectInput(value: string, options: Array<[string, string]>, onChange: (v: string) => void): HTMLSelectElement {
+    const sel = document.createElement('select');
+    for (const [v, label] of options) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = label;
+      if (v === value) o.selected = true;
+      sel.append(o);
+    }
+    sel.addEventListener('change', () => {
+      onChange(sel.value);
+      rebuild();
+    });
+    return sel;
+  }
+
+  const DIR_OPTIONS: Array<[string, string]> = [
+    ['n', '↑'],
+    ['e', '→'],
+    ['s', '↓'],
+    ['w', '←'],
+  ];
+
+  function renderProps(): void {
+    if (!draft) return;
+    propsEl.replaceChildren();
+    const f = floor();
+
+    // Ausgewähltes Element
+    const el = f.elements[selected];
+    if (el) {
+      const head = document.createElement('p');
+      head.className = 'ed-group-label';
+      head.textContent = `${t('ed.selected')}: ${t(`el.${el.type}.title` as keyof Dict)}`;
+      propsEl.append(head);
+      const num = (label: string, key: string, min: number, max: number, step = 1, obj: Record<string, unknown> = el) =>
+        propsEl.append(field(label, numInput(Number(obj[key] ?? 0), min, max, step, (v) => (obj[key] = v))));
+
+      if (el.type === 'hole') {
+        const breathing = el.breathing as Record<string, unknown> | undefined;
+        const toggle = selectInput(breathing ? '1' : '0', [
+          ['1', t('ed.f.breathing')],
+          ['0', t('ed.f.static')],
+        ], (v) => {
+          if (v === '1') el.breathing = { offset: 0 };
+          else delete el.breathing;
+          renderProps();
+        });
+        propsEl.append(field(t('ed.f.mode'), toggle));
+        if (breathing) num(t('ed.f.offset'), 'offset', 0, 12, 0.5, breathing);
+      }
+      if (el.type === 'windZone') {
+        if (el.force === undefined) el.force = 1150;
+        propsEl.append(field(t('ed.f.dir'), selectInput(String(el.dir ?? 'e'), DIR_OPTIONS, (v) => (el.dir = v))));
+        num(t('ed.f.force'), 'force', 400, 2400, 50);
+      }
+      if (el.type === 'current') {
+        propsEl.append(field(t('ed.f.dir'), selectInput(String(el.dir ?? 'e'), DIR_OPTIONS, (v) => (el.dir = v))));
+      }
+      if (el.type === 'guard' || el.type === 'listener') num(t('ed.f.speed'), 'speed', 40, 200, 5);
+      if (el.type === 'key' || el.type === 'timedSwitch') {
+        const ids = doorIds();
+        propsEl.append(
+          field(
+            t('ed.f.opens'),
+            selectInput(String(el.opens ?? ''), ids.length ? ids.map((i) => [i, i]) : [['tor1', 'tor1']], (v) => (el.opens = v)),
+          ),
+        );
+      }
+      if (el.type === 'timedSwitch') {
+        if (el.durationS === undefined) el.durationS = 6;
+        num(t('ed.f.duration'), 'durationS', 2, 30, 1);
+      }
+      if (el.type === 'slidingWall') {
+        const cycle = (el.cycle ??= { open: 2.6, closed: 2.2, ramp: 0.6, offset: 0 }) as Record<string, unknown>;
+        num(t('ed.f.openS'), 'open', 1, 12, 0.2, cycle);
+        num(t('ed.f.closedS'), 'closed', 1, 12, 0.2, cycle);
+        num(t('ed.f.offset'), 'offset', 0, 12, 0.2, cycle);
+      }
+      if (el.type === 'anchor') {
+        if (el.r === undefined) el.r = 120;
+        if (el.force === undefined) el.force = 2000;
+        num(t('ed.f.radius'), 'r', 60, 300, 10);
+        num(t('ed.f.force'), 'force', 600, 2400, 100);
+      }
+
+      const del = document.createElement('button');
+      del.className = 'btn btn-ghost';
+      del.textContent = `⌫ ${t('ed.deleteEl')}`;
+      del.addEventListener('click', () => {
+        f.elements.splice(selected, 1);
+        selected = -1;
+        renderProps();
+        rebuild();
+      });
+      propsEl.append(del);
+    }
+
+    // Level-Metadaten
+    const meta = document.createElement('p');
+    meta.className = 'ed-group-label';
+    meta.textContent = t('ed.level');
+    propsEl.append(meta);
+
+    const intro = document.createElement('textarea');
+    intro.value = String(draft.intro ?? '');
+    intro.addEventListener('change', () => {
+      if (intro.value.trim()) draft!.intro = intro.value.trim();
+      else delete draft!.intro;
+    });
+    propsEl.append(field(t('ed.intro'), intro));
+
+    propsEl.append(
+      field(t('ed.par'), numInput(Number(draft.parTimeS ?? 60), 10, 900, 5, (v) => (draft!.parTimeS = v))),
+      field(t('ed.pings'), numInput(Number(draft.pingBudget ?? 3), 0, 9, 1, (v) => (draft!.pingBudget = v))),
+    );
+
+    const sizeRow = document.createElement('div');
+    sizeRow.className = 'ed-row';
+    sizeRow.append(
+      field(t('ed.cols'), numInput(f.size[0], 3, 20, 1, (v) => resize(v, f.size[1]))),
+      field(t('ed.rows'), numInput(f.size[1], 3, 24, 1, (v) => resize(f.size[0], v))),
+    );
+    propsEl.append(sizeRow);
+
+    const reroll = document.createElement('button');
+    reroll.className = 'btn btn-ghost';
+    reroll.textContent = `🎲 ${t('ed.reroll')}`;
+    reroll.addEventListener('click', () => {
+      f.maze.seed = Math.floor(Math.random() * 0x7fffffff);
+      rebuild();
+    });
+    propsEl.append(reroll);
+  }
+
+  // Feld verkleinern/vergrößern: Elemente und Wand-Edits außerhalb fallen weg.
+  function resize(cols: number, rows: number): void {
+    const f = floor();
+    f.size = [cols, rows];
+    const inside = (c: [number, number]) => c[0] < cols && c[1] < rows;
+    const edgeInside = (e: Edge) =>
+      e[0][0] < cols && e[0][1] < rows && (e[1] !== 'e' || e[0][0] < cols - 1) && (e[1] !== 's' || e[0][1] < rows - 1);
+    f.elements = f.elements.filter((el) =>
+      el.cell ? inside(el.cell) : el.edge ? edgeInside(el.edge) : el.patrol ? el.patrol.every(inside) : true,
+    );
+    f.maze.carve = f.maze.carve.filter(edgeInside);
+    f.maze.add = f.maze.add.filter(edgeInside);
+    f.maze.brittle = f.maze.brittle.filter(edgeInside);
+    f.start = [Math.min(f.start[0], cols - 1), Math.min(f.start[1], rows - 1)];
+    if (f.goal) f.goal = [Math.min(f.goal[0], cols - 1), Math.min(f.goal[1], rows - 1)];
+    selected = -1;
+    fitView();
+    renderProps();
+  }
+
+  /* --- Canvas-Gesten: Tap = Aktion, Drag = Pan, Pinch = Zoom ------------------ */
+
+  const pointers = new Map<number, { x: number; y: number; startX: number; startY: number }>();
+  let panning = false;
+  let pinchStart: { dist: number; scale: number } | null = null;
+
+  const toCanvas = (ev: PointerEvent): { x: number; y: number } => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (ev.clientX - rect.left) * renderer.dpr, y: (ev.clientY - rect.top) * renderer.dpr };
+  };
+
+  canvas.addEventListener('pointerdown', (ev) => {
+    canvas.setPointerCapture(ev.pointerId);
+    const p = toCanvas(ev);
+    pointers.set(ev.pointerId, { ...p, startX: p.x, startY: p.y });
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinchStart = { dist: Math.hypot(a!.x - b!.x, a!.y - b!.y), scale: view.scale };
+      panning = true; // kein Tap mehr
+    }
+  });
+  canvas.addEventListener('pointermove', (ev) => {
+    const entry = pointers.get(ev.pointerId);
+    if (!entry) return;
+    const p = toCanvas(ev);
+    const dx = p.x - entry.x;
+    const dy = p.y - entry.y;
+    entry.x = p.x;
+    entry.y = p.y;
+    if (pointers.size === 2 && pinchStart) {
+      const [a, b] = [...pointers.values()];
+      const dist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+      const mid = { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 };
+      const next = Math.max(0.15, Math.min(4, (pinchStart.scale * dist) / pinchStart.dist));
+      view.ox = mid.x - ((mid.x - view.ox) / view.scale) * next;
+      view.oy = mid.y - ((mid.y - view.oy) / view.scale) * next;
+      view.scale = next;
+      paint();
+      return;
+    }
+    if (!panning && Math.hypot(p.x - entry.startX, p.y - entry.startY) > 12 * renderer.dpr) panning = true;
+    if (panning && pointers.size === 1) {
+      view.ox += dx;
+      view.oy += dy;
+      paint();
+    }
+  });
+  const endPointer = (ev: PointerEvent): void => {
+    const entry = pointers.get(ev.pointerId);
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinchStart = null;
+    if (!entry) return;
+    if (!panning && pointers.size === 0) {
+      const wx = (entry.x - view.ox) / view.scale;
+      const wy = (entry.y - view.oy) / view.scale;
+      act(wx, wy);
+    }
+    if (pointers.size === 0) panning = false;
+  };
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) * renderer.dpr;
+    const my = (ev.clientY - rect.top) * renderer.dpr;
+    const next = Math.max(0.15, Math.min(4, view.scale * (ev.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    view.ox = mx - ((mx - view.ox) / view.scale) * next;
+    view.oy = my - ((my - view.oy) / view.scale) * next;
+    view.scale = next;
+    paint();
+  });
+
+  /* --- Kopfzeile --------------------------------------------------------------- */
+
+  nameInput.addEventListener('change', () => {
+    if (draft) draft.name = nameInput.value.trim() || t('ed.untitled');
+  });
+
+  $('edClose').addEventListener('click', () => {
+    panel.classList.add('hidden');
+  });
+
+  $('edSave').addEventListener('click', () => {
+    if (!draft) return;
+    draft.name = nameInput.value.trim() || t('ed.untitled');
+    flash(workshop.save(draft as unknown as Record<string, unknown>) ? t('ed.saved') : t('ed.saveFailed'), false);
+    opts.onSaved();
+  });
+
+  $('edTest').addEventListener('click', () => {
+    if (!draft || loadError) return;
+    draft.name = nameInput.value.trim() || t('ed.untitled');
+    opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel);
+  });
+
+  window.addEventListener('resize', () => {
+    if (!panel.classList.contains('hidden')) paint();
+  });
+
+  return {
+    open(def: RawLevel): void {
+      draft = JSON.parse(JSON.stringify(def)) as RawLevel;
+      selected = -1;
+      pendingGuard = null;
+      tool = 'place';
+      placeType = 'hole';
+      nameInput.value = String(draft.name ?? '');
+      panel.classList.remove('hidden');
+      applyI18n(panel);
+      renderPalette();
+      renderProps();
+      // Erst nach dem Layout passt das Canvas-Rect (ResizeObserver des
+      // Renderers setzt das Backing) – dann einpassen und zeichnen.
+      requestAnimationFrame(() => {
+        fitView();
+        rebuild();
+      });
+    },
+    reopen(): void {
+      if (!draft) return;
+      panel.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        fitView();
+        rebuild();
+      });
+    },
+    isOpen(): boolean {
+      return !panel.classList.contains('hidden');
+    },
+  };
+}
