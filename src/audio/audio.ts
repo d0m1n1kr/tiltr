@@ -34,6 +34,8 @@ export class GameAudio {
   private sniffLfo!: OscillatorNode;
   private iceGain!: GainNode;
   private iceVibrato!: OscillatorNode;
+  private anchorGain!: GainNode;
+  private anchorPanner!: PannerNode;
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
@@ -223,6 +225,111 @@ export class GameAudio {
     }
     this.iceVibrato.start();
     this.iceGain.connect(this.master);
+
+    // Sog-Anker: elektrisches Brummen – zwei fast gleiche Rechtecke schweben
+    // gegeneinander (Netzbrumm-Charakter), klar getrennt von Wächter-Sägezahn
+    // und Loch-Grollen.
+    this.anchorGain = this.ctx.createGain();
+    this.anchorGain.gain.value = 0;
+    this.anchorPanner = this.panner();
+    const anchorFilter = this.ctx.createBiquadFilter();
+    anchorFilter.type = 'bandpass';
+    anchorFilter.frequency.value = 420;
+    anchorFilter.Q.value = 1.2;
+    for (const f of [96, 97.3]) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = f;
+      const g = this.ctx.createGain();
+      g.gain.value = 0.5;
+      osc.connect(g).connect(anchorFilter);
+      osc.start();
+    }
+    anchorFilter.connect(this.anchorGain);
+    this.anchorGain.connect(this.anchorPanner).connect(this.master);
+  }
+
+  // Sog-Anker: closeness01 = 1 im Zentrum, 0 = außer Hörweite.
+  setAnchor(closeness01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.anchorGain.gain.setTargetAtTime(Math.min(0.45, closeness01 ** 1.5 * 0.5), t, 0.1);
+    if (closeness01 > 0) this.place(this.anchorPanner, dx, dy);
+  }
+
+  // Echo-Kristall eingesammelt: glasklarer Glockenschlag mit Obertönen –
+  // heller und einzelner als das Gem-Arpeggio.
+  collectCrystal(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [2637, 5274, 7911].forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const g = [0.3, 0.12, 0.05][i]!;
+      gain.gain.setValueAtTime(g, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7 - i * 0.15);
+      osc.connect(gain).connect(this.master);
+      osc.start(t);
+      osc.stop(t + 0.75);
+    });
+  }
+
+  // Glasboden knackt beim ersten Überrollen: kurzer, heller Riss.
+  glassCrack(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('white');
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 2600;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    src.connect(filter).connect(gain).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.1);
+    const ping = this.ctx.createOscillator();
+    ping.type = 'sine';
+    ping.frequency.setValueAtTime(3200, t);
+    ping.frequency.exponentialRampToValueAtTime(2300, t + 0.08);
+    const pg = this.ctx.createGain();
+    pg.gain.setValueAtTime(0.18, t);
+    pg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    ping.connect(pg).connect(this.master);
+    ping.start(t);
+    ping.stop(t + 0.14);
+  }
+
+  // Glasboden zerbricht: Splittern – fallende Glaspartials plus Scherbenregen.
+  glassShatter(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [3600, 2900, 2200, 1500].forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, t + i * 0.04);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.55, t + i * 0.04 + 0.25);
+      const gain = this.ctx!.createGain();
+      gain.gain.setValueAtTime(0.16, t + i * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.04 + 0.3);
+      osc.connect(gain).connect(this.master);
+      osc.start(t + i * 0.04);
+      osc.stop(t + i * 0.04 + 0.32);
+    });
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('white');
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 3200;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    src.connect(filter).connect(gain).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.5);
   }
 
   // Nebel: fog01 = 0 klare Luft, 1 mitten im Nebelkern. Exponentiell von
@@ -801,6 +908,7 @@ export class GameAudio {
     this.setCurrent(0, 0, 0);
     this.setListener(0, 0, 0, 0);
     this.setIce(0);
+    this.setAnchor(0, 0, 0);
     this.setRolling(0);
   }
 

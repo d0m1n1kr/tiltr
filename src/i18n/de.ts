@@ -62,6 +62,8 @@ export const de = {
   'st.portal': '✦ Portal',
   'st.wallDown': 'Wand eingestürzt! 🧱',
   'st.switch': '⏱ Zeitschloss: Tür {n} s offen!',
+  'st.crystal': '✦ Echo-Kristall: +1 Ping!',
+  'st.glass': 'Es knackt unter dir … 🩹',
 
   /* --- Ergebnis-Karten --- */
   'res.time': 'Zeit: {time}',
@@ -211,6 +213,15 @@ export const de = {
   'el.ice.title': 'Eisfläche',
   'el.ice.desc':
     'Spiegelglatt: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Signatur: kristallines Sirren unter dem Ball, das mit dem Tempo anschwillt. Plane den Schwung, bevor du ihn nimmst.',
+  'el.echoCrystal.title': 'Echo-Kristall',
+  'el.echoCrystal.desc':
+    'Abgefüllter Ping: Einsammeln gibt +1 Echo-Ping – auch über den Rundenvorrat hinaus. Signatur: heller, einzelner Glockenton als Ping-Antwort, ein glasklarer Anschlag beim Einsammeln. Wer blind spielen will, lässt ihn liegen.',
+  'el.anchor.title': 'Sog-Anker',
+  'el.anchor.desc':
+    'Zieht dich in seinem Radius an – je näher, desto zäher. Er verschluckt dich nicht, aber er kostet Kraft und Zeit; wer hindurchhält, kommt immer wieder frei. Signatur: elektrisches Brummen, das mit der Nähe anschwillt.',
+  'el.glass.title': 'Glasboden',
+  'el.glass.desc':
+    'Eine Bodenzelle aus Glas: Beim ersten Überrollen knackt sie warnend, beim zweiten zerbricht sie – und wird zum offenen Loch, in das du stürzt. Einmal ist frei, zweimal ist gefallen. Signatur: helles Knacken, dann Splittern.',
 
   /* --- Welten & Level --- */
   'world.w1': 'Welt 1 – Die Tiefe erwacht',

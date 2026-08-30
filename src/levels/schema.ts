@@ -136,6 +136,27 @@ export const iceDef = z.object({
   type: z.literal('ice'),
 });
 
+export const echoCrystalDef = z.object({
+  ...base,
+  type: z.literal('echoCrystal'),
+  r: z.number().positive().default(16),
+});
+
+export const anchorDef = z.object({
+  ...base,
+  type: z.literal('anchor'),
+  /** Wirkradius in Welteinheiten */
+  r: z.number().positive().default(120),
+  /** Maximaler Sog im Zentrum (px/s²) – MUSS unter der Neigungs-
+   *  Beschleunigung (2600) bleiben: ein Anker ist zäh, nie eine Falle. */
+  force: z.number().positive().max(2400).default(2000),
+});
+
+export const glassDef = z.object({
+  ...base,
+  type: z.literal('glass'),
+});
+
 export const elementDef = z.discriminatedUnion('type', [
   holeDef,
   windZoneDef,
@@ -152,6 +173,9 @@ export const elementDef = z.discriminatedUnion('type', [
   listenerDef,
   fogZoneDef,
   iceDef,
+  echoCrystalDef,
+  anchorDef,
+  glassDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -169,6 +193,9 @@ export type CurrentDef = z.infer<typeof currentDef>;
 export type ListenerDef = z.infer<typeof listenerDef>;
 export type FogZoneDef = z.infer<typeof fogZoneDef>;
 export type IceDef = z.infer<typeof iceDef>;
+export type EchoCrystalDef = z.infer<typeof echoCrystalDef>;
+export type AnchorDef = z.infer<typeof anchorDef>;
+export type GlassDef = z.infer<typeof glassDef>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */

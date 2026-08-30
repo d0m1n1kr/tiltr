@@ -142,6 +142,9 @@ export function generateMpLevel(seed: number, mode: MpMode): LevelDef {
   for (let i = 0; i < (mode === 'coop' ? 1 : 2); i++) {
     elements.push({ type: 'windZone', cell: pickCell(rng, cols, rows, forbidden), dir: dirs[Math.floor(rng() * 4)]!, force: 1150 });
   }
+  // M11: ein Echo-Kristall als Bonus – reiner Pickup, berührt die
+  // Coop-Siegel-Invarianten nicht (Ziel/Start sind ohnehin verboten).
+  elements.push({ type: 'echoCrystal', cell: pickCell(rng, cols, rows, forbidden) });
 
   return parseLevel({
     id: `mpq-${mode}-${seed}`,

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../src/levels/schema';
 import { loadLevel } from '../src/levels/loader';
-import { generateQuickLevel } from '../src/levels/quick';
+import { generateQuickLevel, PRESETS, type Preset } from '../src/levels/quick';
 import { generateMaze, mazeToWalls, setWall, solveMaze } from '../src/core/maze';
 import { mulberry32 } from '../src/core/rng';
+import { cellKey, reachable } from './helpers';
 
 const minimalLevel = {
   id: 't-1',
@@ -199,6 +200,38 @@ describe('M10-Elemente (Horcher, Nebelzone, Eisfläche)', () => {
   });
 });
 
+describe('M11-Elemente (Echo-Kristall, Sog-Anker, Glasboden)', () => {
+  it('Loader baut Kristalle, Anker (mit Radius/Kraft) und Glasboden (intakt)', () => {
+    const def = parseLevel({
+      ...minimalLevel,
+      floors: [
+        {
+          ...minimalLevel.floors[0],
+          elements: [
+            { type: 'echoCrystal', cell: [1, 1] },
+            { type: 'anchor', cell: [2, 1] },
+            { type: 'glass', cell: [1, 2] },
+          ],
+        },
+      ],
+    });
+    const { world } = loadLevel(def);
+    expect(world.crystals).toHaveLength(1);
+    expect(world.crystals[0]!.r).toBe(16); // Default
+    expect(world.anchors[0]).toMatchObject({ x: 250, y: 150, r: 120, force: 2000 });
+    expect(world.glass[0]).toMatchObject({ x: 100, y: 200, state: 0, wasOn: false });
+  });
+
+  it('Schema deckelt die Anker-Kraft unter der Neigungs-Beschleunigung', () => {
+    expect(() =>
+      parseLevel({
+        ...minimalLevel,
+        floors: [{ ...minimalLevel.floors[0], elements: [{ type: 'anchor', cell: [1, 1], force: 3000 }] }],
+      }),
+    ).toThrow();
+  });
+});
+
 describe('Maze-Edits (carve/add)', () => {
   it('setWall hält Nachbarzellen konsistent', () => {
     const cells = generateMaze(3, 3, mulberry32(1));
@@ -241,6 +274,28 @@ describe('Schnelles Spiel', () => {
       for (const cp of world.checkpoints) {
         const cell = { x: Math.floor(cp.x / 100), y: Math.floor(cp.y / 100) };
         expect(path).toContainEqual(cell);
+      }
+    }
+  });
+
+  it('M11: Kristalle/Anker/Glas nach Preset – Anker und Glas beweisbar abseits der Pflichtwege', () => {
+    for (const seed of [1, 7, 42, 99, 555, 1234, 4711, 90210]) {
+      for (const preset of ['easy', 'normal', 'hard'] as Preset[]) {
+        const def = generateQuickLevel(seed, preset);
+        const floor = def.floors[0]!;
+        const count = (t: string) => floor.elements.filter((e) => e.type === t).length;
+        expect(count('echoCrystal'), `${preset}/${seed}`).toBe(PRESETS[preset].crystals);
+        expect(count('anchor'), `${preset}/${seed}`).toBe(PRESETS[preset].anchors);
+        expect(count('glass'), `${preset}/${seed}`).toBe(PRESETS[preset].glass);
+        // Konservatives Modell: Glas- und Anker-Zellen komplett gesperrt –
+        // Ziel, Checkpoints UND Kristalle müssen erreichbar bleiben.
+        const safe = reachable(def, { brittleOpen: false, doorsOpen: true, hazardsBlocked: true });
+        expect(safe.has(cellKey(0, floor.goal!)), `${preset}/${seed}: Ziel`).toBe(true);
+        for (const el of floor.elements) {
+          if (el.type === 'checkpoint' || el.type === 'echoCrystal') {
+            expect(safe.has(cellKey(0, el.cell)), `${preset}/${seed}: ${el.type} ${el.cell}`).toBe(true);
+          }
+        }
       }
     }
   });

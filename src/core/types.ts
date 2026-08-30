@@ -175,6 +175,33 @@ export interface IcePatch {
   h: number;
 }
 
+/** Sog-Anker: zieht den Ball im Radius an – Kraft bleibt unter der
+ *  Neigungs-Beschleunigung, man kommt immer (mühsam) wieder heraus. */
+export interface Anchor {
+  x: number;
+  y: number;
+  /** Wirkradius */
+  r: number;
+  /** Maximaler Sog im Zentrum (px/s²) */
+  force: number;
+  litFrom?: number;
+  litUntil?: number;
+}
+
+/** Glasboden: 1. Überrollen knackt, 2. zerbricht die Zelle zum offenen Loch. */
+export interface GlassPlate {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** 0 = intakt, 1 = geknackt, 2 = zerbrochen (durch ein Loch ersetzt) */
+  state: 0 | 1 | 2;
+  /** Ball war im letzten Frame drauf (Kanten-Trigger fürs Überrollen) */
+  wasOn: boolean;
+  litFrom?: number;
+  litUntil?: number;
+}
+
 export interface Transporter {
   x: number;
   y: number;

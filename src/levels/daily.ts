@@ -4,7 +4,7 @@
 // Maze voll zusammenhängend – die Kette ist damit beweisbar lösbar).
 // Schwierigkeit steigt über die Woche: Montag sanft, Sonntag das volle Programm.
 
-import { generateMaze, type Cell } from '../core/maze';
+import { generateMaze, solveMaze, type Cell } from '../core/maze';
 import { mulberry32, seedFromString, type Rng } from '../core/rng';
 import { BALL_R } from '../core/constants';
 import type { ElementDef, LevelDef } from './schema';
@@ -29,18 +29,42 @@ interface DayParams {
   brittleChance: number;
   pings: number;
   gems: number;
+  /** M11: neue Elemente stufenweise über die Woche */
+  crystals: number;
+  anchors: number;
+  glass: number;
 }
 
 // Index = getUTCDay(): 0 = Sonntag.
 const WEEKDAYS: DayParams[] = [
-  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5 },
-  { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2 },
-  { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2 },
-  { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3 },
-  { label: 'Donnerstag – drei Ebenen tief', floors: 3, cols: 5, rows: 6, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 4, gems: 3 },
-  { label: 'Freitag – es wird eng', floors: 3, cols: 6, rows: 7, holes: 4, wind: 2, guards: 1, brittleChance: 0.12, pings: 3, gems: 3 },
-  { label: 'Samstag – tief und wachsam', floors: 3, cols: 6, rows: 8, holes: 5, wind: 2, guards: 2, brittleChance: 0.15, pings: 3, gems: 4 },
+  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5, crystals: 2, anchors: 2, glass: 2 },
+  { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0 },
+  { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0 },
+  { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 0 },
+  { label: 'Donnerstag – drei Ebenen tief', floors: 3, cols: 5, rows: 6, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 4, gems: 3, crystals: 1, anchors: 1, glass: 1 },
+  { label: 'Freitag – es wird eng', floors: 3, cols: 6, rows: 7, holes: 4, wind: 2, guards: 1, brittleChance: 0.12, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 1 },
+  { label: 'Samstag – tief und wachsam', floors: 3, cols: 6, rows: 8, holes: 5, wind: 2, guards: 2, brittleChance: 0.15, pings: 3, gems: 4, crystals: 2, anchors: 1, glass: 2 },
 ];
+
+// Zelle mit Zusatzfilter: Kandidaten aufzählen (terminiert garantiert);
+// null, wenn keine passende Zelle mehr frei ist – dann wird das Element
+// schlicht weggelassen, der Filter ist eine Invariante.
+function pickCellWhere(
+  rng: Rng,
+  cols: number,
+  rows: number,
+  forbidden: Set<number>,
+  keep: (key: number) => boolean,
+): [number, number] | null {
+  const candidates: number[] = [];
+  for (let key = 0; key < cols * rows; key++) {
+    if (!forbidden.has(key) && keep(key)) candidates.push(key);
+  }
+  if (!candidates.length) return null;
+  const key = candidates[Math.floor(rng() * candidates.length)]!;
+  forbidden.add(key);
+  return [key % cols, Math.floor(key / cols)];
+}
 
 function pickCell(rng: Rng, cols: number, rows: number, forbidden: Set<number>): [number, number] {
   for (;;) {
@@ -103,6 +127,9 @@ export function generateDailyLevel(date: string): LevelDef {
   const windPer = deal(p.wind);
   const gemsPer = deal(p.gems);
   const guardsPer = deal(p.guards);
+  const crystalsPer = deal(p.crystals);
+  const anchorsPer = deal(p.anchors);
+  const glassPer = deal(p.glass);
 
   // Landepunkte der Transporter-Kette vorab würfeln (Ebene k -> k+1);
   // auch der Start auf Ebene 1 ist zufällig, nicht immer oben links.
@@ -159,6 +186,28 @@ export function generateDailyLevel(date: string): LevelDef {
         dir: windDirs[Math.floor(rng() * 4)]!,
         force: 1150,
       });
+    }
+
+    // M11: Echo-Kristalle frei; Sog-Anker und Glasboden beweisbar ABSEITS
+    // des Pflichtwegs dieser Ebene (Ankunft -> Ausgang; im perfekten Maze
+    // eindeutig). So bleibt jeder Tag garantiert lösbar, Glas ist nie der
+    // einzige Weg.
+    for (let i = 0; i < crystalsPer[f]!; i++) {
+      elements.push({ type: 'echoCrystal', cell: pickCell(rng, cols, rows, forbidden), r: 16 });
+    }
+    const spine = new Set(
+      solveMaze(cells, cols, rows, { x: landing[0], y: landing[1] }, { x: exit[0], y: exit[1] }).map(
+        (c) => c.y * cols + c.x,
+      ),
+    );
+    const offPath = (key: number) => !spine.has(key);
+    for (let i = 0; i < anchorsPer[f]!; i++) {
+      const cell = pickCellWhere(rng, cols, rows, forbidden, offPath);
+      if (cell) elements.push({ type: 'anchor', cell, r: 120, force: 2000 });
+    }
+    for (let i = 0; i < glassPer[f]!; i++) {
+      const cell = pickCellWhere(rng, cols, rows, forbidden, offPath);
+      if (cell) elements.push({ type: 'glass', cell });
     }
 
     floors.push({

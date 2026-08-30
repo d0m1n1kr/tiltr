@@ -59,6 +59,8 @@ export const fr: Dict = {
   'st.portal': '✦ Portail',
   'st.wallDown': 'Mur effondré ! 🧱',
   'st.switch': '⏱ Serrure horlogère : porte ouverte {n} s !',
+  'st.crystal': '✦ Cristal d’écho : +1 ping !',
+  'st.glass': 'Ça craque sous toi… 🩹',
 
   /* --- Cartes de résultat --- */
   'res.time': 'Temps : {time}',
@@ -208,6 +210,15 @@ export const fr: Dict = {
   'el.ice.title': 'Plaque de glace',
   'el.ice.desc':
     'Lisse comme un miroir : une fois lancé, tu continues de glisser – freiner devient laborieux, diriger devient flou. Signature : un sifflement cristallin sous la bille, qui enfle avec la vitesse. Prépare ton élan avant de le prendre.',
+  'el.echoCrystal.title': 'Cristal d’écho',
+  'el.echoCrystal.desc':
+    'Du ping en bouteille : le ramasser donne +1 ping d’écho – même au-delà de la réserve de la manche. Signature : un timbre de cloche clair et unique en réponse au ping, une frappe limpide au ramassage. Tu vises l’étoile aveugle ? Laisse-le.',
+  'el.anchor.title': 'Ancre d’attraction',
+  'el.anchor.desc':
+    'Elle t’attire dans son rayon – plus tu es proche, plus c’est pesant. Elle ne t’avale jamais, mais elle coûte force et temps ; en insistant, on s’en libère toujours. Signature : un bourdonnement électrique qui enfle avec la proximité.',
+  'el.glass.title': 'Sol de verre',
+  'el.glass.desc':
+    'Une case de sol en verre : au premier passage elle craque en guise d’avertissement, au second elle vole en éclats – laissant un trou ouvert où tu tombes. Une fois ça passe, deux fois tu tombes. Signature : un craquement clair, puis un fracas.',
 
   /* --- Mondes & niveaux --- */
   'world.w1': 'Monde 1 – Les profondeurs s’éveillent',

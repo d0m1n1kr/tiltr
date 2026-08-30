@@ -19,7 +19,9 @@ automatisch per GitHub Actions (Tests → Build → Pages).
 ## Spielmodi
 
 - **⚡ Schnelles Spiel** – prozedural generiertes Labyrinth in drei
-  Schwierigkeiten, mit Bestzeiten pro Stufe.
+  Schwierigkeiten, mit Bestzeiten pro Stufe. Höhere Stufen mischen
+  Echo-Kristalle, Sog-Anker und Glasböden hinein – Anker und Glas
+  beweisbar abseits des Pflichtwegs platziert.
 - **📅 Tages-Challenge** – Seed = UTC-Datum: ein Level für alle, jeden Tag
   ein neues, komplett serverlos und reproduzierbar. Der erste Zieleinlauf
   zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
@@ -89,6 +91,9 @@ Leertaste für den Ping.
 | Horcher | jagt dich, solange du rollst – er hört dich sogar durch Wände; stehst du still, zieht er sich zurück; Schnüffeln schwillt mit deinem Tempo an |
 | Nebelzone | dämpft ALLE Klänge (auch den Ziel-Sonar) über einen globalen Lowpass; kein Physik-Einfluss – sie nimmt dir nur die Ohren |
 | Eisfläche | reibungsarmer Boden: du gleitest weiter, Bremsen und Lenken werden schwammig; kristallines Sirren unter dem Ball |
+| Echo-Kristall | abgefüllter Ping: Einsammeln gibt +1 Echo-Ping, auch über das Rundenbudget hinaus; heller einzelner Glockenton |
+| Sog-Anker | zieht im Radius an – immer überwindbar (Kraft bleibt unter voller Neigung), kostet aber Zeit; elektrisches Brummen schwillt mit der Nähe an |
+| Glasboden | erstes Überrollen knackt warnend, das zweite zersplittert ihn zum offenen Loch; helles Knacken, dann Splittern |
 | Blind-Stern 🌑 | optionaler vierter Stern pro Kampagnen-Level: geschafft ohne einen einzigen Echo-Ping |
 | Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Halo mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
 | Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
@@ -134,7 +139,8 @@ Schnelles Spiel ✓ → M4 Kampagne Welt 1 ✓ → M5 Ebenen/Transporter + Welt 
 M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉 →
 M9 Welt 3 „Das Räderwerk" (Schiebewände, Zeitschlösser, Strömungen) +
 Geist-Replay ✓ → M10 Welt 4 „Die Stille" (Horcher, Nebel, Eis) +
-Blind-Stern ✓
+Blind-Stern ✓ → M11 Echo-Kristall, Sog-Anker, Glasboden +
+Generator-Integration ✓
 
 ---
 

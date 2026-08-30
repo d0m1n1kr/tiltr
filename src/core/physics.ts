@@ -3,10 +3,12 @@
 // Deterministisch: keine Zeit-/Zufallsquellen außer den übergebenen Parametern.
 
 import type {
+  Anchor,
   Checkpoint,
   Collectible,
   Current,
   FogZone,
+  GlassPlate,
   Goal,
   Guard,
   Hole,
@@ -45,6 +47,9 @@ export class World {
   listeners: Listener[] = [];
   fogZones: FogZone[] = [];
   ice: IcePatch[] = [];
+  crystals: Collectible[] = [];
+  anchors: Anchor[] = [];
+  glass: GlassPlate[] = [];
   keys: Key[] = [];
   gems: Collectible[] = [];
   transporters: Transporter[] = [];
@@ -118,6 +123,19 @@ export class World {
 
       this.updateGuards(h);
       this.updateListeners(h);
+
+      // Sog-Anker: Anziehung wächst zum Zentrum hin, bleibt aber immer unter
+      // der Neigungs-Beschleunigung – zäh, nie eine Falle.
+      for (const a of this.anchors) {
+        const adx = a.x - b.x,
+          ady = a.y - b.y;
+        const ad = Math.hypot(adx, ady);
+        if (ad < a.r && ad > 1e-6) {
+          const pull = a.force * (1 - ad / a.r);
+          b.vx += (adx / ad) * pull * h;
+          b.vy += (ady / ad) * pull * h;
+        }
+      }
 
       // Offene Löcher ziehen den Ball leicht an, sobald er über den Rand rollt.
       // openness (0 zu, 1 offen) skaliert den Sog; fehlt es, gilt das Loch als offen.

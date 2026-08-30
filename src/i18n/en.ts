@@ -59,6 +59,8 @@ export const en: Dict = {
   'st.portal': '✦ Portal',
   'st.wallDown': 'Wall collapsed! 🧱',
   'st.switch': '⏱ Time lock: door open for {n}s!',
+  'st.crystal': '✦ Echo crystal: +1 ping!',
+  'st.glass': 'It cracks beneath you… 🩹',
 
   /* --- Result cards --- */
   'res.time': 'Time: {time}',
@@ -208,6 +210,15 @@ export const en: Dict = {
   'el.ice.title': 'Ice patch',
   'el.ice.desc':
     'Mirror-smooth: once you get rolling, you keep gliding – braking turns sluggish, steering mushy. Signature: a crystalline whirring under the ball that swells with speed. Plan your momentum before you take it.',
+  'el.echoCrystal.title': 'Echo crystal',
+  'el.echoCrystal.desc':
+    'Bottled ping: collecting it grants +1 echo ping – even beyond the round budget. Signature: a bright, single bell tone as its ping response, a glass-clear strike when collected. Going for the blind star? Leave it be.',
+  'el.anchor.title': 'Pull anchor',
+  'el.anchor.desc':
+    'Pulls you in within its radius – the closer, the heavier. It never swallows you, but it costs strength and time; push through and you always get free. Signature: an electric hum that swells with proximity.',
+  'el.glass.title': 'Glass floor',
+  'el.glass.desc':
+    'A floor cell made of glass: the first roll-over cracks it as a warning, the second shatters it – leaving an open hole you fall into. Once is free, twice is fallen. Signature: a bright crack, then shattering.',
 
   /* --- Worlds & levels --- */
   'world.w1': 'World 1 – The Deep Awakes',

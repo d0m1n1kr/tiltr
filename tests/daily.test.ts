@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateDailyLevel, todayUTC, formatDate } from '../src/levels/daily';
 import { loadLevel } from '../src/levels/loader';
-import { buildFloorCells, expectAllReachable } from './helpers';
+import { buildFloorCells, cellKey, expectAllReachable, reachable } from './helpers';
 
 // Drei Wochen ab Montag, 5.1.2026 – deckt jeden Wochentag dreimal ab.
 const DATES = Array.from({ length: 21 }, (_, i) => {
@@ -62,6 +62,24 @@ describe('Tages-Challenge', () => {
               x += dx;
               y += dy;
             }
+          }
+        }
+      });
+    }
+  });
+
+  it('M11: Ziel und Checkpoints bleiben MIT gesperrten Glas-/Anker-Zellen erreichbar', () => {
+    // Glasboden zerbricht dauerhaft zum Loch, der Anker zieht – beide dürfen
+    // deshalb nie auf einem Pflichtweg liegen. Konservatives Modell: ihre
+    // Zellen sind komplett gesperrt.
+    for (const date of DATES) {
+      const def = generateDailyLevel(date);
+      const safe = reachable(def, { brittleOpen: false, doorsOpen: true, hazardsBlocked: true });
+      def.floors.forEach((floor, fl) => {
+        if (floor.goal) expect(safe.has(cellKey(fl, floor.goal)), `${date}: Ziel E${fl}`).toBe(true);
+        for (const el of floor.elements) {
+          if (el.type === 'checkpoint' || el.type === 'transporter') {
+            expect(safe.has(cellKey(fl, el.cell)), `${date}: ${el.type} E${fl} ${el.cell}`).toBe(true);
           }
         }
       });

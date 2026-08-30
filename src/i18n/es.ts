@@ -59,6 +59,8 @@ export const es: Dict = {
   'st.portal': '✦ Portal',
   'st.wallDown': '¡Muro derrumbado! 🧱',
   'st.switch': '⏱ Cerradura de tiempo: ¡puerta abierta {n} s!',
+  'st.crystal': '✦ Cristal de eco: ¡+1 ping!',
+  'st.glass': 'Cruje bajo tus pies… 🩹',
 
   /* --- Tarjetas de resultado --- */
   'res.time': 'Tiempo: {time}',
@@ -208,6 +210,15 @@ export const es: Dict = {
   'el.ice.title': 'Placa de hielo',
   'el.ice.desc':
     'Liso como un espejo: una vez en marcha, sigues deslizándote – frenar se vuelve pesado, girar impreciso. Firma: un zumbido cristalino bajo la bola que crece con la velocidad. Planea el impulso antes de tomarlo.',
+  'el.echoCrystal.title': 'Cristal de eco',
+  'el.echoCrystal.desc':
+    'Ping embotellado: recogerlo da +1 ping de eco – incluso por encima de la reserva de la ronda. Firma: una campanada clara y única como respuesta al ping, un golpe cristalino al recogerlo. ¿Vas a por la estrella ciega? Déjalo estar.',
+  'el.anchor.title': 'Ancla de succión',
+  'el.anchor.desc':
+    'Te atrae dentro de su radio – cuanto más cerca, más pesado. Nunca te traga, pero cuesta fuerza y tiempo; si insistes, siempre te liberas. Firma: un zumbido eléctrico que crece con la cercanía.',
+  'el.glass.title': 'Suelo de cristal',
+  'el.glass.desc':
+    'Una celda de suelo de cristal: al primer paso cruje como aviso, al segundo se hace añicos – dejando un agujero abierto al que caes. Una vez pasa, dos veces caes. Firma: un crujido claro y luego el estallido.',
 
   /* --- Mundos y niveles --- */
   'world.w1': 'Mundo 1 – Las profundidades despiertan',

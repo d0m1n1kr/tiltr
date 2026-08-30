@@ -18,7 +18,9 @@ automatically via GitHub Actions (tests → build → pages).
 ## Game modes
 
 - **⚡ Quick Game** — a procedurally generated maze in three difficulties,
-  with best times per difficulty.
+  with best times per difficulty. Higher difficulties mix in echo crystals,
+  pull anchors and glass floors — anchors and glass provably placed off the
+  required path.
 - **📅 Daily Challenge** — seed = UTC date: one level for everyone, a new
   one every day, fully serverless and reproducible. Your first finish is
   the daily score, streaks 🔥 reward playing daily. Share links
@@ -86,6 +88,9 @@ On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 | Listener | hunts you while you roll — it hears you even through walls; stand still and it withdraws; sniffing that swells with your own speed |
 | Fog zone | muffles ALL sounds (even the goal sonar) through one global lowpass; no physics effect — it just takes your ears |
 | Ice patch | low-friction floor: you keep gliding, braking and steering turn mushy; crystalline whirring under the ball |
+| Echo crystal | bottled ping: collecting it grants +1 echo ping, even beyond the round budget; bright single bell tone |
+| Pull anchor | drags you within its radius — always escapable (its force stays below full tilt), but it costs time; electric hum swells with proximity |
+| Glass floor | first roll-over cracks it as a warning, the second shatters it into an open hole; bright crack, then shattering |
 | Blind star 🌑 | optional fourth star per campaign level: finish without a single echo ping |
 | Ghost replay | your best time per level rolls along as a faint halo (quick game, daily and campaign); stored locally, beaten only by a faster run |
 | Pressure plate | multiplayer element: held, it opens the linked partner door — release and it closes; click on entry, the door audibly slides |
@@ -129,7 +134,8 @@ quick game ✓ → M4 campaign world 1 ✓ → M5 floors/transporters + world 2 
 → M6 daily challenge + share links ✓ → M7 multiplayer co-op & race ✓ →
 M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉 →
 M9 world 3 "The Clockwork" (sliding walls, time locks, currents) + ghost
-replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓
+replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓ →
+M11 echo crystal, pull anchor, glass floor + generator integration ✓
 
 ---
 

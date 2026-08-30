@@ -37,6 +37,7 @@ const PORTAL_HEAR = CELL * 2;
 const CURRENT_HEAR = CELL * 2; // Hörweite des Strömungs-Pulsierens
 const SLIDE_HEAR = CELL * 2.2; // Hörweite von Schleifen/Warn-Takt der Schiebewände
 const LISTENER_HEAR = CELL * 2.4; // Hörweite des Horcher-Schnüffelns
+const ANCHOR_HEAR = CELL * 0.8; // Zusatz-Hörweite ÜBER den Wirkradius hinaus
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -326,6 +327,7 @@ function showMenu(): void {
   audio.setListener(0, 0, 0, 0);
   audio.setIce(0);
   audio.setFog(0);
+  audio.setAnchor(0, 0, 0);
   hideInterstitial();
   hud.classList.add('hidden');
   overlay.classList.remove('hidden');
@@ -720,6 +722,21 @@ function firePing(now: number): void {
   for (const sw of world.switches) reveal(sw, 520, true);
   // Horcher: dunkler als der Wächter (der antwortet mit 240).
   for (const l of world.listeners) reveal(l, 360);
+  // Echo-Kristall: heller, einzelner Glockenton – noch über dem Gem.
+  for (const c of world.crystals) if (!c.collected) reveal(c, 2637);
+  // Sog-Anker: tiefes, elektrisches Echo.
+  for (const a of world.anchors) reveal(a, 200);
+  // Glasboden: gläsern-heller Einzelblip.
+  for (const g of world.glass) {
+    if (g.state === 2) continue;
+    const gx = g.x + g.w / 2,
+      gy = g.y + g.h / 2;
+    const dist = Math.hypot(b.x - gx, b.y - gy);
+    if (dist > PING_RANGE) continue;
+    g.litFrom = now + (dist / PING_SPEED) * 1000;
+    g.litUntil = g.litFrom + 1200;
+    reflections.push({ dx: gx - b.x, dy: gy - b.y, dist, freq: 1150 });
+  }
   for (const t of world.transporters) {
     const dist = Math.hypot(b.x - t.x, b.y - t.y);
     if (dist > PING_RANGE) continue;
@@ -1166,6 +1183,7 @@ function mpCheckResult(): void {
   audio.setListener(0, 0, 0, 0);
   audio.setIce(0);
   audio.setFog(0);
+  audio.setAnchor(0, 0, 0);
   const mine = mp.localElapsed ?? 0;
   const theirs = mp.remote.elapsed ?? 0;
   let title: string;
@@ -1396,6 +1414,57 @@ function frame(now: number): void {
       }
     }
 
+    // Echo-Kristalle: +1 Ping, auch über das Rundenbudget hinaus.
+    for (const c of world.crystals) {
+      if (c.collected) continue;
+      if (Math.hypot(c.x - world.ball.x, c.y - world.ball.y) < c.r + world.ball.r) {
+        c.collected = true;
+        pings++;
+        audio.collectCrystal();
+        haptics.checkpoint();
+        flash(t('st.crystal'));
+      }
+    }
+
+    // Glasboden: Überrollen zählen (Kanten-Trigger). 1. Mal knackt es,
+    // 2. Mal zerbricht die Zelle zum offenen Loch – der reguläre
+    // Loch-Sturz greift im nächsten Frame.
+    for (const g of world.glass) {
+      if (g.state === 2) continue;
+      const bOn =
+        world.ball.x > g.x && world.ball.x < g.x + g.w && world.ball.y > g.y && world.ball.y < g.y + g.h;
+      if (bOn && !g.wasOn) {
+        if (g.state === 0) {
+          g.state = 1;
+          g.litFrom = 0;
+          g.litUntil = now + 2000;
+          audio.glassCrack();
+          haptics.hit(0.5);
+          flash(t('st.glass'));
+        } else {
+          g.state = 2;
+          world.holes.push({ x: g.x + g.w / 2, y: g.y + g.h / 2, r: world.ball.r * 1.05, openness: 1 });
+          audio.glassShatter();
+          haptics.crumble();
+        }
+      }
+      g.wasOn = bOn;
+    }
+
+    // Sog-Anker: elektrisches Brummen, hörbar etwas über den Wirkradius hinaus.
+    let anchorClose = 0;
+    let nearAnchor: { dx: number; dy: number } | null = null;
+    for (const a of world.anchors) {
+      const d = Math.hypot(a.x - world.ball.x, a.y - world.ball.y);
+      const c = Math.max(0, 1 - d / (a.r + ANCHOR_HEAR));
+      if (c > anchorClose) {
+        anchorClose = c;
+        nearAnchor = { dx: a.x - world.ball.x, dy: a.y - world.ball.y };
+      }
+    }
+    if (nearAnchor) audio.setAnchor(anchorClose, nearAnchor.dx, nearAnchor.dy);
+    else audio.setAnchor(0, 0, 0);
+
     // Windzonen: hörbar in der Nähe, spürbar (Kraft) mittendrin
     let bestZone: { dist: number; dx: number; dy: number } | null = null;
     for (const z of world.windZones) {
@@ -1474,7 +1543,8 @@ function frame(now: number): void {
         cp.reached = true;
         cp.litUntil = now + 2000;
         respawnPoint = { floor: activeFloor, x: cp.x, y: cp.y };
-        pings = Math.min(pingMax, pings + 1);
+        // Auffüllen bis zum Budget – ein Kristall-Überschuss bleibt erhalten.
+        if (pings < pingMax) pings++;
         audio.checkpoint();
         haptics.checkpoint();
         flash(t('st.checkpoint'));
@@ -1590,6 +1660,7 @@ function frame(now: number): void {
       audio.setListener(0, 0, 0, 0);
       audio.setIce(0);
       audio.setFog(0);
+      audio.setAnchor(0, 0, 0);
       audio.win();
       haptics.win();
       statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
@@ -1620,6 +1691,11 @@ function frame(now: number): void {
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {
     x: world.ball.x,
     y: world.ball.y,
+  };
+  (window as unknown as { __tiltrWorld?: unknown }).__tiltrWorld = {
+    crystals: world.crystals.length,
+    anchors: world.anchors.length,
+    glass: world.glass.length,
   };
   (window as unknown as { __tiltrGhost?: unknown }).__tiltrGhost = ghost
     ? { time: ghost.time, active: ghostPos !== null }

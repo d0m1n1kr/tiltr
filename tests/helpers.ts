@@ -14,6 +14,9 @@ export interface CellConfig {
   doorsOpen: boolean;
   /** Nur diese Tür-IDs gelten als offen (wenn doorsOpen false ist). */
   openDoorIds?: Set<string>;
+  /** Konservativ: Glasboden- und Sog-Anker-Zellen als gesperrt behandeln –
+   *  beweist, dass beide nie auf einem Pflichtweg liegen. */
+  hazardsBlocked?: boolean;
 }
 
 export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: LevelDef['mirror']): Cell[] {
@@ -54,6 +57,13 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
     currents: new Map(
       f.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * f.size[0] + c.cell[0], c.dir]),
     ),
+    blocked: new Set(
+      cfg.hazardsBlocked
+        ? f.elements
+            .filter((e) => e.type === 'glass' || e.type === 'anchor')
+            .map((e) => e.cell[1] * f.size[0] + e.cell[0])
+        : [],
+    ),
   }));
   const key = (fl: number, x: number, y: number) => `${fl}:${x},${y}`;
   const start = from ?? { floor: 0, cell: def.floors[0]!.start };
@@ -64,6 +74,7 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
     const floor = floors[fl]!;
     const c = floor.cells[y * floor.cols + x]!;
     const push = (nfl: number, nx: number, ny: number, dir?: 'n' | 'e' | 's' | 'w') => {
+      if (floors[nfl]!.blocked.has(ny * floors[nfl]!.cols + nx)) return;
       // Gegen den Strom betritt man eine Strömungszelle nicht.
       if (dir) {
         const targetCurrent = floors[nfl]!.currents.get(ny * floors[nfl]!.cols + nx);
@@ -107,7 +118,7 @@ export function expectAllReachable(
   def.floors.forEach((floor, fl) => {
     if (floor.goal) expectFn(open.has(cellKey(fl, floor.goal)), `${def.id}: Ziel E${fl}`);
     for (const el of floor.elements) {
-      if (el.type === 'gem' || el.type === 'checkpoint' || el.type === 'key') {
+      if (el.type === 'gem' || el.type === 'checkpoint' || el.type === 'key' || el.type === 'echoCrystal') {
         expectFn(open.has(cellKey(fl, el.cell)), `${def.id}: ${el.type} E${fl} ${el.cell}`);
       }
       if (el.type === 'guard') {

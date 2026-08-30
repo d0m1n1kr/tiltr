@@ -296,6 +296,78 @@ export class Renderer {
     }
 
 
+    // Glasboden: bernsteinfarbener Rahmen; geknackt kommen Sprunglinien dazu.
+    // Zerbrochen (state 2) übernimmt das eingesetzte Loch die Darstellung.
+    for (const g of world.glass) {
+      if (g.state === 2) continue;
+      const alpha = revealAlpha(g, 0.7);
+      if (alpha <= 0.01) continue;
+      ctx.strokeStyle = `rgba(${WORLD.brittle}, ${alpha})`;
+      ctx.lineWidth = 1.5 * this.dpr;
+      const pad = 6 * s;
+      ctx.strokeRect(tx(g.x) + pad, ty(g.y) + pad, g.w * s - pad * 2, g.h * s - pad * 2);
+      if (g.state === 1) {
+        const cx = tx(g.x + g.w / 2),
+          cy = ty(g.y + g.h / 2);
+        ctx.beginPath();
+        for (const [dx, dy] of [
+          [0.3, -0.24],
+          [-0.28, 0.18],
+          [0.14, 0.3],
+          [-0.2, -0.28],
+        ] as const) {
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + g.w * s * dx, cy + g.h * s * dy);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // Sog-Anker: violetter Kern mit offenen Spiral-Ringen; im Debug/Reveal
+    // zusätzlich der Wirkradius.
+    for (const a of world.anchors) {
+      const alpha = revealAlpha(a, 0.9);
+      if (alpha <= 0.01) continue;
+      const cx = tx(a.x),
+        cy = ty(a.y);
+      if (debug || revealAll) {
+        ctx.strokeStyle = `rgba(${WORLD.anchor}, ${alpha * 0.25})`;
+        ctx.lineWidth = 1.5 * this.dpr;
+        ctx.beginPath();
+        ctx.arc(cx, cy, a.r * s, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(${WORLD.anchor}, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${WORLD.anchor}, ${alpha * 0.6})`;
+      ctx.lineWidth = 2 * this.dpr;
+      for (const rr of [20, 32, 44]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, rr * s, 0.4 + rr / 30, Math.PI * 2 - 0.4 + rr / 30);
+        ctx.stroke();
+      }
+    }
+
+    // Echo-Kristalle: vierstrahliger Teal-Stern.
+    for (const c of world.crystals) {
+      if (c.collected) continue;
+      const alpha = revealAlpha(c, 0.95);
+      if (alpha <= 0.01) continue;
+      const cx = tx(c.x),
+        cy = ty(c.y);
+      const r = c.r * s;
+      ctx.fillStyle = `rgba(${WORLD.crystal}, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r);
+      ctx.quadraticCurveTo(cx, cy, cx + r, cy);
+      ctx.quadraticCurveTo(cx, cy, cx, cy + r);
+      ctx.quadraticCurveTo(cx, cy, cx - r, cy);
+      ctx.quadraticCurveTo(cx, cy, cx, cy - r);
+      ctx.fill();
+    }
+
     // Schlüssel: goldene Raute.
     for (const key of world.keys) {
       if (key.collected) continue;

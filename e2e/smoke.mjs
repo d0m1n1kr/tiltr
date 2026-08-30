@@ -72,6 +72,13 @@ const check = (name, cond) => {
   const pos = await page.evaluate(() => window.__tiltrBall);
   check(`Ball rollt per Tastatur (dx=${(pos.x - p0.x).toFixed(0)})`, pos.x > p0.x + 40);
 
+  // M11: der Mittel-Generator würfelt Kristall, Sog-Anker und Glasboden mit.
+  const wc = await page.evaluate(() => window.__tiltrWorld);
+  check(
+    `Quick (Mittel) enthält M11-Elemente (✦${wc?.crystals} ⊙${wc?.anchors} ▦${wc?.glass})`,
+    !!wc && wc.crystals === 1 && wc.anchors === 1 && wc.glass === 1,
+  );
+
   // Ruhiges HUD: der Timer-Chip ändert seine Breite nicht, während die Zeit
   // läuft (tabular-nums + Mindestbreite) – nichts dahinter verschiebt sich.
   const w1 = await page.evaluate(() => document.getElementById('timer').getBoundingClientRect().width);

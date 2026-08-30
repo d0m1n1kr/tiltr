@@ -32,4 +32,10 @@ export const WORLD = {
   fog: '160, 165, 185',
   /** Eis: kaltes Eisweiß – rutschiger Boden */
   ice: '185, 225, 240',
+  /** Echo-Kristall: Ping-Teal – er IST abgefüllter Ping (+1 Vorrat) */
+  crystal: '75, 224, 200',
+  /** Sog-Anker: helles Violett – Gefahr-Familie der Löcher, eigener Ton */
+  anchor: '170, 110, 240',
+  // Glasboden nutzt bewusst das Brüchig-Bernstein (WORLD.brittle):
+  // gleiche Bedeutung "brüchig, Vorsicht" – nur als Boden statt Wand.
 } as const;

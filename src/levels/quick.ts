@@ -19,6 +19,10 @@ export const PRESETS: Record<
     brittleChance: number;
     pings: number;
     breath: { open: number; closed: number; ramp: number };
+    /** M11: neue Elemente stufenweise – leicht bleibt pur */
+    crystals: number;
+    anchors: number;
+    glass: number;
   }
 > = {
   easy: {
@@ -30,6 +34,9 @@ export const PRESETS: Record<
     brittleChance: 0.1,
     pings: 4,
     breath: { open: 2.2, closed: 2.8, ramp: 0.6 },
+    crystals: 1,
+    anchors: 0,
+    glass: 0,
   },
   normal: {
     label: 'Mittel',
@@ -40,6 +47,9 @@ export const PRESETS: Record<
     brittleChance: 0.16,
     pings: 3,
     breath: { open: 2.6, closed: 2.2, ramp: 0.6 },
+    crystals: 1,
+    anchors: 1,
+    glass: 1,
   },
   // Deutlich größer als der Screen (Multi-Screen): die Kamera folgt dem Ball.
   hard: {
@@ -51,6 +61,9 @@ export const PRESETS: Record<
     brittleChance: 0.2,
     pings: 5,
     breath: { open: 3.0, closed: 1.6, ramp: 0.5 },
+    crystals: 2,
+    anchors: 2,
+    glass: 3,
   },
 };
 
@@ -69,6 +82,32 @@ function pickCells(
     if (forbidden.has(key)) continue;
     forbidden.add(key);
     picked.push([cx, cy]);
+  }
+  return picked;
+}
+
+// Zellen mit Zusatzfilter wählen: Kandidaten werden aufgezählt (terminiert
+// garantiert – Lektion aus M9). Gibt es keine passende Zelle mehr, werden
+// schlicht WENIGER platziert – der Filter ist eine Invariante (Anker/Glas
+// nie auf dem Pflichtweg) und wird nie aufgeweicht.
+function pickCellsWhere(
+  count: number,
+  forbidden: Set<number>,
+  rng: Rng,
+  cols: number,
+  rows: number,
+  keep: (key: number) => boolean,
+): Array<[number, number]> {
+  const picked: Array<[number, number]> = [];
+  for (let i = 0; i < count; i++) {
+    const candidates: number[] = [];
+    for (let key = 0; key < cols * rows; key++) {
+      if (!forbidden.has(key) && keep(key)) candidates.push(key);
+    }
+    if (!candidates.length) break;
+    const key = candidates[Math.floor(rng() * candidates.length)]!;
+    forbidden.add(key);
+    picked.push([key % cols, Math.floor(key / cols)]);
   }
   return picked;
 }
@@ -120,6 +159,26 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
   const dirs = ['n', 'e', 's', 'w'] as const;
   for (const cell of pickCells(p.wind, forbidden, rng, cols, rows)) {
     elements.push({ type: 'windZone', cell, dir: dirs[Math.floor(rng() * 4)]!, force: 1150 });
+  }
+
+  // M11: Echo-Kristalle frei platzieren; Sog-Anker und Glasboden beweisbar
+  // ABSEITS der Pflichtwege (Lösungsweg + Wege zu den Kristallen) – im
+  // perfekten Maze sind diese Pfade eindeutig, die Invariante ist damit
+  // testbar (tests/levels.test.ts prüft sie über viele Seeds).
+  const crystalCells = pickCells(p.crystals, forbidden, rng, cols, rows);
+  for (const cell of crystalCells) elements.push({ type: 'echoCrystal', cell, r: 16 });
+  const protectedCells = new Set<number>(path.map((c) => c.y * cols + c.x));
+  for (const [cx, cy] of crystalCells) {
+    for (const c of solveMaze(cells, cols, rows, { x: start[0], y: start[1] }, { x: cx, y: cy })) {
+      protectedCells.add(c.y * cols + c.x);
+    }
+  }
+  const offPath = (key: number) => !protectedCells.has(key);
+  for (const cell of pickCellsWhere(p.anchors, forbidden, rng, cols, rows, offPath)) {
+    elements.push({ type: 'anchor', cell, r: 120, force: 2000 });
+  }
+  for (const cell of pickCellsWhere(p.glass, forbidden, rng, cols, rows, offPath)) {
+    elements.push({ type: 'glass', cell });
   }
 
   return {

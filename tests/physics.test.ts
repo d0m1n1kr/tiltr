@@ -214,6 +214,27 @@ describe('Eisflächen', () => {
   });
 });
 
+describe('Sog-Anker', () => {
+  it('zieht im Radius an, außerhalb nicht', () => {
+    const world = new World([], new Ball(200, 150, 22), { x: 900, y: 900, r: 30 });
+    world.anchors = [{ x: 150, y: 150, r: 120, force: 2000 }];
+    world.step(0.05, { x: 0, y: 0 });
+    expect(world.ball.vx).toBeLessThan(-10); // Richtung Zentrum (links)
+    const far = new World([], new Ball(400, 150, 22), { x: 900, y: 900, r: 30 });
+    far.anchors = [{ x: 150, y: 150, r: 120, force: 2000 }];
+    far.step(0.05, { x: 0, y: 0 });
+    expect(Math.abs(far.ball.vx)).toBeLessThan(1);
+  });
+
+  it('ist mit voller Neigung immer überwindbar (Kraft < Beschleunigung)', () => {
+    // Ball im Zentrum des Ankers, volle Neigung nach rechts: er entkommt.
+    const world = new World([], new Ball(150, 150, 22), { x: 900, y: 900, r: 30 });
+    world.anchors = [{ x: 150, y: 150, r: 120, force: 2400 }]; // Schema-Maximum
+    for (let i = 0; i < 240; i++) world.step(1 / 60, { x: 1, y: 0 });
+    expect(world.ball.x).toBeGreaterThan(270); // aus dem Radius heraus
+  });
+});
+
 describe('Windzonen', () => {
   it('schieben den Ball innerhalb der Zone', () => {
     const world = new World([], new Ball(150, 150, 22), { x: 500, y: 500, r: 30 });

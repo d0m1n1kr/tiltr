@@ -72,9 +72,12 @@ Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
 Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
 Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das
 Wächter-Rot), Nebel entsättigtes Blaugrau (`160, 165, 185` – Klangdämpfung,
-keine Gefahr), Eis kaltes Eisweiß (`185, 225, 240` – rutschiger Boden).
+keine Gefahr), Eis kaltes Eisweiß (`185, 225, 240` – rutschiger Boden),
+Sog-Anker helles Violett (`170, 110, 240` – Gefahr-Familie der Löcher).
 Der Zeitschloss-Schalter gehört zur Tür-Mechanik und bleibt in der
-Gold-Familie (`255, 214, 90`).
+Gold-Familie (`255, 214, 90`); der Echo-Kristall trägt bewusst das
+Ping-Teal (`75, 224, 200` – er ist abgefüllter Ping), und der Glasboden
+das Brüchig-Bernstein der brüchigen Wände (gleiche Bedeutung, als Boden).
 
 ## Typografie
 
