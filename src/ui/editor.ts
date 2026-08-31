@@ -129,12 +129,44 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   const drawerEl = $('edDrawer');
   const drawerHandle = $('edDrawerHandle');
 
-  /* Phone-Chrome: Eigenschaften-Drawer (Griff unten) + Element-Sheet.
-     Auf dem Desktop sind beide Klassen wirkungslos (Media-Query). */
+  // Galerie-Miniatur eines Element-Typs (Palette, Auswahl-Kopf, Drawer-Griff).
+  const galleryDraws = new Map(galleryEntries().map((e) => [e.type, e.draw]));
+  const miniCanvas = (type: string): HTMLCanvasElement => {
+    const cv = document.createElement('canvas');
+    cv.width = 66;
+    cv.height = 42;
+    const ctx = cv.getContext('2d')!;
+    ctx.fillStyle = WORLD.bgDeep;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    galleryDraws.get(type)?.(ctx, cv.width, cv.height);
+    return cv;
+  };
+
+  /* Phone-Chrome: Eigenschaften-Drawer (Griff + ✕ unten) + Element-Sheet.
+     Auf dem Desktop sind die Klassen wirkungslos (Media-Query). */
   const updateDrawerHandle = (): void => {
-    drawerHandle.textContent = `${drawerEl.classList.contains('open') ? '▾' : '▴'} ${t('ed.props')}`;
+    const chevron = drawerEl.classList.contains('open') ? '▾' : '▴';
+    drawerHandle.replaceChildren();
+    const chev = document.createElement('span');
+    chev.textContent = chevron;
+    drawerHandle.append(chev);
+    // Der Griff identifiziert die Auswahl: Galerie-Icon + Elementname.
+    const el = draft?.floors[activeFloor]?.elements[selected];
+    if (el) {
+      const name = document.createElement('span');
+      name.textContent = t(`el.${el.type}.title` as keyof Dict);
+      drawerHandle.append(miniCanvas(el.type), name);
+    } else {
+      const label = document.createElement('span');
+      label.textContent = t('ed.props');
+      drawerHandle.append(label);
+    }
   };
   const closeSheet = (): void => panel.classList.remove('sheet-open');
+  const closeDrawer = (): void => {
+    drawerEl.classList.remove('open');
+    updateDrawerHandle();
+  };
   const openDrawer = (): void => {
     drawerEl.classList.add('open');
     closeSheet();
@@ -145,6 +177,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     closeSheet();
     updateDrawerHandle();
   });
+  $('edDrawerClose').addEventListener('click', closeDrawer);
 
   const renderer = new Renderer(canvas);
   const overlay = canvas.getContext('2d')!;
@@ -785,17 +818,6 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       p.textContent = text;
       return p;
     };
-    const draws = new Map(galleryEntries().map((e) => [e.type, e.draw]));
-    const mini = (type: string): HTMLCanvasElement => {
-      const cv = document.createElement('canvas');
-      cv.width = 66;
-      cv.height = 42;
-      const ctx = cv.getContext('2d')!;
-      ctx.fillStyle = WORLD.bgDeep;
-      ctx.fillRect(0, 0, cv.width, cv.height);
-      draws.get(type)?.(ctx, cv.width, cv.height);
-      return cv;
-    };
     const lblSpan = (text: string): HTMLElement => {
       const s = document.createElement('span');
       s.className = 'ed-lbl';
@@ -838,7 +860,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     elBtn.className = 'panel ed-tile' + (tool === 'place' ? ' active' : '');
     const caret = document.createElement('span');
     caret.textContent = '▾';
-    elBtn.append(mini(placeType), lblSpan(t(`el.${placeType}.title` as keyof Dict)), caret);
+    elBtn.append(miniCanvas(placeType), lblSpan(t(`el.${placeType}.title` as keyof Dict)), caret);
     elBtn.addEventListener('click', () => {
       panel.classList.toggle('sheet-open');
       drawerEl.classList.remove('open');
@@ -850,7 +872,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     for (const type of PLACEABLE) {
       const b = document.createElement('button');
       b.className = 'panel ed-tile' + (tool === 'place' && placeType === type ? ' active' : '');
-      b.append(mini(type), lblSpan(t(`el.${type}.title` as keyof Dict)));
+      b.append(miniCanvas(type), lblSpan(t(`el.${type}.title` as keyof Dict)));
       b.addEventListener('click', () => {
         tool = 'place';
         placeType = type;
@@ -920,12 +942,17 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     propsEl.replaceChildren();
     const f = floor();
 
-    // Ausgewähltes Element
+    updateDrawerHandle(); // Phone-Griff spiegelt die Auswahl (Icon + Name)
+
+    // Ausgewähltes Element: Kopf mit Galerie-Miniatur zur Identifikation
     const el = f.elements[selected];
     if (el) {
-      const head = document.createElement('p');
-      head.className = 'ed-group-label';
-      head.textContent = `${t('ed.selected')}: ${t(`el.${el.type}.title` as keyof Dict)}`;
+      const head = document.createElement('div');
+      head.className = 'ed-selhead';
+      const label = document.createElement('span');
+      label.className = 'ed-group-label';
+      label.textContent = `${t('ed.selected')}: ${t(`el.${el.type}.title` as keyof Dict)}`;
+      head.append(miniCanvas(el.type), label);
       propsEl.append(head);
       const num = (label: string, key: string, min: number, max: number, step = 1, obj: Record<string, unknown> = el) =>
         propsEl.append(field(label, numInput(Number(obj[key] ?? 0), min, max, step, (v) => (obj[key] = v))));

@@ -371,7 +371,12 @@
     #edTools, #edElements { display: flex; flex-direction: column; gap: var(--space-2); }
     #edElementBtn { display: none; } /* nur Phone: öffnet das Element-Sheet */
     #edDrawer { min-height: 0; display: flex; flex-direction: column; }
-    #edDrawerHandle { display: none; } /* nur Phone: Griff des Drawers */
+    #edDrawerHead { display: none; } /* nur Phone: Griff + ✕ des Drawers */
+    #edDrawerHandle { display: none; }
+    /* Auswahl-Kopf: Galerie-Miniatur + Elementname – wer hier editiert,
+       sieht sofort, WAS er editiert (auch im Phone-Drawer). */
+    .ed-selhead { display: flex; align-items: center; gap: var(--space-2); }
+    .ed-selhead canvas { width: 44px; height: 28px; border-radius: var(--radius-s); flex-shrink: 0; }
     #edProps { overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); flex: 1; min-height: 0; }
     @media (max-width: 899px) {
       /* Phone: das SPIELFELD dominiert. Oben nur eine kompakte Leiste
@@ -411,11 +416,14 @@
         transition: transform 0.2s ease;
       }
       #edDrawer.open { transform: none; }
+      #edDrawerHead { display: flex; align-items: stretch; flex-shrink: 0; }
       #edDrawerHandle {
-        display: flex; justify-content: center;
-        min-height: var(--touch-min); flex-shrink: 0;
-        border: none; border-radius: var(--radius-l) var(--radius-l) 0 0;
+        display: flex; justify-content: center; align-items: center; gap: var(--space-2);
+        flex: 1; min-width: 0; min-height: var(--touch-min);
+        border: none; border-radius: var(--radius-l) 0 0 0;
       }
+      #edDrawerHandle canvas { width: 44px; height: 28px; border-radius: var(--radius-s); flex-shrink: 0; }
+      #edDrawerClose { border: none; border-radius: 0 var(--radius-l) 0 0; min-width: var(--touch-min); }
       #edProps { padding: 0 var(--space-3) var(--space-3); }
       /* Kompakter Kopf: Badges als EINZEILIGE Scroll-Leiste in eigener Zeile
          statt drei Umbruch-Zeilen; Buttons rutschen geordnet in Zeile 3. */
@@ -693,7 +701,10 @@
       <div id="edPalette"></div>
       <div id="edCanvasWrap"><canvas id="edCanvas"></canvas></div>
       <div id="edDrawer">
-        <button id="edDrawerHandle" class="btn btn-ghost"></button>
+        <div id="edDrawerHead">
+          <button id="edDrawerHandle" class="btn btn-ghost"></button>
+          <button id="edDrawerClose" class="btn btn-ghost" data-i18n-tip="common.close">✕</button>
+        </div>
         <div id="edProps"></div>
       </div>
     </div>

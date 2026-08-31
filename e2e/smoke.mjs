@@ -913,6 +913,26 @@ const check = (name, cond) => {
   check(`Phone: Drawer-Griff schließt wieder (y=${Math.round(closedY)})`,
     hasDrawer === 1 && closedY > 50);
 
+  // Drawer-Kopf identifiziert das Element (Galerie-Icon + Name) und hat
+  // ein ✕ zum Schließen – der Griff allein war nicht selbsterklärend.
+  let handleInfo = { text: '(fehlt)', icon: 0 };
+  let closeY = -1;
+  if (hasDrawer === 1 && elBtn === 1) {
+    await tapPhone(1, 1); // Glasboden erneut auswählen -> Drawer auf
+    handleInfo = await page.evaluate(() => ({
+      text: document.getElementById('edDrawerHandle')?.textContent?.trim() ?? '(fehlt)',
+      icon: document.querySelectorAll('#edDrawerHandle canvas').length,
+    }));
+    if (await page.locator('#edDrawerClose:visible').count()) {
+      await page.click('#edDrawerClose');
+      await page.waitForTimeout(400);
+      closeY = await drawerY();
+    }
+  }
+  check(`Phone: Drawer-Kopf zeigt Element-Icon + Name ("${handleInfo.text}")`,
+    handleInfo.icon === 1 && handleInfo.text.includes('Glasboden'));
+  check(`Phone: ✕ schließt den Drawer (y=${Math.round(closeY)})`, closeY > 50);
+
   // … und auf Touch per Fokus nach dem Tap (title-Attribute können das
   // nicht): Tap aufs Werkzeug zeigt die Blase mit dem Namen.
   if (await page.locator('#edTool-select').count()) {
