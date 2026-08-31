@@ -691,6 +691,21 @@ const check = (name, cond) => {
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`${BASE}/?nosplash`);
 
+  // Tablet-Menü (≥900px): Modus-Karten zweispaltig in verbreiterter Mitte,
+  // Schnellstart als Querzeile – und der Footer passt ohne Scrollen auf
+  // 1024x768 (Querformat war vorher abgeschnitten).
+  const menu = await page.evaluate(() => ({
+    cols: getComputedStyle(document.getElementById('modeList')).gridTemplateColumns.split(' ').length,
+    width: document.getElementById('menuButtons').getBoundingClientRect().width,
+    quickDir: getComputedStyle(document.getElementById('quickGroup')).flexDirection,
+    footerBottom: document.getElementById('menuFooter').getBoundingClientRect().bottom,
+    vh: innerHeight,
+  }));
+  check(`Tablet-Menü: 2 Spalten, breite Mitte (${menu.cols} Spalten, ${Math.round(menu.width)}px)`,
+    menu.cols === 2 && menu.width > 600 && menu.quickDir === 'row');
+  check(`Tablet-Menü: Footer ohne Scrollen sichtbar (${Math.round(menu.footerBottom)} <= ${menu.vh})`,
+    menu.footerBottom <= menu.vh);
+
   await page.click('#workshopBtn');
   const wsShown = !(await page.locator('#workshop').getAttribute('class')).includes('hidden');
   check('Werkstatt-Panel öffnet', wsShown);
@@ -783,6 +798,11 @@ const check = (name, cond) => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: 'de-DE', hasTouch: true });
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`${BASE}/?nosplash`);
+
+  // Gegenprobe: unter 900px bleibt das Menü die bewährte Phone-Säule.
+  const menuCols = await page.evaluate(() => getComputedStyle(document.getElementById('modeList')).gridTemplateColumns);
+  check(`Phone-Menü bleibt einspaltig (${menuCols})`, menuCols === 'none');
+
   await page.click('#workshopBtn');
   await page.click('#wsNewBtn');
   await page.waitForTimeout(1200); // Layout-Settle: hier verschwand die Karte
