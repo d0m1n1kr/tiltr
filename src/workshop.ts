@@ -126,6 +126,18 @@ export function loadDraft(): Record<string, unknown> | null {
   }
 }
 
+/** Zeitstempel der letzten Draft-Änderung (für die „Weiter an …"-Karte). */
+export function draftUpdatedAt(): string | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { updatedAt?: unknown };
+    return typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null;
+  } catch {
+    return null;
+  }
+}
+
 export function clearDraft(): void {
   try {
     localStorage.removeItem(DRAFT_KEY);

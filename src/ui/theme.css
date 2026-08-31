@@ -202,6 +202,8 @@
 /* Empfehlung für Neue (Tutorial noch offen): Teal-Rand wie .chip.active */
 .mode-item.suggest { border: 1px solid rgba(75, 224, 200, 0.4); }
 .mode-item.suggest .mode-sub { color: var(--accent); opacity: 1; }
+/* Zwei-Tap-Bestätigung auf einer Karte: der Untertitel warnt in Bernstein */
+.mode-item .mode-sub.warn { color: var(--warning); opacity: 1; }
 
 .banner {
   display: flex;

@@ -8,7 +8,17 @@ import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
 import { validateLevel, isShareable } from '../levels/validate';
 import { encodeLevel } from '../levels/shareCodec';
-import { blankLevel, clearDraft, exportPayload, importLevel, loadDraft, newCustomId, workshop, type CustomLevel } from '../workshop';
+import {
+  blankLevel,
+  clearDraft,
+  draftUpdatedAt,
+  exportPayload,
+  importLevel,
+  loadDraft,
+  newCustomId,
+  workshop,
+  type CustomLevel,
+} from '../workshop';
 import { profile } from '../profile';
 import { t, formatDate } from '../i18n';
 import type { RawLevel } from './editor';
@@ -40,12 +50,17 @@ export function setupWorkshopPanel(opts: {
       action();
       return;
     }
-    const prev = b.textContent;
     b.dataset.armed = '1';
-    b.textContent = `⚠ ${t('ws.discardConfirm')}`;
+    // Modus-Karten warnen im Untertitel (Bernstein), schlichte Buttons im Text.
+    const sub = b.querySelector<HTMLElement>('.mode-sub');
+    const target = sub ?? b;
+    const prev = target.textContent;
+    target.textContent = `⚠ ${t('ws.discardConfirm')}`;
+    sub?.classList.add('warn');
     setTimeout(() => {
       b.dataset.armed = '';
-      b.textContent = prev;
+      target.textContent = prev;
+      sub?.classList.remove('warn');
     }, 3000);
   }
 
@@ -131,10 +146,22 @@ export function setupWorkshopPanel(opts: {
 
   function render(): void {
     list.replaceChildren();
-    // Laufende Bearbeitung anbieten: „Weiter an …" führt zurück in den Editor.
+    // Laufende Bearbeitung als Empfehlungs-Karte: „Weiter an …" mit
+    // Größe + Datum führt zurück in den Editor.
     const draft = loadDraft();
     resumeBtn.classList.toggle('hidden', !draft);
-    if (draft) resumeBtn.textContent = `✏️ ${t('ws.resume', { name: String(draft.name ?? '') })}`;
+    if (draft) {
+      $('wsResumeTitle').textContent = t('ws.resume', { name: String(draft.name ?? '') });
+      let size = '';
+      try {
+        const def = parseLevel(draft);
+        size = def.floors.map((f) => `${f.size[0]}×${f.size[1]}`)[0]! + (def.floors.length > 1 ? ` · ${def.floors.length} ⧉` : '');
+      } catch {
+        size = '⚠';
+      }
+      const when = draftUpdatedAt();
+      $('wsResumeMeta').textContent = [size, when ? formatDate(when.slice(0, 10)) : ''].filter(Boolean).join(' · ');
+    }
     const levels = workshop.list();
     empty.classList.toggle('hidden', levels.length > 0);
     for (const level of levels) {

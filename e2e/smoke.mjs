@@ -709,6 +709,14 @@ const check = (name, cond) => {
   await page.click('#workshopBtn');
   const wsShown = !(await page.locator('#workshop').getAttribute('class')).includes('hidden');
   check('Werkstatt-Panel öffnet', wsShown);
+
+  // Werkstatt-Start: Aktionen als Modus-Karten (Icon + Titel + Untertitel)
+  // statt umbrechender Buttons – auf dem Tablet als Drei-Spalten-Grid.
+  const wsGrid = await page.evaluate(() => ({
+    cols: getComputedStyle(document.getElementById('workshopActions')).gridTemplateColumns.split(' ').length,
+    card: !!document.querySelector('#wsNewBtn .mode-title') && !!document.querySelector('#wsNewBtn .mode-sub'),
+  }));
+  check(`Werkstatt-Aktionen als Karten-Grid (${wsGrid.cols} Spalten)`, wsGrid.cols === 3 && wsGrid.card);
   await page.click('#wsNewBtn');
   await page.waitForTimeout(500);
   const edShown = !(await page.locator('#editor').getAttribute('class')).includes('hidden');
@@ -825,6 +833,8 @@ const check = (name, cond) => {
   check(`Phone-Menü bleibt einspaltig (${menuCols})`, menuCols === 'none');
 
   await page.click('#workshopBtn');
+  const wsCols = await page.evaluate(() => getComputedStyle(document.getElementById('workshopActions')).gridTemplateColumns);
+  check(`Phone: Werkstatt-Karten gestapelt (${wsCols})`, wsCols === 'none');
   await page.click('#wsNewBtn');
   await page.waitForTimeout(1200); // Layout-Settle: hier verschwand die Karte
   const cols = await page.evaluate(() => getComputedStyle(document.getElementById('edBody')).gridTemplateColumns);
@@ -1181,7 +1191,7 @@ const check = (name, cond) => {
   const armedText = (await page.textContent('#wsNewBtn')).trim();
   const stillClosed = !(await editorOpen());
   check(`„Neu" verlangt Bestätigung, solange ein Draft existiert ("${armedText}")`,
-    stillClosed && armedText !== '＋ Neues Level');
+    stillClosed && armedText.includes('Sicher'));
   if (stillClosed) {
     await page.click('#wsNewBtn');
     await page.waitForTimeout(500);

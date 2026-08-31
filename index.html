@@ -321,8 +321,17 @@
     #workshop header { display: flex; justify-content: space-between; align-items: center; max-width: 560px; margin: 0 auto var(--space-3); }
     #workshop h2 { font-size: var(--fs-h2); }
     #workshopContent { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-3); }
-    #workshopActions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    /* Aktionen als Modus-Karten (wie das Startmenü): Phone gestapelt,
+       ab 900px als Drei-Spalten-Grid mit „Weiter an …" als Hero-Zeile. */
+    #workshopActions { display: flex; flex-direction: column; gap: var(--space-2); }
     #workshopList { display: grid; gap: var(--space-3); }
+    #wsEmpty { text-align: center; opacity: 0.6; padding: var(--space-5) 0; }
+    @media (min-width: 900px) {
+      #workshop header, #workshopContent { max-width: 760px; }
+      #workshopActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      #wsResumeBtn { grid-column: 1 / -1; }
+      #workshopList { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    }
     .ws-item { display: grid; gap: var(--space-2); }
     .ws-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
     .ws-name { font-size: var(--fs-body); font-weight: 600; }
@@ -618,10 +627,34 @@
     </header>
     <div id="workshopContent">
       <div id="workshopActions">
-        <button id="wsResumeBtn" class="btn btn-primary hidden"></button>
-        <button id="wsNewBtn" class="btn btn-primary" data-i18n="ed.new">＋ Neues Level</button>
-        <button id="wsNewRandomBtn" class="btn btn-ghost" data-i18n="ed.newRandom">🎲 Aus Zufallslevel</button>
-        <button id="wsImportBtn" class="btn btn-ghost" data-i18n="ed.import">⇪ Importieren</button>
+        <button id="wsResumeBtn" class="panel mode-item suggest hidden">
+          <span class="mode-icon">✏️</span>
+          <span class="mode-text">
+            <span class="mode-title" id="wsResumeTitle"></span>
+            <span class="mode-sub" id="wsResumeMeta"></span>
+          </span>
+        </button>
+        <button id="wsNewBtn" class="panel mode-item">
+          <span class="mode-icon">＋</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="ed.new">Neues Level</span>
+            <span class="mode-sub" data-i18n="ws.new.sub">Leeres Raster, alles selbst bauen</span>
+          </span>
+        </button>
+        <button id="wsNewRandomBtn" class="panel mode-item">
+          <span class="mode-icon">🎲</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="ed.newRandom">Aus Zufallslevel</span>
+            <span class="mode-sub" data-i18n="ws.random.sub">Quick-Generator als Grundgerüst</span>
+          </span>
+        </button>
+        <button id="wsImportBtn" class="panel mode-item">
+          <span class="mode-icon">⇪</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="ed.import">Importieren</span>
+            <span class="mode-sub" data-i18n="ws.import.sub">Datei oder eingefügter Text</span>
+          </span>
+        </button>
       </div>
       <div id="wsImportBox" class="panel hidden">
         <textarea id="wsImportText" rows="4" data-i18n-ph="ed.importPh" spellcheck="false"></textarea>

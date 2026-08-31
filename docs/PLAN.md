@@ -350,6 +350,15 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M16 „Werkstatt-Startscreen" ✓ (v1.8.1)
+
+Aktionen als Modus-Karten in der Design-Sprache des Startmenüs (Icon +
+Titel + Untertitel) statt umbrechender Buttons; „Weiter an …" als
+Empfehlungs-Karte (`.suggest`) mit Größe + Datum. Ab 900px:
+Drei-Spalten-Grid (Hero über die volle Breite) und zweispaltige
+Bibliothek; Empty-State zentriert. Die Zwei-Tap-Bestätigung warnt im
+Karten-Untertitel (Bernstein, `.mode-sub.warn`).
+
 ## M15 „Bearbeitungs-Draft" ✓ (v1.8.0)
 
 Die laufende Bearbeitung ist reload-fest: Der Editor schreibt bei jeder
