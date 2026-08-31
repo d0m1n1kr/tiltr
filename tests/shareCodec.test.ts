@@ -42,6 +42,6 @@ describe('Share-Codec', () => {
   it('weist kaputte Tokens ab', async () => {
     await expect(decodeLevel('zabc')).rejects.toThrow(/Codec-Version/); // unbekannte Version
     await expect(decodeLevel('1AAAA')).rejects.toThrow(); // kein gültiges Deflate
-    await expect(decodeLevel(rawToken([1, 2, 3]))).rejects.toThrow(/Level-Objekt/);
+    await expect(decodeLevel(rawToken([1, 2, 3]))).rejects.toThrow(/Kein Objekt/);
   });
 });

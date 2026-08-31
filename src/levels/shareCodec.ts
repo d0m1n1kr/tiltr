@@ -34,16 +34,18 @@ async function pipe(bytes: Uint8Array, stream: CompressionStream | Decompression
   return new Uint8Array(await new Response(readable).arrayBuffer());
 }
 
-/** Rohe Level-Def -> Token (erst Codec-Version, dann base64url-Daten). */
-export async function encodeLevel(def: Record<string, unknown>): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify(def));
+/** Beliebiges JSON-Objekt -> Token (Codec-Version + base64url-Daten).
+ *  Basis für Level-Links (#level=) UND Duell-Links (#duel=) – EIN
+ *  Kompressionspfad, eine Versions-Konvention. */
+export async function encodePayload(payload: Record<string, unknown>): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(payload));
   if (typeof CompressionStream === 'undefined') return V_RAW + toBase64Url(json);
   const packed = await pipe(json, new CompressionStream('deflate-raw'));
   return V_DEFLATE + toBase64Url(packed);
 }
 
-/** Token -> rohe Level-Def; wirft bei kaputten/fremden Tokens. */
-export async function decodeLevel(token: string): Promise<Record<string, unknown>> {
+/** Token -> JSON-Objekt; wirft bei kaputten/fremden Tokens. */
+export async function decodePayload(token: string): Promise<Record<string, unknown>> {
   const version = token[0];
   const bytes = fromBase64Url(token.slice(1));
   let json: Uint8Array;
@@ -56,9 +58,15 @@ export async function decodeLevel(token: string): Promise<Record<string, unknown
     throw new Error(`Unbekannte Codec-Version "${version}"`);
   }
   const parsed: unknown = JSON.parse(new TextDecoder().decode(json));
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('Kein Level-Objekt');
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('Kein Objekt');
   return parsed as Record<string, unknown>;
 }
+
+/** Rohe Level-Def -> Token. */
+export const encodeLevel = (def: Record<string, unknown>): Promise<string> => encodePayload(def);
+
+/** Token -> rohe Level-Def. */
+export const decodeLevel = (token: string): Promise<Record<string, unknown>> => decodePayload(token);
 
 /** Kompletter Share-Link auf die aktuelle Seite. */
 export async function shareUrl(def: Record<string, unknown>): Promise<string> {

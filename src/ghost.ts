@@ -6,7 +6,10 @@
 // Profil: ohne Storage läuft alles weiter, nur eben ohne Geist.
 
 const PREFIX = 'tiltr.ghost.';
-const INTERVAL_S = 0.125; // Mindestabstand zwischen Samples (~8 Hz)
+/** Zeitraster der Aufzeichnung (~8 Hz). Im localStorage ein MINDEST-Abstand,
+ *  für Duell-Tokens wird exakt darauf resampelt (src/levels/duel.ts). */
+export const GHOST_INTERVAL_S = 0.125;
+const INTERVAL_S = GHOST_INTERVAL_S;
 const MAX_FRAMES = 4800; // 10 Minuten – längere Läufe speichern keinen Geist
 
 export interface GhostData {
