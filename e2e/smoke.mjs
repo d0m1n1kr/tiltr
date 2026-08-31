@@ -1534,6 +1534,88 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 18: Bildschirmsperre – man spielt durch NEIGEN, also darf Android
+// nicht mitten im Lauf abdunkeln. Das Headless-Chromium hier bringt die API
+// nicht mit, deshalb wird sie VOR dem App-Start durch eine getreue Attrappe
+// ersetzt: So läuft der echte Pfad (anfordern, im Hintergrund verlieren, neu
+// holen, hergeben) unter Test. ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    window.__wakeLog = { requests: 0, released: 0, sentinels: [] };
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: {
+        request(type) {
+          window.__wakeLog.requests++;
+          const listeners = [];
+          const s = {
+            type,
+            release() {
+              window.__wakeLog.released++;
+              for (const cb of listeners) cb();
+              return Promise.resolve();
+            },
+            addEventListener(_t, cb) {
+              listeners.push(cb);
+            },
+          };
+          window.__wakeLog.sentinels.push(s);
+          return Promise.resolve(s);
+        },
+      },
+    });
+  });
+  await page.goto(`${BASE}/?seed=28&nosplash`);
+
+  const wake = () => page.evaluate(() => ({ ...window.__tiltrWake, log: { ...window.__wakeLog, sentinels: undefined } }));
+  const idle = await wake();
+  check(`Im Menü keine Sperre (unterstützt=${idle.supported}, angefordert=${idle.log.requests})`,
+    idle.supported === true && idle.wanted === false && idle.active === false && idle.log.requests === 0);
+
+  await page.click('#quickBtn');
+  await page.waitForTimeout(400);
+  const playing = await wake();
+  check(`Lauf hält den Bildschirm wach (${playing.log.requests}× angefordert, aktiv=${playing.active})`,
+    playing.wanted === true && playing.active === true && playing.log.requests === 1);
+
+  // Wegschauen und Zurückkommen: Das System nimmt die Sperre im Hintergrund –
+  // ohne Neuanforderung wäre sie für den Rest der Sitzung weg (der eigentliche
+  // Stolperstein dieser API).
+  await page.evaluate(async () => {
+    await window.__wakeLog.sentinels[0].release(); // System gibt sie her
+    const hide = (v) => Object.defineProperty(document, 'visibilityState', { get: () => v, configurable: true });
+    hide('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    hide('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(200);
+  const back = await wake();
+  check(`Nach Hintergrund wird die Sperre neu geholt (${back.log.requests}× angefordert, aktiv=${back.active})`,
+    back.log.requests === 2 && back.active === true);
+
+  await page.waitForTimeout(3400); // Kalibrierung abwarten, dann heimgehen
+  await page.click('#homeBtn');
+  await page.waitForTimeout(250);
+  const home = await wake();
+  check(`Im Menü wird die Sperre hergegeben (aktiv=${home.active}, ${home.log.released}× freigegeben)`,
+    home.wanted === false && home.active === false && home.log.released === 2);
+
+  // Der Hörtest lauscht minutenlang, ohne dass jemand tippt – erst recht wach.
+  await page.click('#hearingBtn');
+  await page.waitForTimeout(300);
+  const hearing = await wake();
+  check(`Hörtest hält den Bildschirm wach (${hearing.log.requests}× angefordert)`,
+    hearing.wanted === true && hearing.active === true && hearing.log.requests === 3);
+  await page.click('#hearClose');
+  await page.waitForTimeout(250);
+  check('Schließen des Hörtests gibt die Sperre her', (await wake()).wanted === false);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

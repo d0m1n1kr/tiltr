@@ -30,6 +30,7 @@ import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
+import { setupWakeLock } from './ui/wakelock';
 import { newCustomId, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
@@ -77,11 +78,17 @@ const input = new TiltInput();
 const audio = new GameAudio();
 const renderer = new Renderer(canvas);
 setupGallery(audio);
+// Gespielt wird durch NEIGEN – ohne Bildschirmsperre dimmt Android mitten
+// im Lauf. Die Sperre gilt, solange gespielt oder gehört wird.
+const wake = setupWakeLock();
 // Hörtest: der echte Echo-Ping aus zufälliger Richtung, Antwort auf der
 // Kompassrose – macht messbar, wie gut die HRTF-Ortung beim eigenen Gehör
 // (und den eigenen Kopfhörern) trägt.
 const hearingTest = setupHearingTest({ audio, onClose: () => showMenu() });
-$('hearingBtn').addEventListener('click', () => hearingTest.open());
+$('hearingBtn').addEventListener('click', () => {
+  wake.want();
+  hearingTest.open();
+});
 
 type GameState = 'menu' | 'playing' | 'fell' | 'warp' | 'won';
 type Mode =
@@ -371,6 +378,7 @@ function showMenu(): void {
   audio.setFog(0);
   audio.setAnchor(0, 0, 0);
   hideInterstitial();
+  wake.release();
   hud.classList.add('hidden');
   $('editBtn').classList.add('hidden');
   homeBtn.classList.remove('hidden');
@@ -380,6 +388,7 @@ function showMenu(): void {
 
 async function startMode(m: Mode): Promise<void> {
   mode = m;
+  wake.want();
   overlay.classList.add('hidden');
   hideInstallHint(); // im Spiel nicht im Weg stehen
   if (!sensorsReady) {

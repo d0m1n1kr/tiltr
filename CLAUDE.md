@@ -79,6 +79,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
   Position und Breitband-Anteil jeder Reflexion).
 
+- `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
+  Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
+  Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und
+  muss beim Zurückkommen NEU geholt werden – dafür der Zustandsautomat
+  (`createWakeLock`, injizierbares `request`, Units in
+  tests/wakelock.test.ts). iOS/Safari kennt die API nicht: `supported:
+  false`, kein Fehler. `window.__tiltrWake` zeigt den Zustand.
+
 ## UI & Layout
 
 - **i18n**: Alle nutzersichtbaren Texte über `src/i18n/` (de/en/fr/es;

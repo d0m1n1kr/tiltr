@@ -90,6 +90,12 @@ flach wie ein Tablett halten. HUD-Knöpfe: `⌖` neu kalibrieren, `👁`
 Debug-Ansicht (zeigt das Labyrinth), `🏠` zurück zum Menü. Als App
 installieren (offline & Vollbild) über den Hinweis oder das Browser-Menü.
 
+Solange ein Lauf oder der Hörtest läuft, bleibt der Bildschirm wach
+(Screen Wake Lock) – gesteuert wird durch Neigen, das Handy würde sonst
+mitten im Level abdunkeln und sperren. Chromium-Browser (Android Chrome,
+Edge, Desktop-Chrome) unterstützen das; iOS/Safari bringt die API nicht
+mit, dort greift weiter die System-Zeitschaltung.
+
 Am Desktop gibt es einen Tastatur-Fallback: Pfeiltasten/WASD zum Rollen,
 Leertaste für den Ping.
 

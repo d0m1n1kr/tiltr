@@ -350,6 +350,39 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M21 „Bildschirm bleibt wach" ✓ (v1.12.0)
+
+Meldung aus dem Spielbetrieb: Android dunkelt nach kurzer Zeit ab und
+sperrt. Kein Wunder – man steuert durch NEIGEN, für das System sieht ein
+laufender Lauf also aus wie ein unbenutztes Gerät. `src/ui/wakelock.ts`
+holt die Screen-Wake-Lock beim Spielstart und im Hörtest und gibt sie im
+Menü zurück.
+
+Die API hat zwei Fallen, und beide wohnen im Zustandsautomaten
+(`createWakeLock` mit injizierbarem `request`, deshalb ohne Browser
+testbar):
+
+1. **Die Sperre wird im Hintergrund automatisch freigegeben** (Tab-Wechsel,
+   Anruf, Sperrtaste) und muss beim Zurückkommen NEU geholt werden – sonst
+   ist sie nach dem ersten Wegschauen für die restliche Sitzung weg. Daher
+   der `visibilitychange`-Pfad.
+2. **`request()` darf jederzeit ablehnen** (Akkusparmodus, unsichtbare
+   Seite, fehlende Unterstützung). Ein Fehlschlag wird gemerkt, nicht
+   gemeldet – und beim nächsten Sichtbarwerden neu versucht.
+
+Plattform: Chromium (Android Chrome, Edge, Desktop-Chrome). iOS/Safari
+bringt die API nicht mit; dort meldet `state().supported` false und es
+passiert schlicht nichts. Ein Video-Loop-Hack als iOS-Ersatz ist bewusst
+NICHT eingebaut (Akku, Audio-Session, Wartungslast) – wenn es dort weh tut,
+ist das eine eigene Entscheidung.
+
+Testbar: `window.__tiltrWake` legt den Zustand offen (supported/wanted/
+active/attempts/error). Das Headless-Chromium der Suite bringt
+`navigator.wakeLock` nicht mit, deshalb ersetzt E2E-Lauf 18 die API VOR dem
+App-Start durch eine getreue Attrappe und fährt den echten Pfad:
+anfordern → im Hintergrund verlieren → neu holen → im Menü hergeben, plus
+den Hörtest. Acht Units auf dem Automaten.
+
 ## M20 „Hörtest" ✓ (v1.11.0, Reiz-Fix v1.11.1)
 
 Ein eigener Modus (7. Karte im Startmenü, `src/ui/hearing.ts`), der das

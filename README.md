@@ -88,6 +88,12 @@ calibration countdown. HUD buttons: `⌖` recalibrate, `👁` debug view
 (shows the maze), `🏠` back to the menu. Install it as an app (offline &
 fullscreen) via the install hint or your browser menu.
 
+While a run or the hearing test is active the screen is kept awake
+(Screen Wake Lock) — you steer by tilting, so the phone would otherwise dim
+and lock mid-level. Chromium-based browsers (Android Chrome, Edge, desktop
+Chrome) support it; iOS/Safari does not expose the API, so there the system
+timeout still applies.
+
 On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 
 ## Game elements
