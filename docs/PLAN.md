@@ -350,7 +350,7 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
-## M20 „Hörtest" ✓ (v1.11.0)
+## M20 „Hörtest" ✓ (v1.11.0, Reiz-Fix v1.11.1)
 
 Ein eigener Modus (7. Karte im Startmenü, `src/ui/hearing.ts`), der das
 Leitmedium prüft, statt es zu behaupten: Der ECHTE Echo-Ping
@@ -372,6 +372,32 @@ Der Modus ist der Kopfhörer-Check vor der ersten Runde.
 `dirVector`/`scoreRounds` sind reine, DOM-freie Funktionen (Units in
 `tests/hearing.test.ts`), die Runden-Mechanik hängt über
 `window.__tiltrHearing` im E2E-Lauf 17.
+
+**Nachtrag v1.11.1 – „der Ping kommt immer aus derselben Richtung".** Der
+erste Spieltest hat den Modus sofort entlarvt, und der Fehler saß nicht im
+Panning (die gemessenen PannerNode-Positionen waren für alle acht
+Richtungen korrekt), sondern im REIZ:
+
+1. Das lauteste Ereignis war der Emissions-Chirp – und der ist bewusst
+   UNGEPANNT (er kommt vom Ball, nicht von der Welt). Man hörte also
+   zuverlässig die Mitte. Neu: `echoPing(refl, { chirpGain })`, im Test
+   0,05.
+2. Der gepannte Teil war ein fast reiner Ton um 1 kHz – der schlechteste
+   Reiz, den man dem Ortungsgehör geben kann (Laufzeitunterschiede werden
+   dort phasen-mehrdeutig, Lautstärkeunterschiede sind noch klein). Neu:
+   Jede Reflexion bekommt einen breitbandigen Anschlag (Rausch-Transient,
+   Band um 2,6 kHz, 50 ms) durch DENSELBEN Panner – im Test UND im Spiel,
+   denn dort galt dieselbe Grenze: Wände waren kaum ortbar. Die tonale
+   Signatur der Elemente (`freq`) bleibt unangetastet.
+3. Der Test spielt zwei Anschläge statt einem: Einem einzelnen kurzen Reiz
+   traut das Gehör nicht, beim zweiten entscheidet es sich.
+
+Lehre für die Testsuite: Panning kann ein Automat nicht hören, die
+STRUKTUR des Reizes schon. `window.__tiltrPing` legt offen, was das Ohr
+bekommen hat (Chirp-Gain, Position und Breitband-Anteil jeder Reflexion);
+Lauf 17 prüft das pro Runde und zählt, wie viele VERSCHIEDENE Positionen
+in acht Runden vorkommen – die Sabotage-Gegenprobe meldet genau das
+gemeldete Symptom („1 verschiedene Positionen in 8 Runden").
 
 ## M19 „Werkstatt-Politur" ✓ (v1.10.0)
 

@@ -1459,9 +1459,36 @@ const check = (name, cond) => {
     !!state0 && state0.round === 0 && state0.total === 8 && typeof state0.asked === 'string');
 
   const DIRS = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+  /* Was hat das OHR bekommen? Panning kann ein Automat nicht hören, die
+     STRUKTUR des Reizes schon – und genau die war beim ersten Anlauf falsch
+     („kommt immer aus derselben Richtung"): Der ungepannte Emissions-Chirp
+     war das lauteste Ereignis, und der gepannte Teil war ein fast reiner Ton
+     um 1 kHz, den das Ortungsgehör nicht verwerten kann. Geprüft wird
+     deshalb: Chirp leise, ZWEI gepannte Anschläge, Position = gefragte
+     Richtung, breitbandiger Anschlag vorhanden. */
+  const Q = Math.SQRT1_2;
+  const VEC = {
+    n: [0, -1], ne: [Q, -Q], e: [1, 0], se: [Q, Q],
+    s: [0, 1], sw: [-Q, Q], w: [-1, 0], nw: [-Q, -Q],
+  };
+  const readPing = async (dir) => {
+    await page.click('#hearRepeat');
+    await page.waitForTimeout(120);
+    const ping = await page.evaluate(() => window.__tiltrPing);
+    const [ex, ez] = VEC[dir].map((v) => v * 3);
+    return {
+      ping,
+      ok: !!ping && ping.chirpGain <= 0.08 && ping.refl.length === 2
+        && ping.refl.every((r) => Math.abs(r.x - ex) < 0.02 && Math.abs(r.z - ez) < 0.02 && r.broadband === true),
+    };
+  };
+  const pings = [];
+  const heard = new Set();
 
   // Runde 1 ABSICHTLICH daneben (zwei Schritte): Das Feedback muss die
   // richtige Richtung nachliefern, sonst lernt niemand etwas.
+  pings.push(await readPing(state0.asked));
+  heard.add(`${pings[0].ping?.refl?.[0]?.x},${pings[0].ping?.refl?.[0]?.z}`);
   const wrong = DIRS[(DIRS.indexOf(state0.asked) + 2) % 8];
   await page.click(`#hearGrid .hear-cell[data-dir="${wrong}"]`);
   await page.waitForTimeout(200);
@@ -1472,8 +1499,15 @@ const check = (name, cond) => {
   // Restliche sieben Runden richtig beantworten.
   for (let n = 1; n < 8; n++) {
     const st = await awaitState((s) => s.round === n && !s.locked);
+    const p = await readPing(st.asked);
+    pings.push(p);
+    heard.add(`${p.ping?.refl?.[0]?.x},${p.ping?.refl?.[0]?.z}`);
     await page.click(`#hearGrid .hear-cell[data-dir="${st.asked}"]`);
   }
+  const bad = pings.find((p) => !p.ok);
+  check(`Reiz ist ortbar aufgebaut: leiser Chirp + 2 gepannte Breitband-Anschläge (${pings.length} Pings, Chirp ${pings[0].ping?.chirpGain})`,
+    pings.length === 8 && !bad);
+  check(`Die gepannte Position folgt der Richtung (${heard.size} verschiedene Positionen in 8 Runden)`, heard.size >= 3);
   const done = await awaitState((s) => s.over);
   check(`Durchgang endet mit 7/8 exakt (exakt=${done?.score?.exact}, nah=${done?.score?.close})`,
     !!done && done.done === true && done.over === true && done.score.total === 8 && done.score.exact === 7);

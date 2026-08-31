@@ -13,8 +13,24 @@ export interface PingReflection {
   double?: boolean;
 }
 
+export interface PingOptions {
+  /** Lautstärke des Emissions-Chirps. Der Chirp ist UNGEPANNT (er kommt vom
+   *  Ball, nicht von der Welt) – wer die Richtung einer Reflexion beurteilen
+   *  will, braucht ihn leise, sonst ist das lauteste Ereignis mittig. */
+  chirpGain?: number;
+}
+
+/** Was hat das Ohr beim letzten Ping bekommen? Test-Haken (window.__tiltrPing):
+ *  Panning ist nicht messbar, die Struktur des Reizes schon. */
+export interface PingDebug {
+  chirpGain: number;
+  refl: Array<{ x: number; z: number; gain: number; broadband: boolean }>;
+}
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
+  /** Wanderfenster in den Rausch-Puffer (Ping-Anschläge klingen nie identisch). */
+  private noiseCursor = 0;
   private master!: GainNode;
   private rollFilter!: BiquadFilterNode;
   private rollGain!: GainNode;
@@ -538,11 +554,15 @@ export class GameAudio {
     return p;
   }
 
+  /** Richtung -> Position auf dem Kreis (Radius 3) um den Hörer; -z ist „vorn". */
+  private unitPos(dx: number, dy: number): { x: number; z: number } {
+    const d = Math.hypot(dx, dy) || 1;
+    return { x: (dx / d) * 3, z: (dy / d) * 3 };
+  }
+
   // Quelle auf den Einheitskreis um den Hörer setzen; -z ist "vorn".
   private place(panner: PannerNode, dx: number, dy: number): void {
-    const d = Math.hypot(dx, dy) || 1;
-    const x = (dx / d) * 3,
-      z = (dy / d) * 3;
+    const { x, z } = this.unitPos(dx, dy);
     if (panner.positionX) {
       panner.positionX.value = x;
       panner.positionY.value = 0;
@@ -811,37 +831,67 @@ export class GameAudio {
 
   // Aktiver Echo-Ping: Abstrahl-Chirp, dann kommen die Reflexionen der
   // Umgebung zurück – verzögert nach Entfernung, räumlich aus ihrer Richtung.
-  echoPing(reflections: PingReflection[]): void {
+  echoPing(reflections: PingReflection[], opts: PingOptions = {}): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    const chirp = this.ctx.createOscillator();
-    chirp.type = 'sine';
-    chirp.frequency.setValueAtTime(1400, t);
-    chirp.frequency.exponentialRampToValueAtTime(900, t + 0.08);
-    const cg = this.ctx.createGain();
-    cg.gain.setValueAtTime(0.25, t);
-    cg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-    chirp.connect(cg).connect(this.master);
-    chirp.start(t);
-    chirp.stop(t + 0.11);
+    const chirpGain = opts.chirpGain ?? 0.25;
+    if (chirpGain > 0.001) {
+      const chirp = this.ctx.createOscillator();
+      chirp.type = 'sine';
+      chirp.frequency.setValueAtTime(1400, t);
+      chirp.frequency.exponentialRampToValueAtTime(900, t + 0.08);
+      const cg = this.ctx.createGain();
+      cg.gain.setValueAtTime(chirpGain, t);
+      cg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      chirp.connect(cg).connect(this.master);
+      chirp.start(t);
+      chirp.stop(t + 0.11);
+    }
 
+    const debug: PingDebug = { chirpGain, refl: [] };
     for (const r of reflections) {
       const out = this.spatialOut(r.dx, r.dy);
       const blips = r.double ? [0, 0.07] : [0];
       blips.forEach((off, i) => {
         const t0 = t + 0.1 + r.delay + off;
+        const vol = r.gain * (i === 0 ? 1 : 0.7);
         const osc = this.ctx!.createOscillator();
         osc.type = 'triangle';
         osc.frequency.value = r.freq ?? 950;
         const gain = this.ctx!.createGain();
         gain.gain.setValueAtTime(0, t0);
-        gain.gain.linearRampToValueAtTime(r.gain * (i === 0 ? 1 : 0.7), t0 + 0.01);
+        gain.gain.linearRampToValueAtTime(vol, t0 + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
         osc.connect(gain).connect(out);
         osc.start(t0);
         osc.stop(t0 + 0.14);
+        // Breitbandiger ANSCHLAG durch denselben Panner. Erst er macht die
+        // Richtung hörbar: Ein (fast) reiner Ton um 1 kHz ist der schlechteste
+        // Reiz fürs Ortungsgehör – Laufzeitunterschiede werden dort
+        // phasen-mehrdeutig, Lautstärkeunterschiede sind noch klein. Der
+        // kurze Rausch-Transient (Band um 2,6 kHz) liefert beides sauber,
+        // ohne die tonale Signatur des Elements zu überdecken.
+        const nz = this.ctx!.createBufferSource();
+        nz.buffer = this.noiseBuffer('white');
+        const band = this.ctx!.createBiquadFilter();
+        band.type = 'bandpass';
+        band.frequency.value = 2600;
+        band.Q.value = 0.7;
+        const ng = this.ctx!.createGain();
+        ng.gain.setValueAtTime(0, t0);
+        ng.gain.linearRampToValueAtTime(vol * 0.85, t0 + 0.004);
+        ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.05);
+        nz.connect(band).connect(ng).connect(out);
+        // Rotierender Offset: jeder Anschlag ein anderer Ausschnitt, damit es
+        // nicht mechanisch identisch klingt (deterministisch, kein Zufall).
+        this.noiseCursor = (this.noiseCursor + 0.137) % 1;
+        nz.start(t0, this.noiseCursor * (nz.buffer.duration - 0.1));
+        nz.stop(t0 + 0.06);
+        const pos = this.unitPos(r.dx, r.dy);
+        debug.refl.push({ x: pos.x, z: pos.z, gain: vol, broadband: true });
       });
     }
+    (window as unknown as { __tiltrPing?: PingDebug }).__tiltrPing = debug;
   }
 
   // Herzschlag: "lub-dub", Tempo und Lautstärke steigen mit der Gefahr.

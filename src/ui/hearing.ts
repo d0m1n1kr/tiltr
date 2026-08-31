@@ -97,8 +97,19 @@ export function setupHearingTest(opts: { audio: GameAudio; onClose: () => void }
 
   const playPing = (): void => {
     const { dx, dy } = dirVector(asked);
-    // Der ECHTE Spiel-Ping: ein Chirp, dann die Reflexion aus der Richtung.
-    opts.audio.echoPing([{ dx: dx * 300, dy: dy * 300, delay: 0.05, gain: 0.5 }]);
+    // Der ECHTE Spiel-Ping – mit zwei Eingriffen, die der erste Testlauf
+    // erzwungen hat („kommt immer aus derselben Richtung"):
+    //  1. Der Emissions-Chirp läuft LEISE. Er ist ungepannt (er kommt vom
+    //     Ball), war aber das lauteste Ereignis – man hörte also zuverlässig
+    //     die Mitte statt die Reflexion.
+    //  2. ZWEI Anschläge statt einem: Einem einzelnen kurzen Reiz traut das
+    //     Ortungsgehör nicht, beim zweiten entscheidet es sich.
+    // Die Frequenz ist die der Wand-Reflexion im Spiel (1300 Hz) – geprüft
+    // wird, was man im Spiel hört.
+    opts.audio.echoPing(
+      [0.05, 0.45].map((delay) => ({ dx: dx * 300, dy: dy * 300, delay, gain: 0.6, freq: 1300 })),
+      { chirpGain: 0.05 },
+    );
   };
 
   const hook = (): void => {

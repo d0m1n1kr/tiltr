@@ -64,10 +64,20 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   ein Filter gegen kaputte Tokens. Duell-Läufe schreiben NICHTS mit.
 - Audio ist das Leitmedium: Jedes Element hat eine eindeutige, räumlich
   ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound.
+  Jede Reflexion des Echo-Pings hat einen BREITBANDIGEN Anschlag (kurzer
+  Rausch-Transient, Band um 2,6 kHz) vor dem tonalen Körper: Ein fast
+  reiner Ton um 1 kHz ist der schlechteste Reiz fürs Ortungsgehör
+  (Laufzeit phasen-mehrdeutig, Lautstärkeunterschied noch klein) – ohne
+  den Anschlag ist selbst perfektes HRTF-Panning nicht hörbar. Der
+  ungepannte Emissions-Chirp kommt vom Ball, nicht von der Welt;
+  `echoPing(refl, { chirpGain })` fährt ihn leise, wo die Richtung
+  beurteilt werden soll.
   `src/ui/hearing.ts` ist der Hörtest-Modus: echter Echo-Ping aus einer
   von acht Richtungen, Antwort auf der Kompassrose, Auswertung TRENNT
   Seiten- und Tiefen-Achse (links/rechts trägt, vorn/hinten ist bei
-  generischer HRTF schwach). Wer am Panning schraubt, prüft es hier.
+  generischer HRTF schwach). Wer am Panning schraubt, prüft es hier –
+  `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
+  Position und Breitband-Anteil jeder Reflexion).
 
 ## UI & Layout
 
