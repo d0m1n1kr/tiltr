@@ -97,6 +97,7 @@ export const fr: Dict = {
   'ed.check.timer': 'Minuterie suffisante',
   'ed.check.softlock': 'Pas de blocage',
   'ed.check.hazards': 'Dangers à l’écart',
+  'ed.check.guards': 'Gardes franchissables',
   'ed.check.items': 'Collectibles libres',
   'ed.f.dir': 'Direction',
   'ed.f.force': 'Force',

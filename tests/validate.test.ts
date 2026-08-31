@@ -115,6 +115,43 @@ describe('validateLevel', () => {
     expect(by(checks, 'timer')!.ok).toBe(false);
   });
 
+  it('Wächter im Ein-Zellen-Korridor: guards-Check schlägt an', () => {
+    // Korridor von links nach rechts, Ziel dahinter, Wächter mittendrin und
+    // KEIN Ausweg – an ihm kommt man nie vorbei (er lässt sich nicht
+    // überholen, seitlich passen nur 23 der nötigen 48 Einheiten).
+    const sealed = {
+      id: 'custom-riegel',
+      name: 'Riegel',
+      pingBudget: 3,
+      floors: [
+        {
+          size: [5, 2],
+          maze: {
+            seed: 4,
+            carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[3, 0], 'e']],
+            add: [[[0, 0], 's'], [[1, 0], 's'], [[2, 0], 's'], [[3, 0], 's'], [[4, 0], 's']],
+          },
+          elements: [{ type: 'guard', patrol: [[1, 0], [3, 0]], speed: 85 }],
+          start: [0, 0],
+          goal: [4, 0],
+        },
+      ],
+    };
+    const checks = validateLevel(sealed);
+    expect(by(checks, 'goal')!.ok).toBe(true); // im offenen Modell erreichbar …
+    expect(by(checks, 'guards')).toMatchObject({ ok: false }); // … aber verriegelt
+    expect(isShareable(checks)).toBe(false);
+
+    // Mit einer Ausweichbucht unter der Patrouillen-Mitte ist es lösbar:
+    // dort wartet man, bis der Wächter kehrtmacht.
+    const withBay = JSON.parse(JSON.stringify(sealed)) as typeof sealed;
+    withBay.floors[0]!.maze.add = withBay.floors[0]!.maze.add.filter((e) => (e as number[][])[0]![0] !== 2);
+    (withBay.floors[0]!.maze.carve as unknown[]).push([[2, 0], 's']); // Bucht unter der Mitte
+    const c2 = validateLevel(withBay);
+    const g2 = by(c2, 'guards')!;
+    expect(g2.ok, g2.detail).toBe(true);
+  });
+
   it('alle Kampagnen-Level bestehen den kompletten Prüfbericht', () => {
     for (const def of CAMPAIGN_LEVELS) {
       const checks = validateLevel(def);

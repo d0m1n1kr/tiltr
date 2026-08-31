@@ -350,6 +350,43 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M18 „Wächter sind keine Riegel" ✓ (v1.9.1)
+
+Bugfund aus dem Spielbetrieb: **2.2 „Doppelter Boden" war nicht lösbar.**
+Auf Ebene 2 patrouillierte ein Wächter im einzigen Abstieg-Korridor. An
+einem Wächter kommt man in einem Ein-Zellen-Korridor NICHT vorbei
+(Kollision ab 48 Einheiten Abstand, seitlich passen höchstens 23) und
+überholen kann man ihn nie – man betrat die Ebene östlich von ihm, also
+waren Schlüssel UND Rück-Transporter unerreichbar: kein Weg zum Ziel und
+nicht einmal zurück (Softlock). Per Simulation der echten Physik über 100
+Startzeitpunkte und zwei Strategien bestätigt: westlichste erreichbare
+Position x=197, die Sperre beginnt bei 198.
+
+Warum die Suite das nicht sah: Der Erreichbarkeits-Beweis kannte Wände,
+Türen, Transporter und Strömungen – Wächter kamen darin nicht vor.
+
+**Neuer Pflicht-Check `guards`** (validate.ts): Patrouillenzellen sind
+kein Durchgangsgebiet, sondern werden ABSCHNITTSWEISE gequert. Modell:
+Die Zellen einer Patrouille werden gesperrt und durch gerichtete Kanten
+zwischen ihren Zugängen ersetzt – eine Kante existiert nur, wenn beim
+Queren dieses Abschnitts mindestens eine Patrouillenzelle frei bleibt (da
+hält sich der Wächter auf, während man huscht; der Ball ist rund zehnmal
+schneller). Eine Patrouillenzelle selbst darf betreten werden, solange die
+Patrouille länger als diese eine Zelle ist – Schlüssel dürfen also auf
+einer Patrouille liegen.
+
+Damit sind erlaubt: Quer-Passagen (rein/raus an derselben Zelle) und
+Etappen über Ausweichbuchten. Verboten ist die Ende-zu-Ende-Durchquerung
+ohne Zuflucht – genau der Fall von 2.2. Über alle 28 Kampagnen-Level
+gemessen: nur dieses eine Level fiel durch (w1-03, w1-08, w1-10, w2-06
+haben Buchten bzw. Quer-Übergänge und bleiben grün).
+
+**Level-Fix**: In w2-02 öffnet eine zusätzliche Süd-Kante die Zelle unter
+dem Wächter-Wendepunkt – Fluchtweg und Umweg in einem. Simulation: 36 von
+41 Startzeitpunkten kommen durch. Der kurze Weg links am Wächter vorbei
+bleibt die riskante Abkürzung, das Intro („an der Wache vorbei") stimmt
+weiterhin.
+
 ## M17 „Geist-Duell" ✓ (v1.9.0) – asynchrones Rennen gegen eine echte Spur
 
 Ein Lauf wird zur Herausforderung: Der Share-Link trägt **Level + Geist +

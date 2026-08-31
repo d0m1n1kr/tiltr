@@ -97,6 +97,7 @@ export const en: Dict = {
   'ed.check.timer': 'Timer fits',
   'ed.check.softlock': 'No softlock',
   'ed.check.hazards': 'Hazards off-path',
+  'ed.check.guards': 'Guards passable',
   'ed.check.items': 'Collectibles free',
   'ed.f.dir': 'Direction',
   'ed.f.force': 'Force',

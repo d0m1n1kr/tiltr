@@ -20,6 +20,17 @@ export interface CellConfig {
   openDoorIds?: Set<string>;
   /** Konservativ: Glasboden- und Sog-Anker-Zellen als gesperrt behandeln. */
   hazardsBlocked?: boolean;
+  /**
+   * Wächter ernst nehmen. In einem Ein-Zellen-Korridor passt man nicht an
+   * einem Wächter vorbei (Kollision ab 48 Einheiten, seitlich sind höchstens
+   * 23 möglich) und überholen kann man ihn nie. Modell: Patrouillenzellen
+   * sind kein Durchgangsgebiet, sondern werden ABSCHNITTSWEISE gequert –
+   * von einem Zugang zum nächsten, und nur solange dabei mindestens eine
+   * Patrouillenzelle frei bleibt, auf der sich der Wächter aufhalten kann.
+   * Damit sind Quer-Passagen und Etappen über Ausweichbuchten erlaubt,
+   * eine Ende-zu-Ende-Durchquerung ohne Zuflucht dagegen nicht.
+   */
+  guardSafe?: boolean;
 }
 
 export interface StartPos {
@@ -50,26 +61,105 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: Level
 
 export const cellKey = (fl: number, c: readonly [number, number]) => `${fl}:${c[0]},${c[1]}`;
 
+/** Zellen, die jede Wächter-Patrouille dieser Ebene überstreicht (in der
+ *  Reihenfolge des Ablaufens). */
+function patrolLines(floor: FloorDef): Array<Array<[number, number]>> {
+  const lines: Array<Array<[number, number]>> = [];
+  for (const el of floor.elements) {
+    if (el.type !== 'guard') continue;
+    const line: Array<[number, number]> = [];
+    for (let i = 1; i < el.patrol.length; i++) {
+      const [ax, ay] = el.patrol[i - 1]!;
+      const [bx, by] = el.patrol[i]!;
+      const steps = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
+      for (let s = 0; s <= steps; s++) {
+        const cell: [number, number] = [ax + Math.sign(bx - ax) * s, ay + Math.sign(by - ay) * s];
+        if (!line.some((c) => c[0] === cell[0] && c[1] === cell[1])) line.push(cell);
+      }
+    }
+    if (line.length) lines.push(line);
+  }
+  return lines;
+}
+
+const NEIGHBORS = [
+  ['n', 0, -1],
+  ['e', 1, 0],
+  ['s', 0, 1],
+  ['w', -1, 0],
+] as const;
+
+/**
+ * Wächter-Modell für reachable(guardSafe): Patrouillenzellen werden gesperrt
+ * und stattdessen durch GERICHTETE Kanten zwischen ihren Zugängen ersetzt –
+ * eine Kante existiert, wenn beim Queren dieses Abschnitts mindestens eine
+ * Patrouillenzelle frei bleibt (dort steht der Wächter, während man huscht).
+ * Zusätzlich darf man eine Patrouillenzelle selbst betreten (Schlüssel!),
+ * solange die Patrouille mehr als diese eine Zelle umfasst.
+ */
+function guardEdges(
+  floor: FloorDef,
+  cells: Cell[],
+): { blocked: number[]; edges: Array<{ from: readonly [number, number]; to: readonly [number, number] }> } {
+  const [cols, rows] = floor.size;
+  const blocked: number[] = [];
+  const edges: Array<{ from: readonly [number, number]; to: readonly [number, number] }> = [];
+  for (const line of patrolLines(floor)) {
+    for (const [x, y] of line) blocked.push(y * cols + x);
+    // Zugänge: offene Nachbarzellen außerhalb dieser Patrouille
+    const access: Array<{ at: number; cell: [number, number] }> = [];
+    line.forEach(([x, y], at) => {
+      const c = cells[y * cols + x]!;
+      for (const [dir, dx, dy] of NEIGHBORS) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || c[dir]) continue;
+        if (line.some((p) => p[0] === nx && p[1] === ny)) continue;
+        access.push({ at, cell: [nx, ny] });
+      }
+    });
+    for (const a of access) {
+      // Die Patrouillenzelle selbst betreten (und wieder verlassen).
+      if (line.length > 1) edges.push({ from: a.cell, to: line[a.at]! });
+      for (const b of access) {
+        const span = Math.abs(b.at - a.at) + 1;
+        if (span < line.length) edges.push({ from: a.cell, to: b.cell });
+      }
+    }
+  }
+  return { blocked, edges };
+}
+
 export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<string> {
-  const floors = def.floors.map((f) => ({
-    cells: buildFloorCells(f, cfg, def.mirror),
+  const floors = def.floors.map((f, fi) => {
+    const cells = buildFloorCells(f, cfg, def.mirror);
+    const guards = cfg.guardSafe ? guardEdges(f, cells) : null;
+    return {
+    cells,
     cols: f.size[0],
     rows: f.size[1],
-    jumps: f.elements
-      .filter((e) => e.type === 'transporter')
-      .map((t) => ({ from: t.cell, toFloor: t.target.floor, toCell: t.target.cell })),
+    jumps: [
+      ...f.elements
+        .filter((e) => e.type === 'transporter')
+        .map((t) => ({ from: t.cell as readonly [number, number], toFloor: t.target.floor, toCell: t.target.cell as readonly [number, number] })),
+      ...(guards?.edges ?? []).map((e) => ({ from: e.from, toFloor: fi, toCell: e.to, guardEdge: true })),
+    ],
     // Strömungszelle -> Fließrichtung (konservativ: nur diese Kante hinaus)
     currents: new Map(
       f.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * f.size[0] + c.cell[0], c.dir]),
     ),
-    blocked: new Set(
-      cfg.hazardsBlocked
+    blocked: new Set([
+      ...(cfg.hazardsBlocked
         ? f.elements
             .filter((e) => e.type === 'glass' || e.type === 'anchor')
             .map((e) => e.cell[1] * f.size[0] + e.cell[0])
-        : [],
-    ),
-  }));
+        : []),
+    ]),
+    // Wächterzellen: für normale Schritte gesperrt, über die Wächter-Kanten
+    // unten aber betretbar (Schlüssel dürfen auf einer Patrouille liegen).
+    patrolBlocked: new Set(guards?.blocked ?? []),
+    };
+  });
   const key = (fl: number, x: number, y: number) => `${fl}:${x},${y}`;
   const start = from ?? { floor: 0, cell: def.floors[0]!.start };
   const seen = new Set<string>([key(start.floor, start.cell[0], start.cell[1])]);
@@ -78,8 +168,10 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
     const [fl, x, y] = stack.pop()!;
     const floor = floors[fl]!;
     const c = floor.cells[y * floor.cols + x]!;
-    const push = (nfl: number, nx: number, ny: number, dir?: 'n' | 'e' | 's' | 'w') => {
-      if (floors[nfl]!.blocked.has(ny * floors[nfl]!.cols + nx)) return;
+    const push = (nfl: number, nx: number, ny: number, dir?: 'n' | 'e' | 's' | 'w', viaGuardEdge = false) => {
+      const target = floors[nfl]!;
+      if (target.blocked.has(ny * target.cols + nx)) return;
+      if (!viaGuardEdge && target.patrolBlocked.has(ny * target.cols + nx)) return;
       // Gegen den Strom betritt man eine Strömungszelle nicht.
       if (dir) {
         const targetCurrent = floors[nfl]!.currents.get(ny * floors[nfl]!.cols + nx);
@@ -106,10 +198,28 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
     if (!c.s && y < floor.rows - 1) push(fl, x, y + 1, 's');
     if (!c.w && x > 0) push(fl, x - 1, y, 'w');
     for (const j of floor.jumps) {
-      if (j.from[0] === x && j.from[1] === y) push(j.toFloor, j.toCell[0], j.toCell[1]);
+      if (j.from[0] === x && j.from[1] === y)
+        push(j.toFloor, j.toCell[0], j.toCell[1], undefined, 'guardEdge' in j);
     }
   }
   return seen;
+}
+
+/**
+ * Wächter-Beweis: Wo kommt man hin, OHNE an einem Wächter vorbeidrängen zu
+ * müssen? In einem Ein-Zellen-Korridor passt man nicht an einem Wächter
+ * vorbei (Kollision ab 48 Einheiten, seitlich sind höchstens 23 möglich) –
+ * und überholen kann man ihn dort nie. Also gilt: Für jeden Wächter muss
+ * EINE Zelle seiner Patrouille übrig bleiben, die der Weg nicht braucht;
+ * dort hält er sich auf, während man vorbeikommt (er läuft ja, und der Ball
+ * ist rund zehnmal schneller). Gibt es eine solche Zelle nicht, versiegelt
+ * der Wächter den Korridor dauerhaft.
+ *
+ * Rückgabe: alle Zellen, die unter mindestens EINER solchen Aufteilung
+ * erreichbar sind (mehrere Fahrten sind erlaubt – der Wächter wandert).
+ */
+export function guardSafeReachable(def: LevelDef): Set<string> {
+  return reachable(def, { brittleOpen: true, doorsOpen: true, guardSafe: true });
 }
 
 /**
@@ -178,7 +288,7 @@ export function directedDistances(
 /* --- Level-Prüfbericht (Editor-Badges; die Testsuite nutzt die Bausteine
        oben direkt für schärfere, gezielte Assertions) ---------------------- */
 
-export type CheckKey = 'load' | 'links' | 'goal' | 'openers' | 'timer' | 'softlock' | 'hazards' | 'items';
+export type CheckKey = 'load' | 'links' | 'goal' | 'openers' | 'timer' | 'softlock' | 'hazards' | 'guards' | 'items';
 
 export interface CheckResult {
   key: CheckKey;
@@ -312,6 +422,26 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
   });
   push('hazards', hazardsOk, hazardsDetail);
+
+  // Wächter sind keine Riegel: Ziel, Öffner und Transporter müssen auch
+  // dann erreichbar bleiben, wenn man an keinem Wächter vorbeidrängt
+  // (guardsBlock – siehe CellConfig). Fängt die Klasse „Wächter versiegelt
+  // den einzigen Ein-Zellen-Korridor", die im offenen Modell unsichtbar ist.
+  const past = guardSafeReachable(def);
+  let guardsOk = past.has(goalKey);
+  let guardsDetail = guardsOk ? undefined : 'Ziel';
+  def.floors.forEach((floor, fl) => {
+    for (const el of floor.elements) {
+      if (
+        (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch' || el.type === 'transporter') &&
+        !past.has(cellKey(fl, el.cell))
+      ) {
+        guardsOk = false;
+        guardsDetail = `${el.type} E${fl + 1} (${el.cell})`;
+      }
+    }
+  });
+  push('guards', guardsOk, guardsDetail);
 
   // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.
   const open = reachable(def, { brittleOpen: true, doorsOpen: true });

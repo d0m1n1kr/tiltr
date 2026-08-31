@@ -331,7 +331,12 @@ const defs2: unknown[] = [
       },
       {
         size: [5, 4],
-        maze: { seed: 211, carve: [...right(0, 0, 4), ...down(4, 0, 3), ...right(3, 0, 4)] },
+        // Die Süd-Kante bei [1,0] ist PFLICHT: Sie ist der Fluchtweg aus dem
+        // Wächter-Korridor. Ohne sie wäre die obere Zeile der einzige Ab-
+        // stieg – und ein Wächter versiegelt einen Ein-Zellen-Korridor
+        // dauerhaft (Kollision ab 48 Einheiten, seitlich passen nur 23).
+        // Der 'guards'-Beweis in validate.ts hält das jetzt fest.
+        maze: { seed: 211, carve: [...right(0, 0, 4), ...down(4, 0, 3), ...right(3, 0, 4), [[1, 0], 's']] },
         elements: [
           { type: 'guard', patrol: [[1, 0], [3, 0]], speed: 85 },
           { type: 'key', cell: [4, 3], opens: 'tor' },
