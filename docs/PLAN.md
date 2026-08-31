@@ -349,3 +349,13 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   ID-Labels an Türkanten ab der zweiten Tür, Transporter-Ziel als
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
+
+## M14 „Phone-Editor" ✓ (v1.7.0)
+
+Unter 900px dominiert das SPIELFELD (>55% der Höhe statt ~31%): Die
+Palette schrumpft zu einer kompakten Werkzeugleiste (Icons) plus
+Element-Button; die Element-Auswahl ist ein mehrspaltiges Grid-Sheet
+(statt einzeiliger Horizontal-Scroll-Leiste), die Eigenschaften liegen in
+einem Bottom-Drawer mit stets sichtbarem Griff, der sich bei Element-
+Auswahl automatisch öffnet. Beides sind Overlays über der Karte – sie
+nehmen ihr keine Höhe weg. Desktop/Tablet (Dreispalter) unverändert.

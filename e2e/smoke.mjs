@@ -715,6 +715,17 @@ const check = (name, cond) => {
   const cols = await page.evaluate(() => getComputedStyle(document.getElementById('edBody')).gridTemplateColumns);
   check(`Editor öffnet als Tablet-Dreispalter (${cols})`, edShown && cols.split(' ').length === 3);
 
+  // Phone-Chrome (Element-Button, Drawer-Griff) existiert, bleibt hier aber
+  // unsichtbar – der Dreispalter zeigt Palette und Eigenschaften direkt.
+  const chromeHidden = await page.evaluate(() => {
+    const gone = (id) => {
+      const el = document.getElementById(id);
+      return !!el && getComputedStyle(el).display === 'none';
+    };
+    return gone('edElementBtn') && gone('edDrawerHandle');
+  });
+  check('Tablet: Element-Button und Drawer-Griff nur auf dem Phone', chromeHidden);
+
   // Live-Badges: das leere 6x8-Level ist beweisbar gesund (alle grün).
   const badges = await page.locator('#edBadges .ed-badge').count();
   const failed = await page.locator('#edBadges .ed-badge.fail').count();
@@ -825,6 +836,62 @@ const check = (name, cond) => {
 
   const bodyTop = await page.evaluate(() => document.getElementById('edBody').getBoundingClientRect().top);
   check(`Phone: kompakter Editor-Kopf (Karte ab y=${bodyTop})`, bodyTop < 240);
+
+  // Phone-Umbau: das Spielfeld dominiert – Palette ist eine kompakte
+  // Werkzeugleiste, Elemente wählt man in einem Grid-Sheet, Eigenschaften
+  // liegen in einem Drawer unten. Die Karte bekommt >55% der Höhe.
+  const mapShare = await page.evaluate(
+    () => document.getElementById('edCanvasWrap').getBoundingClientRect().height / innerHeight,
+  );
+  check(`Phone: Spielfeld dominiert (${Math.round(mapShare * 100)}% der Höhe)`, mapShare > 0.55);
+
+  const tapPhone = async (cx, cy) => {
+    const pt = await page.evaluate(([x, y]) => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById('edCanvas').getBoundingClientRect();
+      return { x: box.left + (ed.ox + x * ed.scale) / ed.dpr, y: box.top + (ed.oy + y * ed.scale) / ed.dpr };
+    }, [cx * 100 + 50, cy * 100 + 50]);
+    await page.mouse.click(pt.x, pt.y);
+    await page.waitForTimeout(250);
+  };
+
+  // Element-Wahl: Button öffnet ein Grid-Sheet (mehrspaltig, kein
+  // einzeiliges Horizontal-Scrollen mehr), Auswahl schließt es.
+  const elBtn = await page.locator('#edElementBtn:visible').count();
+  let sheetCols = 0;
+  let sheetClosed = false;
+  if (elBtn === 1) {
+    await page.click('#edElementBtn');
+    sheetCols = await page.evaluate(
+      () => getComputedStyle(document.getElementById('edElements')).gridTemplateColumns.split(' ').length,
+    );
+    await page.locator('#edElements .ed-tile', { hasText: 'Glasboden' }).click();
+    sheetClosed = await page.evaluate(
+      () => getComputedStyle(document.getElementById('edElements')).display === 'none',
+    );
+  }
+  check(`Phone: Element-Wahl als Grid-Sheet (${sheetCols} Spalten)`, elBtn === 1 && sheetCols >= 3 && sheetClosed);
+
+  // Eigenschaften-Drawer: Tap auf ein Element öffnet ihn, der Griff schließt.
+  const drawerY = () => page.evaluate(() => {
+    const tf = getComputedStyle(document.getElementById('edDrawer')).transform;
+    return tf === 'none' ? 0 : new DOMMatrixReadOnly(tf).m42;
+  });
+  const hasDrawer = await page.locator('#edDrawer').count();
+  let openY = -1;
+  let closedY = -1;
+  if (hasDrawer === 1 && elBtn === 1) {
+    await tapPhone(1, 1); // Glasboden platzieren …
+    await tapPhone(1, 1); // … und antippen: auswählen + Drawer öffnen
+    openY = await drawerY();
+    await page.click('#edDrawerHandle');
+    await page.waitForTimeout(400);
+    closedY = await drawerY();
+  }
+  check(`Phone: Auswahl öffnet den Eigenschaften-Drawer (y=${Math.round(openY)})`,
+    hasDrawer === 1 && openY === 0);
+  check(`Phone: Drawer-Griff schließt wieder (y=${Math.round(closedY)})`,
+    hasDrawer === 1 && closedY > 50);
 
   // Wand-Werkzeug: Tap 30 Welteinheiten neben der Gridlinie (alte Zone: 18)
   // schaltet die nächste Kante trotzdem (carve +1).

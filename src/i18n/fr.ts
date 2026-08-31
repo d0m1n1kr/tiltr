@@ -66,6 +66,7 @@ export const fr: Dict = {
   'ed.backToEditor': '✏️ Retour à l’éditeur',
   'ed.tools': 'Outils',
   'ed.elements': 'Éléments',
+  'ed.props': 'Propriétés',
   'ed.level': 'Niveau',
   'ed.selected': 'Sélection',
   'ed.tool.select': 'Sélectionner',

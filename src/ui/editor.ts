@@ -126,6 +126,25 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   const statusEl = $('edStatus');
   const paletteEl = $('edPalette');
   const propsEl = $('edProps');
+  const drawerEl = $('edDrawer');
+  const drawerHandle = $('edDrawerHandle');
+
+  /* Phone-Chrome: Eigenschaften-Drawer (Griff unten) + Element-Sheet.
+     Auf dem Desktop sind beide Klassen wirkungslos (Media-Query). */
+  const updateDrawerHandle = (): void => {
+    drawerHandle.textContent = `${drawerEl.classList.contains('open') ? '▾' : '▴'} ${t('ed.props')}`;
+  };
+  const closeSheet = (): void => panel.classList.remove('sheet-open');
+  const openDrawer = (): void => {
+    drawerEl.classList.add('open');
+    closeSheet();
+    updateDrawerHandle();
+  };
+  drawerHandle.addEventListener('click', () => {
+    drawerEl.classList.toggle('open');
+    closeSheet();
+    updateDrawerHandle();
+  });
 
   const renderer = new Renderer(canvas);
   const overlay = canvas.getContext('2d')!;
@@ -568,12 +587,14 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       if (hit !== -1) {
         selected = hit;
         renderProps();
+        openDrawer(); // Phone: Auswahl zeigt die Eigenschaften
       } else {
         placeAt(target);
       }
     } else {
       selected = elementAt(target);
       renderProps();
+      if (selected !== -1) openDrawer();
     }
     rebuild();
   }
@@ -721,7 +742,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       // später gesetzt wird – bis dahin ist das Badge „Verknüpfungen" rot.
       if (placeType === 'key' || placeType === 'timedSwitch')
         el.opens = nearestDoorId(activeFloor, target.cell!, placeType === 'key') ?? 'tor1';
-      if (placeType === 'hole') el.breathing = { offset: Math.random() * 4 };
+      if (placeType === 'hole') el.breathing = { offset: Math.round(Math.random() * 8) / 2 }; // 0,5er-Schritte wie das Eingabefeld
       els.push(el);
       selected = els.length - 1;
     }
@@ -744,41 +765,25 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
 
   /* --- Palette --------------------------------------------------------------- */
 
+  // Palette: Desktop = Spalte mit allem, Phone = kompakte Werkzeugleiste
+  // plus Element-Button, der #edElements als Grid-Sheet öffnet (CSS-Split
+  // über die 900px-Media-Query; hier wird nur EINMAL gerendert).
   function renderPalette(): void {
     paletteEl.replaceChildren();
-    const tools: Array<[Tool, string]> = [
-      ['select', `☝ ${t('ed.tool.select')}`],
-      ['wall', `▤ ${t('ed.tool.wall')}`],
-      ['erase', `⌫ ${t('ed.tool.erase')}`],
-      ['start', `● ${t('ed.tool.start')}`],
-      ['goal', `◎ ${t('ed.tool.goal')}`],
-    ];
-    const toolsLabel = document.createElement('p');
-    toolsLabel.className = 'ed-group-label';
-    toolsLabel.textContent = t('ed.tools');
-    paletteEl.append(toolsLabel);
-    for (const [tl, label] of tools) {
-      const b = document.createElement('button');
-      b.className = 'panel ed-tile' + (tool === tl ? ' active' : '');
-      b.textContent = label;
-      b.addEventListener('click', () => {
-        tool = tl;
-        pendingGuard = null;
-        pendingTransporter = null;
-        pendingLink = null;
-        pendingRetarget = null;
-        renderPalette();
-      });
-      paletteEl.append(b);
-    }
-    const elLabel = document.createElement('p');
-    elLabel.className = 'ed-group-label';
-    elLabel.textContent = t('ed.elements');
-    paletteEl.append(elLabel);
+    const clearPendings = (): void => {
+      pendingGuard = null;
+      pendingTransporter = null;
+      pendingLink = null;
+      pendingRetarget = null;
+    };
+    const groupLabel = (text: string): HTMLElement => {
+      const p = document.createElement('p');
+      p.className = 'ed-group-label';
+      p.textContent = text;
+      return p;
+    };
     const draws = new Map(galleryEntries().map((e) => [e.type, e.draw]));
-    for (const type of PLACEABLE) {
-      const b = document.createElement('button');
-      b.className = 'panel ed-tile' + (tool === 'place' && placeType === type ? ' active' : '');
+    const mini = (type: string): HTMLCanvasElement => {
       const cv = document.createElement('canvas');
       cv.width = 66;
       cv.height = 42;
@@ -786,20 +791,70 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       ctx.fillStyle = WORLD.bgDeep;
       ctx.fillRect(0, 0, cv.width, cv.height);
       draws.get(type)?.(ctx, cv.width, cv.height);
-      const label = document.createElement('span');
-      label.textContent = t(`el.${type}.title` as keyof Dict);
-      b.append(cv, label);
+      return cv;
+    };
+    const lblSpan = (text: string): HTMLElement => {
+      const s = document.createElement('span');
+      s.className = 'ed-lbl';
+      s.textContent = text;
+      return s;
+    };
+
+    const toolsWrap = document.createElement('div');
+    toolsWrap.id = 'edTools';
+    const tools: Array<[Tool, string, string]> = [
+      ['select', '☝', t('ed.tool.select')],
+      ['wall', '▤', t('ed.tool.wall')],
+      ['erase', '⌫', t('ed.tool.erase')],
+      ['start', '●', t('ed.tool.start')],
+      ['goal', '◎', t('ed.tool.goal')],
+    ];
+    for (const [tl, ico, lbl] of tools) {
+      const b = document.createElement('button');
+      b.className = 'panel ed-tile' + (tool === tl ? ' active' : '');
+      const i = document.createElement('span');
+      i.textContent = ico;
+      b.append(i, lblSpan(lbl));
+      b.title = lbl;
+      b.addEventListener('click', () => {
+        tool = tl;
+        clearPendings();
+        closeSheet();
+        renderPalette();
+      });
+      toolsWrap.append(b);
+    }
+
+    // Phone: aktiver Element-Typ als Button – öffnet/schließt das Sheet.
+    const elBtn = document.createElement('button');
+    elBtn.id = 'edElementBtn';
+    elBtn.className = 'panel ed-tile' + (tool === 'place' ? ' active' : '');
+    const caret = document.createElement('span');
+    caret.textContent = '▾';
+    elBtn.append(mini(placeType), lblSpan(t(`el.${placeType}.title` as keyof Dict)), caret);
+    elBtn.addEventListener('click', () => {
+      panel.classList.toggle('sheet-open');
+      drawerEl.classList.remove('open');
+      updateDrawerHandle();
+    });
+
+    const elementsWrap = document.createElement('div');
+    elementsWrap.id = 'edElements';
+    for (const type of PLACEABLE) {
+      const b = document.createElement('button');
+      b.className = 'panel ed-tile' + (tool === 'place' && placeType === type ? ' active' : '');
+      b.append(mini(type), lblSpan(t(`el.${type}.title` as keyof Dict)));
       b.addEventListener('click', () => {
         tool = 'place';
         placeType = type;
-        pendingGuard = null;
-        pendingTransporter = null;
-        pendingLink = null;
-        pendingRetarget = null;
+        clearPendings();
+        closeSheet();
         renderPalette();
       });
-      paletteEl.append(b);
+      elementsWrap.append(b);
     }
+
+    paletteEl.append(groupLabel(t('ed.tools')), toolsWrap, elBtn, groupLabel(t('ed.elements')), elementsWrap);
   }
 
   /* --- Eigenschaften ---------------------------------------------------------- */
@@ -1272,6 +1327,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       pendingTransporter = null;
       pendingLink = null;
       pendingRetarget = null;
+      drawerEl.classList.remove('open');
+      closeSheet();
+      updateDrawerHandle();
       tool = 'place';
       placeType = 'hole';
       nameInput.value = String(draft.name ?? '');

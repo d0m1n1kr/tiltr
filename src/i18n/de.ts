@@ -70,6 +70,7 @@ export const de = {
   'ed.backToEditor': '✏️ Zurück zum Editor',
   'ed.tools': 'Werkzeuge',
   'ed.elements': 'Elemente',
+  'ed.props': 'Eigenschaften',
   'ed.level': 'Level',
   'ed.selected': 'Auswahl',
   'ed.tool.select': 'Auswählen',
