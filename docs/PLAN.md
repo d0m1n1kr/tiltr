@@ -326,3 +326,26 @@ im Spiel, plus ein ✏️-Knopf, der ohne Umweg zurück in den Editor führt
 |---|---|---|
 | **M12a „Werkstatt-Kern"** ✓ | Bibliothek + Editor (eine Ebene): Platzieren, Wände, Eigenschaften, Live-Validierung, Preview, Speichern | Eigene Level bauen & spielen (v1.4.0) |
 | **M12b „Teilen"** ✓ | Mehr-Ebenen + Transporter-Ziele, Import/Export, Share-Link + Empfang (natives deflate-raw statt pako), Fit-Knopf | Level-Tausch ohne Server (v1.5.0) |
+
+## M13 „Verknüpfungen" ✓ (v1.6.0)
+
+Tür/Öffner-Mechanik im Editor grundüberholt – Kern: **Loader mild, Beweis
+streng**. Hängende Verknüpfungen (Tür ohne Öffner, Schlüssel ohne Tür) sind
+lauffähige Editor-Zwischenzustände; die Strenge wohnt im neuen Pflicht-Check
+`links` in validate.ts (blockiert Teilen). Damit friert die Vorschau nie mehr
+ein und statt Loader-Exceptions gibt es Badge + Hinweis.
+
+- Schlüssel öffnen Türen jetzt auf ALLEN Ebenen (app.ts) – das Spiel folgt
+  dem Lösbarkeits-Modell (coopReachable behandelt Öffner ebenenübergreifend).
+- Auto-Link auf die NÄCHSTGELEGENE Tür (statt der zuletzt gesetzten);
+  🔗 „Tür wählen" in den Props verknüpft per Tap (Pending-Mechanik wie beim
+  Transporter, Ebenenwechsel für Schlüssel erlaubt, Zeitschloss nur gleiche
+  Ebene – Timer-Beweis).
+- Tür-IDs global eindeutig (nextDoorId über alle Ebenen); Tür-Props zeigen
+  editierbare ID (Rename hängt alle Öffner-Referenzen um) + Öffner-Zähler.
+- Tür löschen räumt auf: Öffner werden auf die nächste verbleibende Tür
+  umgehängt, sonst Status-Hinweis + rotes Badge.
+- Sichtbarkeit: Paar-Hervorhebung (Öffner ↔ Tür golden bei Auswahl),
+  ID-Labels an Türkanten ab der zweiten Tür, Transporter-Ziel als
+  Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
+  🔗 „Ziel neu wählen" per Tap (auch über Ebenen).

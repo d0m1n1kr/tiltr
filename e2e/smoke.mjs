@@ -923,6 +923,107 @@ const check = (name, cond) => {
   await ctx.close();
 }
 
+// --- Lauf 14: Editor-Verknüpfungen – Tür ohne Öffner ist ein normaler
+// Zwischenzustand (Badge „Verknüpfungen" statt Load-Exception), Auto-Link auf
+// die NÄCHSTE Tür, 🔗-Tap-Verknüpfen, global eindeutige Tür-IDs, aufräumendes
+// Löschen, Rename mit Referenz-Umhängen, Transporter-Ziel neu wählbar. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+  await page.click('#workshopBtn');
+  await page.click('#wsNewBtn');
+  await page.waitForTimeout(500);
+
+  const tap = async (cx, cy, edge = null) => {
+    const pt = await page.evaluate(([cx, cy, edge]) => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById('edCanvas').getBoundingClientRect();
+      let wx = cx * 100 + 50;
+      let wy = cy * 100 + 50;
+      if (edge === 'e') wx = (cx + 1) * 100;
+      if (edge === 's') wy = (cy + 1) * 100;
+      return { x: box.left + (ed.ox + wx * ed.scale) / ed.dpr, y: box.top + (ed.oy + wy * ed.scale) / ed.dpr };
+    }, [cx, cy, edge]);
+    await page.mouse.click(pt.x, pt.y);
+    await page.waitForTimeout(250);
+  };
+  const els = (fl = 0) => page.evaluate((fl) => window.__tiltrEd.def.floors[fl].elements, fl);
+  const status = async () => (await page.textContent('#edStatus')).trim();
+
+  // Tür ohne Öffner: lädt weiter (Loader mild), nur „Verknüpfungen" ist rot.
+  await page.locator('.ed-tile', { hasText: /^Tür$/ }).click();
+  await tap(2, 2, 'e');
+  await page.waitForTimeout(500); // Validate-Debounce
+  const doorState = await page.evaluate(() => ({
+    loadError: window.__tiltrEd.loadError,
+    badges: [...document.querySelectorAll('#edBadges .ed-badge')].map((b) => b.textContent),
+  }));
+  check('Tür ohne Öffner lädt – Badge „Verknüpfungen" statt Load-Exception',
+    doorState.loadError === null &&
+    doorState.badges.some((b) => b === '✓ Lädt') &&
+    doorState.badges.some((b) => b === '✗ Verknüpfungen'));
+
+  // Zweite Tür + Schlüssel daneben: Auto-Link auf die NÄCHSTE Tür.
+  await tap(4, 5, 's');
+  await page.locator('.ed-tile', { hasText: /^Schlüssel & Tür$/ }).click();
+  await tap(4, 6);
+  let key = (await els()).find((e) => e.type === 'key');
+  check(`Auto-Link auf die nächstgelegene Tür (${key?.opens})`, key?.opens === 'tor2');
+
+  // 🔗-Tap: Schlüssel auswählen, „Tür wählen", Tür 1 antippen.
+  await page.locator('.ed-tile', { hasText: '☝' }).first().click();
+  await tap(4, 6);
+  await page.locator('#edProps .ed-link').click();
+  await tap(2, 2, 'e');
+  key = (await els()).find((e) => e.type === 'key');
+  check(`🔗-Tap verknüpft um ("${await status()}")`, key?.opens === 'tor1' && (await status()).includes('tor1'));
+
+  // Tür-IDs sind GLOBAL eindeutig: die neue Tür auf E2 heißt tor3.
+  await page.locator('#edFloorTabs .chip', { hasText: '＋' }).click();
+  await page.locator('.ed-tile', { hasText: /^Tür$/ }).click();
+  await tap(2, 2, 'e');
+  const e2Door = (await els(1)).find((e) => e.type === 'door');
+  check(`Tür-ID global eindeutig über Ebenen (${e2Door?.id})`, e2Door?.id === 'tor3');
+
+  // Tür 1 löschen: der Schlüssel wird auf die nächste verbleibende Tür
+  // derselben Ebene umgehängt statt ins Leere zu zeigen.
+  await page.locator('#edFloorTabs .chip', { hasText: 'E1' }).first().click();
+  await page.locator('.ed-tile', { hasText: '☝' }).first().click();
+  await tap(2, 2, 'e');
+  await page.locator('#edProps .btn-ghost', { hasText: '⌫' }).click();
+  await page.waitForTimeout(300);
+  key = (await els()).find((e) => e.type === 'key');
+  check(`Tür löschen hängt Öffner um ("${await status()}")`,
+    key?.opens === 'tor2' && (await status()).includes('umgehängt'));
+
+  // Rename: alle Referenzen ziehen mit.
+  await tap(4, 5, 's');
+  await page.locator('#edProps input[type=text]').fill('haupttor');
+  await page.locator('#edProps input[type=text]').press('Enter');
+  await page.waitForTimeout(300);
+  key = (await els()).find((e) => e.type === 'key');
+  const renamed = (await els()).find((e) => e.type === 'door');
+  check(`Tür-Rename zieht Referenzen mit (${renamed?.id} / ${key?.opens})`,
+    renamed?.id === 'haupttor' && key?.opens === 'haupttor');
+
+  // Transporter-Ziel per 🔗 neu wählen – auch über Ebenen (Pad E1, Ziel E2).
+  await page.locator('.ed-tile', { hasText: 'Transporter' }).click();
+  await tap(1, 6);
+  await tap(3, 6);
+  await page.locator('.ed-tile', { hasText: '☝' }).first().click();
+  await tap(1, 6);
+  await page.locator('#edProps .ed-link').click();
+  await page.locator('#edFloorTabs .chip', { hasText: 'E2' }).first().click();
+  await tap(2, 5);
+  const pad = (await els(0)).find((e) => e.type === 'transporter');
+  check(`Transporter-Ziel per 🔗 neu gewählt (E${(pad?.target?.floor ?? -1) + 1} ${JSON.stringify(pad?.target?.cell)})`,
+    pad?.target?.floor === 1 && pad?.target?.cell?.[0] === 2 && pad?.target?.cell?.[1] === 5);
+
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

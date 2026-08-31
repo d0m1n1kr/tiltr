@@ -32,9 +32,11 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   in `src/levels/schema.ts`. Neue Elemente brauchen alle drei plus eine
   Weltfarbe in `src/render/palette.ts`.
 - `src/levels/validate.ts` – die Lösbarkeits-Beweise (Erreichbarkeit,
-  Öffner-Fixpunkt, Softlock, Timer, hazardsBlocked): EINE Quelle der
+  Öffner-Fixpunkt, Softlock, Timer, hazardsBlocked, links): EINE Quelle der
   Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
-  Live-Badges des Editors. Modell-Änderungen nur hier.
+  Live-Badges des Editors. Modell-Änderungen nur hier. Der Loader ist bei
+  Verknüpfungen bewusst MILD (Tür ohne Öffner / Schlüssel ohne Tür laden –
+  Editor-Zwischenzustände); die Strenge wohnt im `links`-Check.
 - `src/workshop.ts` + `src/ui/editor.ts` – Werkstatt: eigene Level in
   localStorage, Editor editiert rohe Defs (Vorschau = parseLevel →
   loadLevel → Renderer mit debug), Preview läuft in der echten

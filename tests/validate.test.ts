@@ -78,6 +78,33 @@ describe('validateLevel', () => {
     }
   });
 
+  it('hängende Verknüpfungen: links-Check schlägt an, load bleibt grün', () => {
+    // Tür ohne Öffner – ein normaler Editor-Zwischenzustand: lauffähig,
+    // aber nicht teilbar.
+    const orphanDoor = base();
+    orphanDoor.floors[0]!.elements.push({ type: 'door', id: 'tor1', edge: [[1, 4], 'e'] });
+    const c1 = validateLevel(orphanDoor);
+    expect(by(c1, 'load')!.ok).toBe(true);
+    expect(by(c1, 'links')).toMatchObject({ ok: false, detail: 'Tür „tor1" ohne Öffner' });
+    expect(isShareable(c1)).toBe(false);
+
+    // Schlüssel auf nicht existierende Tür.
+    const orphanKey = base();
+    orphanKey.floors[0]!.elements.push({ type: 'key', cell: [1, 1], opens: 'tor9' });
+    const c2 = validateLevel(orphanKey);
+    expect(by(c2, 'load')!.ok).toBe(true);
+    expect(by(c2, 'links')).toMatchObject({ ok: false, detail: 'key → Tür „tor9" fehlt' });
+    expect(isShareable(c2)).toBe(false);
+
+    // Vollständiges Paar: links grün.
+    const paired = base();
+    paired.floors[0]!.elements.push(
+      { type: 'door', id: 'tor1', edge: [[1, 4], 'e'] },
+      { type: 'key', cell: [1, 1], opens: 'tor1' },
+    );
+    expect(by(validateLevel(paired), 'links')!.ok).toBe(true);
+  });
+
   it('zu knapper Zeitschloss-Timer: timer-Check schlägt an', () => {
     const raw = base();
     raw.floors[0]!.elements.push(

@@ -140,6 +140,11 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   let pendingGuard: [number, number] | null = null;
   /** Transporter-Platzierung: Pad gesetzt, Ziel-Tap steht aus (Ebenenwechsel erlaubt). */
   let pendingTransporter: { floor: number; cell: [number, number] } | null = null;
+  /** 🔗 Verknüpfen: Öffner (Schlüssel/Zeitschloss) wartet auf den Tür-Tap.
+   *  Ebenenwechsel erlaubt – Schlüssel öffnen ebenenübergreifend. */
+  let pendingLink: { floor: number; index: number } | null = null;
+  /** 🔗 Umverlegen: Transporter wartet auf sein neues Ziel (Ebenenwechsel erlaubt). */
+  let pendingRetarget: { floor: number; index: number } | null = null;
   let view = { scale: 1, ox: 0, oy: 0 }; // Canvas-Pixel pro Welteinheit + Offset
   let checks: CheckResult[] = [];
   let validateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -171,11 +176,104 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     }
   };
 
+  // Türen über ALLE Ebenen: Der Loader prüft IDs global, Schlüssel öffnen
+  // ebenenübergreifend – zwei Ebenen mit je einem „tor1" wären mehrdeutig.
+  const allDoors = (): Array<{ fl: number; el: RawEl }> => {
+    const out: Array<{ fl: number; el: RawEl }> = [];
+    draft!.floors.forEach((f, fl) => {
+      for (const el of f.elements) if (el.type === 'door') out.push({ fl, el });
+    });
+    return out;
+  };
   const nextDoorId = (): string => {
-    const ids = new Set(floor().elements.filter((e) => e.type === 'door').map((e) => String(e.id)));
+    const ids = new Set(allDoors().map((d) => String(d.el.id)));
     for (let n = 1; ; n++) if (!ids.has(`tor${n}`)) return `tor${n}`;
   };
-  const doorIds = (): string[] => floor().elements.filter((e) => e.type === 'door').map((e) => String(e.id));
+
+  // Kantenmitte einer Tür in Zell-Koordinaten (für Abstände & Labels).
+  const edgeMid = (e: Edge): [number, number] => {
+    const [[x, y], dir] = e;
+    return [dir === 'e' ? x + 1 : x + 0.5, dir === 's' ? y + 1 : y + 0.5];
+  };
+
+  /** Nächstgelegene Tür zu einer Zelle: erst auf derselben Ebene, für
+   *  Schlüssel notfalls ebenenübergreifend (dann die erste gefundene). */
+  const nearestDoorId = (fl: number, cell: [number, number], anyFloor: boolean): string | null => {
+    let best: string | null = null;
+    let bestDist = Infinity;
+    for (const d of allDoors()) {
+      if (d.fl !== fl) continue;
+      const [mx, my] = edgeMid(d.el.edge!);
+      const dist = Math.hypot(mx - (cell[0] + 0.5), my - (cell[1] + 0.5));
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = String(d.el.id);
+      }
+    }
+    if (!best && anyFloor) best = allDoors().map((d) => String(d.el.id))[0] ?? null;
+    return best;
+  };
+
+  /** Dropdown-Einträge mit Ortsangabe – nackte IDs sind bei 2+ Türen Raterei. */
+  const doorOptions = (sameFloorOnly: boolean): Array<[string, string]> => {
+    const multi = draft!.floors.length > 1;
+    return allDoors()
+      .filter((d) => !sameFloorOnly || d.fl === activeFloor)
+      .map((d) => {
+        const [[x, y]] = d.el.edge!;
+        const place = multi && !sameFloorOnly ? `E${d.fl + 1} (${x},${y})` : `(${x},${y})`;
+        return [String(d.el.id), `${d.el.id} · ${place}`];
+      });
+  };
+
+  const openersOf = (doorId: string): RawEl[] =>
+    draft!.floors.flatMap((f) =>
+      f.elements.filter((el) => (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch') && el.opens === doorId),
+    );
+
+  /** Tür weg ⇒ Referenzen nicht hängen lassen: Öffner auf die nächstgelegene
+   *  verbleibende Tür umhängen; gibt es keine mehr, bleibt das Badge
+   *  „Verknüpfungen" rot und der Status sagt warum. */
+  function cleanupAfterDoorDelete(doorId: string): void {
+    const orphans: Array<{ fl: number; el: RawEl }> = [];
+    draft!.floors.forEach((f, fl) => {
+      for (const el of f.elements) {
+        if ((el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch') && el.opens === doorId)
+          orphans.push({ fl, el });
+      }
+    });
+    if (!orphans.length) return;
+    if (allDoors().length) {
+      let last = '';
+      for (const o of orphans) {
+        // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel überall.
+        const next = nearestDoorId(o.fl, o.el.cell ?? [0, 0], o.el.type !== 'timedSwitch');
+        if (next) {
+          o.el.opens = next;
+          last = next;
+        }
+      }
+      if (last) flash(`${orphans.length} × ${t('ed.relinked')} „${last}"`);
+      else flash(`${orphans.length} × ${t('ed.orphaned')}`, true);
+    } else {
+      flash(`${orphans.length} × ${t('ed.orphaned')}`, true);
+    }
+  }
+
+  /** Tür umbenennen: global eindeutig, alle Öffner-Referenzen ziehen mit. */
+  function renameDoor(el: RawEl, next: string): void {
+    const old = String(el.id);
+    if (!next || next === old) return renderProps();
+    if (allDoors().some((d) => d.el !== el && String(d.el.id) === next)) {
+      flash(t('ed.idTaken'), true);
+      return renderProps();
+    }
+    el.id = next;
+    for (const o of openersOf(old)) o.opens = next;
+    flash(`„${old}" → „${next}"`);
+    renderProps();
+    rebuild();
+  }
 
   const elementAt = (target: { kind: string; cell?: [number, number]; edge?: Edge }): number => {
     const els = floor().elements;
@@ -255,6 +353,8 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       add: floor().maze.add.length,
       selected,
       loadError,
+      // rohe Def (Live-Referenz): E2E prüft Verknüpfungen (opens, target, IDs)
+      def: draft,
     };
     renderer.setManualView(view.scale, view.ox, view.oy);
     if (loaded) {
@@ -288,25 +388,99 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     }
     overlay.stroke();
 
-    // Verknüpfungen: Schlüssel/Zeitschloss -> Tür (goldene gestrichelte Linie)
+    // Verknüpfungen: Öffner -> Tür (goldene gestrichelte Linie, gleiche Ebene)
     const doors = new Map<string, Edge>();
     for (const el of floor().elements) if (el.type === 'door' && el.edge) doors.set(String(el.id), el.edge);
-    overlay.strokeStyle = `rgba(${WORLD.door}, 0.5)`;
+    const selEl = floor().elements[selected];
     overlay.lineWidth = 1.5 * dpr;
     overlay.setLineDash([5 * dpr, 5 * dpr]);
     for (const el of floor().elements) {
-      if ((el.type !== 'key' && el.type !== 'timedSwitch') || !el.cell) continue;
+      if ((el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch') || !el.cell) continue;
+      // Ausgewählte Paare leuchten – die Verknüpfung soll man SEHEN.
+      const hot = selEl === el || (selEl?.type === 'door' && String(selEl.id) === String(el.opens));
+      overlay.strokeStyle = `rgba(${WORLD.door}, ${hot ? 0.95 : 0.5})`;
       const door = doors.get(String(el.opens));
-      if (!door) continue;
-      const [[dx, dy], dir] = door;
-      const ex = dir === 'e' ? (dx + 1) * CELL : (dx + 0.5) * CELL;
-      const ey = dir === 's' ? (dy + 1) * CELL : (dy + 0.5) * CELL;
-      overlay.beginPath();
-      overlay.moveTo(tx((el.cell[0] + 0.5) * CELL), ty((el.cell[1] + 0.5) * CELL));
-      overlay.lineTo(tx(ex), ty(ey));
-      overlay.stroke();
+      if (door) {
+        const [mx, my] = edgeMid(door);
+        overlay.beginPath();
+        overlay.moveTo(tx((el.cell[0] + 0.5) * CELL), ty((el.cell[1] + 0.5) * CELL));
+        overlay.lineTo(tx(mx * CELL), ty(my * CELL));
+        overlay.stroke();
+        if (hot) {
+          // Tür-Kante des Paars golden rahmen
+          const [[dx, dy], ddir] = door;
+          const vertical = ddir === 'e';
+          overlay.strokeRect(
+            tx((vertical ? (dx + 1) * CELL : dx * CELL) - 8),
+            ty((vertical ? dy * CELL : (dy + 1) * CELL) - 8),
+            (vertical ? 16 : CELL + 16) * s,
+            (vertical ? CELL + 16 : 16) * s,
+          );
+          overlay.strokeRect(tx(el.cell[0] * CELL), ty(el.cell[1] * CELL), CELL * s, CELL * s);
+        }
+      } else if (hot || selEl === el) {
+        // Öffner zeigt ins Leere (oder auf eine andere Ebene): Zelle markieren
+        overlay.strokeRect(tx(el.cell[0] * CELL), ty(el.cell[1] * CELL), CELL * s, CELL * s);
+      }
     }
     overlay.setLineDash([]);
+
+    // Tür-IDs ab der zweiten Tür: nackte Kanten sind sonst nicht zuzuordnen.
+    if (allDoors().length > 1) {
+      overlay.fillStyle = `rgba(${WORLD.door}, 0.9)`;
+      overlay.font = `600 ${11 * dpr}px system-ui, sans-serif`;
+      overlay.textAlign = 'center';
+      for (const [id, e] of doors) {
+        const [mx, my] = edgeMid(e);
+        overlay.fillText(id, tx(mx * CELL), ty(my * CELL) - 6 * dpr);
+      }
+    }
+
+    // Transporter: Pad -> Ziel (magenta; andere Ebene = „E<n>"-Label am Pad)
+    for (const el of floor().elements) {
+      if (el.type !== 'transporter' || !el.cell) continue;
+      const tg = el.target as { floor: number; cell: [number, number] } | undefined;
+      if (!tg) continue;
+      const hot = selEl === el;
+      overlay.strokeStyle = `rgba(${WORLD.portal}, ${hot ? 0.95 : 0.45})`;
+      overlay.fillStyle = `rgba(${WORLD.portal}, 0.9)`;
+      if (tg.floor === activeFloor) {
+        overlay.lineWidth = 1.5 * dpr;
+        overlay.setLineDash([5 * dpr, 5 * dpr]);
+        overlay.beginPath();
+        overlay.moveTo(tx((el.cell[0] + 0.5) * CELL), ty((el.cell[1] + 0.5) * CELL));
+        overlay.lineTo(tx((tg.cell[0] + 0.5) * CELL), ty((tg.cell[1] + 0.5) * CELL));
+        overlay.stroke();
+        overlay.setLineDash([]);
+        if (hot) overlay.strokeRect(tx(tg.cell[0] * CELL), ty(tg.cell[1] * CELL), CELL * s, CELL * s);
+      } else {
+        overlay.font = `600 ${11 * dpr}px system-ui, sans-serif`;
+        overlay.textAlign = 'center';
+        overlay.fillText(`→E${tg.floor + 1}`, tx((el.cell[0] + 0.5) * CELL), ty(el.cell[1] * CELL) - 4 * dpr);
+      }
+    }
+
+    // 🔗 wartet: Quelle golden gestrichelt markieren
+    if (pendingLink && pendingLink.floor === activeFloor) {
+      const src = floor().elements[pendingLink.index];
+      if (src?.cell) {
+        overlay.strokeStyle = `rgba(${WORLD.door}, 0.9)`;
+        overlay.lineWidth = 2 * dpr;
+        overlay.setLineDash([4 * dpr, 4 * dpr]);
+        overlay.strokeRect(tx(src.cell[0] * CELL), ty(src.cell[1] * CELL), CELL * s, CELL * s);
+        overlay.setLineDash([]);
+      }
+    }
+    if (pendingRetarget && pendingRetarget.floor === activeFloor) {
+      const src = floor().elements[pendingRetarget.index];
+      if (src?.cell) {
+        overlay.strokeStyle = `rgba(${WORLD.portal}, 0.9)`;
+        overlay.lineWidth = 2 * dpr;
+        overlay.setLineDash([4 * dpr, 4 * dpr]);
+        overlay.strokeRect(tx(src.cell[0] * CELL), ty(src.cell[1] * CELL), CELL * s, CELL * s);
+        overlay.setLineDash([]);
+      }
+    }
 
     // Auswahl
     const sel = floor().elements[selected];
@@ -356,10 +530,22 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     if (!draft) return;
     flash(''); // alte Meldung räumen – die Aktion setzt ggf. eine neue
     const [cols, rows] = floor().size;
-    // Wand-Werkzeug und Kanten-Elemente: nächste Kante gewinnt immer.
-    const wantsEdge = tool === 'wall' || (tool === 'place' && EDGE_TYPES.has(placeType));
+    // Wand-Werkzeug, Kanten-Elemente und Tür-Verknüpfen: nächste Kante gewinnt.
+    const wantsEdge = tool === 'wall' || (tool === 'place' && EDGE_TYPES.has(placeType)) || pendingLink !== null;
     const target = pickTarget(wx, wy, cols, rows, wantsEdge);
     if (!target) return;
+
+    // 🔗-Modi fangen den Tap ab: Verknüpfen/Umverlegen statt Werkzeug-Aktion.
+    if (pendingLink) {
+      linkTap(target);
+      rebuild();
+      return;
+    }
+    if (pendingRetarget) {
+      retargetTap(target);
+      rebuild();
+      return;
+    }
 
     if (tool === 'wall') {
       if (target.kind !== 'edge') return flash(t('ed.edgeHint'));
@@ -392,6 +578,44 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     rebuild();
   }
 
+  /** 🔗 Verknüpfen: Tap auf eine Türkante setzt `opens` des wartenden Öffners. */
+  function linkTap(target: { kind: string; cell?: [number, number]; edge?: Edge }): void {
+    const src = draft!.floors[pendingLink!.floor]?.elements[pendingLink!.index];
+    if (!src || (src.type !== 'key' && src.type !== 'timedSwitch' && src.type !== 'plate')) {
+      pendingLink = null;
+      return;
+    }
+    const hit = target.kind === 'edge' ? floor().elements[elementAt(target)] : undefined;
+    if (!hit || hit.type !== 'door') return flash(t('ed.linkMiss'), true);
+    if (src.type === 'timedSwitch' && pendingLink!.floor !== activeFloor)
+      return flash(t('ed.linkSameFloor'), true);
+    src.opens = String(hit.id);
+    // Quelle liegt auf einer anderen Ebene: Auswahl-Index gilt dort nicht.
+    if (pendingLink!.floor !== activeFloor) selected = -1;
+    pendingLink = null;
+    flash(`🔗 → „${hit.id}"`);
+    renderProps();
+  }
+
+  /** 🔗 Umverlegen: Tap auf eine freie Zelle wird das neue Transporter-Ziel. */
+  function retargetTap(target: { kind: string; cell?: [number, number]; edge?: Edge }): void {
+    if (target.kind !== 'cell') return flash(t('ed.retargetHint'), true);
+    const src = draft!.floors[pendingRetarget!.floor]?.elements[pendingRetarget!.index];
+    if (!src || src.type !== 'transporter') {
+      pendingRetarget = null;
+      return;
+    }
+    if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
+    if (pendingRetarget!.floor === activeFloor && src.cell![0] === target.cell![0] && src.cell![1] === target.cell![1])
+      return flash(t('ed.transporterSame'), true);
+    src.target = { floor: activeFloor, cell: target.cell! };
+    // Pad liegt auf einer anderen Ebene: Auswahl-Index gilt dort nicht.
+    if (pendingRetarget!.floor !== activeFloor) selected = -1;
+    pendingRetarget = null;
+    flash(`🔗 → E${activeFloor + 1} (${target.cell![0]},${target.cell![1]})`);
+    renderProps();
+  }
+
   // Frei = keine Element-Zelle (inkl. Wächter-Wegpunkte) und nicht Start/Ziel
   // der aktiven Ebene. Elemente werden NUR in freie Felder gesetzt.
   function cellFree(cell: [number, number]): boolean {
@@ -421,8 +645,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   function eraseAt(target: { kind: string; cell?: [number, number]; edge?: Edge }): void {
     const i = elementAt(target);
     if (i !== -1) {
-      floor().elements.splice(i, 1);
+      const [removed] = floor().elements.splice(i, 1);
       if (selected === i) selected = -1;
+      if (removed?.type === 'door') cleanupAfterDoorDelete(String(removed.id));
       renderProps();
       return;
     }
@@ -491,7 +716,11 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
       const el: RawEl = { type: placeType, cell: target.cell! };
       if (placeType === 'windZone' || placeType === 'current') el.dir = pickOpenDir(target.cell!);
-      if (placeType === 'key' || placeType === 'timedSwitch') el.opens = doorIds().at(-1) ?? 'tor1';
+      // Auto-Verknüpfung: die NÄCHSTGELEGENE Tür (Schlüssel notfalls auf
+      // anderer Ebene). Gibt es keine, zeigt 'tor1' auf die erste Tür, die
+      // später gesetzt wird – bis dahin ist das Badge „Verknüpfungen" rot.
+      if (placeType === 'key' || placeType === 'timedSwitch')
+        el.opens = nearestDoorId(activeFloor, target.cell!, placeType === 'key') ?? 'tor1';
       if (placeType === 'hole') el.breathing = { offset: Math.random() * 4 };
       els.push(el);
       selected = els.length - 1;
@@ -536,6 +765,8 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
         tool = tl;
         pendingGuard = null;
         pendingTransporter = null;
+        pendingLink = null;
+        pendingRetarget = null;
         renderPalette();
       });
       paletteEl.append(b);
@@ -563,6 +794,8 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
         placeType = type;
         pendingGuard = null;
         pendingTransporter = null;
+        pendingLink = null;
+        pendingRetarget = null;
         renderPalette();
       });
       paletteEl.append(b);
@@ -658,13 +891,49 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       }
       if (el.type === 'guard' || el.type === 'listener') num(t('ed.f.speed'), 'speed', 40, 200, 5);
       if (el.type === 'key' || el.type === 'timedSwitch') {
-        const ids = doorIds();
-        propsEl.append(
-          field(
-            t('ed.f.opens'),
-            selectInput(String(el.opens ?? ''), ids.length ? ids.map((i) => [i, i]) : [['tor1', 'tor1']], (v) => (el.opens = v)),
-          ),
-        );
+        // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel überall.
+        const options = doorOptions(el.type === 'timedSwitch');
+        const cur = String(el.opens ?? '');
+        if (!options.some(([v]) => v === cur)) options.unshift([cur, `${cur} ⚠`]);
+        propsEl.append(field(t('ed.f.opens'), selectInput(cur, options, (v) => (el.opens = v))));
+        const link = document.createElement('button');
+        link.className = 'btn btn-soft ed-link';
+        link.textContent = `🔗 ${t('ed.linkPick')}`;
+        link.addEventListener('click', () => {
+          pendingLink = { floor: activeFloor, index: selected };
+          pendingRetarget = null;
+          flash(t('ed.linkHint'));
+          paint();
+        });
+        propsEl.append(link);
+      }
+      if (el.type === 'door') {
+        const idInp = document.createElement('input');
+        idInp.type = 'text';
+        idInp.value = String(el.id ?? '');
+        idInp.addEventListener('change', () => renameDoor(el, idInp.value.trim()));
+        propsEl.append(field(t('ed.f.id'), idInp));
+        const info = document.createElement('p');
+        info.className = 'menu-meta';
+        info.textContent = `${t('ed.f.openers')}: ${openersOf(String(el.id)).length}`;
+        propsEl.append(info);
+      }
+      if (el.type === 'transporter') {
+        const tg = el.target as { floor: number; cell: [number, number] } | undefined;
+        const info = document.createElement('p');
+        info.className = 'menu-meta';
+        info.textContent = tg ? `${t('ed.f.target')}: E${tg.floor + 1} (${tg.cell[0]},${tg.cell[1]})` : '';
+        propsEl.append(info);
+        const link = document.createElement('button');
+        link.className = 'btn btn-soft ed-link';
+        link.textContent = `🔗 ${t('ed.retargetPick')}`;
+        link.addEventListener('click', () => {
+          pendingRetarget = { floor: activeFloor, index: selected };
+          pendingLink = null;
+          flash(t('ed.retargetHint'));
+          paint();
+        });
+        propsEl.append(link);
       }
       if (el.type === 'timedSwitch') {
         if (el.durationS === undefined) el.durationS = 6;
@@ -687,8 +956,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       del.className = 'btn btn-ghost';
       del.textContent = `⌫ ${t('ed.deleteEl')}`;
       del.addEventListener('click', () => {
-        f.elements.splice(selected, 1);
+        const [removed] = f.elements.splice(selected, 1);
         selected = -1;
+        if (removed?.type === 'door') cleanupAfterDoorDelete(String(removed.id));
         renderProps();
         rebuild();
       });
@@ -1000,6 +1270,8 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       selected = -1;
       pendingGuard = null;
       pendingTransporter = null;
+      pendingLink = null;
+      pendingRetarget = null;
       tool = 'place';
       placeType = 'hole';
       nameInput.value = String(draft.name ?? '');

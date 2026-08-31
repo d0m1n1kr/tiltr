@@ -150,7 +150,7 @@ describe('M9-Elemente (Schiebewand, Zeitschloss, Strömung)', () => {
     expect(() => loadLevel(border)).toThrow(/Dauer-Pin/);
   });
 
-  it('Zeitschloss zählt als Tür-Öffner; unbekannte Tür-ID knallt', () => {
+  it('Zeitschloss zählt als Tür-Öffner; hängende Verknüpfungen laden mild', () => {
     const ok = withFloor({
       maze: { seed: 7, carve: [[[2, 2], 'e']] },
       elements: [
@@ -162,17 +162,19 @@ describe('M9-Elemente (Schiebewand, Zeitschloss, Strömung)', () => {
     expect(world.switches).toHaveLength(1);
     expect(world.switches[0]!.durationS).toBe(6); // Default
 
+    // Editor-Zwischenzustände: Tür ohne Öffner / Schalter ohne Tür sind
+    // lauffähig (Loader mild) – die Strenge wohnt im 'links'-Beweis.
     const orphanDoor = withFloor({
       maze: { seed: 7, carve: [[[2, 2], 'e']] },
       elements: [{ type: 'door', id: 'takt', edge: [[2, 2], 'e'] }],
     });
-    expect(() => loadLevel(orphanDoor)).toThrow(/weder Schlüssel/);
+    expect(loadLevel(orphanDoor).floors[0]!.world.walls.some((w) => w.door?.id === 'takt')).toBe(true);
 
     const orphanSwitch = withFloor({
       maze: { seed: 7 },
       elements: [{ type: 'timedSwitch', cell: [0, 1], opens: 'nix' }],
     });
-    expect(() => loadLevel(orphanSwitch)).toThrow(/unbekannte Tür/);
+    expect(loadLevel(orphanSwitch).floors[0]!.world.switches).toHaveLength(1);
   });
 });
 

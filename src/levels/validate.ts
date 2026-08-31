@@ -178,7 +178,7 @@ export function directedDistances(
 /* --- Level-Prüfbericht (Editor-Badges; die Testsuite nutzt die Bausteine
        oben direkt für schärfere, gezielte Assertions) ---------------------- */
 
-export type CheckKey = 'load' | 'goal' | 'openers' | 'timer' | 'softlock' | 'hazards' | 'items';
+export type CheckKey = 'load' | 'links' | 'goal' | 'openers' | 'timer' | 'softlock' | 'hazards' | 'items';
 
 export interface CheckResult {
   key: CheckKey;
@@ -206,6 +206,35 @@ export function validateLevel(raw: unknown): CheckResult[] {
   }
   const checks: CheckResult[] = [{ key: 'load', ok: true }];
   const push = (key: CheckKey, ok: boolean, detail?: string) => checks.push({ key, ok, detail });
+
+  // Verknüpfungen vollständig: Jeder Öffner zeigt auf eine existierende Tür
+  // (ebenenübergreifend), jede Tür hat mindestens einen Öffner. Der Loader
+  // lässt hängende Verknüpfungen bewusst durch (Editor-Zwischenzustand) –
+  // DIESER Check ist die Pflicht-Schranke fürs Teilen.
+  const doorIds = new Set<string>();
+  const opensUsed = new Set<string>();
+  let linksOk = true;
+  let linksDetail: string | undefined;
+  for (const floor of def.floors) {
+    for (const el of floor.elements) if (el.type === 'door') doorIds.add(el.id);
+  }
+  for (const floor of def.floors) {
+    for (const el of floor.elements) {
+      if (el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch') continue;
+      opensUsed.add(el.opens);
+      if (!doorIds.has(el.opens)) {
+        linksOk = false;
+        linksDetail = `${el.type} → Tür „${el.opens}" fehlt`;
+      }
+    }
+  }
+  for (const id of doorIds) {
+    if (!opensUsed.has(id)) {
+      linksOk = false;
+      linksDetail = `Tür „${id}" ohne Öffner`;
+    }
+  }
+  push('links', linksOk, linksDetail);
 
   const goalFl = def.floors.findIndex((f) => f.goal);
   const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);

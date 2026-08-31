@@ -1509,12 +1509,17 @@ function frame(now: number): void {
         key.collected = true;
         audio.collectKey();
         haptics.checkpoint();
-        for (let i = world.walls.length - 1; i >= 0; i--) {
-          const w = world.walls[i]!;
-          if (w.door?.id === key.opens) {
-            world.walls.splice(i, 1);
-            world.debris.push({ ...w, litUntil: now + 2000 });
-            audio.doorOpen(w.x + w.w / 2 - world.ball.x, w.y + w.h / 2 - world.ball.y);
+        // Öffnet die Tür auf ALLEN Ebenen – das Lösbarkeits-Modell
+        // (coopReachable) behandelt Öffner ebenenübergreifend, das Spiel
+        // muss dasselbe tun. Hörbar ist nur die Tür der aktuellen Ebene.
+        for (const fl of loaded!.floors) {
+          for (let i = fl.world.walls.length - 1; i >= 0; i--) {
+            const w = fl.world.walls[i]!;
+            if (w.door?.id === key.opens) {
+              fl.world.walls.splice(i, 1);
+              fl.world.debris.push({ ...w, litUntil: now + 2000 });
+              if (fl.world === world) audio.doorOpen(w.x + w.w / 2 - world.ball.x, w.y + w.h / 2 - world.ball.y);
+            }
           }
         }
         flash(t('st.door'));
