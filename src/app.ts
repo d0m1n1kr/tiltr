@@ -461,6 +461,7 @@ const editorApi = setupEditor({
     workshopPanel.refresh();
     refreshMenu();
   },
+  onClose: () => workshopPanel.show(),
 });
 const workshopPanel = setupWorkshopPanel({
   onPlay: (def) => startCustom(def, false),

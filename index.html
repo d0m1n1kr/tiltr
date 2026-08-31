@@ -337,13 +337,35 @@
       #workshop header, #workshopContent { max-width: 760px; }
       #workshopActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
       #wsResumeBtn { grid-column: 1 / -1; }
-      #workshopList { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+      #workshopList { align-items: start; }
     }
-    .ws-item { display: grid; gap: var(--space-2); }
-    .ws-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+    /* NACH dem 900px-Block: erst hier ist eine Karte breit genug, dass
+       Text-Buttons UND Icon-Aktionen ohne Umbruch in eine Zeile passen. */
+    @media (min-width: 1200px) {
+      #workshop header, #workshopContent { max-width: 1120px; }
+      #workshopList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    /* Bibliothek-Karte: Kopf (Name + Meta), darunter EINE Aktionszeile –
+       zwei Text-Buttons links, die Icon-Aktionen rechts. Nichts bricht um:
+       die Icon-Gruppe schrumpft nicht und die Zeile bleibt eine Zeile. */
+    .ws-item { display: grid; gap: var(--space-3); padding: var(--space-3) 14px; container-type: inline-size; }
+    .ws-head { display: grid; gap: 2px; }
     .ws-name { font-size: var(--fs-body); font-weight: 600; }
-    .ws-meta { font-size: var(--fs-small); opacity: 0.6; white-space: nowrap; }
-    .ws-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .ws-meta { font-size: var(--fs-small); opacity: 0.55; }
+    .ws-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+    .ws-actions > .btn { flex: 0 1 auto; }
+    /* Die Icon-Gruppe ist ein eigener Flex-Container: sie bricht als GANZES
+       um, statt einzelne Icons in die nächste Zeile fallen zu lassen. */
+    .ws-icons { display: flex; gap: var(--space-1); margin-left: auto; }
+    .ws-icon { min-width: var(--touch-min); padding: 0 var(--space-2); }
+    .ws-danger.armed { color: var(--warning); border-color: var(--warning); min-width: auto; }
+    /* Entscheidend ist die KARTENbreite, nicht die des Fensters: dieselbe
+       Karte steht auf dem Phone einspaltig und auf dem Tablet zweispaltig. */
+    @container (max-width: 430px) {
+      .ws-actions > .btn { flex: 1 1 0; }
+      .ws-icons { margin-left: 0; flex-basis: 100%; justify-content: space-between; }
+      .ws-icon { flex: 1 1 0; }
+    }
 
     /* --- Editor: Dreispalter ab 900px, sonst Leisten --- */
     #editor {

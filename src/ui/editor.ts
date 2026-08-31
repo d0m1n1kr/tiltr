@@ -117,7 +117,13 @@ export interface EditorApi {
   isOpen(): boolean;
 }
 
-export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: () => void }): EditorApi {
+export function setupEditor(opts: {
+  onTest: (def: RawLevel) => void;
+  onSaved: () => void;
+  /** ‹ schließt den Editor – zurück gehört man in die Werkstatt, nicht
+   *  ins Hauptmenü (dort ist man mit einem Tap, über die Werkstatt). */
+  onClose: () => void;
+}): EditorApi {
   const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
   const panel = $('editor');
   const canvas = $<HTMLCanvasElement>('edCanvas');
@@ -1311,6 +1317,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
 
   $('edClose').addEventListener('click', () => {
     panel.classList.add('hidden');
+    opts.onClose();
   });
 
   $('edSave').addEventListener('click', () => {

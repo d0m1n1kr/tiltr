@@ -3,7 +3,7 @@
 // Kennt Elemente nur über die Registry.
 
 import { CELL, WALL_T, BALL_R } from '../core/constants';
-import { generateMaze, mazeToWalls, mirrorCells, setWall } from '../core/maze';
+import { generateMaze, mazeToWalls, mirrorCells, setWall, type Cell } from '../core/maze';
 import { Ball, World } from '../core/physics';
 import { mulberry32 } from '../core/rng';
 import { buildElements } from '../elements';
@@ -30,6 +30,68 @@ export interface LoadedLevel {
   rows: number;
 }
 
+/** Zellen einer Ebene: Seed-Maze, gespiegeltes Rauschen, dann die
+ *  Hand-Edits – dieselbe Reihenfolge wie in validate.buildFloorCells. */
+function floorCells(floor: LevelDef['floors'][number], mirror: LevelDef['mirror']): Cell[] {
+  const [cols, rows] = floor.size;
+  let cells = generateMaze(cols, rows, mulberry32(floor.maze.seed));
+  if (mirror) cells = mirrorCells(cells, cols, rows, mirror);
+  for (const [[x, y], dir] of floor.maze.carve) setWall(cells, cols, rows, x, y, dir, false);
+  for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
+  return cells;
+}
+
+/** Brüchigkeits-Wurf einer Wand – deterministisch aus Seed UND Position
+ *  (Spatial Hash). Damit ist „diese Wand ist brüchig" eine Eigenschaft der
+ *  Wand und überlebt jede Änderung an anderen Wänden. */
+function brittleRoll(seed: number, x: number, y: number, vertical: boolean): number {
+  const h = (seed ^ (Math.round(x) * 73856093) ^ (Math.round(y) * 19349663) ^ (vertical ? 83492791 : 0)) >>> 0;
+  return mulberry32(h)();
+}
+
+/** Die Kanten, die brittleChance in dieser Ebene brüchig macht – damit die
+ *  Werkstatt sie beim Übernehmen eines Zufallslevels EXPLIZIT einbacken
+ *  kann (dann ist das Level im Editor vollständig kontrollierbar und ein
+ *  geteilter Link hängt nicht an der Generator-Version). */
+export function generatedBrittleEdges(
+  floor: LevelDef['floors'][number],
+  mirror: LevelDef['mirror'],
+): Array<[[number, number], 'e' | 's']> {
+  if (floor.maze.brittleChance <= 0) return [];
+  const [cols, rows] = floor.size;
+  const cells = floorCells(floor, mirror);
+  const ht = WALL_T / 2;
+  // Dieselbe „interior"-Bedingung wie in loadLevel: eine Wand, die den
+  // Außenrand BERÜHRT, wird nie brüchig (auch nicht mit einem Ende).
+  const interior = (wx: number, wy: number, w: number, h: number) =>
+    wx > 0 && wy > 0 && wx + w < cols * CELL && wy + h < rows * CELL;
+  const out: Array<[[number, number], 'e' | 's']> = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const c = cells[y * cols + x]!;
+      if (c.e) {
+        const wx = (x + 1) * CELL - ht;
+        const wy = y * CELL - ht;
+        if (
+          interior(wx, wy, WALL_T, CELL + WALL_T) &&
+          brittleRoll(floor.maze.seed, wx, wy, true) < floor.maze.brittleChance
+        )
+          out.push([[x, y], 'e']);
+      }
+      if (c.s) {
+        const wx = x * CELL - ht;
+        const wy = (y + 1) * CELL - ht;
+        if (
+          interior(wx, wy, CELL + WALL_T, WALL_T) &&
+          brittleRoll(floor.maze.seed, wx, wy, false) < floor.maze.brittleChance
+        )
+          out.push([[x, y], 's']);
+      }
+    }
+  }
+  return out;
+}
+
 export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
   const def = parseLevel(defOrData);
   const ball = new Ball(0, 0, BALL_R); // Position setzt die Start-Ebene unten
@@ -39,14 +101,7 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
 
   def.floors.forEach((floor, floorIndex) => {
     const [cols, rows] = floor.size;
-    const rng = mulberry32(floor.maze.seed);
-
-    // mirror: Def-Koordinaten sind bereits gespiegelt (mirrorLevel), hier
-    // wird das Maze-Rauschen nachgezogen -> exaktes Spiegelbild des Designs.
-    let cells = generateMaze(cols, rows, rng);
-    if (def.mirror) cells = mirrorCells(cells, cols, rows, def.mirror);
-    for (const [[x, y], dir] of floor.maze.carve) setWall(cells, cols, rows, x, y, dir, false);
-    for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
+    const cells = floorCells(floor, def.mirror);
     const walls = mazeToWalls(cells, cols, rows, CELL, WALL_T);
 
     // Gezielt brüchige Wandkanten – die Wand muss existieren.
@@ -68,11 +123,15 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
       wall.hp = floor.maze.brittleHits;
     }
 
-    // Innenwände zufällig als brüchig markieren (Außenrand nie).
+    // Innenwände zufällig als brüchig markieren (Außenrand nie). Der Wurf
+    // hängt an der WANDPOSITION, nicht an der Listenreihenfolge: Sonst
+    // verschiebt schon eine einzige aufgeschnittene Wand die Zuordnung, und
+    // plötzlich sind ganz andere Wände brüchig (im Editor gut zu sehen).
     if (floor.maze.brittleChance > 0) {
       for (const w of walls) {
         const interior = w.x > 0 && w.y > 0 && w.x + w.w < cols * CELL && w.y + w.h < rows * CELL;
-        if (interior && w.hp === undefined && rng() < floor.maze.brittleChance) w.hp = floor.maze.brittleHits;
+        if (interior && w.hp === undefined && brittleRoll(floor.maze.seed, w.x, w.y, w.w === WALL_T) < floor.maze.brittleChance)
+          w.hp = floor.maze.brittleHits;
       }
     }
 

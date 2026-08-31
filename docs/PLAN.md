@@ -350,6 +350,34 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M19 „Werkstatt-Politur" ✓ (v1.10.0)
+
+Drei Meldungen aus dem Spielbetrieb:
+
+- **Wandernde brüchige Wände** (Bug): Die zufällige Brüchigkeit
+  (`brittleChance`) wurde im Loader durch Iteration über die WAND-LISTE
+  gezogen. Schnitt man im Editor eine Wand auf, verschob sich die
+  Zuordnung – die nächste Wand bekam deren Ziehung, und plötzlich war eine
+  ganz andere Wand brüchig. Fix: Der Wurf ist jetzt ein Spatial Hash aus
+  Seed UND Wandposition; „diese Wand ist brüchig" ist damit eine
+  Eigenschaft der Wand und übersteht jede Änderung an anderen Wänden.
+  Nebenwirkung: In generierten Leveln (Quick/Daily/MP) sind andere Wände
+  brüchig als vorher – die Verteilung bleibt statistisch gleich.
+  Zusätzlich backt „Aus Zufallslevel" die brüchigen Kanten jetzt EXPLIZIT
+  in die Def ein (`generatedBrittleEdges`, `brittleChance: 0`): Im Editor
+  sind sie damit normal bearbeitbar, und ein geteilter Link hängt nicht
+  mehr an der Zufalls-Formel des Generators.
+- **‹ im Editor** führt zurück in die Werkstatt statt ins Hauptmenü
+  (neuer `onClose`-Callback).
+- **Bibliothek-Karten** neu gestaltet: Kopf (Name + Meta), darunter EINE
+  Aktionszeile – „▶ Spielen" und „✏️ Bearbeiten" als Text, die vier
+  Sekundäraktionen (Duplizieren, Teilen, Export, Löschen) als Icon-Gruppe
+  rechts mit Touch-Tooltips. Die Gruppe bricht als GANZES um, nie einzeln;
+  ob umgebrochen wird, entscheidet eine CONTAINER QUERY über die
+  Kartenbreite (dieselbe Karte steht auf dem Phone einspaltig und auf dem
+  Desktop zweispaltig). Die zweispaltige Bibliothek beginnt erst bei
+  1200 px, wo eine Karte die ganze Zeile trägt.
+
 ## M18 „Wächter sind keine Riegel" ✓ (v1.9.1)
 
 Bugfund aus dem Spielbetrieb: **2.2 „Doppelter Boden" war nicht lösbar.**

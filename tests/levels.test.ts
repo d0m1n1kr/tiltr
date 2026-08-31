@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../src/levels/schema';
-import { loadLevel } from '../src/levels/loader';
+import { generatedBrittleEdges, loadLevel } from '../src/levels/loader';
 import { generateQuickLevel, PRESETS, type Preset } from '../src/levels/quick';
 import { generateMaze, mazeToWalls, setWall, solveMaze } from '../src/core/maze';
 import { mulberry32 } from '../src/core/rng';
@@ -175,6 +175,55 @@ describe('M9-Elemente (Schiebewand, Zeitschloss, Strömung)', () => {
       elements: [{ type: 'timedSwitch', cell: [0, 1], opens: 'nix' }],
     });
     expect(loadLevel(orphanSwitch).floors[0]!.world.switches).toHaveLength(1);
+  });
+});
+
+describe('Zufällige Brüchigkeit hängt an der Wand, nicht an der Reihenfolge', () => {
+  const level = (carve: unknown[]) => ({
+    id: 'custom-brittle',
+    name: 'B',
+    pingBudget: 3,
+    floors: [
+      {
+        size: [6, 8],
+        maze: { seed: 12345, carve, add: [], brittle: [], brittleChance: 0.25, brittleHits: 3 },
+        elements: [],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+    ],
+  });
+  const brittleKeys = (def: unknown) =>
+    new Set(
+      loadLevel(parseLevel(def))
+        .floors[0]!.world.walls.filter((w) => w.hp !== undefined)
+        .map((w) => `${w.x},${w.y},${w.w}`),
+    );
+
+  it('eine aufgeschnittene Wand verschiebt die anderen brüchigen Wände NICHT', () => {
+    // Der Bug: Der Wurf lief über die Wand-LISTE; fiel eine Wand weg,
+    // bekam die nächste deren Ziehung – im Editor sah man, wie plötzlich
+    // eine ganz andere Wand brüchig wurde.
+    const before = brittleKeys(level([]));
+    const after = brittleKeys(level([[[2, 3], 'e']]));
+    expect(before.size).toBeGreaterThan(2);
+    const appeared = [...after].filter((k) => !before.has(k));
+    expect(appeared).toEqual([]);
+    // Genau die aufgeschnittene Wand darf fehlen (falls sie brüchig war).
+    expect([...before].filter((k) => !after.has(k)).length).toBeLessThanOrEqual(1);
+  });
+
+  it('generatedBrittleEdges trifft exakt dieselben Wände (fürs Einbacken)', () => {
+    const def = parseLevel(level([]));
+    const edges = generatedBrittleEdges(def.floors[0]!, def.mirror);
+    expect(edges.length).toBe(brittleKeys(level([])).size);
+
+    // Eingebacken (explizite Liste, brittleChance 0) ergibt dieselbe Welt –
+    // so übernimmt die Werkstatt ein Zufallslevel versionsfest.
+    const baked = level([]) as unknown as { floors: Array<{ maze: Record<string, unknown> }> };
+    baked.floors[0]!.maze.brittle = edges;
+    baked.floors[0]!.maze.brittleChance = 0;
+    expect(brittleKeys(baked)).toEqual(brittleKeys(level([])));
   });
 });
 

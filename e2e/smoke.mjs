@@ -799,7 +799,26 @@ const check = (name, cond) => {
   await page.click('#edSave');
   const savedMsg = (await page.textContent('#edStatus')).trim();
   await page.click('#edClose');
-  await page.click('#workshopBtn');
+  await page.waitForTimeout(300);
+  // ‹ führt zurück in die WERKSTATT, nicht ins Hauptmenü.
+  const backInWorkshop = !(await page.locator('#workshop').getAttribute('class')).includes('hidden');
+  check('Editor-‹ führt zurück in die Werkstatt', backInWorkshop);
+
+  // Aktionszeile einer Bibliothek-Karte: zwei Text-Buttons + Icon-Gruppe,
+  // auf dem Tablet alles in EINER Zeile (vorher brachen 6 Buttons um).
+  const actions = await page.evaluate(() => {
+    const row = document.querySelector('#workshopList .ws-actions');
+    if (!row) return null;
+    const btns = [...row.querySelectorAll('button')];
+    return {
+      icons: row.querySelectorAll('.ws-icons .ws-icon').length,
+      rows: new Set(btns.map((b) => Math.round(b.getBoundingClientRect().top))).size,
+      tips: btns.filter((b) => b.dataset.tip).length,
+    };
+  });
+  check(`Bibliothek-Karte: eine Aktionszeile (${actions?.rows} Zeile(n), ${actions?.icons} Icon-Aktionen mit ${actions?.tips} Tooltips)`,
+    !!actions && actions.rows === 1 && actions.icons === 4 && actions.tips === 4);
+  if ((await page.locator('#workshop').getAttribute('class')).includes('hidden')) await page.click('#workshopBtn');
   const items = await page.locator('.ws-item').count();
   const wsName = (await page.textContent('.ws-name')).trim();
   await page.click('#workshopClose');

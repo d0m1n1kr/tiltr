@@ -4,6 +4,7 @@
 // nimmt den Quick-Generator als Grundgerüst.
 
 import { parseLevel } from '../levels/schema';
+import { generatedBrittleEdges } from '../levels/loader';
 import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
 import { validateLevel, isShareable } from '../levels/validate';
@@ -74,52 +75,61 @@ export function setupWorkshopPanel(opts: {
   function itemActions(level: CustomLevel): HTMLElement {
     const row = document.createElement('div');
     row.className = 'ws-actions';
-    const btn = (label: string, cls: string, onClick: () => void): HTMLButtonElement => {
+    const icons = document.createElement('div');
+    icons.className = 'ws-icons';
+
+    const btn = (label: string, cls: string, parent: HTMLElement, onClick: () => void): HTMLButtonElement => {
       const b = document.createElement('button');
       b.className = `btn ${cls}`;
       b.textContent = label;
       b.addEventListener('click', onClick);
-      row.append(b);
+      parent.append(b);
       return b;
     };
-    btn(`▶ ${t('ed.play')}`, 'btn-primary', () => {
+    /** Sekundäraktion: nur Icon, Beschriftung über die Tooltip-Blase
+     *  ([data-tip] – auch auf Touch, siehe theme.css). */
+    const iconBtn = (icon: string, tip: string, onClick: (b: HTMLButtonElement) => void): HTMLButtonElement => {
+      const b = btn(icon, 'btn-ghost ws-icon', icons, () => onClick(b));
+      b.dataset.tip = tip;
+      return b;
+    };
+
+    btn(`▶ ${t('ed.play')}`, 'btn-primary', row, () => {
       panel.classList.add('hidden');
       opts.onPlay(JSON.parse(JSON.stringify(level.def)) as RawLevel);
     });
-    const edit = btn(`✏️ ${t('ed.edit')}`, 'btn-ghost', () => {
+    const edit = btn(`✏️ ${t('ed.edit')}`, 'btn-ghost', row, () => {
       confirmDiscard(edit, () => {
         panel.classList.add('hidden');
         opts.onEdit(JSON.parse(JSON.stringify(level.def)) as RawLevel);
       });
     });
-    btn(`⧉ ${t('ed.duplicate')}`, 'btn-ghost', () => {
+
+    iconBtn('⧉', t('ed.duplicate'), () => {
       workshop.duplicate(level.id, t('ed.copySuffix'));
       render();
     });
-    const share = btn('🔗', 'btn-ghost', () => {
+    iconBtn('🔗', t('ed.share'), (b) => {
       // Teilen nur mit grünen Pflicht-Badges: geteilte Level sind beweisbar lösbar.
-      if (!isShareable(validateLevel(level.def))) {
-        share.textContent = `🔗 ${t('ed.shareBlocked')}`;
-        setTimeout(() => (share.textContent = '🔗'), 2500);
-        return;
-      }
+      const flash = (text: string): void => {
+        b.dataset.tip = text;
+        setTimeout(() => (b.dataset.tip = t('ed.share')), 2500);
+      };
+      if (!isShareable(validateLevel(level.def))) return flash(t('ed.shareBlocked'));
       void (async () => {
         const url = `${location.origin}${location.pathname}#level=${await encodeLevel(level.def)}`;
         try {
-          if (navigator.share) {
-            await navigator.share({ title: String(level.def.name ?? ''), url });
-          } else {
+          if (navigator.share) await navigator.share({ title: String(level.def.name ?? ''), url });
+          else {
             await navigator.clipboard.writeText(url);
-            share.textContent = `🔗 ${t('ed.shareCopied')}`;
-            setTimeout(() => (share.textContent = '🔗'), 2500);
+            flash(t('ed.shareCopied'));
           }
         } catch {
           /* abgebrochen */
         }
       })();
     });
-    share.title = t('ed.share');
-    const exp = btn('⇩', 'btn-ghost', () => {
+    iconBtn('⇩', t('ed.export'), () => {
       const blob = new Blob([exportPayload(level.def)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -127,20 +137,27 @@ export function setupWorkshopPanel(opts: {
       a.click();
       URL.revokeObjectURL(a.href);
     });
-    exp.title = t('ed.export');
-    const del = btn(`🗑 ${t('ed.delete')}`, 'btn-ghost', () => {
-      if (del.dataset.armed === '1') {
+    // Löschen bleibt Zwei-Tap: der zweite Tap innerhalb von 3 s löscht.
+    const del = iconBtn('🗑', t('ed.delete'), (b) => {
+      if (b.dataset.armed === '1') {
         workshop.remove(level.id);
         render();
-      } else {
-        del.dataset.armed = '1';
-        del.textContent = `🗑 ${t('ed.deleteConfirm')}`;
-        setTimeout(() => {
-          del.dataset.armed = '';
-          del.textContent = `🗑 ${t('ed.delete')}`;
-        }, 3000);
+        return;
       }
+      b.dataset.armed = '1';
+      b.classList.add('armed');
+      b.textContent = `🗑 ${t('ed.deleteConfirm')}`;
+      b.dataset.tip = t('ed.deleteConfirm');
+      setTimeout(() => {
+        b.dataset.armed = '';
+        b.classList.remove('armed');
+        b.textContent = '🗑';
+        b.dataset.tip = t('ed.delete');
+      }, 3000);
     });
+    del.classList.add('ws-danger');
+
+    row.append(icons);
     return row;
   }
 
@@ -233,9 +250,18 @@ export function setupWorkshopPanel(opts: {
   $('wsNewRandomBtn').addEventListener('click', (ev) => {
     confirmDiscard(ev.currentTarget as HTMLButtonElement, () => {
       // Quick-Generator als Grundgerüst: neue ID + editierbarer Name.
-      const def = JSON.parse(JSON.stringify(generateQuickLevel(randomSeed(), profile.preset))) as RawLevel;
+      const generated = generateQuickLevel(randomSeed(), profile.preset);
+      const def = JSON.parse(JSON.stringify(generated)) as RawLevel;
       def.id = newCustomId();
       def.name = t('ed.untitled');
+      // Brüchige Wände EXPLIZIT einbacken: Im Editor sind sie damit
+      // bearbeitbar wie jede andere Wand, und ein geteilter Link hängt
+      // nicht mehr an der Zufalls-Formel des Generators.
+      generated.floors.forEach((floor, i) => {
+        const maze = (def.floors[i] as unknown as { maze: Record<string, unknown> }).maze;
+        maze.brittle = [...(maze.brittle as unknown[]), ...generatedBrittleEdges(floor, generated.mirror)];
+        maze.brittleChance = 0;
+      });
       panel.classList.add('hidden');
       opts.onEdit(def);
     });

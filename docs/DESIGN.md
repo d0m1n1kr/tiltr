@@ -119,7 +119,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.panel` | Karte/Fläche: subtiler Rand, Radius L |
 | `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
-| `.ws-item` | Werkstatt-Bibliothek: Karte mit Name/Meta-Zeile und Aktions-Buttons |
+| `.ws-item` (+ `.ws-actions`, `.ws-icons`, `.ws-icon`) | Werkstatt-Bibliothek: Karte mit Name/Meta-Kopf und EINER Aktionszeile – zwei Text-Buttons links, vier Icon-Aktionen (mit `[data-tip]`) rechts. Die Icon-Gruppe bricht als Ganzes um; ob überhaupt, entscheidet eine Container Query über die KARTENBREITE (`container-type: inline-size`), nicht die Fensterbreite |
 | `.ed-tile` | Editor-Palette: Werkzeug/Element mit Galerie-Miniatur; `.active` = Teal-Outline (ein Modus aktiv) |
 | `.ed-badge` | Live-Validierungs-Badge im Editor-Kopf: Teal = Beweis grün, `.fail` (Bernstein) = verletzt |
 | `.ed-field` | Editor-Eigenschaften: Label + Input/Select/Textarea aus Tokens. Editor-Layout: Dreispalter ab 900px; darunter dominiert das Spielfeld – kompakte Werkzeugleiste (Icons + Element-Button `#edElementBtn`), Element-Auswahl als Grid-Sheet (`#edElements`, `#editor.sheet-open`), Eigenschaften als Bottom-Drawer (`#edDrawer.open`, Griff `#edDrawerHandle`, öffnet bei Element-Auswahl). Media Query in index.html |
