@@ -122,4 +122,8 @@ export function applyI18n(root: ParentNode = document): void {
   for (const el of root.querySelectorAll<HTMLElement>('[data-i18n-title]')) {
     el.title = t(el.dataset.i18nTitle as keyof Dict);
   }
+  // Tooltip-Blase (theme.css [data-tip]): wie title, aber Touch-tauglich.
+  for (const el of root.querySelectorAll<HTMLElement>('[data-i18n-tip]')) {
+    el.dataset.tip = t(el.dataset.i18nTip as keyof Dict);
+  }
 }

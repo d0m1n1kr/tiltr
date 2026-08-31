@@ -811,16 +811,20 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
     ];
     for (const [tl, ico, lbl] of tools) {
       const b = document.createElement('button');
+      b.id = `edTool-${tl}`;
       b.className = 'panel ed-tile' + (tool === tl ? ' active' : '');
       const i = document.createElement('span');
       i.textContent = ico;
       b.append(i, lblSpan(lbl));
-      b.title = lbl;
+      b.dataset.tip = lbl; // Tooltip-Blase: Hover (Desktop) / Fokus (Touch)
       b.addEventListener('click', () => {
         tool = tl;
         clearPendings();
         closeSheet();
         renderPalette();
+        // renderPalette ersetzt den Button: Fokus zurückgeben, damit die
+        // Tooltip-Blase nach dem Tap sichtbar bleibt ([data-tip]:focus).
+        document.getElementById(`edTool-${tl}`)?.focus({ preventScroll: true });
       });
       toolsWrap.append(b);
     }
@@ -1177,7 +1181,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       const add = document.createElement('button');
       add.className = 'btn chip';
       add.textContent = '＋';
-      add.title = t('ed.addFloor');
+      add.dataset.tip = t('ed.addFloor');
       add.addEventListener('click', () => {
         const cur = floor();
         draft!.floors.push({
@@ -1196,7 +1200,7 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       const rm = document.createElement('button');
       rm.className = 'btn chip';
       rm.textContent = '−';
-      rm.title = t('ed.removeFloor');
+      rm.dataset.tip = t('ed.removeFloor');
       rm.addEventListener('click', () => {
         const removed = activeFloor;
         const hadGoal = draft!.floors[removed]!.goal !== null;

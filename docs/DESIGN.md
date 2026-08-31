@@ -123,6 +123,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.ed-tile` | Editor-Palette: Werkzeug/Element mit Galerie-Miniatur; `.active` = Teal-Outline (ein Modus aktiv) |
 | `.ed-badge` | Live-Validierungs-Badge im Editor-Kopf: Teal = Beweis grün, `.fail` (Bernstein) = verletzt |
 | `.ed-field` | Editor-Eigenschaften: Label + Input/Select/Textarea aus Tokens. Editor-Layout: Dreispalter ab 900px; darunter dominiert das Spielfeld – kompakte Werkzeugleiste (Icons + Element-Button `#edElementBtn`), Element-Auswahl als Grid-Sheet (`#edElements`, `#editor.sheet-open`), Eigenschaften als Bottom-Drawer (`#edDrawer.open`, Griff `#edDrawerHandle`, öffnet bei Element-Auswahl). Media Query in index.html |
+| `[data-tip]` (+ `.tip-below`) | Tooltip-Blase für Icon-Buttons: Desktop beim Hover, Touch beim Fokus nach dem Tap (native `title` kann das nicht). Text via `data-tip` bzw. `data-i18n-tip`; Buttons, die sich beim Klick neu rendern, stellen den Fokus selbst wieder her. `.tip-below` öffnet nach unten (oberer Bildschirmrand) |
 | `.hidden` | Einziges Sichtbarkeits-Utility (`display:none !important`) |
 
 **Banner-Verhalten:** Alle Banner leben im `#banners`-Container (unten

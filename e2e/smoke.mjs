@@ -726,6 +726,16 @@ const check = (name, cond) => {
   });
   check('Tablet: Element-Button und Drawer-Griff nur auf dem Phone', chromeHidden);
 
+  // Icon-Buttons erklären sich: [data-tip]-Blase beim Hover (Desktop) …
+  await page.hover('#edShare');
+  await page.waitForTimeout(300);
+  const tipDesk = await page.evaluate(() => {
+    const s = getComputedStyle(document.getElementById('edShare'), '::after');
+    return { content: s.content, opacity: s.opacity };
+  });
+  check(`Tablet: Tooltip am Icon-Button beim Hover (${tipDesk.content} / ${tipDesk.opacity})`,
+    tipDesk.content.toLowerCase().includes('teilen') && tipDesk.opacity === '1');
+
   // Live-Badges: das leere 6x8-Level ist beweisbar gesund (alle grün).
   const badges = await page.locator('#edBadges .ed-badge').count();
   const failed = await page.locator('#edBadges .ed-badge.fail').count();
@@ -892,6 +902,21 @@ const check = (name, cond) => {
     hasDrawer === 1 && openY === 0);
   check(`Phone: Drawer-Griff schließt wieder (y=${Math.round(closedY)})`,
     hasDrawer === 1 && closedY > 50);
+
+  // … und auf Touch per Fokus nach dem Tap (title-Attribute können das
+  // nicht): Tap aufs Werkzeug zeigt die Blase mit dem Namen.
+  if (await page.locator('#edTool-select').count()) {
+    await page.tap('#edTool-select');
+    await page.waitForTimeout(300);
+  }
+  const tipPhone = await page.evaluate(() => {
+    const b = document.getElementById('edTool-select');
+    if (!b) return { content: 'fehlt', opacity: '0', focused: false };
+    const s = getComputedStyle(b, '::after');
+    return { content: s.content, opacity: s.opacity, focused: document.activeElement === b };
+  });
+  check(`Phone: Tooltip nach Tap auf Icon-Button (${tipPhone.content} / ${tipPhone.opacity})`,
+    tipPhone.content.includes('Auswählen') && tipPhone.opacity === '1' && tipPhone.focused);
 
   // Wand-Werkzeug: Tap 30 Welteinheiten neben der Gridlinie (alte Zone: 18)
   // schaltet die nächste Kante trotzdem (carve +1).

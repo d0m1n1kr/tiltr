@@ -216,6 +216,53 @@
   box-shadow: var(--shadow-raised);
 }
 
+/* Tooltip: [data-tip] zeigt eine Blase über dem Element – Desktop beim
+   Hover, Touch beim FOKUS nach dem Tap (native title-Attribute
+   funktionieren auf Touch nicht; Buttons, die sich neu rendern, müssen
+   den Fokus danach selbst wiederherstellen). .tip-below öffnet nach
+   unten – für Buttons am oberen Bildschirmrand. */
+[data-tip] {
+  position: relative;
+}
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--space-1));
+  transform: translateX(-50%);
+  background: var(--bg-panel);
+  color: var(--text);
+  border: var(--border-strong);
+  border-radius: var(--radius-m);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+  box-shadow: var(--shadow-raised);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: var(--z-overlay);
+}
+.tip-below::after {
+  bottom: auto;
+  top: calc(100% + var(--space-1));
+}
+@media (hover: hover) {
+  [data-tip]:hover::after {
+    opacity: 1;
+  }
+}
+@media (hover: none) {
+  [data-tip]:focus::after {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-tip]::after {
+    transition: none;
+  }
+}
+
 .hidden {
   display: none !important;
 }
