@@ -29,6 +29,7 @@ import { setupGallery } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
+import { setupHearingTest } from './ui/hearing';
 import { newCustomId, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
@@ -76,6 +77,11 @@ const input = new TiltInput();
 const audio = new GameAudio();
 const renderer = new Renderer(canvas);
 setupGallery(audio);
+// Hörtest: der echte Echo-Ping aus zufälliger Richtung, Antwort auf der
+// Kompassrose – macht messbar, wie gut die HRTF-Ortung beim eigenen Gehör
+// (und den eigenen Kopfhörern) trägt.
+const hearingTest = setupHearingTest({ audio, onClose: () => showMenu() });
+$('hearingBtn').addEventListener('click', () => hearingTest.open());
 
 type GameState = 'menu' | 'playing' | 'fell' | 'warp' | 'won';
 type Mode =

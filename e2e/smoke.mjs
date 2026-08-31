@@ -358,6 +358,7 @@ const check = (name, cond) => {
       bannersBottom: banners.bottom,
       galleryPadTop: gallery.paddingTop,
       galleryPadBottom: gallery.paddingBottom,
+      hearPadTop: getComputedStyle(document.getElementById('hearing')).paddingTop,
       bodyTouch: getComputedStyle(document.body).touchAction,
       gameTouch: getComputedStyle(document.getElementById('game')).touchAction,
       innerH: innerHeight,
@@ -368,6 +369,9 @@ const check = (name, cond) => {
   check(`Canvas füllt den Layout-Viewport (${m.canvasW}x${m.canvasH})`, m.canvasW === m.innerW && m.canvasH === m.innerH);
   check(`Banner enden über dem Home-Indicator (bottom=${m.bannersBottom})`, m.bannersBottom === m.innerH - 34 - 16);
   check(`Panel-Padding respektiert Insets (${m.galleryPadTop}/${m.galleryPadBottom})`, m.galleryPadTop === '78px' && m.galleryPadBottom === '50px');
+  // Jedes neue Vollbild-Panel muss an derselben Regel hängen – sonst klebt es
+  // in der installierten PWA unter der Notch.
+  check(`Hörtest-Panel teilt die Panel-Regel (${m.hearPadTop})`, m.hearPadTop === '78px');
   check(`touch-action: body=${m.bodyTouch}, game=${m.gameTouch}`, m.bodyTouch === 'pan-x pan-y' && m.gameTouch === 'none');
 
   // Panels müssen scrollbar sein (der alte touch-action:none-Bug wäre hier unsichtbar,
@@ -659,10 +663,12 @@ const check = (name, cond) => {
   const quickEn = (await page.textContent('#quickBtn')).trim();
   check(`Browser-Locale en-US => Englisch (lang=${lang}, "${dailyEn}")`, lang === 'en' && dailyEn === 'Still open today' && quickEn.includes('Quick Game'));
 
-  // Neues Menü: 6 Modus-Karten, Tutorial als Einstieg empfohlen
+  // Neues Menü: 7 Modus-Karten, Tutorial als Einstieg empfohlen
   const modeItems = await page.locator('#modeList .mode-item').count();
   const suggested = await page.locator('#tutorialBtn.suggest').count();
-  check(`Startscreen: 6 Modus-Karten, Tutorial empfohlen (${modeItems}/${suggested})`, modeItems === 6 && suggested === 1);
+  check(`Startscreen: 7 Modus-Karten, Tutorial empfohlen (${modeItems}/${suggested})`, modeItems === 7 && suggested === 1);
+  const hearingTitle = (await page.textContent('#hearingBtn .mode-title')).trim();
+  check(`Hörtest-Karte auf Englisch ("${hearingTitle}")`, hearingTitle === 'Hearing test');
 
   // Galerie übersetzt (erster Registry-Eintrag: Loch -> "Hole")
   await page.click('#galleryLink');
@@ -1416,6 +1422,82 @@ const check = (name, cond) => {
   check(`Unplausible Spur tritt ohne Geist an ("${cheatText.split('\n').pop()?.slice(0, 30)}…")`,
     cheatText.includes('Zielzeit') && noGhost === null);
   await ctx.close();
+}
+
+// --- Lauf 17: Hörtest – der echte Echo-Ping kommt aus einer zufälligen
+// Richtung, die Kompassrose nimmt die Antwort, die Auswertung trennt
+// Seiten- und Tiefen-Achse (der Sinn des Modus). ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  await page.click('#hearingBtn');
+  await page.waitForTimeout(700);
+  const open = await page.locator('#hearing').isVisible();
+  const cells = await page.locator('#hearGrid .hear-cell').count();
+  const dirCells = await page.locator('#hearGrid .hear-cell[data-dir]').count();
+  const repeat = await page.locator('#hearGrid #hearRepeat').count();
+  check(`Hörtest öffnet mit Kompassrose (offen=${open}, ${cells} Zellen: ${dirCells} Richtungen + ${repeat}× 🔊)`,
+    open && cells === 9 && dirCells === 8 && repeat === 1);
+
+  const hook = () => page.evaluate(() => window.__tiltrHearing);
+  /** Wartet auf eine Phase. Wichtig: Nach einer Antwort läuft ~1,1 s Feedback,
+   *  in dem Taps IGNORIERT werden – „Runde hochgezählt" ist also NICHT
+   *  gleich „nächste Frage steht". Deshalb wird auf !locked gewartet. */
+  const awaitState = async (pred) => {
+    for (let i = 0; i < 60; i++) {
+      const st = await hook();
+      if (st && pred(st)) return st;
+      await page.waitForTimeout(100);
+    }
+    return await hook();
+  };
+  const state0 = await awaitState((s) => s.round === 0 && !s.locked);
+  check(`Runde 1 läuft mit gezogener Richtung ("${state0?.asked}", ${state0?.round}/${state0?.total})`,
+    !!state0 && state0.round === 0 && state0.total === 8 && typeof state0.asked === 'string');
+
+  const DIRS = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+
+  // Runde 1 ABSICHTLICH daneben (zwei Schritte): Das Feedback muss die
+  // richtige Richtung nachliefern, sonst lernt niemand etwas.
+  const wrong = DIRS[(DIRS.indexOf(state0.asked) + 2) % 8];
+  await page.click(`#hearGrid .hear-cell[data-dir="${wrong}"]`);
+  await page.waitForTimeout(200);
+  const feedback = (await page.textContent('#hearStatus')).trim();
+  check(`Falsche Antwort nennt die echte Richtung ("${feedback}")`,
+    feedback.startsWith('✗') && feedback.includes('es kam aus'));
+
+  // Restliche sieben Runden richtig beantworten.
+  for (let n = 1; n < 8; n++) {
+    const st = await awaitState((s) => s.round === n && !s.locked);
+    await page.click(`#hearGrid .hear-cell[data-dir="${st.asked}"]`);
+  }
+  const done = await awaitState((s) => s.over);
+  check(`Durchgang endet mit 7/8 exakt (exakt=${done?.score?.exact}, nah=${done?.score?.close})`,
+    !!done && done.done === true && done.over === true && done.score.total === 8 && done.score.exact === 7);
+
+  const lines = (await page.locator('#hearResult p').allTextContents()).map((l) => l.trim());
+  const result = lines.join(' | ');
+  const status = (await page.textContent('#hearStatus')).trim();
+  check(`Auswertung trennt Seite und Tiefe ("${lines[2] ?? ''}" / "${lines[3] ?? ''}")`,
+    lines.length === 5 && result.includes('Seite (links/rechts)') && result.includes('Tiefe (vorn/hinten)')
+      && status.includes('7 von 8'));
+
+  // Neuer Durchgang setzt zurück (frische Zufallsfolge, Zähler auf 0).
+  await page.click('#hearRestart');
+  await page.waitForTimeout(300);
+  const fresh = await hook();
+  const resultHidden = await page.locator('#hearResult').isVisible();
+  check(`Neuer Durchgang startet bei 0 (round=${fresh?.round}, Ergebnis sichtbar=${resultHidden})`,
+    !!fresh && fresh.round === 0 && fresh.done === false && !resultHidden);
+
+  await page.click('#hearClose');
+  await page.waitForTimeout(200);
+  check('Schließen führt zurück ins Menü',
+    !(await page.locator('#hearing').isVisible()) && (await page.locator('#overlay').isVisible()));
+  await page.close();
 }
 
 check('keine Konsolen-/Seitenfehler', errors.length === 0);

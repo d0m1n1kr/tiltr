@@ -67,6 +67,11 @@ automatically via GitHub Actions (tests → build → pages).
   rematch; that's the ping-pong loop. Received traces are checked for
   plausibility first (start, goal, no teleporting), so no 0.1-second
   phantom ever lines up against you.
+- **🎧 Hearing test** — the ping comes from one of eight directions and you
+  tap where you heard it. Eight rounds, then a verdict that splits the two
+  axes: left/right (strong — real ear-difference cues) and front/back
+  (weak — a generic HRTF wearing someone else's ears). It doubles as a
+  headphone check before your first run.
 - **🎓 Tutorial** — eight micro-levels that teach the sound language, one
   element at a time.
 - **🧩 Element Gallery** — living documentation: every element with its

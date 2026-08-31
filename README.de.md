@@ -69,6 +69,11 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   Ping-Pong-Loop. Empfangene Spuren werden vorher auf Plausibilität
   geprüft (Start, Ziel, kein Teleport), damit kein 0,1-Sekunden-Phantom
   antritt.
+- **🎧 Hörtest** – der Ping kommt aus einer von acht Richtungen, du tippst
+  an, woher. Acht Runden, dann ein Urteil, das die beiden Achsen TRENNT:
+  links/rechts (stark – echte Ohr-Differenzen) und vorn/hinten (schwach –
+  eine generische HRTF trägt fremde Ohren). Gleichzeitig der
+  Kopfhörer-Check vor der ersten Runde.
 - **🎓 Tutorial** – acht Micro-Level, die die Klangsprache beibringen,
   ein Element nach dem anderen.
 - **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und

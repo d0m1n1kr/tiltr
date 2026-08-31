@@ -64,6 +64,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   ein Filter gegen kaputte Tokens. Duell-Läufe schreiben NICHTS mit.
 - Audio ist das Leitmedium: Jedes Element hat eine eindeutige, räumlich
   ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound.
+  `src/ui/hearing.ts` ist der Hörtest-Modus: echter Echo-Ping aus einer
+  von acht Richtungen, Antwort auf der Kompassrose, Auswertung TRENNT
+  Seiten- und Tiefen-Achse (links/rechts trägt, vorn/hinten ist bei
+  generischer HRTF schwach). Wer am Panning schraubt, prüft es hier.
 
 ## UI & Layout
 

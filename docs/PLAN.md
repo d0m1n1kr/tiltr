@@ -350,6 +350,29 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M20 „Hörtest" ✓ (v1.11.0)
+
+Ein eigener Modus (7. Karte im Startmenü, `src/ui/hearing.ts`), der das
+Leitmedium prüft, statt es zu behaupten: Der ECHTE Echo-Ping
+(`audio.echoPing`) kommt aus einer von acht Richtungen, die Antwort geht
+auf eine Kompassrose (3×3-Raster, Mitte = nochmal hören). Acht Runden,
+sofortiges Feedback mit der wahren Richtung.
+
+Der Wert steckt in der Auswertung: Sie zählt nicht nur Treffer, sondern
+trennt **Seiten-Achse** (links/rechts) und **Tiefen-Achse** (vorn/hinten).
+Das Spatial Audio ist echtes 3D über HRTF-`PannerNode`s – links/rechts
+trägt starke Ohr-Differenzen (Laufzeit + Lautstärke) und wird zuverlässig
+erkannt, vorn/hinten hängt an feinen Klangfarben-Unterschieden einer
+FREMDEN Ohrform und ist deshalb schwach (Front-Back-Konfusion; die
+Quellen liegen zudem in der Horizontalebene, `y = 0`). Der Test macht das
+messbar und erklärt es im Ergebnis – wer weiß, dass die Tiefe wackelt,
+wiederholt im Spiel den Ping statt sich zu verrennen. Nebeneffekt:
+Der Modus ist der Kopfhörer-Check vor der ersten Runde.
+
+`dirVector`/`scoreRounds` sind reine, DOM-freie Funktionen (Units in
+`tests/hearing.test.ts`), die Runden-Mechanik hängt über
+`window.__tiltrHearing` im E2E-Lauf 17.
+
 ## M19 „Werkstatt-Politur" ✓ (v1.10.0)
 
 Drei Meldungen aus dem Spielbetrieb:

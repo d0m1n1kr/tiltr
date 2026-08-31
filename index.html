@@ -255,7 +255,7 @@
     #banners > .banner { pointer-events: auto; }
     .banner-buttons { display: flex; align-items: center; gap: var(--space-2); }
 
-    #gallery, #campaign {
+    #gallery, #campaign, #hearing {
       position: fixed; inset: 0;
       height: var(--app-height, auto);
       z-index: var(--z-panel);
@@ -264,14 +264,14 @@
       padding: calc(var(--safe-top) + var(--space-4)) var(--space-4) calc(var(--safe-bottom) + var(--space-4));
       touch-action: pan-y;
     }
-    #gallery header, #campaign header {
+    #gallery header, #campaign header, #hearing header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       max-width: 560px;
       margin: 0 auto var(--space-3);
     }
-    #gallery h2, #campaign h2 { font-size: var(--fs-h2); }
+    #gallery h2, #campaign h2, #hearing h2 { font-size: var(--fs-h2); }
     .world-header { font-size: var(--fs-body); opacity: 0.6; margin-top: var(--space-3); font-weight: 600; }
     #campaign h2 span { font-size: var(--fs-small); opacity: 0.6; }
     #galleryList, #campaignList { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-3); }
@@ -287,6 +287,30 @@
       cursor: pointer;
     }
     .level-item.locked { opacity: 0.45; cursor: default; }
+
+    /* Hörtest: Kompassrose als 3×3-Raster – die Mitte wiederholt den Ping,
+       die acht Zellen liegen dort, wo die Richtung klingt (oben = vorn). */
+    #hearContent { max-width: 560px; margin: 0 auto; display: grid; gap: var(--space-4); justify-items: center; }
+    #hearIntro { font-size: var(--fs-body-s); opacity: 0.7; text-align: center; max-width: 42ch; }
+    #hearStatus { font-size: var(--fs-body); min-height: calc(var(--fs-body) * 2.4); text-align: center; }
+    #hearGrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-2);
+      width: min(84vw, 320px);
+    }
+    .hear-cell {
+      aspect-ratio: 1;
+      min-height: var(--touch-min);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--fs-h2);
+      padding: 0;
+    }
+    #hearRepeat { border: var(--border-accent); color: var(--accent); }
+    #hearResult { display: grid; gap: var(--space-2); font-size: var(--fs-body-s); text-align: center; max-width: 42ch; }
+    #hearResult p:last-child { opacity: 0.7; }
     #mp { position: fixed; inset: 0; height: var(--app-height, auto); z-index: var(--z-panel); background: var(--bg); overflow-y: auto;
       padding: calc(var(--safe-top) + var(--space-4)) var(--space-4) calc(var(--safe-bottom) + var(--space-4));
       touch-action: pan-y; }
@@ -566,6 +590,13 @@
           </span>
           <span class="mode-meta" id="workshopCount"></span>
         </button>
+        <button id="hearingBtn" class="panel mode-item">
+          <span class="mode-icon">🎧</span>
+          <span class="mode-text">
+            <span class="mode-title" data-i18n="menu.hearing">Hörtest</span>
+            <span class="mode-sub" data-i18n="menu.hearing.sub"></span>
+          </span>
+        </button>
         <button id="galleryLink" class="panel mode-item">
           <span class="mode-icon">🧩</span>
           <span class="mode-text">
@@ -619,6 +650,20 @@
       <button id="galleryClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
     </header>
     <div id="galleryList"></div>
+  </div>
+
+  <div id="hearing" class="hidden">
+    <header>
+      <h2 data-i18n="hear.title">🎧 Hörtest</h2>
+      <button id="hearClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
+    </header>
+    <div id="hearContent">
+      <p id="hearIntro" data-i18n="hear.intro"></p>
+      <p id="hearStatus"></p>
+      <div id="hearGrid"></div>
+      <div id="hearResult" class="hidden"></div>
+      <button id="hearRestart" class="btn btn-ghost" data-i18n="hear.restart">⟳ Neuer Durchgang</button>
+    </div>
   </div>
 
   <div id="campaign" class="hidden">
