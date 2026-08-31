@@ -350,6 +350,134 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M17 „Geist-Duell" – asynchrones Rennen gegen eine echte Spur (Planung)
+
+Ein Lauf wird zur Herausforderung: Der Share-Link trägt **Level + Geist +
+Zeit**. Wer ihn öffnet, spielt dasselbe Labyrinth gegen die aufgezeichnete
+Spur – und **hört** den Rivalen als räumlich geortetes Rollen neben sich.
+Serverlos wie alles andere; die drei Bausteine existieren bereits
+(GhostRecorder, shareCodec, Hash-Empfang) und werden nur verbunden.
+
+Leitideen:
+
+- **Selbstenthaltend**: Das Token trägt die komplette LevelDef, nie eine
+  Referenz auf eine Kampagnen-ID. Ein Duell-Link bleibt damit gültig, auch
+  wenn ein Kampagnen-Level später nachgeschärft wird – sonst rennen zwei
+  Leute gegen verschiedene Labyrinthe.
+- **Audio first**: Der Rivale ist primär ein KLANG, keine Zahl. Hörst du
+  ihn hinter dir, bist du vorn. Kein Live-Zahlen-Delta im HUD (das wäre
+  ein Bildschirm-Feature in einem Blindspiel); die Zahlen kommen am Ziel.
+- **Duell schreibt keine Rekorde**: eigener Modus, damit ein Duell auf
+  Kampagnen-Level keine Sterne, keine Daily-Wertung und keinen lokalen
+  Geist überschreibt. Der Duell-Lauf zählt nur gegen den Rivalen.
+- **Plausibilität statt Vertrauen**: Ohne Server ist keine Zeit beweisbar,
+  aber eine Spur muss zu ihrer Zeit passen. Der Empfänger prüft das und
+  lehnt Unsinn ab (siehe „Beweis" unten).
+
+### Datenformat
+
+Heute speichert `ghost.ts` `[tSek, Ebene, x, y, …]` mit ~8 Hz und
+Mindestabstand – für localStorage gut, für eine URL zu fett (60 s ≈ 9 KB
+JSON). Für das Duell kommt eine kompakte Variante:
+
+| Schritt | Wirkung |
+|---|---|
+| **Exaktes Raster** statt Mindestabstand: auf 8 Hz resamplen (`sampleGhost` kann das schon) | Zeitspalte entfällt komplett – Index = Zeit |
+| **Delta-Kodierung** von x/y (Ball bewegt sich ≤ ~112 px pro Sample) | zweistellige Zahlen statt vierstelliger |
+| **Ebene nur bei Wechsel** (Sentinel im Strom) | eine Spalte weniger |
+| durch denselben `deflate-raw`-Pfad wie Level-Tokens | Deltas komprimieren sehr gut |
+
+Erwartung: 60-s-Lauf ≈ 1–1,5 KB Token inkl. Level (heute ~318 Zeichen für
+ein Level allein) – **im Plan zu MESSEN**, nicht zu glauben; die Suite
+bekommt eine Obergrenze als Test (z. B. „60 s Lauf < 2500 Zeichen").
+Bewusst KEIN Varint/Binärformat: JSON-Deltas durch deflate liegen nah dran
+und bleiben lesbar, testbar und debugbar.
+
+Umschlag (neue Codec-Funktion, Token-Version wie gehabt als erstes Zeichen):
+
+```
+{ v: 1, def: {…LevelDef…}, duel: { time: 42.3, ghost: [Δ-Strom], by?: "Name" } }
+```
+
+Neuer Hash `#duel=TOKEN` – `#level=` bleibt unverändert, alte Links
+funktionieren weiter.
+
+### Beweis (validate.ts-Tradition)
+
+`validateGhostRun(def, ghost, time)` prüft eine empfangene Spur, bevor sie
+als Rivale antritt:
+
+- Startpunkt ≈ Level-Start, Endpunkt ≈ Ziel (Toleranz Ballradius).
+- Jeder Schritt ≤ `maxSpeed` × Δt (plus Toleranz) – niemand teleportiert.
+- Länge der Spur ≈ `time` (±1 Rasterschritt).
+- Ebenenwechsel nur an Transporter-Zellen.
+
+Fällt der Test durch: Interstitial „Diese Herausforderung ist beschädigt"
+statt eines unschlagbaren Phantoms. Kein Anti-Cheat (unmöglich ohne
+Server), aber ein Filter gegen kaputte und alberne Tokens.
+
+### Klang des Rivalen
+
+Neue Audio-Quelle `setRival(closeness01, dx, dy)`: leises, tiefpass-
+gefiltertes Rollen auf einem eigenen HRTF-Panner – dasselbe Rezept wie
+`setGuard`/`setCurrent`, aber freundlich statt bedrohlich (kein Herzschlag-
+Beitrag!). Lautstärke steigt mit Nähe, verstummt bei Ebenen-Unterschied
+(gedämpft wie der Beacon im Nebel). Dazu zwei Ereignis-Töne:
+
+- **Überholen** (du ziehst vorbei): kurzer, aufsteigender Zweiklang.
+- **Überholt werden**: derselbe Zweiklang abwärts.
+
+Fortschrittsvergleich dafür ohne Live-BFS: Beide laufen dasselbe Level, der
+Geist ist eine Zeitfunktion – „vorn" = wer der Ziel-Luftlinie näher ist
+(die Renderer-Beacon-Distanz existiert bereits). Grob, aber für einen
+Überhol-Jingle genau richtig; die Wahrheit sagt am Ende die Uhr.
+
+### Empfangs- und Rückspiel-Flow
+
+1. `#duel=…` → dekodieren, `parseLevel`, `validateGhostRun`.
+2. Interstitial: „🏁 Herausforderung – schlage 42,3 s" mit „Antreten" /
+   „Später". (Kein „In die Werkstatt" – dafür ist `#level=` da.)
+3. Lauf im Modus `{kind:'duel', time, ghost, name?}`: Geist-Halo + Rival-
+   Klang, HUD wie gewohnt (Timer, Pings).
+4. Ergebnis: „Gewonnen – 38,2 s gegen 42,3 s (+4,1 s)" bzw. „Verloren".
+   Primär-Aktion **„⟳ Revanche schicken"**: erzeugt aus DEINEM Lauf das
+   nächste Duell-Token → Ping-Pong-Loop zwischen zwei Leuten.
+5. Verlieren = neuer Versuch am selben Link („⟳ Nochmal"), der Rivale
+   bleibt im Speicher der Sitzung.
+
+### Absender-Seite
+
+„🏁 Herausfordern" erscheint in der Ergebnis-Karte JEDES geist-fähigen
+Modus (Quick, Daily, Kampagne, Werkstatt-Level) – überall dort, wo schon
+heute ein Geist aufgezeichnet wird. Bedingung: Lauf gewonnen und Spur
+vollständig (`GhostRecorder.result() !== null`). Bei Daily bleibt der
+bestehende `#daily=`-Link daneben bestehen (er ist kürzer und braucht kein
+Level im Token) – das Duell ist die Variante MIT hörbarem Gegner.
+
+Optionaler Absendername: ein Feld im Profil (leer = „Rivale"), rein
+kosmetisch, nie erzwungen.
+
+### Schnitte
+
+| Meilenstein | Inhalt | Ergebnis |
+|---|---|---|
+| **M17a „Geist-Codec"** | 8-Hz-Resampling, Delta-Kodierung, `encodeDuel`/`decodeDuel`, `validateGhostRun` + Units (Roundtrip, Größenschranke, manipulierte Spur, Teleport) | Duelle sind transportierbar und prüfbar |
+| **M17b „Duell-Modus"** | Modus + `#duel=`-Empfang, Rival-Klang, Ergebnis mit Revanche, „Herausfordern" in allen Ergebnis-Karten, i18n ×4, E2E (Token erzeugen → zweite Seite → antreten → Ergebnis) | das Feature spielbar |
+| **M17c (optional)** | Duell-Historie in der Werkstatt/Profil („3:1 gegen Rivale"), QR-Code für Duell-Links | Wiederkehr-Anreiz |
+
+Offene Design-Entscheidungen (Empfehlung jeweils zuerst):
+
+1. **Kein Live-Delta im HUD** (nur Klang) vs. optionaler „Δ"-Chip für
+   Sehende. Empfehlung: erst ohne – das Spiel ist blind spielbar, und der
+   Klang ist die Aussage.
+2. **Duell-Läufe zählen nirgends** vs. „Bestzeit darf trotzdem fallen".
+   Empfehlung: nirgends zählen (klare Trennung, keine Sterne aus fremden
+   Links).
+3. **Geist immer mitschicken** vs. „Zeit-only-Duell" als Sparvariante für
+   sehr lange Läufe (> 3 min, Token wird groß). Empfehlung: automatischer
+   Fallback auf Zeit-only, wenn das Token die Warnschwelle reißt – dann
+   eben ohne hörbaren Rivalen, aber mit Zielzeit.
+
 ## M16 „Werkstatt-Startscreen" ✓ (v1.8.1)
 
 Aktionen als Modus-Karten in der Design-Sprache des Startmenüs (Icon +
