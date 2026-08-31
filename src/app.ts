@@ -14,6 +14,7 @@ import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang, type Dict } from './i18n';
 import { GhostRecorder, loadGhost, saveGhost, sampleGhost, type GhostData } from './ghost';
+import { decodeDuel, duelUrl, validateGhostRun } from './levels/duel';
 import { showSplash } from './ui/splash';
 import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
@@ -61,6 +62,7 @@ const interTitle = $('interTitle');
 const interText = $('interText');
 const interPrimary = $<HTMLButtonElement>('interPrimary');
 const interSecondary = $<HTMLButtonElement>('interSecondary');
+const interExtra = $<HTMLButtonElement>('interExtra');
 
 fixStandaloneViewport();
 document.documentElement.lang = currentLang();
@@ -82,6 +84,10 @@ type Mode =
   | { kind: 'campaign'; index: number }
   | { kind: 'daily'; date: string; target?: number }
   | { kind: 'custom' }
+  // Geist-Duell: fremdes Level + fremde Spur + Zielzeit. Schreibt bewusst
+  // NICHTS mit (keine Sterne, keine Daily-Wertung, kein eigener Geist) –
+  // der Lauf zählt nur gegen den Rivalen.
+  | { kind: 'duel'; time: number; ghost: GhostData | null; by?: string }
   | { kind: 'mp' };
 
 type MpMode = 'coop' | 'race';
@@ -131,6 +137,9 @@ let levelCols = 0;
 let levelRows = 0;
 // Geist-Replay: Bestzeit-Spur des aktuellen Levels + Rekorder des Laufs
 let ghost: GhostData | null = null;
+let duelDef: LevelDef | null = null;
+/** Duell: Lag ich beim letzten Frame vorn? (null = noch nicht bestimmt) */
+let rivalAhead: boolean | null = null;
 let ghostRecorder: GhostRecorder | null = null;
 // Werkstatt: aktuelles Custom-Level + ob der Lauf aus dem Editor kam (✏️)
 let customDef: LevelDef | null = null;
@@ -158,9 +167,25 @@ interface InterAction {
   onClick: () => void;
 }
 
-function showInterstitial(opts: { title: string; text: string; primary?: InterAction; secondary?: InterAction }): void {
+function showInterstitial(opts: {
+  title: string;
+  text: string;
+  primary?: InterAction;
+  secondary?: InterAction;
+  /** Leise Zusatzaktion (Duell herausfordern/Revanche): Karte bleibt offen,
+   *  man teilt den Link und entscheidet danach weiter. */
+  extra?: InterAction;
+}): void {
   interTitle.textContent = opts.title;
   interText.textContent = opts.text;
+  if (opts.extra) {
+    interExtra.textContent = opts.extra.label;
+    interExtra.onclick = () => opts.extra!.onClick();
+    interExtra.classList.remove('hidden');
+  } else {
+    interExtra.classList.add('hidden');
+    interExtra.onclick = null;
+  }
   for (const [btn, action] of [
     [interPrimary, opts.primary],
     [interSecondary, opts.secondary],
@@ -332,6 +357,7 @@ function showMenu(): void {
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
+  audio.setRival(0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
   audio.setListener(0, 0, 0, 0);
@@ -378,6 +404,57 @@ function startCustom(raw: RawLevel, fromEditor: boolean): void {
   void startMode({ kind: 'custom' });
 }
 
+/* --- Geist-Duell ----------------------------------------------------------- */
+
+const RIVAL_HEAR = 520; // Welteinheiten, ab denen man den Rivalen hört
+
+/** Empfangenes Duell starten: Level + Spur kommen komplett aus dem Link. */
+function startDuel(payload: { def: Record<string, unknown>; time: number; ghost: GhostData | null; by?: string }): void {
+  try {
+    duelDef = parseLevel(payload.def);
+  } catch {
+    return;
+  }
+  $('editor').classList.add('hidden');
+  $('workshop').classList.add('hidden');
+  void startMode({ kind: 'duel', time: payload.time, ghost: payload.ghost, by: payload.by });
+}
+
+/** Link zum eigenen Lauf teilen (Herausforderung bzw. Revanche). */
+function shareDuel(def: LevelDef, seconds: number, btn: HTMLButtonElement, label: string): void {
+  const frames = ghostRecorder?.result() ?? null;
+  void (async () => {
+    const url = await duelUrl(
+      def as unknown as Record<string, unknown>,
+      seconds,
+      frames && frames.length ? { time: seconds, frames } : null,
+      profile.name || undefined,
+    );
+    // Testbarkeits-Hook (E2E): der Link, den Teilen erzeugt hätte.
+    (window as unknown as { __tiltrDuelUrl?: string }).__tiltrDuelUrl = url;
+    const flash = (text: string): void => {
+      btn.textContent = text;
+      setTimeout(() => (btn.textContent = label), 2500);
+    };
+    try {
+      if (navigator.share) await navigator.share({ title: t('duel.shareTitle'), url });
+      else {
+        await navigator.clipboard.writeText(url);
+        flash(t('duel.copied'));
+      }
+    } catch {
+      /* abgebrochen */
+    }
+  })();
+}
+
+/** „🏁 Herausfordern" für die Ergebnis-Karten aller geist-fähigen Modi:
+ *  nur mit vollständiger Aufzeichnung (sehr lange Läufe haben keine). */
+function challengeAction(def: LevelDef, seconds: number, label: string): InterAction | undefined {
+  if (!ghostRecorder?.result()?.length) return undefined;
+  return { label, onClick: () => shareDuel(def, seconds, interExtra, label) };
+}
+
 const editorApi = setupEditor({
   onTest: (def) => startCustom(def, true),
   onSaved: () => {
@@ -396,6 +473,14 @@ $('editBtn').addEventListener('click', () => {
   showMenu();
   editorApi.reopen();
 });
+// Anzeigename für Duell-Links (optional; leer = anonymer „Rivale").
+const playerNameInput = $<HTMLInputElement>('playerName');
+playerNameInput.value = profile.name;
+playerNameInput.addEventListener('change', () => {
+  profile.name = playerNameInput.value;
+  playerNameInput.value = profile.name;
+});
+
 $('dailyBtn').addEventListener('click', () => void startMode({ kind: 'daily', date: todayUTC() }));
 tutorialBtn.addEventListener('click', () =>
   void startMode({ kind: 'tutorial', index: profile.nextTutorialIndex(TUT_IDS) }),
@@ -441,7 +526,9 @@ function beginLevel(): void {
           ? generateDailyLevel(mode.date)
           : mode.kind === 'custom'
             ? customDef!
-            : generateQuickLevel(nextSeed(), profile.preset);
+            : mode.kind === 'duel'
+              ? duelDef!
+              : generateQuickLevel(nextSeed(), profile.preset);
   currentDef = def;
   const intro = lvIntro(def);
   if (intro) {
@@ -456,7 +543,11 @@ function beginLevel(): void {
             } · ${lvName(def)}`
           : lvName(def);
     const targetLine =
-      mode.kind === 'daily' && mode.target !== undefined ? `\n\n${t('daily.targetLine', { time: fmtTime(mode.target) })}` : '';
+      mode.kind === 'daily' && mode.target !== undefined
+        ? `\n\n${t('daily.targetLine', { time: fmtTime(mode.target) })}`
+        : mode.kind === 'duel'
+          ? `\n\n${t('daily.targetLine', { time: fmtTime(mode.time) })}`
+          : '';
     showInterstitial({
       title,
       text: intro + targetLine,
@@ -488,9 +579,17 @@ function launch(def: LevelDef): void {
   // exakt demselben Level.
   const ghostable =
     mode !== null &&
-    (mode.kind === 'quick' || mode.kind === 'daily' || mode.kind === 'campaign' || mode.kind === 'custom');
-  ghost = ghostable ? loadGhost(def.id) : null;
+    (mode.kind === 'quick' ||
+      mode.kind === 'daily' ||
+      mode.kind === 'campaign' ||
+      mode.kind === 'custom' ||
+      mode.kind === 'duel');
+  // Im Duell IST der Geist der Rivale aus dem Link – nicht die eigene
+  // Bestzeit. Aufgezeichnet wird trotzdem: daraus wird die Revanche.
+  ghost = mode?.kind === 'duel' ? mode.ghost : ghostable ? loadGhost(def.id) : null;
   ghostRecorder = ghostable ? new GhostRecorder() : null;
+  rivalAhead = null;
+  audio.setRival(0, 0, 0);
   pingMax = loaded.pingBudget;
   pings = pingMax;
   pingsUsed = 0;
@@ -556,12 +655,31 @@ function respawn(): void {
 function onWin(seconds: number): void {
   if (!mode || !currentDef) return;
   const def = currentDef;
-  // Geist-Replay: die schnellste Spur pro Level-ID aufheben.
-  if (ghostRecorder && (ghost === null || seconds < ghost.time)) {
+  // Geist-Replay: die schnellste Spur pro Level-ID aufheben. Im Duell NICHT –
+  // dort ist der Geist der Rivale, und der Lauf zählt nirgends mit.
+  if (ghostRecorder && mode.kind !== 'duel' && (ghost === null || seconds < ghost.time)) {
     const frames = ghostRecorder.result();
     if (frames) saveGhost(def.id, seconds, frames);
   }
-  if (mode.kind === 'daily') {
+  if (mode.kind === 'duel') {
+    const rival = mode.by || t('duel.rival');
+    const won = seconds < mode.time;
+    const delta = fmtTime(Math.abs(seconds - mode.time));
+    const target = mode.time;
+    setTimeout(() => {
+      showInterstitial({
+        title: won ? t('duel.wonTitle', { time: fmtTime(seconds) }) : t('duel.lostTitle', { time: fmtTime(seconds) }),
+        text: won
+          ? t('duel.wonText', { delta, by: rival, time: fmtTime(target) })
+          : t('duel.lostText', { by: rival, delta, time: fmtTime(target) }),
+        // Zurückschlagen kann nur, wer schneller war – sonst wäre die
+        // „Revanche" ein Link mit schlechterer Zeit.
+        extra: won ? challengeAction(def, seconds, t('duel.rematch')) : undefined,
+        primary: { label: t('common.again'), onClick: beginLevel },
+        secondary: { label: t('common.menu'), onClick: showMenu },
+      });
+    }, 1800);
+  } else if (mode.kind === 'daily') {
     const date = mode.date;
     const target = mode.target;
     const today = todayUTC();
@@ -584,6 +702,7 @@ function onWin(seconds: number): void {
       showInterstitial({
         title: t('daily.resultTitle', { date: formatDate(date), time: fmtTime(seconds) }),
         text: lines.join('\n'),
+        extra: challengeAction(def, seconds, t('duel.challenge')),
         primary: {
           label: t('daily.share'),
           onClick: () => {
@@ -643,6 +762,7 @@ function onWin(seconds: number): void {
       showInterstitial({
         title: `${lvName(def)} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`,
         text: lines.join('\n'),
+        extra: challengeAction(def, seconds, t('duel.challenge')),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -663,6 +783,9 @@ function onWin(seconds: number): void {
       showInterstitial({
         title: t('res.winTitle', { time: fmtTime(seconds) }),
         text: isRecord ? t('res.newBestLine') : best !== null ? t('res.time', { time: fmtTime(best) }) : '',
+        // Im Editor-Preview gibt es nichts zu teilen (der Entwurf ist noch
+        // nicht mal gespeichert) – im normalen Spiel schon.
+        extra: fromEditor ? undefined : challengeAction(def, seconds, t('duel.challenge')),
         primary: fromEditor
           ? {
               label: t('ed.backToEditor'),
@@ -683,6 +806,7 @@ function onWin(seconds: number): void {
     setTimeout(() => {
       showInterstitial({
         title: t('res.winTitle', { time: fmtTime(seconds) }),
+        extra: challengeAction(def, seconds, t('duel.challenge')),
         text: isRecord
           ? t('res.newBestLine')
           : best !== null
@@ -929,11 +1053,52 @@ function offerSharedLevel(token: string): void {
   })();
 }
 
+// Empfangenes Geist-Duell (#duel=TOKEN): Level + Spur + Zielzeit stecken im
+// Link. Die Spur wird auf Plausibilität geprüft, bevor sie antritt.
+function offerDuel(token: string): void {
+  history.replaceState(null, '', location.pathname + location.search);
+  void (async () => {
+    let payload: Awaited<ReturnType<typeof decodeDuel>>;
+    let def: LevelDef;
+    try {
+      payload = await decodeDuel(token);
+      def = parseLevel(payload.def);
+    } catch {
+      showInterstitial({
+        title: t('duel.introTitle'),
+        text: t('duel.bad'),
+        primary: { label: t('common.ok'), onClick: () => undefined },
+      });
+      return;
+    }
+    // Unplausible Spur (Teleport, Zeit passt nicht, Ziel nie erreicht) tritt
+    // nicht als unschlagbares Phantom an – dann lieber ohne Geist laufen.
+    if (payload.ghost && validateGhostRun(def, payload.ghost, payload.time) !== null) {
+      payload = { ...payload, ghost: null };
+    }
+    const rival = payload.by || t('duel.rival');
+    const accepted = payload;
+    showInterstitial({
+      title: t('duel.introTitle'),
+      text: `${t('duel.introText', { by: rival, name: lvName(def), time: fmtTime(payload.time) })}\n${
+        payload.ghost ? t('duel.introGhost') : t('duel.introNoGhost')
+      }`,
+      primary: { label: t('duel.accept'), onClick: () => startDuel(accepted) },
+      secondary: { label: t('duel.later'), onClick: () => undefined },
+    });
+  })();
+}
+
 // Empfangene Herausforderung (#daily=DATUM&t=SEKUNDEN) anbieten.
 function checkChallengeHash(): void {
   const levelMatch = location.hash.match(/^#level=([A-Za-z0-9_-]{8,})$/);
   if (levelMatch) {
     offerSharedLevel(levelMatch[1]!);
+    return;
+  }
+  const duelMatch = location.hash.match(/^#duel=([A-Za-z0-9_-]{8,})$/);
+  if (duelMatch) {
+    offerDuel(duelMatch[1]!);
     return;
   }
   const joinMatch = location.hash.match(/^#join=([A-Za-z0-9-]{4,12})$/);
@@ -961,6 +1126,11 @@ function checkChallengeHash(): void {
   });
 }
 checkChallengeHash();
+// Auch wenn die App SCHON OFFEN ist: Tippt man einen tiltr-Link an (PWA,
+// wiederverwendeter Tab), ändert sich nur der Hash – ohne Neuladen. Ohne
+// diesen Listener passierte dann gar nichts. (replaceState beim Aufräumen
+// feuert kein hashchange, es gibt also keine Schleife.)
+window.addEventListener('hashchange', checkChallengeHash);
 
 
 /* --- Multiplayer ------------------------------------------------------------ */
@@ -1298,6 +1468,7 @@ function mpCheckResult(): void {
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
+  audio.setRival(0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
   audio.setListener(0, 0, 0, 0);
@@ -1780,6 +1951,7 @@ function frame(now: number): void {
       audio.setWind(0, 0, 0);
       audio.setHoleRumble(0, 0, 0);
       audio.setGuard(0, 0, 0);
+      audio.setRival(0, 0, 0);
       audio.setPortal(0, 0, 0);
       audio.setCurrent(0, 0, 0);
       audio.setListener(0, 0, 0, 0);
@@ -1811,6 +1983,28 @@ function frame(now: number): void {
   // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
   const ghostPos = ghost && state === 'playing' ? sampleGhost(ghost, (now - t0) / 1000) : null;
   const ghostOpt = ghostPos ? { x: ghostPos.x, y: ghostPos.y, sameFloor: ghostPos.floor === activeFloor } : null;
+  // Duell: Der Rivale ist zu HÖREN – Richtung und Nähe sagen alles, was man
+  // im Rennen wissen muss (deshalb kein Zahlen-Delta im HUD).
+  if (mode?.kind === 'duel') {
+    if (ghostPos) {
+      const rdx = ghostPos.x - world.ball.x;
+      const rdy = ghostPos.y - world.ball.y;
+      const near = Math.max(0, 1 - Math.hypot(rdx, rdy) / RIVAL_HEAR);
+      audio.setRival(near, rdx, rdy, ghostPos.floor !== activeFloor);
+      // Positionswechsel an der Ziel-Luftlinie gemessen: grob, aber für einen
+      // Überhol-Jingle genau richtig – die Wahrheit sagt am Ende die Uhr.
+      const goal = loaded!.goalPos;
+      const ahead =
+        Math.hypot(goal.x - world.ball.x, goal.y - world.ball.y) < Math.hypot(goal.x - ghostPos.x, goal.y - ghostPos.y);
+      if (rivalAhead !== null && ahead !== rivalAhead) {
+        audio.rivalPass(ahead);
+        flash(t(ahead ? 'duel.passAhead' : 'duel.passBehind'), 1200);
+      }
+      rivalAhead = ahead;
+    } else {
+      audio.setRival(0, 0, 0);
+    }
+  }
   renderer.draw(world, { debug, revealAll: revealUntil > now, now, buddy, ghost: ghostOpt });
   // Testbarkeits-Hooks für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {

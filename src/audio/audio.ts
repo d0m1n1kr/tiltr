@@ -36,6 +36,9 @@ export class GameAudio {
   private iceVibrato!: OscillatorNode;
   private anchorGain!: GainNode;
   private anchorPanner!: PannerNode;
+  private rivalGain!: GainNode;
+  private rivalFilter!: BiquadFilterNode;
+  private rivalPanner!: PannerNode;
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
@@ -71,6 +74,21 @@ export class GameAudio {
     this.rollGain.gain.value = 0;
     roll.connect(this.rollFilter).connect(this.rollGain).connect(this.master);
     roll.start();
+
+    // Rivale (Geist-Duell): dasselbe Rollen wie das eigene, aber dumpfer und
+    // GEPANNT – „ich" ist ungepannt, alles Fremde kommt aus einer Richtung.
+    // Freundlich gemeint: kein Beitrag zum Herzschlag, keine Warnfarbe.
+    const rival = this.ctx.createBufferSource();
+    rival.buffer = this.noiseBuffer('brown');
+    rival.loop = true;
+    this.rivalFilter = this.ctx.createBiquadFilter();
+    this.rivalFilter.type = 'lowpass';
+    this.rivalFilter.frequency.value = 180;
+    this.rivalGain = this.ctx.createGain();
+    this.rivalGain.gain.value = 0;
+    this.rivalPanner = this.panner();
+    rival.connect(this.rivalFilter).connect(this.rivalGain).connect(this.rivalPanner).connect(this.master);
+    rival.start();
 
     // Windzonen: helles Rauschen -> Bandpass mit Böen-LFO -> Gain -> Panner
     const wind = this.ctx.createBufferSource();
@@ -571,6 +589,40 @@ export class GameAudio {
     const t = this.ctx.currentTime;
     this.guardGain.gain.setTargetAtTime(Math.min(0.5, closeness01 ** 1.5 * 0.55), t, 0.1);
     if (closeness01 > 0) this.place(this.guardPanner, dx, dy);
+  }
+
+  /** Rivale im Duell: Rollen aus seiner Richtung. Hörst du ihn hinter dir,
+   *  bist du vorn – das ist die eigentliche Anzeige, nicht eine Zahl.
+   *  muffled = andere Ebene (dann nur ein fernes Grundeln, wie im Nebel). */
+  setRival(closeness01: number, dx: number, dy: number, muffled = false): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const target = closeness01 <= 0 ? 0 : Math.min(0.42, closeness01 ** 1.4 * 0.5) * (muffled ? 0.35 : 1);
+    this.rivalGain.gain.setTargetAtTime(target, t, 0.12);
+    // Näher = eine Spur klarer (120 Hz fern, 320 Hz direkt daneben).
+    this.rivalFilter.frequency.setTargetAtTime(muffled ? 110 : 120 + closeness01 * 200, t, 0.2);
+    if (closeness01 > 0) this.place(this.rivalPanner, dx, dy);
+  }
+
+  /** Positionswechsel im Duell: kurzer Zweiklang – aufwärts, wenn DU
+   *  vorbeiziehst, abwärts, wenn der Rivale dich überholt. */
+  rivalPass(ahead: boolean): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const notes = ahead ? [587.33, 880] : [880, 587.33];
+    notes.forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const t0 = t + i * 0.09;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.14, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+      osc.connect(gain).connect(this.master);
+      osc.start(t0);
+      osc.stop(t0 + 0.24);
+    });
   }
 
   // Schlüssel-Klimpern: metallischer Doppel-Blip, Rate steigt mit der Nähe.

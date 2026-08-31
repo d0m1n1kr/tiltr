@@ -1229,6 +1229,150 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 16: Geist-Duell – ein gewonnener Lauf wird zur Herausforderung
+// (Link mit Level + Spur + Zeit), der Empfänger rennt gegen die echte Spur.
+// Zusätzlich: kaputte Tokens werden abgewiesen, unplausible Spuren treten
+// ohne Geist an (der Beweis greift im echten Flow). ---
+{
+  const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  const pageA = await ctx.newPage();
+  pageA.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  pageA.on('pageerror', (e) => errors.push(String(e)));
+  await pageA.goto(`${BASE}/?nosplash`);
+
+  // Ein Level, das in einer Sekunde zu gewinnen ist: Ziel direkt unter dem
+  // Start, Wand dazwischen aufgeschnitten. Kommt per Einfüge-Import rein.
+  const sprint = {
+    id: 'custom-sprint',
+    name: 'Sprint',
+    pingBudget: 3,
+    parTimeS: 30,
+    floors: [
+      {
+        size: [4, 5],
+        maze: { seed: 3, carve: [[[0, 0], 's']] },
+        elements: [],
+        start: [0, 0],
+        goal: [0, 1],
+      },
+    ],
+  };
+  // Absendername (optional, im Menü-Footer): macht das Duell persönlich.
+  if (await pageA.locator('#playerName').count()) {
+    await pageA.fill('#playerName', 'Dominik');
+    await pageA.dispatchEvent('#playerName', 'change');
+  }
+  await pageA.click('#workshopBtn');
+  await pageA.click('#wsImportBtn');
+  await pageA.fill('#wsImportText', JSON.stringify(sprint));
+  await pageA.click('#wsImportGo');
+  await pageA.waitForTimeout(300);
+  await pageA.locator('#workshopList .ws-actions .btn-primary').first().click(); // ▶ Spielen
+  await pageA.waitForTimeout(3800); // Kalibrier-Countdown
+
+  // Mit der Pfeiltaste nach unten ins Ziel rollen.
+  await pageA.keyboard.down('ArrowDown');
+  await pageA.waitForTimeout(1500);
+  await pageA.keyboard.up('ArrowDown');
+  await pageA.waitForTimeout(2600); // Ergebnis-Karte kommt nach 1,8 s
+  const winTitle = (await pageA.textContent('#interTitle')).trim();
+  check(`Sprint-Level gewonnen ("${winTitle}")`, winTitle.includes('Ziel in'));
+  const hasExtra = (await pageA.locator('#interExtra').count()) && (await pageA.locator('#interExtra').isVisible());
+  const extraLabel = hasExtra ? (await pageA.textContent('#interExtra')).trim() : '(fehlt)';
+  check(`Ergebnis-Karte bietet Herausfordern an ("${extraLabel}")`, extraLabel.includes('Herausfordern'));
+
+  if (hasExtra) {
+    await pageA.click('#interExtra');
+    await pageA.waitForTimeout(600);
+  }
+  const duelUrl = await pageA.evaluate(() => window.__tiltrDuelUrl);
+  check(`Duell-Link erzeugt (${duelUrl ? duelUrl.length : 0} Zeichen)`,
+    typeof duelUrl === 'string' && duelUrl.includes('#duel=1') && duelUrl.length < 4000);
+  // Der Link teilt, schließt aber die Karte NICHT – man entscheidet danach.
+  check('Teilen lässt die Ergebnis-Karte offen', hasExtra && (await pageA.locator('#interstitial').isVisible()));
+
+  // Empfang auf einer zweiten Seite: Herausforderung -> antreten -> der
+  // Rivale rollt mit (Geist aktiv, Zielzeit aus dem Link).
+  const pageB = await ctx.newPage();
+  pageB.on('pageerror', (e) => errors.push(String(e)));
+  await pageB.goto(typeof duelUrl === 'string' ? duelUrl : `${BASE}/?nosplash`);
+  await pageB.waitForTimeout(700);
+  const duelTitle = (await pageB.textContent('#interTitle')).trim();
+  const duelText = (await pageB.textContent('#interText')).trim();
+  check(`Herausforderung wird angeboten ("${duelTitle}")`,
+    duelTitle.includes('Herausforderung') && duelText.includes('Sprint') && duelText.includes('hörst'));
+  check(`Absendername steht in der Herausforderung ("${duelText.slice(0, 24)}…")`, duelText.startsWith('Dominik'));
+  check(
+    'Duell-Hash wurde aus der URL entfernt',
+    typeof duelUrl === 'string' && (await pageB.evaluate(() => location.hash === '')),
+  );
+
+  if (await pageB.locator('#interPrimary').isVisible()) {
+    await pageB.click('#interPrimary'); // Antreten
+    await pageB.waitForTimeout(4200);
+  }
+  const rival = await pageB.evaluate(() => window.__tiltrGhost);
+  check(`Rivale läuft im Duell mit (Zielzeit ${rival ? rival.time : '?'} s, aktiv: ${rival?.active})`,
+    !!rival && rival.active === true && rival.time > 0 && rival.time < 30);
+
+  // Kaputtes Token: klare Absage statt Absturz.
+  const pageC = await ctx.newPage();
+  pageC.on('pageerror', (e) => errors.push(String(e)));
+  await pageC.goto(`${BASE}/?nosplash#duel=1kaputtesTokenOhneSinn`);
+  await pageC.waitForTimeout(600);
+  const badText = (await pageC.textContent('#interText')).trim();
+  check(`Kaputtes Duell-Token wird abgewiesen ("${badText.slice(0, 34)}…")`, badText.includes('beschädigt'));
+
+  // App SCHON OFFEN, Link angetippt: Es ändert sich nur der Hash (kein
+  // Neuladen) – der Empfang muss trotzdem greifen (PWA-Realität).
+  if (typeof duelUrl === 'string') {
+    await pageC.evaluate((tok) => {
+      location.hash = `#duel=${tok}`;
+    }, duelUrl.split('#duel=')[1]);
+    await pageC.waitForTimeout(800);
+  }
+  const openAppText = (await pageC.textContent('#interText')).trim();
+  check(`Duell-Link erreicht auch die offene App ("${openAppText.slice(0, 30)}…")`,
+    openAppText.includes('Sprint'));
+
+  // Unplausible Spur (Teleport mitten im Lauf): Das Duell startet, aber OHNE
+  // Geist – ein Phantom mit 0,1 s tritt nicht an.
+  const pageD = await ctx.newPage();
+  pageD.on('pageerror', (e) => errors.push(String(e)));
+  const cheatToken = await pageC.evaluate(async (def) => {
+    // Encoder unabhängig nachgebaut: prüft auch das Token-FORMAT.
+    const frames = [];
+    for (let i = 0; i < 40; i++) frames.push(i * 0.125, 0, 50 + i * 3, 50 + i * 3);
+    const payload = {
+      v: 1,
+      def,
+      t: 4.875,
+      by: 'Phantom',
+      g: { s: [0, 50, 50], d: frames.map(() => 0).slice(0, 78), f: [] },
+    };
+    // d: erst harmlose Nullen, dann ein Teleport quer über die Karte
+    payload.g.d[40] = 3000;
+    const json = new TextEncoder().encode(JSON.stringify(payload));
+    const packed = new Uint8Array(
+      await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer(),
+    );
+    let bin = '';
+    for (const b of packed) bin += String.fromCharCode(b);
+    return '1' + btoa(bin).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  }, sprint);
+  await pageD.goto(`${BASE}/?nosplash#duel=${cheatToken}`);
+  await pageD.waitForTimeout(700);
+  const cheatText = (await pageD.textContent('#interText')).trim();
+  if (await pageD.locator('#interPrimary').isVisible()) {
+    await pageD.click('#interPrimary');
+    await pageD.waitForTimeout(4200);
+  }
+  const noGhost = await pageD.evaluate(() => window.__tiltrGhost);
+  check(`Unplausible Spur tritt ohne Geist an ("${cheatText.split('\n').pop()?.slice(0, 30)}…")`,
+    cheatText.includes('Zielzeit') && noGhost === null);
+  await ctx.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

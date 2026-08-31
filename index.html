@@ -205,6 +205,13 @@
       gap: var(--space-3);
     }
     #langRow { display: flex; gap: var(--space-2); }
+    /* Anzeigename für Duell-Links: leise, optional, nie im Weg. */
+    #playerName {
+      width: min(100%, 240px);
+      background: var(--bg-panel); border: var(--border-strong); color: var(--text);
+      border-radius: var(--radius-m); min-height: var(--touch-min);
+      padding: 0 var(--space-3); font: 500 var(--fs-body-s) var(--font); text-align: center;
+    }
     #version { font-size: var(--fs-caption); opacity: 0.4; }
 
     #interstitial {
@@ -547,6 +554,7 @@
       </div>
     </div>
     <div id="menuFooter">
+      <input id="playerName" type="text" maxlength="24" autocomplete="nickname" spellcheck="false" data-i18n-ph="menu.namePh">
       <div id="langRow">
         <button class="btn chip" data-lang="de">DE</button>
         <button class="btn chip" data-lang="en">EN</button>
@@ -573,6 +581,9 @@
     <div class="panel inter-card">
       <h2 id="interTitle"></h2>
       <p id="interText"></p>
+      <!-- Leise Zusatzaktion (Duell herausfordern/Revanche): schließt die
+           Karte NICHT, man teilt und entscheidet dann weiter. -->
+      <button id="interExtra" class="btn btn-soft hidden"></button>
       <div class="inter-buttons">
         <button id="interSecondary" class="btn btn-ghost hidden"></button>
         <button id="interPrimary" class="btn btn-primary hidden"></button>

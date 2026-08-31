@@ -60,6 +60,13 @@ automatically via GitHub Actions (tests → build → pages).
   required proof badges are green, so shared levels are provably
   solvable), or exchange them as JSON files (export + import via file or
   paste).
+- **🏁 Ghost duel** — turn a finished run into a challenge: the link
+  carries the level, your recorded trace and your time (all serverless in
+  the URL hash). Whoever opens it races the real trace — and *hears* the
+  rival rolling beside them, panned in 3D. Beat the time and send a
+  rematch; that's the ping-pong loop. Received traces are checked for
+  plausibility first (start, goal, no teleporting), so no 0.1-second
+  phantom ever lines up against you.
 - **🎓 Tutorial** — eight micro-levels that teach the sound language, one
   element at a time.
 - **🧩 Element Gallery** — living documentation: every element with its

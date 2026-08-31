@@ -350,7 +350,7 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
-## M17 „Geist-Duell" – asynchrones Rennen gegen eine echte Spur (Planung)
+## M17 „Geist-Duell" ✓ (v1.9.0) – asynchrones Rennen gegen eine echte Spur
 
 Ein Lauf wird zur Herausforderung: Der Share-Link trägt **Level + Geist +
 Zeit**. Wer ihn öffnet, spielt dasselbe Labyrinth gegen die aufgezeichnete
@@ -387,9 +387,10 @@ JSON). Für das Duell kommt eine kompakte Variante:
 | **Ebene nur bei Wechsel** (Sentinel im Strom) | eine Spalte weniger |
 | durch denselben `deflate-raw`-Pfad wie Level-Tokens | Deltas komprimieren sehr gut |
 
-Erwartung: 60-s-Lauf ≈ 1–1,5 KB Token inkl. Level (heute ~318 Zeichen für
-ein Level allein) – **im Plan zu MESSEN**, nicht zu glauben; die Suite
-bekommt eine Obergrenze als Test (z. B. „60 s Lauf < 2500 Zeichen").
+GEMESSEN (Level allein wiegt 156 Zeichen): 30 s ≈ 1,0 kB, 60 s ≈ 1,7 kB,
+120 s ≈ 3,1 kB bei realistischem Kurs; ein 1,2-s-Sprint kommt auf 297
+Zeichen. Die Suite hält „60 s < 2500 Zeichen" als Regressionsgrenze. Der
+Zeit-only-Fallback greift damit erst ab ~4,5 Minuten Laufzeit.
 Bewusst KEIN Varint/Binärformat: JSON-Deltas durch deflate liegen nah dran
 und bleiben lesbar, testbar und debugbar.
 
@@ -461,22 +462,23 @@ kosmetisch, nie erzwungen.
 
 | Meilenstein | Inhalt | Ergebnis |
 |---|---|---|
-| **M17a „Geist-Codec"** | 8-Hz-Resampling, Delta-Kodierung, `encodeDuel`/`decodeDuel`, `validateGhostRun` + Units (Roundtrip, Größenschranke, manipulierte Spur, Teleport) | Duelle sind transportierbar und prüfbar |
-| **M17b „Duell-Modus"** | Modus + `#duel=`-Empfang, Rival-Klang, Ergebnis mit Revanche, „Herausfordern" in allen Ergebnis-Karten, i18n ×4, E2E (Token erzeugen → zweite Seite → antreten → Ergebnis) | das Feature spielbar |
+| **M17a „Geist-Codec"** ✓ | 8-Hz-Resampling, Delta-Kodierung, `encodeDuel`/`decodeDuel`, `validateGhostRun` + 11 Units | Duelle sind transportierbar und prüfbar |
+| **M17b „Duell-Modus"** ✓ | Modus + `#duel=`-Empfang, Rival-Klang, Ergebnis mit Revanche, „Herausfordern" in allen Ergebnis-Karten, Namensfeld, i18n ×4, E2E-Lauf 16 (Sprint gewinnen → Link → zweite Seite → antreten → Rivale rollt mit) | das Feature spielbar |
 | **M17c (optional)** | Duell-Historie in der Werkstatt/Profil („3:1 gegen Rivale"), QR-Code für Duell-Links | Wiederkehr-Anreiz |
 
-Offene Design-Entscheidungen (Empfehlung jeweils zuerst):
+So entschieden (alle drei wie empfohlen umgesetzt):
 
-1. **Kein Live-Delta im HUD** (nur Klang) vs. optionaler „Δ"-Chip für
-   Sehende. Empfehlung: erst ohne – das Spiel ist blind spielbar, und der
-   Klang ist die Aussage.
-2. **Duell-Läufe zählen nirgends** vs. „Bestzeit darf trotzdem fallen".
-   Empfehlung: nirgends zählen (klare Trennung, keine Sterne aus fremden
-   Links).
-3. **Geist immer mitschicken** vs. „Zeit-only-Duell" als Sparvariante für
-   sehr lange Läufe (> 3 min, Token wird groß). Empfehlung: automatischer
-   Fallback auf Zeit-only, wenn das Token die Warnschwelle reißt – dann
-   eben ohne hörbaren Rivalen, aber mit Zielzeit.
+1. **Kein Live-Delta im HUD** – nur Klang plus ein Überhol-Zweiklang; das
+   Spiel ist blind spielbar, die Zahlen kommen am Ziel.
+2. **Duell-Läufe zählen nirgends**: keine Sterne, keine Daily-Wertung, kein
+   Überschreiben des eigenen Geists.
+3. **Automatischer Zeit-only-Fallback**, wenn das Token die Warnschwelle
+   reißt.
+
+Nebenbei gefunden und behoben: Ein Link, der bei SCHON OFFENER App
+angetippt wird, ändert nur den Hash (kein Neuladen) – der Empfang lief
+gar nicht. Ein `hashchange`-Listener deckt jetzt alle Link-Arten ab
+(`#duel=`, `#level=`, `#daily=`, `#join=`).
 
 ## M16 „Werkstatt-Startscreen" ✓ (v1.8.1)
 

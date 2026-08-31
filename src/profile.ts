@@ -14,6 +14,8 @@ export interface ProfileData {
   /** Blind-Stern 🌑: Kampagnen-Level ohne einen einzigen Echo-Ping geschafft */
   blind: string[];
   preset: Preset;
+  /** Anzeigename für Duell-Links (leer = anonymer „Rivale"), rein kosmetisch */
+  name: string;
   /** Tages-Challenge: erster Zieleinlauf zählt, Rest ist Training */
   daily: { date: string; first: number | null; best: number | null; attempts: number } | null;
   /** Serie: an aufeinanderfolgenden Tagen die Tages-Challenge beendet */
@@ -26,6 +28,7 @@ const DEFAULTS: ProfileData = {
   stars: {},
   blind: [],
   preset: 'normal',
+  name: '',
   daily: null,
   streak: null,
 };
@@ -43,6 +46,7 @@ function load(): ProfileData {
       stars: typeof parsed.stars === 'object' && parsed.stars ? parsed.stars : {},
       blind: Array.isArray(parsed.blind) ? parsed.blind : [],
       preset: parsed.preset === 'easy' || parsed.preset === 'hard' ? parsed.preset : 'normal',
+      name: typeof parsed.name === 'string' ? parsed.name.slice(0, 24) : '',
       daily: parsed.daily && typeof parsed.daily.date === 'string' ? parsed.daily : null,
       streak: parsed.streak && typeof parsed.streak.last === 'string' ? parsed.streak : null,
     };
@@ -65,6 +69,14 @@ export const profile = {
   },
   set preset(p: Preset) {
     data.preset = p;
+    save();
+  },
+
+  get name(): string {
+    return data.name;
+  },
+  set name(v: string) {
+    data.name = v.trim().slice(0, 24);
     save();
   },
 

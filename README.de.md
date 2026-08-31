@@ -62,6 +62,13 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   URL-Hash – Teilen geht erst, wenn alle Pflicht-Badges grün sind:
   geteilte Level sind beweisbar lösbar) oder als JSON-Datei (Export +
   Import per Datei oder Einfügen).
+- **🏁 Geist-Duell** – aus einem Lauf wird eine Herausforderung: Der Link
+  trägt Level, aufgezeichnete Spur und Zeit (serverlos im URL-Hash). Wer
+  ihn öffnet, rennt gegen die echte Spur – und *hört* den Rivalen räumlich
+  neben sich rollen. Schneller? Dann Revanche schicken – das ist der
+  Ping-Pong-Loop. Empfangene Spuren werden vorher auf Plausibilität
+  geprüft (Start, Ziel, kein Teleport), damit kein 0,1-Sekunden-Phantom
+  antritt.
 - **🎓 Tutorial** – acht Micro-Level, die die Klangsprache beibringen,
   ein Element nach dem anderen.
 - **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und

@@ -52,6 +52,12 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   links/unten rechts liegen – Achse passend zu Richtungsbezügen im
   Intro-Text wählen ('x' erhält oben/unten, 'y' links/rechts);
   tests/mirror.test.ts erzwingt die Ecken-Verteilung.
+- `src/levels/duel.ts` – Geist-Duell: Spur auf exaktes 8-Hz-Raster
+  resampeln, delta-kodieren und mit Level + Zeit in EIN Token packen
+  (`#duel=`, gemeinsamer deflate-Pfad mit `#level=` über
+  shareCodec.encodePayload). `validateGhostRun` prüft empfangene Spuren
+  auf Plausibilität (Start/Ziel, maxSpeed, Transporter) – kein Anti-Cheat,
+  ein Filter gegen kaputte Tokens. Duell-Läufe schreiben NICHTS mit.
 - Audio ist das Leitmedium: Jedes Element hat eine eindeutige, räumlich
   ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound.
 
