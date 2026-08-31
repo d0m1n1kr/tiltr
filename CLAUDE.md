@@ -40,7 +40,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 - `src/workshop.ts` + `src/ui/editor.ts` – Werkstatt: eigene Level in
   localStorage, Editor editiert rohe Defs (Vorschau = parseLevel →
   loadLevel → Renderer mit debug), Preview läuft in der echten
-  Spielschleife (Modus 'custom', ✏️ zurück).
+  Spielschleife (Modus 'custom', ✏️ zurück). Die laufende Bearbeitung
+  liegt reload-fest als Draft im Store (saveDraft bei jeder Änderung,
+  clearDraft beim Speichern); die Werkstatt bietet „Weiter an …" an und
+  bestätigt per Zwei-Tap, bevor Neu/Zufall/Bearbeiten den Draft ersetzen.
 - `src/levels/` – Levelformat (zod), Loader, Tutorial-/Kampagnen-Level,
   Quick-Generator. Jedes neue Level braucht einen Lösbarkeits-Test
   (siehe tests/campaign.test.ts – inkl. Tür-Semantik: Schlüssel vor der

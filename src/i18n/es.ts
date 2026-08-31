@@ -48,6 +48,8 @@ export const es: Dict = {
   'hud.edit': 'Volver al editor',
 
   'ed.new': '＋ Nuevo nivel',
+  'ws.resume': 'Continuar «{name}»',
+  'ws.discardConfirm': '¿Seguro? Se perderá el borrador actual',
   'ed.newRandom': '🎲 Desde nivel aleatorio',
   'ed.empty': 'Aún no tienes niveles propios – ¡construye el primero!',
   'ed.untitled': 'Mi nivel',

@@ -48,6 +48,8 @@ export const en: Dict = {
   'hud.edit': 'Back to the editor',
 
   'ed.new': '＋ New level',
+  'ws.resume': 'Continue “{name}”',
+  'ws.discardConfirm': 'Sure? The current draft will be lost',
   'ed.newRandom': '🎲 From random level',
   'ed.empty': 'No levels of your own yet – build your first!',
   'ed.untitled': 'My Level',

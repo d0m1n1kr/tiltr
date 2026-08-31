@@ -99,6 +99,41 @@ export const workshop = {
   },
 };
 
+/* --- Bearbeitungs-Draft: die EINE laufende Bearbeitung, reload-fest.
+   Der Editor schreibt bei jeder Änderung; Speichern in die Bibliothek
+   räumt den Draft (gesichert ist gesichert). Die Werkstatt bietet einen
+   vorhandenen Draft als „Weiter an …" an und verlangt Bestätigung, bevor
+   Neu/Zufall/Bearbeiten ihn ersetzen. --- */
+
+const DRAFT_KEY = 'tiltr.workshop.draft.v1';
+
+export function saveDraft(def: Record<string, unknown>): void {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ def, updatedAt: new Date().toISOString() }));
+  } catch {
+    /* Private Mode / Storage voll: Bearbeiten geht weiter, nur ohne Netz */
+  }
+}
+
+export function loadDraft(): Record<string, unknown> | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { def?: unknown };
+    return typeof parsed.def === 'object' && parsed.def !== null ? (parsed.def as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* ohne Storage gibt es auch nichts zu räumen */
+  }
+}
+
 /** Export-Hülle um eine rohe Def. */
 export function exportPayload(def: Record<string, unknown>): string {
   return JSON.stringify({ format: FILE_FORMAT, version: 1, def }, null, 2);

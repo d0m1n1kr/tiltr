@@ -9,6 +9,9 @@ let blankLevel: typeof import('../src/workshop').blankLevel;
 let newCustomId: typeof import('../src/workshop').newCustomId;
 let importLevel: typeof import('../src/workshop').importLevel;
 let exportPayload: typeof import('../src/workshop').exportPayload;
+let saveDraft: typeof import('../src/workshop').saveDraft;
+let loadDraft: typeof import('../src/workshop').loadDraft;
+let clearDraft: typeof import('../src/workshop').clearDraft;
 
 beforeAll(async () => {
   (globalThis as Record<string, unknown>).localStorage = {
@@ -16,7 +19,8 @@ beforeAll(async () => {
     setItem: (k: string, v: string) => void backing.set(k, v),
     removeItem: (k: string) => void backing.delete(k),
   };
-  ({ workshop, blankLevel, newCustomId, importLevel, exportPayload } = await import('../src/workshop'));
+  ({ workshop, blankLevel, newCustomId, importLevel, exportPayload, saveDraft, loadDraft, clearDraft } =
+    await import('../src/workshop'));
 });
 
 describe('Werkstatt-Store', () => {
@@ -81,5 +85,26 @@ describe('Werkstatt-Store', () => {
     expect(importLevel('kein json')).toBeNull();
     expect(importLevel('{"format":"tiltr-level","def":{"kaputt":true}}')).toBeNull();
     expect(importLevel('{"nur":"irgendwas"}')).toBeNull();
+  });
+});
+
+describe('Bearbeitungs-Draft (reload-fest)', () => {
+  it('Roundtrip: saveDraft -> loadDraft -> clearDraft', () => {
+    expect(loadDraft()).toBeNull();
+    const def = blankLevel('Entwurf');
+    saveDraft(def);
+    expect(loadDraft()).toEqual(def);
+    // eigener Schlüssel, Bibliothek bleibt unberührt
+    expect(backing.has('tiltr.workshop.draft.v1')).toBe(true);
+    clearDraft();
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('kaputter Storage-Inhalt liest sich als "kein Draft"', () => {
+    backing.set('tiltr.workshop.draft.v1', 'kein json');
+    expect(loadDraft()).toBeNull();
+    backing.set('tiltr.workshop.draft.v1', '{"ohneDef":1}');
+    expect(loadDraft()).toBeNull();
+    backing.delete('tiltr.workshop.draft.v1');
   });
 });

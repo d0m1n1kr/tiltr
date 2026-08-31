@@ -8,7 +8,7 @@ import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
 import { validateLevel, isShareable } from '../levels/validate';
 import { encodeLevel } from '../levels/shareCodec';
-import { blankLevel, exportPayload, importLevel, newCustomId, workshop, type CustomLevel } from '../workshop';
+import { blankLevel, clearDraft, exportPayload, importLevel, loadDraft, newCustomId, workshop, type CustomLevel } from '../workshop';
 import { profile } from '../profile';
 import { t, formatDate } from '../i18n';
 import type { RawLevel } from './editor';
@@ -28,6 +28,33 @@ export function setupWorkshopPanel(opts: {
   const panel = $('workshop');
   const list = $('workshopList');
   const empty = $('wsEmpty');
+  const resumeBtn = $('wsResumeBtn');
+
+  /* Ein vorhandener Bearbeitungs-Draft (reload-fest im localStorage) ist
+     wertvoll: Aktionen, die ihn ersetzen würden (Neu, Zufall, Bearbeiten),
+     verlangen eine Zwei-Tap-Bestätigung – wie das Löschen. */
+  function confirmDiscard(b: HTMLButtonElement, action: () => void): void {
+    if (!loadDraft() || b.dataset.armed === '1') {
+      b.dataset.armed = '';
+      clearDraft();
+      action();
+      return;
+    }
+    const prev = b.textContent;
+    b.dataset.armed = '1';
+    b.textContent = `⚠ ${t('ws.discardConfirm')}`;
+    setTimeout(() => {
+      b.dataset.armed = '';
+      b.textContent = prev;
+    }, 3000);
+  }
+
+  resumeBtn.addEventListener('click', () => {
+    const draft = loadDraft();
+    if (!draft) return;
+    panel.classList.add('hidden');
+    opts.onEdit(draft as RawLevel);
+  });
 
   function itemActions(level: CustomLevel): HTMLElement {
     const row = document.createElement('div');
@@ -44,9 +71,11 @@ export function setupWorkshopPanel(opts: {
       panel.classList.add('hidden');
       opts.onPlay(JSON.parse(JSON.stringify(level.def)) as RawLevel);
     });
-    btn(`✏️ ${t('ed.edit')}`, 'btn-ghost', () => {
-      panel.classList.add('hidden');
-      opts.onEdit(JSON.parse(JSON.stringify(level.def)) as RawLevel);
+    const edit = btn(`✏️ ${t('ed.edit')}`, 'btn-ghost', () => {
+      confirmDiscard(edit, () => {
+        panel.classList.add('hidden');
+        opts.onEdit(JSON.parse(JSON.stringify(level.def)) as RawLevel);
+      });
     });
     btn(`⧉ ${t('ed.duplicate')}`, 'btn-ghost', () => {
       workshop.duplicate(level.id, t('ed.copySuffix'));
@@ -102,6 +131,10 @@ export function setupWorkshopPanel(opts: {
 
   function render(): void {
     list.replaceChildren();
+    // Laufende Bearbeitung anbieten: „Weiter an …" führt zurück in den Editor.
+    const draft = loadDraft();
+    resumeBtn.classList.toggle('hidden', !draft);
+    if (draft) resumeBtn.textContent = `✏️ ${t('ws.resume', { name: String(draft.name ?? '') })}`;
     const levels = workshop.list();
     empty.classList.toggle('hidden', levels.length > 0);
     for (const level of levels) {
@@ -140,9 +173,11 @@ export function setupWorkshopPanel(opts: {
   });
   $('workshopClose').addEventListener('click', () => panel.classList.add('hidden'));
 
-  $('wsNewBtn').addEventListener('click', () => {
-    panel.classList.add('hidden');
-    opts.onEdit(blankLevel(t('ed.untitled')) as RawLevel);
+  $('wsNewBtn').addEventListener('click', (ev) => {
+    confirmDiscard(ev.currentTarget as HTMLButtonElement, () => {
+      panel.classList.add('hidden');
+      opts.onEdit(blankLevel(t('ed.untitled')) as RawLevel);
+    });
   });
   /* --- Import: Datei ODER Einfüge-Textfeld (Tablet-freundlich) --- */
   const importBox = $('wsImportBox');
@@ -168,13 +203,15 @@ export function setupWorkshopPanel(opts: {
     (ev.target as HTMLInputElement).value = '';
   });
 
-  $('wsNewRandomBtn').addEventListener('click', () => {
-    // Quick-Generator als Grundgerüst: neue ID + editierbarer Name.
-    const def = JSON.parse(JSON.stringify(generateQuickLevel(randomSeed(), profile.preset))) as RawLevel;
-    def.id = newCustomId();
-    def.name = t('ed.untitled');
-    panel.classList.add('hidden');
-    opts.onEdit(def);
+  $('wsNewRandomBtn').addEventListener('click', (ev) => {
+    confirmDiscard(ev.currentTarget as HTMLButtonElement, () => {
+      // Quick-Generator als Grundgerüst: neue ID + editierbarer Name.
+      const def = JSON.parse(JSON.stringify(generateQuickLevel(randomSeed(), profile.preset))) as RawLevel;
+      def.id = newCustomId();
+      def.name = t('ed.untitled');
+      panel.classList.add('hidden');
+      opts.onEdit(def);
+    });
   });
 
   return {

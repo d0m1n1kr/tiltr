@@ -1116,6 +1116,89 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 15: Bearbeitungs-Draft – jede Änderung landet im localStorage
+// (Reload-fest, „Weiter an …" in der Werkstatt), Neu/Zufall/Bearbeiten
+// verwerfen den Draft nur nach Zwei-Tap-Bestätigung, Speichern räumt ihn. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+  await page.click('#workshopBtn');
+  await page.click('#wsNewBtn');
+  await page.waitForTimeout(500);
+
+  const tap = async (cx, cy) => {
+    const pt = await page.evaluate(([x, y]) => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById('edCanvas').getBoundingClientRect();
+      return { x: box.left + (ed.ox + x * ed.scale) / ed.dpr, y: box.top + (ed.oy + y * ed.scale) / ed.dpr };
+    }, [cx * 100 + 50, cy * 100 + 50]);
+    await page.mouse.click(pt.x, pt.y);
+    await page.waitForTimeout(250);
+  };
+  const editorOpen = async () => !(await page.locator('#editor').getAttribute('class')).includes('hidden');
+
+  // Bearbeitung: Loch setzen, Name ändern – dann RELOAD (PWA-Realität:
+  // Tab stirbt, App-Wechsel). Die Werkstatt bietet danach „Weiter an …".
+  await tap(1, 1);
+  await page.fill('#edName', 'Draft-Probe');
+  await page.dispatchEvent('#edName', 'change');
+  await page.waitForTimeout(300);
+  await page.reload();
+  await page.waitForTimeout(800);
+  await page.click('#workshopBtn');
+  const resumeVisible = await page.locator('#wsResumeBtn:visible').count();
+  const resumeText = resumeVisible ? (await page.textContent('#wsResumeBtn')).trim() : '(fehlt)';
+  check(`Draft überlebt den Reload: „Weiter an …" in der Werkstatt ("${resumeText}")`,
+    resumeVisible === 1 && resumeText.includes('Draft-Probe'));
+
+  let resumedEls = -1;
+  if (resumeVisible) {
+    await page.click('#wsResumeBtn');
+    await page.waitForTimeout(500);
+    resumedEls = await page.evaluate(() => window.__tiltrEd?.elements);
+  }
+  check(`Fortsetzen öffnet den Editor mit dem Draft (${resumedEls} Element)`,
+    resumedEls === 1 && (await editorOpen()));
+
+  // „Neu" bei vorhandenem Draft: erster Tap warnt (Editor bleibt zu),
+  // zweiter Tap startet wirklich leer. (Klicks abgesichert, damit der
+  // Rot-Lauf ohne Feature nicht in Timeouts läuft.)
+  const ensureWorkshop = async () => {
+    if (await editorOpen()) {
+      await page.click('#edClose');
+      await page.waitForTimeout(200);
+    }
+    if ((await page.locator('#workshop').getAttribute('class')).includes('hidden')) {
+      await page.click('#workshopBtn');
+      await page.waitForTimeout(200);
+    }
+  };
+  await ensureWorkshop();
+  await page.click('#wsNewBtn');
+  await page.waitForTimeout(300);
+  const armedText = (await page.textContent('#wsNewBtn')).trim();
+  const stillClosed = !(await editorOpen());
+  check(`„Neu" verlangt Bestätigung, solange ein Draft existiert ("${armedText}")`,
+    stillClosed && armedText !== '＋ Neues Level');
+  if (stillClosed) {
+    await page.click('#wsNewBtn');
+    await page.waitForTimeout(500);
+  }
+  const blankEls = await page.evaluate(() => window.__tiltrEd?.elements);
+  check(`Zweiter Tap startet leer (${blankEls} Elemente)`, stillClosed && (await editorOpen()) && blankEls === 0);
+
+  // Speichern legt das Level in die Bibliothek UND räumt den Draft weg:
+  // kein „Weiter an …" mehr für bereits Gesichertes.
+  if (await editorOpen()) await page.click('#edSave');
+  await ensureWorkshop();
+  const hasResumeBtn = await page.locator('#wsResumeBtn').count();
+  const resumeAfterSave = await page.locator('#wsResumeBtn:visible').count();
+  check('Speichern räumt den Draft (kein „Weiter an …" mehr)', hasResumeBtn === 1 && resumeAfterSave === 0);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

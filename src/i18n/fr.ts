@@ -48,6 +48,8 @@ export const fr: Dict = {
   'hud.edit': 'Retour à l’éditeur',
 
   'ed.new': '＋ Nouveau niveau',
+  'ws.resume': 'Reprendre « {name} »',
+  'ws.discardConfirm': 'Sûr ? Le brouillon actuel sera perdu',
   'ed.newRandom': '🎲 Depuis un niveau aléatoire',
   'ed.empty': 'Pas encore de niveau à toi – construis le premier !',
   'ed.untitled': 'Mon niveau',

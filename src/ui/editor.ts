@@ -16,7 +16,7 @@ import { parseLevel } from '../levels/schema';
 import { validateLevel, isShareable, buildFloorCells, type CheckResult } from '../levels/validate';
 import { encodeLevel, SHARE_WARN_BYTES } from '../levels/shareCodec';
 import { galleryEntries } from '../elements';
-import { exportPayload, workshop } from '../workshop';
+import { clearDraft, exportPayload, saveDraft, workshop } from '../workshop';
 import { t, applyI18n, type Dict } from '../i18n';
 
 type Dir = 'n' | 'e' | 's' | 'w';
@@ -333,6 +333,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
       loadError = e instanceof Error ? e.message : String(e);
       flash(loadError, true);
     }
+    // Jede Änderung landet reload-fest im Draft – „später fortsetzen"
+    // funktioniert damit auch nach App-Wechsel oder Tab-Tod (PWA).
+    saveDraft(draft as unknown as Record<string, unknown>);
     scheduleValidate();
     paint();
   }
@@ -1274,7 +1277,9 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   /* --- Kopfzeile --------------------------------------------------------------- */
 
   nameInput.addEventListener('change', () => {
-    if (draft) draft.name = nameInput.value.trim() || t('ed.untitled');
+    if (!draft) return;
+    draft.name = nameInput.value.trim() || t('ed.untitled');
+    saveDraft(draft as unknown as Record<string, unknown>);
   });
 
   $('edClose').addEventListener('click', () => {
@@ -1284,7 +1289,10 @@ export function setupEditor(opts: { onTest: (def: RawLevel) => void; onSaved: ()
   $('edSave').addEventListener('click', () => {
     if (!draft) return;
     draft.name = nameInput.value.trim() || t('ed.untitled');
-    flash(workshop.save(draft as unknown as Record<string, unknown>) ? t('ed.saved') : t('ed.saveFailed'), false);
+    const ok = workshop.save(draft as unknown as Record<string, unknown>);
+    // Gesichert ist gesichert: der Reload-Draft ist dann Bibliotheks-Sache.
+    if (ok) clearDraft();
+    flash(ok ? t('ed.saved') : t('ed.saveFailed'), false);
     opts.onSaved();
   });
 

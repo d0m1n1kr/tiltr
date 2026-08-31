@@ -52,6 +52,8 @@ export const de = {
 
   /* --- Werkstatt / Editor --- */
   'ed.new': '＋ Neues Level',
+  'ws.resume': 'Weiter an „{name}"',
+  'ws.discardConfirm': 'Sicher? Aktuelle Bearbeitung geht verloren',
   'ed.newRandom': '🎲 Aus Zufallslevel',
   'ed.empty': 'Noch keine eigenen Level – bau dein erstes!',
   'ed.untitled': 'Mein Level',

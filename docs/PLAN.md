@@ -350,6 +350,15 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M15 „Bearbeitungs-Draft" ✓ (v1.8.0)
+
+Die laufende Bearbeitung ist reload-fest: Der Editor schreibt bei jeder
+Änderung einen Draft nach localStorage (`tiltr.workshop.draft.v1`), die
+Werkstatt bietet ihn als „Weiter an „…""-Knopf an. Speichern in die
+Bibliothek räumt den Draft (gesichert ist gesichert). Aktionen, die eine
+vorhandene Bearbeitung ersetzen würden (Neu, Aus Zufallslevel, Bearbeiten
+aus der Bibliothek), verlangen eine Zwei-Tap-Bestätigung wie das Löschen.
+
 ## M14 „Phone-Editor" ✓ (v1.7.0)
 
 Unter 900px dominiert das SPIELFELD (>55% der Höhe statt ~31%): Die
