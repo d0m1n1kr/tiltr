@@ -34,6 +34,9 @@ export interface WorkshopPanelApi {
 export function setupWorkshopPanel(opts: {
   onPlay: (def: RawLevel) => void;
   onEdit: (def: RawLevel) => void;
+  /** Der Bestand hat sich geändert (Löschen, Duplizieren, Import) – das
+   *  Menü zeigt die Anzahl, muss also mitziehen. */
+  onChanged: () => void;
 }): WorkshopPanelApi {
   const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
   const panel = $('workshop');
@@ -162,6 +165,9 @@ export function setupWorkshopPanel(opts: {
   }
 
   function render(): void {
+    // Eine Quelle für „was ist da": Wer die Liste neu zeichnet, meldet auch
+    // dem Menü den Stand – sonst hängt der Zähler nach dem Löschen fest.
+    opts.onChanged();
     list.replaceChildren();
     // Laufende Bearbeitung als Empfehlungs-Karte: „Weiter an …" mit
     // Größe + Datum führt zurück in den Editor.

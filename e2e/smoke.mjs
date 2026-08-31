@@ -826,6 +826,32 @@ const check = (name, cond) => {
   check(`Speichern + Bibliothek ("${savedMsg}" / "${wsName}" / ${count})`,
     savedMsg.includes('Gespeichert') && items === 1 && wsName === 'Mein Level' && count === '(1)');
 
+  // Löschen (Zwei-Tap) muss auch den Menü-Zähler mitziehen – er hing bisher
+  // am Editor-Speichern und blieb nach dem Löschen auf dem alten Wert.
+  await page.click('#workshopBtn');
+  await page.waitForTimeout(200);
+  await page.click('#workshopList .ws-danger');
+  await page.waitForTimeout(200);
+  await page.click('#workshopList .ws-danger'); // Bestätigung
+  await page.waitForTimeout(300);
+  const itemsAfterDelete = await page.locator('#workshopList .ws-item').count();
+  await page.click('#workshopClose');
+  const countAfterDelete = (await page.textContent('#workshopCount')).trim();
+  check(`Löschen erniedrigt den Menü-Zähler (${itemsAfterDelete} Level, Zähler "${countAfterDelete}")`,
+    itemsAfterDelete === 0 && countAfterDelete === '');
+
+  // Für die folgenden Prüfungen wieder ein Level anlegen.
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify({
+    id: 'custom-e2e-again', name: 'Mein Level', pingBudget: 3,
+    floors: [{ size: [6, 8], maze: { seed: 4 }, elements: [], start: [0, 0], goal: [5, 7] }],
+  }));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  await page.click('#wsImportBtn');
+  await page.click('#workshopClose');
+
   // Normales Spielen aus der Bibliothek (kein Editor-Preview): 🏠 ist wieder
   // da, ✏️ nicht – nur der Preview bindet den Rückweg an den Editor.
   await page.click('#workshopBtn');

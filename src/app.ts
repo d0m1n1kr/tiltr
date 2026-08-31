@@ -466,6 +466,7 @@ const editorApi = setupEditor({
 const workshopPanel = setupWorkshopPanel({
   onPlay: (def) => startCustom(def, false),
   onEdit: (def) => editorApi.open(def),
+  onChanged: refreshMenu,
 });
 
 // ✏️ im HUD: aus dem Preview zurück in den Editor (Entwurf bleibt erhalten).
