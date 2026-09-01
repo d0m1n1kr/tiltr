@@ -350,6 +350,55 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M26 „Konfetti" ✓ (v2.3.0)
+
+Jeder geschaffte Lauf wird gefeiert – Tutorial eingeschlossen, denn alle
+Single-Player-Siege laufen durch EINE Stelle (`celebrate()` in app.ts:
+Jubel-Akkord, Konfetti-Klang, Haptik, Salve). Der Multiplayer feiert den
+Coop-Sieg und ein gewonnenes Race; ein verlorenes Race feiert nicht.
+
+**Bild** (`src/ui/confetti.ts`): Zwei Kanonen aus den unteren Bildecken,
+schräg nach innen-oben. Das Partikelmodell ist REIN und geseedet
+(`spawnConfetti`/`stepConfetti`, mulberry32) – dieselbe Disziplin wie im
+Kern, damit die Testsuite Flugbahnen festnageln kann (14 Units), ohne Pixel
+zu lesen. Die Farben kommen aus der WELTPALETTE (Ball-Teal, Wand-Blau,
+Ziel-Grün, Gold, Bernstein, Gem-Eisblau): Das Spiel hat eine Farbsprache,
+und Feiern ist kein Grund, sie zu verlassen. Eigene Canvas-Ebene ZWISCHEN
+Spielfeld und Panels – die Ergebnis-Karte zieht nach 1,8 s über das noch
+fallende Papier auf und bleibt lesbar. Angetrieben wird es von der
+bestehenden Spielschleife (keine zweite rAF).
+
+Schwerkraft und Luftwiderstand sind aufeinander eingestellt, nicht geraten:
+`GRAVITY / DRAG` = 700/3 ≈ 233 px/s ist die Endgeschwindigkeit – das TAUMELN
+von Papier statt des Sturzes eines Steins. Der kräftige Widerstand bremst
+die Salve nach ~0,3 s ab: erst Knall, dann Flattern, wie eine echte
+Konfetti-Kanone. Nachgerechnet (800px-Bild): Gipfel bei 33–58 % Bildhöhe,
+Flugdauer 2,2–3,2 s. Die erste Fassung war mit `g=1400, drag=0.62` in 1,4 s
+vorbei – das Konfetti war weg, bevor die Karte kam.
+
+**Klang** (`audio.confetti()`): Vier kurze Papier-Knaller (Bandpass-Rauschen,
+1,1–1,9 kHz) plus fünf absteigende Funkel-Blips. Bewusst STEREO gepannt und
+NICHT über den HRTF-Pfad: Die Feier kommt vom SCHIRM, nicht aus der
+Spielwelt – über `place()` würde sie in First Person mit der Blickrichtung
+mitdrehen, und ein Konfetti-Knall „hinter dem Ball" ist Unsinn.
+
+`prefers-reduced-motion` schaltet die Salve ganz ab (Dekoration, kein
+Spielsignal – Zeit und Klang sagen dasselbe).
+
+**Der Fund unterwegs war eine alte Falle aus docs/DESIGN.md:** Die
+Konfetti-Ebene feuerte in einen 200 px hohen Streifen. Ein `<canvas>` ist ein
+REPLACED ELEMENT und streckt sich mit `inset: 0` allein NICHT – es nimmt sein
+Eigenverhältnis 300×150 an (bei 400 px Breite also 200 px hoch). Genau davor
+warnt der Abschnitt „Keine Höhenangaben für App-Flächen", und `#game` macht
+es richtig (`width/height` explizit). Sichtbar wurde es erst durch die
+gemessene Canvas-Größe im Test-Haken – das Konfetti war „nach 200 ms oben aus
+dem Bild". Der E2E prüft die Ebenengröße deshalb jetzt mit.
+
+E2E-Lauf 3 (Tutorial) prüft: Salve fliegt (70 Schnipsel, 6 Farben), Ebene
+füllt das Bild, Start im unteren Bilddrittel, Klangquellen entstehen, und das
+Papier räumt sich selbst auf. Lauf 3b: reduced-motion gewinnt ohne Konfetti.
+Alle sechs neuen Zusicherungen rot gesehen.
+
 ## M25 „Der Vorhang" ✓ (v2.2.0)
 
 Die Start-Animation erzählt jetzt eine Bewegung statt zweier: Die Kugel

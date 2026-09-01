@@ -85,6 +85,12 @@ automatically via GitHub Actions (tests → build → pages).
 - **🧩 Element Gallery** — living documentation: every element with its
   visual and its sound signature, playable at the tap of a button.
 
+**Every finished level is celebrated:** confetti fires from the bottom
+corners in the game's own palette while a burst of paper pops and sparkles
+plays — in every mode, tutorial included. The result card then rises over the
+still-falling paper. `prefers-reduced-motion` skips the confetti; it is
+decoration, not a game signal.
+
 **Languages:** English, German, French and Spanish — auto-detected from the
 browser locale, switchable anytime from the start screen.
 

@@ -31,6 +31,7 @@ import { setupEditor, type RawLevel } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
+import { setupConfetti } from './ui/confetti';
 import { fpInitial, fpStep } from './core/fp';
 import { breathAt, breathOpenRemaining } from './core/breathing';
 import { newCustomId, workshop } from './workshop';
@@ -83,6 +84,18 @@ setupGallery(audio);
 // Gespielt wird durch NEIGEN – ohne Bildschirmsperre dimmt Android mitten
 // im Lauf. Die Sperre gilt, solange gespielt oder gehört wird.
 const wake = setupWakeLock();
+// Konfetti zum Sieg – gefeiert wird in JEDEM Modus, Tutorial eingeschlossen.
+const confetti = setupConfetti('confetti');
+
+/** Ein geschaffter Lauf: Jubel-Klang plus Konfetti-Salve. Eine Stelle für
+ *  alle Modi – Single-Player-Sieg (Quick, Daily, Kampagne, Tutorial, eigene
+ *  Level, Duell) und der gewonnene Multiplayer. */
+function celebrate(): void {
+  audio.win();
+  audio.confetti();
+  haptics.win();
+  confetti.burst();
+}
 // Hörtest: der echte Echo-Ping aus zufälliger Richtung, Antwort auf der
 // Kompassrose – macht messbar, wie gut die HRTF-Ortung beim eigenen Gehör
 // (und den eigenen Kopfhörern) trägt.
@@ -403,6 +416,7 @@ function showMenu(): void {
   audio.setFog(0);
   audio.setAnchor(0, 0, 0);
   audio.setHeading(0);
+  confetti.clear();
   hideInterstitial();
   wake.release();
   hud.classList.add('hidden');
@@ -1506,15 +1520,13 @@ function mpCheckResult(): void {
   let title: string;
   let text: string;
   if (mp.mode === 'coop') {
-    audio.win();
-    haptics.win();
+    celebrate();
     title = t('mp.coopWin');
     text = t('mp.teamTime', { team: fmtTime(Math.max(mine, theirs)), you: fmtTime(mine), partner: fmtTime(theirs) });
   } else {
     const won = mine < theirs;
     if (won) {
-      audio.win();
-      haptics.win();
+      celebrate();
     } else {
       audio.caught();
     }
@@ -1591,6 +1603,10 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  // Konfetti hängt an DIESER Schleife (keine zweite rAF): Es fällt weiter,
+  // während die Ergebnis-Karte aufzieht – und es fällt auch, wenn kein Level
+  // geladen ist (deshalb VOR dem world-Check).
+  confetti.step(dt);
   if (!world) return;
 
   updateHoles(now);
@@ -1997,8 +2013,7 @@ function frame(now: number): void {
       audio.setIce(0);
       audio.setFog(0);
       audio.setAnchor(0, 0, 0);
-      audio.win();
-      haptics.win();
+      celebrate();
       statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
       onWin(seconds);
     } else if (messageUntil > now) {

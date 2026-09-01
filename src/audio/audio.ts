@@ -1029,6 +1029,65 @@ export class GameAudio {
     this.setRolling(0);
   }
 
+  /** Konfetti-Salve: kurze Papier-Knaller plus Funkeln.
+   *
+   *  Bewusst STEREO gepannt und NICHT über den HRTF-Pfad: Die Feier kommt vom
+   *  SCHIRM, nicht aus der Spielwelt. Über `place()` würde sie mit der
+   *  Blickrichtung mitdrehen (First Person) – ein Konfetti-Knall „hinter dem
+   *  Ball" wäre Unsinn. */
+  confetti(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const pan = (at: number): AudioNode => {
+      const p = this.ctx!.createStereoPanner();
+      p.pan.value = at;
+      p.connect(this.master);
+      return p;
+    };
+    // Vier Knaller, links/rechts verteilt wie die beiden Kanonen.
+    const pops: Array<[number, number, number]> = [
+      // [Zeitpunkt, Panorama, Höhe des Bandpass]
+      [0, -0.75, 1300],
+      [0.055, 0.7, 1650],
+      [0.13, -0.35, 1100],
+      [0.2, 0.85, 1900],
+    ];
+    for (const [off, at, freq] of pops) {
+      const t0 = t + off;
+      const out = pan(at);
+      const nz = this.ctx.createBufferSource();
+      nz.buffer = this.noiseBuffer('white');
+      const band = this.ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = freq;
+      band.Q.value = 1.1;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.3, t0 + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+      nz.connect(band).connect(gain).connect(out);
+      this.noiseCursor = (this.noiseCursor + 0.211) % 1;
+      nz.start(t0, this.noiseCursor * (nz.buffer.duration - 0.2));
+      nz.stop(t0 + 0.16);
+    }
+    // Funkeln: absteigende helle Blips, wie herabtaumelndes Papier.
+    [2600, 2100, 3100, 1800, 2400].forEach((f, i) => {
+      const t0 = t + 0.16 + i * 0.085;
+      const out = pan(i % 2 === 0 ? 0.5 : -0.5);
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, t0);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.72, t0 + 0.18);
+      const gain = this.ctx!.createGain();
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.1, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+      osc.connect(gain).connect(out);
+      osc.start(t0);
+      osc.stop(t0 + 0.22);
+    });
+  }
+
   win(): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;

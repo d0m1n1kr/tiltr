@@ -132,6 +132,17 @@ const check = (name, cond) => {
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
   page.on('pageerror', (e) => errors.push(String(e)));
+  // Klangquellen zählen: Der Jubel muss hörbar etwas erzeugen (M26).
+  await page.addInitScript(() => {
+    window.__srcCount = 0;
+    for (const fn of ['createOscillator', 'createBufferSource']) {
+      const orig = AudioContext.prototype[fn];
+      AudioContext.prototype[fn] = function (...args) {
+        window.__srcCount++;
+        return orig.apply(this, args);
+      };
+    }
+  });
   await page.goto(`${BASE}/?nosplash`);
 
   const progress = (await page.textContent('#tutorialProgress')).trim();
@@ -143,14 +154,54 @@ const check = (name, cond) => {
   check(`Tutorial-Intro erscheint ("${introTitle}")`, introTitle.includes('Rollen & Lauschen'));
 
   await page.click('#interPrimary'); // "Los!"
+  const confBefore = await page.evaluate(() => window.__tiltrConfetti);
+  const srcBeforeWin = await page.evaluate(() => window.__srcCount);
   await page.keyboard.down('ArrowRight');
-  await page.waitForTimeout(2600); // 3x2-Korridor: nach rechts rollen genügt
+
+  /* Konfetti + Jubel beim Sieg (M26) – auch im TUTORIAL, denn alle
+     Single-Player-Siege laufen durch dieselbe Stelle (celebrate()). Die
+     Salve wird beim frühesten Moment abgegriffen, in dem sie fliegt: Sie
+     räumt sich nach ~3 s selbst auf, ein starres Warten würde sie
+     verpassen. */
+  let conf = null;
+  for (let i = 0; i < 60; i++) {
+    await page.waitForTimeout(120);
+    const c = await page.evaluate(() => window.__tiltrConfetti);
+    if (c?.count > 0) {
+      conf = c;
+      break;
+    }
+  }
   await page.keyboard.up('ArrowRight');
+  check(`Konfetti fliegt nach dem Tutorial-Sieg (${conf?.count ?? 0} Schnipsel, ${conf?.colors ?? 0} Farben; vorher ${confBefore?.count})`,
+    confBefore?.count === 0 && !!conf && conf.count >= 40 && conf.colors >= 4);
+  /* Die Konfetti-Ebene muss das GANZE Bild sein. Ein <canvas> streckt sich
+     mit `inset: 0` allein NICHT (replaced element) – die erste Fassung
+     feuerte in einen 200 px hohen Streifen aus dem Eigenverhältnis 300×150,
+     das Konfetti war nach 200 ms „oben aus dem Bild". Unsichtbar, außer man
+     misst es. */
+  check(`Konfetti-Ebene füllt das Bild (${conf?.cw}×${conf?.ch} bei ${await page.evaluate(() => innerHeight)} px Höhe)`,
+    !!conf && conf.ch >= (await page.evaluate(() => innerHeight)) - 2);
+  // Die Kanonen stehen UNTEN: Der Start liegt im unteren Bilddrittel.
+  check(`Salve startet unten (höchster Punkt bei y=${conf?.minY} von ${conf?.ch})`,
+    !!conf && conf.minY > conf.ch * 0.6);
+  const srcAfterWin = await page.evaluate(() => window.__srcCount);
+  // Schwelle > 8: Der Sieg-Akkord allein macht 4 Quellen, der Konfetti-Klang
+  // 9 dazu (4 Knaller + 5 Funkeln). Eine Schwelle von 4 bestand auch OHNE
+  // den Konfetti-Klang – gefunden im Sabotage-Lauf.
+  check(`Jubel klingt inkl. Konfetti-Knaller (Klangquellen ${srcBeforeWin} → ${srcAfterWin})`,
+    srcAfterWin > srcBeforeWin + 8);
+
   await page.waitForTimeout(2200); // Sieg-Reveal + Ergebnis-Karte
 
   const resultTitle = (await page.textContent('#interTitle')).trim();
   const resultShown = !(await page.locator('#interstitial').getAttribute('class')).includes('hidden');
   check(`Ergebnis-Karte nach Sieg ("${resultTitle}")`, resultShown && resultTitle.includes('geschafft'));
+
+  // Das Konfetti räumt sich selbst auf – kein Papier, das liegen bleibt.
+  await page.waitForTimeout(3000);
+  const confEnd = await page.evaluate(() => window.__tiltrConfetti);
+  check(`Konfetti räumt sich selbst auf (${confEnd?.count} Schnipsel übrig)`, confEnd?.count === 0);
   const nextLabel = (await page.textContent('#interPrimary')).trim();
   check(`Weiter-Knopf führt zum nächsten Level ("${nextLabel}")`, nextLabel === 'Weiter');
 
@@ -158,6 +209,33 @@ const check = (name, cond) => {
   await page.click('#interSecondary'); // "Menü"
   const progress2 = (await page.textContent('#tutorialProgress')).trim();
   check(`Fortschritt persistiert ("${progress2}")`, progress2 === '(1/8)');
+  await page.close();
+}
+
+// --- Lauf 3b: Konfetti ist DEKORATION – wer Bewegung reduziert, bekommt
+// beim Sieg keine (der Klang und die Zeit sagen dasselbe). ---
+{
+  const page = await browser.newPage({
+    viewport: { width: 400, height: 800 },
+    locale: 'de-DE',
+    reducedMotion: 'reduce',
+  });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+  await page.click('#tutorialBtn');
+  await page.waitForTimeout(3300);
+  await page.click('#interPrimary');
+  await page.keyboard.down('ArrowRight');
+  let seen = 0;
+  for (let i = 0; i < 40; i++) {
+    await page.waitForTimeout(120);
+    const c = await page.evaluate(() => window.__tiltrConfetti);
+    seen = Math.max(seen, c?.count ?? 0);
+    if ((await page.textContent('#status')).includes('Ziel in')) break;
+  }
+  await page.keyboard.up('ArrowRight');
+  const won = (await page.textContent('#status')).includes('Ziel in');
+  check(`Reduced Motion: Sieg ohne Konfetti (gewonnen=${won}, gesehene Schnipsel=${seen})`, won && seen === 0);
   await page.close();
 }
 

@@ -87,6 +87,12 @@ automatisch per GitHub Actions (Tests → Build → Pages).
 - **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und
   Klang-Signatur, per Knopfdruck anspielbar.
 
+**Jedes geschaffte Level wird gefeiert:** Konfetti schießt aus den unteren
+Bildecken – in den Farben des Spiels – während Papier-Knaller und Funkeln
+klingen, in jedem Modus, Tutorial eingeschlossen. Die Ergebnis-Karte zieht
+danach über das noch fallende Papier auf. `prefers-reduced-motion` lässt das
+Konfetti weg: Es ist Dekoration, kein Spielsignal.
+
 **Sprachen:** Deutsch, Englisch, Französisch und Spanisch – automatisch
 nach Browser-Locale, jederzeit auf dem Startscreen umschaltbar.
 

@@ -72,6 +72,23 @@
       pointer-events: none;
     }
 
+    /* Konfetti-Ebene: liegt zwischen Spielfeld und allen Panels. Kein
+       Transform, keine Interaktion – nur Papier. */
+    #confetti {
+      position: fixed; inset: 0;
+      /* width/height EXPLIZIT wie bei #game: Ein <canvas> ist ein replaced
+         element und streckt sich mit `inset: 0` allein NICHT – es nimmt sein
+         Eigenverhältnis 300×150 an (bei 400 px Breite also 200 px hoch, siehe
+         docs/DESIGN.md „Keine Höhenangaben für App-Flächen"). Genau das ließ
+         die erste Fassung in einem 200 px hohen Streifen feuern: Das Konfetti
+         war nach 200 ms oben aus dem „Bild". */
+      width: 100%;
+      height: var(--app-height, 100%);
+      display: block;
+      pointer-events: none;
+      z-index: calc(var(--z-overlay) - 1);
+    }
+
     /* --- Splash: einmalige Intro-Animation beim Laden (docs/DESIGN.md) ---
        Choreografie in drei Akten, Zeiten in src/ui/splash.ts gespiegelt:
          1. EINROLLEN  – die Kugel kommt von UNTEN in die Bühne (0–650ms),
@@ -614,6 +631,10 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <!-- Konfetti: eigene Ebene ÜBER dem Spielfeld, aber UNTER der
+       Ergebnis-Karte – die Karte zieht über das fallende Papier auf und
+       bleibt lesbar. Nie interaktiv. -->
+  <canvas id="confetti"></canvas>
 
   <div id="hud" class="hidden">
     <span id="hudStats">

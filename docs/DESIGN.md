@@ -154,7 +154,14 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
   immer `ease-out`. Spielfeld-Animationen (Echo 1200 ms, Reveal 4000 ms)
   sind Gameplay, nicht UI – sie bleiben im Renderer.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
-  darf nur die Welt. Einzige Ausnahme: der **Splash** beim Laden – endlich,
+  darf nur die Welt. Zwei endliche Ausnahmen. Erstens das
+  **Sieges-Konfetti**: zwei Kanonen aus den unteren Bildecken, Farben aus der
+  WELTPALETTE (Feiern ist kein Grund, die Farbsprache zu verlassen), eigene
+  Canvas-Ebene ZWISCHEN Spielfeld und Panels (die Ergebnis-Karte zieht über
+  das fallende Papier auf und bleibt lesbar), ~3 s lang; `GRAVITY / DRAG` ist
+  die Endgeschwindigkeit, damit Papier TAUMELT statt zu stürzen;
+  `prefers-reduced-motion` schaltet es ab, denn es ist Dekoration und kein
+  Spielsignal. Zweitens der **Splash** beim Laden – endlich,
   überspringbar per Tap, respektiert `prefers-reduced-motion`, `?nosplash`
   (E2E) unterdrückt ihn ganz. Seine Choreografie hat drei Akte:
   1. **Einrollen** – die Kugel kommt von UNTEN in die Bühne (850 ms,
@@ -215,7 +222,11 @@ einmal rot gesehen, bevor sie zählt.
   installierten iOS-PWA auf eigene Art daneben). Das Canvas braucht
   zusätzlich `width/height: 100%`, weil replaced elements sich mit
   `inset: 0` allein nicht strecken; seine Pixelgröße misst der Renderer
-  am eigenen Rect, nicht an `innerWidth/innerHeight`.
+  am eigenen Rect, nicht an `innerWidth/innerHeight`. **Das gilt für JEDE
+  Canvas-Ebene:** Ohne explizite `width`/`height` nimmt ein Canvas sein
+  Eigenverhältnis 300×150 an – die Konfetti-Ebene feuerte deshalb zuerst in
+  einen 200 px hohen Streifen, das Konfetti war „nach 200 ms oben aus dem
+  Bild" (M26).
 - **iOS-Standalone-Container (per Geräte-Diagnose belegt):** Mit
   `apple-mobile-web-app-status-bar-style: black-translucent` bemisst iOS
   den PWA-Container „Screen minus Statusbar", verankert ihn aber oben AM

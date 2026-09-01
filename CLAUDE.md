@@ -86,6 +86,16 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
   Position und Breitband-Anteil jeder Reflexion).
 
+- `src/ui/confetti.ts` – Sieges-Konfetti: reines, geseedetes Partikelmodell
+  (`spawnConfetti`/`stepConfetti`, Units in tests/confetti.test.ts) plus
+  eigene Canvas-Ebene zwischen Spielfeld und Panels, angetrieben von der
+  bestehenden Spielschleife. Farben aus der Weltpalette, `GRAVITY/DRAG` ist
+  die Endgeschwindigkeit (Papier taumelt). Ausgelöst über `celebrate()` in
+  app.ts – EINE Stelle für alle Single-Player-Siege (Tutorial inklusive),
+  plus Coop und gewonnenes Race. `audio.confetti()` ist STEREO gepannt, nicht
+  HRTF: Die Feier kommt vom Schirm, nicht aus der Welt.
+  ACHTUNG: Eine Canvas-Ebene braucht `width`/`height` EXPLIZIT – mit
+  `inset: 0` allein streckt sich ein replaced element nicht (siehe DESIGN.md).
 - `src/core/breathing.ts` – Atem-Uhr (öffnen → offen → schließen → zu) für
   atmende Löcher, Schiebewände UND die Play-Vorschau des Editors: EINE
   Quelle für alle drei (`breathAt`, `breathOpenRemaining`), deterministisch,
