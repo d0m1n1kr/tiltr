@@ -191,6 +191,9 @@ export const fr: Dict = {
 
   'calib.title': 'Calibrage',
   'calib.text': 'Tiens maintenant ton téléphone <b>à plat comme un plateau</b> –<br>comme tu veux jouer.',
+  'calib.textFp': 'Tiens ton téléphone <b>~45° devant toi</b>, comme un volant.<br>Incliner = avancer/reculer, pencher sur le côté = tourner.',
+  'ctl.top': '🥣 Vue du dessus',
+  'ctl.fp': '🧭 Première personne',
 
   /* --- Statut / flash --- */
   'st.fell': 'Tombé dans un trou ! 🕳',

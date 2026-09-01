@@ -31,6 +31,7 @@ import { setupEditor, type RawLevel } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
+import { fpInitial, fpStep } from './core/fp';
 import { newCustomId, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
@@ -128,6 +129,12 @@ let mp: MpSession | null = null;
 const TUT_IDS = TUTORIAL_LEVELS.map((l) => l.id);
 
 let world: World | null = null;
+/* First Person (M23): Heading + geglättete Drehrate des laufenden Levels.
+   Respawn und Ebenenwechsel erhalten die Blickrichtung; ein neues Level
+   startet nach Norden (Screen-oben), damit Richtungsbezüge in Intros beim
+   Start stimmen. */
+let fpState = fpInitial();
+const fpOn = (): boolean => profile.controls === 'fp';
 let loaded: LoadedLevel | null = null;
 let activeFloor = 0;
 let warpReady = true;
@@ -231,10 +238,27 @@ async function calibrationCountdown(): Promise<void> {
   interTitle.textContent = t('calib.title');
   interstitial.classList.remove('hidden');
   for (let i = 3; i > 0; i--) {
-    interText.innerHTML = `${t('calib.text')}<br><br><span style="font-size:34px">${i}</span>`;
+    interText.innerHTML = `${t(fpOn() ? 'calib.textFp' : 'calib.text')}<br><br><span style="font-size:34px">${i}</span>`;
     await new Promise((r) => setTimeout(r, 1000));
   }
   hideInterstitial();
+}
+
+/* Die Haltungs-Ansage gehört zur STEUERUNG, nicht nur zum ersten Start:
+   Draufsicht heißt „flach wie ein Tablett", First Person „~45° vor dir".
+   Nach einem Moduswechsel läuft der Countdown deshalb einmal erneut. */
+let calibratedFor: string | null = null;
+async function ensureSensors(): Promise<void> {
+  if (!sensorsReady) {
+    await Promise.all([input.start(), audio.start()]);
+    sensorsReady = true;
+  } else {
+    await audio.start();
+  }
+  if (calibratedFor !== profile.controls) {
+    await calibrationCountdown();
+    calibratedFor = profile.controls;
+  }
 }
 
 /* --- Menü ----------------------------------------------------------------- */
@@ -377,6 +401,7 @@ function showMenu(): void {
   audio.setIce(0);
   audio.setFog(0);
   audio.setAnchor(0, 0, 0);
+  audio.setHeading(0);
   hideInterstitial();
   wake.release();
   hud.classList.add('hidden');
@@ -391,13 +416,7 @@ async function startMode(m: Mode): Promise<void> {
   wake.want();
   overlay.classList.add('hidden');
   hideInstallHint(); // im Spiel nicht im Weg stehen
-  if (!sensorsReady) {
-    await Promise.all([input.start(), audio.start()]);
-    sensorsReady = true;
-    await calibrationCountdown();
-  } else {
-    await audio.start();
-  }
+  await ensureSensors();
   hud.classList.remove('hidden');
   beginLevel();
 }
@@ -490,6 +509,21 @@ $('editBtn').addEventListener('click', () => {
   showMenu();
   editorApi.reopen();
 });
+// Steuerungsmodus (M23): global wie die Sprache, darum im Menü-Footer.
+// Der Wechsel wirkt ab dem nächsten Start – dort läuft dann auch der
+// Kalibrier-Countdown mit der passenden Haltungs-Ansage erneut.
+const ctlChips = [...document.querySelectorAll<HTMLButtonElement>('#controlsRow .chip')];
+function refreshCtl(): void {
+  for (const chip of ctlChips) chip.classList.toggle('active', chip.dataset.ctl === profile.controls);
+}
+for (const chip of ctlChips) {
+  chip.addEventListener('click', () => {
+    profile.controls = chip.dataset.ctl === 'fp' ? 'fp' : 'top';
+    refreshCtl();
+  });
+}
+refreshCtl();
+
 // Anzeigename für Duell-Links (optional; leer = anonymer „Rivale").
 const playerNameInput = $<HTMLInputElement>('playerName');
 playerNameInput.value = profile.name;
@@ -626,6 +660,9 @@ function launch(def: LevelDef): void {
   homeBtn.classList.toggle('hidden', editorPreview);
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   input.calibrate();
+  fpState = fpInitial();
+  renderer.setFpView(fpOn());
+  audio.setHeading(0);
 }
 
 // Ebenenwechsel: kurzes Innehalten, Schimmern in Richtung der Reise,
@@ -1362,13 +1399,7 @@ function mpShowIntro(): void {
       onClick: () => {
         void (async () => {
           if (!mp) return;
-          if (!sensorsReady) {
-            await Promise.all([input.start(), audio.start()]);
-            sensorsReady = true;
-            await calibrationCountdown();
-          } else {
-            await audio.start();
-          }
+          await ensureSensors();
           mp.selfReady = true;
           mp.transport.send('ready', null);
           if (!mpMaybeStart()) {
@@ -1592,7 +1623,15 @@ function frame(now: number): void {
     // rollt weiter (die Uhr steht) – im Coop wartet man dort nicht untätig,
     // sondern hilft dem Nachzügler an den Platten.
     const disconnected = mp?.disconnectedAt != null;
-    const tilt = disconnected ? { x: 0, y: 0 } : input.tilt;
+    let tilt = disconnected ? { x: 0, y: 0 } : input.tilt;
+    if (fpOn()) {
+      // First Person: Lenkrad drehen, Schub entlang der Blickrichtung.
+      // Kamera, Physik und Hörer hängen alle am SELBEN geglätteten Heading.
+      const r = fpStep(fpState, tilt, dt);
+      fpState = { heading: r.heading, turnRate: r.turnRate };
+      tilt = r.worldTilt;
+      audio.setHeading(r.heading);
+    }
     const hits = disconnected ? [] : world.step(dt, tilt);
 
     for (const hit of hits) {
@@ -2034,6 +2073,7 @@ function frame(now: number): void {
     buddy,
     ghost: ghostOpt,
     goalDone: mp?.localFinished === true,
+    heading: fpOn() ? fpState.heading : 0,
   });
   // Testbarkeits-Hooks für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {
@@ -2045,6 +2085,9 @@ function frame(now: number): void {
     anchors: world.anchors.length,
     glass: world.glass.length,
   };
+  (window as unknown as { __tiltrFp?: unknown }).__tiltrFp = fpOn()
+    ? { heading: fpState.heading, turnRate: fpState.turnRate, view: renderer.lastView }
+    : null;
   (window as unknown as { __tiltrGhost?: unknown }).__tiltrGhost = ghost
     ? { time: ghost.time, active: ghostPos !== null }
     : null;

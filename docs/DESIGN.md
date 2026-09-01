@@ -117,7 +117,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.btn-ghost` | Sekundär/neutral (dunkle Fläche, feiner Rand): HUD, Schließen, Dismiss |
 | `.btn-soft` | Leise Inline-Aktion in Karten (Teal-Outline), z. B. „Anhören" |
 | `.btn-lg` | Hero-Variante des Primary (größer, Glow) |
-| `.chip` (+ `.active`) | Auswahl-Pill in einer Gruppe (Schwierigkeit, Sprache, MP-Modus); aktiv = Teal-Outline |
+| `.chip` (+ `.active`) | Auswahl-Pill in einer Gruppe (Schwierigkeit, Sprache, MP-Modus, Steuerung 🥣/🧭 im Menü-Footer); aktiv = Teal-Outline. Der Footer wird ab 900px einzeilig (Regel NACH der Basisregel!), damit der Startscreen aufs Querformat-Tablet ohne Scrollen passt |
 | `.mode-item` (+ `.suggest`, `.mode-sub.warn`) | Modus-Karte im Startmenü UND als Werkstatt-Aktion (Neu/Zufall/Import; „Weiter an …" = `.suggest`): Icon, Titel, Untertitel, Meta rechts; `.suggest` (Teal-Rand) hebt GENAU EINE Karte als Empfehlung hervor; `.mode-sub.warn` (Bernstein) trägt die Zwei-Tap-Bestätigung. Startmenü-Layout: Phone = eine Säule (360px), ab 900px (gleicher Breakpoint wie der Editor) verbreiterte Mitte (720px), Modus-Karten zweispaltig, Schnellstart als Querzeile – Querformat-Tablets zeigen den ganzen Screen ohne Scrollen |
 | `.hud-chip` | Status-Pille im HUD (Timer, Ebene, Pings, Gems): Tabellenziffern (`tabular-nums`), leere Chips verschwinden (`:empty`); der Timer hat eine Mindestbreite, damit die laufende Zeit nichts verschiebt. Meldungen laufen NICHT im HUD mit, sondern in `#status` (eigene zentrierte Zeile darunter) |
 | `.panel` | Karte/Fläche: subtiler Rand, Radius L |

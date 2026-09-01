@@ -94,6 +94,15 @@ flach wie ein Tablett halten. HUD-Knöpfe: `⌖` neu kalibrieren, `👁`
 Debug-Ansicht (zeigt das Labyrinth), `🏠` zurück zum Menü. Als App
 installieren (offline & Vollbild) über den Hinweis oder das Browser-Menü.
 
+Zwei Steuerungen, auf dem Startscreen umschaltbar und gültig für jeden
+Modus: **🥣 Draufsicht** (Handy flach wie ein Tablett, Neigen = Rollen) und
+**🧭 First Person** (Handy ~45° vor dir wie ein Lenkrad: Kippen = vor/zurück
+entlang der Blickrichtung, seitlich neigen = drehen – die Welt dreht sich um
+die Kugel, die Blickrichtung zeigt immer nach oben, und das räumliche Audio
+dreht mit: „links/rechts von mir" ist genau die Achse, die das Gehör am
+besten kann). Geister, Duelle und Multiplayer bleiben voll kompatibel –
+jeder wählt seine eigene Steuerung.
+
 Solange ein Lauf oder der Hörtest läuft, bleibt der Bildschirm wach
 (Screen Wake Lock) – gesteuert wird durch Neigen, das Handy würde sonst
 mitten im Level abdunkeln und sperren. Chromium-Browser (Android Chrome,

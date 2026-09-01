@@ -1659,6 +1659,127 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 19: First Person (M23) – die Welt dreht sich um die Kugel. Per
+// Tastatur gefahren: Lenkrad-Drehen hebt das Heading, Schub rollt in die
+// GEDREHTE Weltrichtung, die Ansicht rotiert mit, und die Ping-Reflexionen
+// wandern im Hörer-System um exakt -Δheading (Audio dreht mit). ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  // Umschalter im Menü-Footer: Draufsicht ist Default, FP wird aktiv und
+  // überlebt einen Reload (Profil).
+  const topActive = await page.locator('#controlsRow .chip[data-ctl="top"].active').count();
+  await page.click('#controlsRow .chip[data-ctl="fp"]');
+  const fpActive = await page.locator('#controlsRow .chip[data-ctl="fp"].active').count();
+  await page.reload();
+  await page.waitForTimeout(300);
+  const fpAfterReload = await page.locator('#controlsRow .chip[data-ctl="fp"].active').count();
+  check(`Steuerungs-Umschalter: Default Draufsicht, FP wählbar und reload-fest (${topActive}/${fpActive}/${fpAfterReload})`,
+    topActive === 1 && fpActive === 1 && fpAfterReload === 1);
+
+  // Offene 5×5-Arena (Start mittig): keine Innenwände, damit Manöver frei
+  // messbar sind. Kommt per Einfüge-Import in die Werkstatt.
+  const carve = [];
+  for (let x = 0; x < 5; x++) {
+    for (let y = 0; y < 5; y++) {
+      if (x < 4) carve.push([[x, y], 'e']);
+      if (y < 4) carve.push([[x, y], 's']);
+    }
+  }
+  const arena = {
+    id: 'custom-fp-arena',
+    name: 'FP-Arena',
+    pingBudget: 3,
+    floors: [{ size: [5, 5], maze: { seed: 1, carve }, elements: [], start: [2, 2], goal: [4, 4] }],
+  };
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(arena));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  await page.locator('#workshopList .ws-actions .btn-primary').first().click(); // ▶ Spielen
+
+  // Der Kalibrier-Countdown sagt die FP-Haltung an (~45°, Lenkrad).
+  await page.waitForTimeout(600);
+  const calibText = (await page.textContent('#interText')).trim();
+  check(`FP-Kalibrierung sagt die 45°-Haltung an ("${calibText.slice(0, 40)}…")`, calibText.includes('45°'));
+  await page.waitForTimeout(3400);
+
+  const fp0 = await page.evaluate(() => window.__tiltrFp);
+  check(`FP aktiv, Heading startet nach Norden (${fp0?.heading?.toFixed(3)})`,
+    !!fp0 && Math.abs(fp0.heading) < 0.02 && !!fp0.view);
+
+  // Ping-Szene VOR dem Drehen festhalten (Hörer-System, Heading 0).
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(250);
+  const ping0 = await page.evaluate(() => window.__tiltrPing);
+
+  // Lenkrad: ArrowRight gehalten dreht rechtsherum; die Rate klingt nach dem
+  // Loslassen aus (Glättung), dann steht das Heading.
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(800);
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(500);
+  const fp1 = await page.evaluate(() => window.__tiltrFp);
+  const h1 = fp1?.heading ?? 0;
+  check(`Lenkrad dreht das Heading (h=${h1.toFixed(2)} rad, Rate ausgeklungen: ${fp1?.turnRate?.toFixed(3)})`,
+    h1 > 0.35 && h1 < 2.2 && Math.abs(fp1?.turnRate ?? 1) < 0.05);
+  check(`Die Ansicht rotiert mit dem Heading (rot=${fp1?.view?.rot?.toFixed(2)})`,
+    !!fp1?.view && Math.abs(fp1.view.rot - h1) < 0.05);
+
+  // Audio dreht mit: dieselbe Szene, zweiter Ping – im Hörer-System wandern
+  // ALLE Reflexionen um exakt -Δheading (der Ball hat sich nicht bewegt).
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(250);
+  const ping1 = await page.evaluate(() => window.__tiltrPing);
+  const h = (await page.evaluate(() => window.__tiltrFp))?.heading ?? 0;
+  const norm = (a) => {
+    let r = a % (Math.PI * 2);
+    if (r > Math.PI) r -= Math.PI * 2;
+    if (r <= -Math.PI) r += Math.PI * 2;
+    return r;
+  };
+  const angle = (r) => Math.atan2(r.x, -r.z);
+  let maxErr = -1;
+  if (ping0 && ping1 && ping0.refl.length === ping1.refl.length && ping0.refl.length >= 4) {
+    maxErr = Math.max(...ping0.refl.map((r0, i) => Math.abs(norm(angle(ping1.refl[i]) - angle(r0) + h))));
+  }
+  check(`Audio dreht mit: alle ${ping0?.refl?.length ?? 0} Reflexionen wandern um -h (maxErr=${maxErr.toFixed(3)} rad)`,
+    maxErr >= 0 && maxErr < 0.15);
+
+  // Schub rollt in die GEDREHTE Weltrichtung (nicht nach Screen-oben=Welt-oben).
+  const pos0 = await page.evaluate(() => window.__tiltrBall);
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(700);
+  await page.keyboard.up('ArrowUp');
+  const pos1 = await page.evaluate(() => window.__tiltrBall);
+  const disp = { x: pos1.x - pos0.x, y: pos1.y - pos0.y };
+  const dispAngle = Math.atan2(disp.x, -disp.y);
+  const dist = Math.hypot(disp.x, disp.y);
+  check(`Vorwärts rollt entlang der Blickrichtung (Weg=${dist.toFixed(0)}, Winkel ${dispAngle.toFixed(2)} vs. h ${h.toFixed(2)})`,
+    dist > 60 && Math.abs(norm(dispAngle - h)) < 0.35);
+
+  // FP-Kamera: Kugel bleibt zentriert – auch abseits der Weltmitte (die
+  // Einpass-Kamera würde sie hier ~70 px versetzt zeigen).
+  await page.waitForTimeout(1400);
+  const view = (await page.evaluate(() => window.__tiltrFp))?.view;
+  const offCx = view ? Math.abs(view.ballX - view.cw / 2) : 999;
+  const offCy = view ? Math.abs(view.ballY - view.ch / 2) : 999;
+  check(`FP-Kamera hält die Kugel zentriert (Abweichung ${offCx.toFixed(1)}/${offCy.toFixed(1)} px)`,
+    offCx < 10 && offCy < 10);
+
+  // Zurück auf Draufsicht: der Umschalter wirkt in beide Richtungen.
+  await page.click('#homeBtn');
+  await page.waitForTimeout(200);
+  await page.click('#controlsRow .chip[data-ctl="top"]');
+  const backTop = await page.locator('#controlsRow .chip[data-ctl="top"].active').count();
+  check('Umschalter zurück auf Draufsicht', backTop === 1);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

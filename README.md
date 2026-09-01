@@ -93,6 +93,15 @@ calibration countdown. HUD buttons: `⌖` recalibrate, `👁` debug view
 (shows the maze), `🏠` back to the menu. Install it as an app (offline &
 fullscreen) via the install hint or your browser menu.
 
+Two control schemes, switchable on the start screen and valid for every
+mode: **🥣 Top-down** (hold the phone flat like a tray, tilt to roll) and
+**🧭 First person** (hold it ~45° in front of you like a steering wheel:
+tip forward/back to roll along your view, lean sideways to turn — the world
+rotates around your ball, your heading always points up, and the spatial
+audio turns with you, so "left/right of me" becomes the axis your ears are
+best at). Ghosts, duels and multiplayer stay fully compatible — each player
+picks their own scheme.
+
 While a run or the hearing test is active the screen is kept awake
 (Screen Wake Lock) — you steer by tilting, so the phone would otherwise dim
 and lock mid-level. Chromium-based browsers (Android Chrome, Edge, desktop

@@ -79,6 +79,17 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
   Position und Breitband-Anteil jeder Reflexion).
 
+- `src/core/fp.ts` – First Person (M23): zweiter Steuerungsmodus für ALLE
+  Varianten (`profile.controls`, Umschalter im Menü-Footer). Draufsicht
+  bleibt, aber die Kugel hat ein Heading, das auf dem Screen immer nach
+  oben zeigt – es dreht sich die WELT (Renderer), der HÖRER
+  (`audio.setHeading`, gedreht an einer Stelle: `unitPos`) und der SCHUB
+  (`fpStep` rotiert den Neigungsvektor VOR `world.step`). Die Physik bleibt
+  Weltkoordinaten – Geister, Duelle, Daily, MP sind kompatibel, jeder
+  Spieler wählt seinen Modus. Geglättet wird die DREHRATE (τ = 90 ms):
+  ein gemeinsames, ruckelfreies Heading für Kamera, Schub und Ohr.
+  Tastatur: ↑/↓ Schub, ←/→ drehen. `window.__tiltrFp` zeigt Heading und
+  Ansicht; Kalibrier-Countdown sagt die Haltung je Modus an (Tablett/45°).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild. Alles Fremde (Partner im MP, Geist der Bestzeit) ist ein SCHEIN:
   `haloLayers()` liefert weiche Lichtschichten ohne gezeichneten Rand, stets

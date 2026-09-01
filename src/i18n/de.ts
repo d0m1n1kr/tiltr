@@ -195,6 +195,9 @@ export const de = {
 
   'calib.title': 'Kalibrierung',
   'calib.text': 'Halte das Handy jetzt <b>flach wie ein Tablett</b> –<br>so, wie du spielen willst.',
+  'calib.textFp': 'Halte das Handy <b>~45° vor dir</b>, wie ein Lenkrad.<br>Kippen = vor/zurück, seitlich neigen = drehen.',
+  'ctl.top': '🥣 Draufsicht',
+  'ctl.fp': '🧭 First Person',
 
   /* --- Status / Flash --- */
   'st.fell': 'In ein Loch gestürzt! 🕳',

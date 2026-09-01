@@ -29,6 +29,10 @@ export interface PingDebug {
 
 export class GameAudio {
   private ctx: AudioContext | null = null;
+  /** First Person (M23): Blickrichtung des Hörers in rad. Gedreht wird an
+   *  GENAU einer Stelle (unitPos) – damit hören alle Quellen konsistent
+   *  „links/rechts von MIR" statt Weltkoordinaten. 0 = Draufsicht. */
+  private heading = 0;
   /** Wanderfenster in den Rausch-Puffer (Ping-Anschläge klingen nie identisch). */
   private noiseCursor = 0;
   private master!: GainNode;
@@ -554,10 +558,21 @@ export class GameAudio {
     return p;
   }
 
-  /** Richtung -> Position auf dem Kreis (Radius 3) um den Hörer; -z ist „vorn". */
+  /** Hörer-Blickrichtung setzen (First Person). Läuft pro Frame mit. */
+  setHeading(rad: number): void {
+    this.heading = rad;
+  }
+
+  /** Richtung -> Position auf dem Kreis (Radius 3) um den Hörer; -z ist „vorn".
+   *  Vorher wird die WELT-Richtung um -heading gedreht: Der Hörer schaut in
+   *  Blickrichtung, also ist „vorn" das, was auf dem Screen oben liegt. */
   private unitPos(dx: number, dy: number): { x: number; z: number } {
-    const d = Math.hypot(dx, dy) || 1;
-    return { x: (dx / d) * 3, z: (dy / d) * 3 };
+    const c = Math.cos(this.heading);
+    const sn = Math.sin(this.heading);
+    const rx = dx * c + dy * sn;
+    const ry = -dx * sn + dy * c;
+    const d = Math.hypot(rx, ry) || 1;
+    return { x: (rx / d) * 3, z: (ry / d) * 3 };
   }
 
   // Quelle auf den Einheitskreis um den Hörer setzen; -z ist "vorn".

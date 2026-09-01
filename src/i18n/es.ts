@@ -191,6 +191,9 @@ export const es: Dict = {
 
   'calib.title': 'Calibración',
   'calib.text': 'Sujeta ahora el móvil <b>plano como una bandeja</b> –<br>tal y como quieras jugar.',
+  'calib.textFp': 'Sujeta el móvil <b>~45° delante de ti</b>, como un volante.<br>Inclinar = avanzar/retroceder, ladear = girar.',
+  'ctl.top': '🥣 Vista cenital',
+  'ctl.fp': '🧭 Primera persona',
 
   /* --- Estado / avisos --- */
   'st.fell': '¡Caíste en un agujero! 🕳',

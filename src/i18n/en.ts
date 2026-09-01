@@ -191,6 +191,9 @@ export const en: Dict = {
 
   'calib.title': 'Calibration',
   'calib.text': 'Now hold your phone <b>flat like a tray</b> –<br>the way you want to play.',
+  'calib.textFp': 'Hold your phone <b>~45° in front of you</b>, like a steering wheel.<br>Tip = forward/back, lean sideways = turn.',
+  'ctl.top': '🥣 Top-down',
+  'ctl.fp': '🧭 First person',
 
   /* --- Status / flash --- */
   'st.fell': 'Fell into a hole! 🕳',

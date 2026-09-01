@@ -3,6 +3,10 @@
 
 import type { Preset } from './levels/quick';
 
+/** Steuerungsmodus: klassische Draufsicht (Tablett) oder First Person
+ *  (Lenkrad, M23). Gilt global für alle Spielvarianten. */
+export type Controls = 'top' | 'fp';
+
 const KEY = 'tiltr.profile';
 
 export interface ProfileData {
@@ -14,6 +18,8 @@ export interface ProfileData {
   /** Blind-Stern 🌑: Kampagnen-Level ohne einen einzigen Echo-Ping geschafft */
   blind: string[];
   preset: Preset;
+  /** Steuerungsmodus (M23) – 'top' = Draufsicht, 'fp' = First Person */
+  controls: Controls;
   /** Anzeigename für Duell-Links (leer = anonymer „Rivale"), rein kosmetisch */
   name: string;
   /** Tages-Challenge: erster Zieleinlauf zählt, Rest ist Training */
@@ -28,6 +34,7 @@ const DEFAULTS: ProfileData = {
   stars: {},
   blind: [],
   preset: 'normal',
+  controls: 'top',
   name: '',
   daily: null,
   streak: null,
@@ -46,6 +53,7 @@ function load(): ProfileData {
       stars: typeof parsed.stars === 'object' && parsed.stars ? parsed.stars : {},
       blind: Array.isArray(parsed.blind) ? parsed.blind : [],
       preset: parsed.preset === 'easy' || parsed.preset === 'hard' ? parsed.preset : 'normal',
+      controls: parsed.controls === 'fp' ? 'fp' : 'top',
       name: typeof parsed.name === 'string' ? parsed.name.slice(0, 24) : '',
       daily: parsed.daily && typeof parsed.daily.date === 'string' ? parsed.daily : null,
       streak: parsed.streak && typeof parsed.streak.last === 'string' ? parsed.streak : null,
@@ -69,6 +77,14 @@ export const profile = {
   },
   set preset(p: Preset) {
     data.preset = p;
+    save();
+  },
+
+  get controls(): Controls {
+    return data.controls;
+  },
+  set controls(c: Controls) {
+    data.controls = c;
     save();
   },
 

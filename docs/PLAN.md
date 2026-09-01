@@ -350,7 +350,7 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
-## M23 „First Person" (Planung – Ziel: 2.0.0)
+## M23 „First Person" ✓ (v2.0.0)
 
 Zweiter, ZUSÄTZLICHER Steuerungsmodus für alle Spielvarianten (Quick,
 Daily, Kampagne, MP, Duell, Werkstatt-Preview). Die Visualisierung bleibt
@@ -413,28 +413,47 @@ Format, kein Codec, kein Beweis (validate.ts) ändert sich.
 
 ### UI
 
-- Umschalter im Startmenü als Chip-Paar neben den Presets
-  („Steuerung: 🥣 Draufsicht / 🧭 First Person"), persistiert in
-  `profile.controls` (`'top' | 'fp'`, Default `'top'`).
+- Umschalter im MENÜ-FOOTER als Chip-Paar („🥣 Draufsicht / 🧭 First
+  Person") – dort wohnen die globalen Einstellungen (Name, Sprache), und
+  die Steuerung gilt wie die Sprache für ALLE Varianten. Persistiert in
+  `profile.controls` (`'top' | 'fp'`, Default `'top'`). Ab 900px wird der
+  Footer einzeilig – die zusätzliche Zeile hätte sonst das
+  Tablet-Versprechen „Startscreen ohne Scrollen" gebrochen (der
+  E2E-Tablet-Lauf hat genau das gefangen; die Regel muss NACH der
+  Basisregel stehen, gleiche Spezifität).
 - Kalibrier-Interstitial bekommt je Modus den passenden Hinweis
   („flach wie ein Tablett halten" vs. „~45° vor dich halten").
 - i18n: ~6 neue Schlüssel ×4 (Toggle-Labels, Untertitel, FP-Kalibrierhinweis).
 - Galerie/README: FP als Steuerungsvariante dokumentieren.
 
-### Meilensteine
+### Umsetzung (M23a–c)
 
-- **M23a** `core/fp.ts` + Units (Vorzeichen-Matrix, Totzone, Kurve,
-  Raten-Deckel, Heading-Integration) – rot gesehen.
-- **M23b** Integration: app-Heading, Renderer-Rotation + Zentrier-Kamera,
-  `audio.setHeading`, Respawn/Warp-Verhalten.
-- **M23c** UI (Toggle, i18n ×4, Kalibrierhinweis), E2E-Lauf (per Tastatur:
-  drehen, dann Schub ⇒ Ball bewegt sich in die GEDREHTE Weltrichtung;
-  Heading-Haken; Toggle persistiert), Doku, Release **2.0.0**.
+- `core/fp.ts`: 16 Units (Vorzeichen-Matrix, Kurve, Raten-Deckel,
+  dt-Unabhängigkeit der Glättung, Winkel-Normalisierung); Mutations-
+  Gegenprobe auf Vorzeichen und Glättung rot gesehen. Die KAMERA-Glättung
+  steckt bewusst in der DREHRATE (exponentiell, τ = 90 ms): Heading ist
+  damit C¹-stetig, und weil Kamera, Schub und Hörer dasselbe Heading
+  benutzen, laufen Sicht und Steuerung nie auseinander.
+- Renderer: Drehung um die Ballmitte über den Canvas-Transform; Schein/
+  Geist werden NACH dem restore in Screen-Koordinaten gezeichnet
+  (`rotateAround`, eine Implementierung für Transform und Randklemmung),
+  damit Klemmung und Ebenen-Label aufrecht bleiben. FP erzwingt die
+  Folge-Kamera ohne Weltrand-Klemmung (das Drehzentrum braucht die exakte
+  Mitte). `renderer.lastView` meldet, was der Frame wirklich getan hat.
+- E2E-Lauf 19 fährt den Modus per Tastatur in einer offenen 5×5-Arena:
+  Lenkrad hebt das Heading (Rate klingt aus), die Ansicht rotiert mit,
+  Schub rollt in die GEDREHTE Weltrichtung, die FP-Kamera hält die Kugel
+  auch abseits der Weltmitte zentriert, und der Umschalter ist
+  reload-fest. Fürs AUDIO vergleicht der Lauf dieselbe Ping-Szene vor und
+  nach dem Drehen: alle Reflexionen müssen im Hörer-System um exakt
+  -Δheading wandern (`window.__tiltrPing`). Alle neun Zusicherungen rot
+  gesehen (zwei Sabotage-Läufe).
 
 ### Tuning-Werte (beim Playtest zu justieren)
 
-`MAX_TURN` ≈ 2,4 rad/s · Drehkurve `x·|x|` · Schub-Skala = bisherige
-Neigungsskala · Totzone aus `tilt` (0,04) übernehmen.
+`FP_MAX_TURN` = 2,4 rad/s · Drehkurve `x·|x|` · Glättung
+`FP_TURN_SMOOTH_S` = 90 ms · Schub-Skala = bisherige Neigungsskala ·
+Totzone aus `tilt` (0,04).
 
 ## M22 „Der Partner ist ein Schein" ✓ (v1.13.0)
 

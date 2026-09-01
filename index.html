@@ -205,6 +205,18 @@
       gap: var(--space-3);
     }
     #langRow { display: flex; gap: var(--space-2); }
+    #controlsRow { display: flex; gap: var(--space-2); }
+    /* Footer einzeilig ab Tablet: Name, Steuerung und Sprache nebeneinander –
+       der ganze Startscreen muss auf ein Querformat-Tablet OHNE Scrollen
+       passen (der E2E-Tablet-Lauf misst genau das). Steht NACH der
+       Basisregel: gleiche Spezifität, später gewinnt. */
+    @media (min-width: 900px) {
+      #menuFooter {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+    }
     /* Anzeigename für Duell-Links: leise, optional, nie im Weg. */
     #playerName {
       width: min(100%, 240px);
@@ -608,6 +620,10 @@
     </div>
     <div id="menuFooter">
       <input id="playerName" type="text" maxlength="24" autocomplete="nickname" spellcheck="false" data-i18n-ph="menu.namePh">
+      <div id="controlsRow">
+        <button class="btn chip" data-ctl="top" data-i18n="ctl.top">🥣 Draufsicht</button>
+        <button class="btn chip" data-ctl="fp" data-i18n="ctl.fp">🧭 First Person</button>
+      </div>
       <div id="langRow">
         <button class="btn chip" data-lang="de">DE</button>
         <button class="btn chip" data-lang="en">EN</button>

@@ -17,11 +17,26 @@ export interface DrawOptions {
   /** Das eigene Ziel ist geschafft: Es leuchtet ruhig weiter, auch ohne
    *  Reveal – man SIEHT, dass man drin war, und darf trotzdem weiterrollen. */
   goalDone?: boolean;
+  /** First Person (M23): Blickrichtung in rad – die WELT dreht sich um den
+   *  Ball, sodass die Blickrichtung immer Screen-oben ist. 0/undefined =
+   *  klassische Draufsicht. */
+  heading?: number;
 }
 
 /** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
  *  Alles Fremde (Partner, Geist) bleibt darunter. */
 export const BALL_CORE_ALPHA = 0.5;
+
+/** Punkt um ein Zentrum drehen (Screen-Space). Rein exportiert, weil die
+ *  Halo-Klemmung am Bildrand dieselbe Drehung braucht wie der Canvas-
+ *  Transform – zwei Implementierungen wären zwei Meinungen. */
+export function rotateAround(x: number, y: number, cx: number, cy: number, angle: number): { x: number; y: number } {
+  const c = Math.cos(angle);
+  const sn = Math.sin(angle);
+  const dx = x - cx;
+  const dy = y - cy;
+  return { x: cx + dx * c - dy * sn, y: cy + dx * sn + dy * c };
+}
 
 export interface HaloLayer {
   /** Radius in Gerätepixeln */
@@ -82,6 +97,21 @@ export class Renderer {
    *  „geschafft"). Der Renderer sagt selbst, was er gezeichnet hat – so ist
    *  es prüfbar, ohne Pixel zu lesen (siehe e2e/smoke.mjs, Lauf 9). */
   goalLit = false;
+  /** First Person: feste Zoomstufe, Ball zentriert, Welt dreht sich. */
+  private fpView = false;
+  /** Aktive Ansichts-Drehung des letzten Frames (rad) + ihr Zentrum. */
+  private rot = 0;
+  private rotCx = 0;
+  private rotCy = 0;
+  /** Was der letzte Frame wirklich getan hat (Ansicht) – für den E2E-Haken:
+   *  gemessen am echten Transform, kein Echo der Eingabe. */
+  lastView: { rot: number; ballX: number; ballY: number; cw: number; ch: number } | null = null;
+
+  setFpView(on: boolean): void {
+    if (this.fpView === on) return;
+    this.fpView = on;
+    if (this.worldW) this.computeScale();
+  }
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -138,7 +168,9 @@ export class Renderer {
       (this.canvas.height - margin * 2) / this.worldH,
     );
     const followScale = Math.min(this.canvas.width, this.canvas.height) / (100 * VIEW_CELLS);
-    this.following = fitScale < followScale;
+    // FP: immer Folge-Kamera mit fester Zoomstufe – der Ball sitzt in der
+    // Mitte, auch wenn die Welt klein ist (die Drehung braucht das Zentrum).
+    this.following = this.fpView || fitScale < followScale;
     this.scale = this.following ? followScale : fitScale;
     if (!this.following) {
       this.offsetX = (this.canvas.width - this.worldW * this.scale) / 2;
@@ -151,8 +183,14 @@ export class Renderer {
     if (this.manualView || !this.following) return;
     const margin = 24 * this.dpr;
     const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
-    const tx = clamp(this.canvas.width / 2 - bx * this.scale, this.canvas.width - margin - this.worldW * this.scale, margin);
-    const ty = clamp(this.canvas.height / 2 - by * this.scale, this.canvas.height - margin - this.worldH * this.scale, margin);
+    // FP: OHNE Weltrand-Klemmung – der Ball muss exakt zentrierbar sein,
+    // sonst eiert das Drehzentrum. Jenseits des Randes ist eben Nichts.
+    const tx = this.fpView
+      ? this.canvas.width / 2 - bx * this.scale
+      : clamp(this.canvas.width / 2 - bx * this.scale, this.canvas.width - margin - this.worldW * this.scale, margin);
+    const ty = this.fpView
+      ? this.canvas.height / 2 - by * this.scale
+      : clamp(this.canvas.height / 2 - by * this.scale, this.canvas.height - margin - this.worldH * this.scale, margin);
     const k = snap ? 1 : 0.12;
     this.offsetX += (tx - this.offsetX) * k;
     this.offsetY += (ty - this.offsetY) * k;
@@ -168,6 +206,20 @@ export class Renderer {
     const ty = (y: number) => oy + y * s;
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // First Person: die Welt dreht sich um den Ball (Blickrichtung = oben).
+    // Gedreht wird ALLES Weltliche über den Canvas-Transform; Schein/Geist
+    // werden danach in Screen-Koordinaten gezeichnet (rotateAround), damit
+    // Randklemmung und Ebenen-Label aufrecht bleiben.
+    this.rot = opts.heading ?? 0;
+    this.rotCx = tx(world.ball.x);
+    this.rotCy = ty(world.ball.y);
+    ctx.save();
+    if (this.rot !== 0) {
+      ctx.translate(this.rotCx, this.rotCy);
+      ctx.rotate(-this.rot);
+      ctx.translate(-this.rotCx, -this.rotCy);
+    }
 
     // Wände & Trümmer zuerst, gruppiert nach quantisierter Alpha-Stufe und Farbe.
     // Eine Stufe wird als EIN Pfad gefüllt (Überlappungen innerhalb der Stufe
@@ -593,9 +645,13 @@ export class Renderer {
     ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.restore();
+    this.lastView = { rot: this.rot, ballX: this.rotCx, ballY: this.rotCy, cw: this.canvas.width, ch: this.canvas.height };
+
     // Schein: Geist-Replay (blasser) unter dem Partner (Multiplayer) – an
     // seiner Position, außerhalb (oder auf anderer Ebene) an den Rand
-    // geklemmt. Kein Rand, kein Körper: nur Licht.
+    // geklemmt. Kein Rand, kein Körper: nur Licht. Gezeichnet NACH dem
+    // restore: die Klemmung rechnet in Screen-Koordinaten.
     if (opts.ghost) this.drawHalo(opts.ghost, now, 0.45, 13);
     if (opts.buddy) {
       this.drawHalo(opts.buddy, now, 1, 16, opts.buddy.floorLabel, opts.buddy.done === true);
@@ -612,8 +668,11 @@ export class Renderer {
   ): void {
     const ctx = this.ctx;
     const margin = 26 * this.dpr;
-    let px = this.offsetX + pos.x * this.scale;
-    let py = this.offsetY + pos.y * this.scale;
+    // Weltpunkt -> Screen: linearer Transform plus die FP-Drehung um den Ball.
+    const lin = { x: this.offsetX + pos.x * this.scale, y: this.offsetY + pos.y * this.scale };
+    const r0 = this.rot === 0 ? lin : rotateAround(lin.x, lin.y, this.rotCx, this.rotCy, -this.rot);
+    let px = r0.x;
+    let py = r0.y;
     const offscreen =
       !pos.sameFloor ||
       px < margin ||
