@@ -350,6 +350,50 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M24 „Bauen mit Ohr und Auge" ✓ (v2.1.0)
+
+Zwei Wünsche aus dem Editor-Betrieb – beide zielen darauf, einen Entwurf
+BEURTEILEN zu können, ohne ihn zu verlassen.
+
+**1. Ton-Vorschau im Eigenschaften-Panel.** Ein Element IST sein Klang; ihn
+erst im Testlauf zu suchen war absurd. Der Auswahl-Kopf trägt jetzt neben
+Miniatur und Name einen „🔊 Anhören"-Knopf, der die Signatur aus der
+ELEMENT-REGISTRY spielt – dieselbe, die die Galerie anspielt
+(`galleryEntries().demoSound`). Ein Element, ein Klang, eine Quelle.
+
+**2. Play/Pause für bewegte Elemente** (`#edPlay`, im Canvas-Kopf neben ⤢).
+Reine ANSICHT, keine Simulation: kein Ball, keine Physik, keine
+Kollisionen – nur die Zyklen (atmende Löcher, Schiebewände) und die
+Patrouillen (`world.advanceGuards`, dafür von privat auf öffentlich
+gehoben). Damit lässt sich Taktung beurteilen („passt die Lücke zum
+Rhythmus?"), was vorher nur der Testlauf konnte. Pause friert Bild UND Uhr
+ein, damit man eine halboffene Wand ansehen kann; der Knopf trägt seinen
+Zustand (▶/⏸ plus Akzentfarbe). Bewusst STUMM: Ohne Ball gibt es keinen
+Hörerort, und Klang gibt es gezielt über die Ton-Vorschau. Horcher stehen
+still – sie jagen den Ball, und den gibt es hier nicht.
+
+**Nebenprodukt: eine Quelle für die Atem-Uhr.** Die Phasenrechnung
+(öffnen → offen → schließen → zu) stand ZWEIMAL identisch in app.ts (Löcher
+und Schiebewände) – und der Editor hätte sie ein drittes Mal gebraucht. Sie
+wohnt jetzt in `src/core/breathing.ts` (`breathAt`, `breathPeriod`,
+`breathOpenRemaining`), deterministisch und DOM-frei, mit 11 Units auf den
+Phasengrenzen; Mutations-Gegenprobe (Rampe invertiert, Restzeit-Fenster
+aufgeweitet) rot gesehen.
+
+**Und ein echter Fund des neuen E2E-Laufs:** Ein importiertes Level ohne
+`maze.add` ist vollkommen gültig (das Schema füllt Vorgaben erst beim
+Parsen) – der Editor arbeitet aber direkt auf dem ROHEN Draft und schob in
+genau diese Listen. `paint()` lief auf, die Karte blieb schwarz. Fix:
+`normalizeDraft()` füllt beim Öffnen einmal auf, statt an jeder
+Zugriffsstelle zu prüfen; danach hält der Draft, was `RawFloor` verspricht.
+
+Testbar ohne Pixel: `window.__tiltrEd` legt offen, WAS der Renderer
+zeichnet (`motion`: Schiebewand-Öffnung, Loch-Öffnung, Wächter-Position)
+plus `playing`/`animT`. Lauf 20 prüft die Bewegung als SERIE über eine
+Sekunde (wie viele verschiedene Werte kommen vor) statt mit zwei
+Stichproben – zwei Punkte können zufällig in dieselbe Phase fallen, was der
+erste Anlauf prompt vorführte. Alle neun neuen Zusicherungen rot gesehen.
+
 ## M23 „First Person" ✓ (v2.0.0)
 
 Zweiter, ZUSÄTZLICHER Steuerungsmodus für alle Spielvarianten (Quick,

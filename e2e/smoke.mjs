@@ -1780,6 +1780,153 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 20: Editor-Vorschau (M24) – Ton-Vorschau im Eigenschaften-Panel
+// und Play/Pause für bewegte Elemente. Die Bewegung ist prüfbar, ohne Pixel
+// zu lesen: Der Editor legt offen, welche Werte der Renderer zeichnet
+// (Schiebewand-Öffnung, Loch-Öffnung, Wächter-Position). ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    // Zählt erzeugte Klangquellen: Damit ist „der Knopf spielt wirklich
+    // etwas" prüfbar, egal welche Signatur das Element hat.
+    window.__srcCount = 0;
+    for (const fn of ['createOscillator', 'createBufferSource']) {
+      const orig = AudioContext.prototype[fn];
+      AudioContext.prototype[fn] = function (...args) {
+        window.__srcCount++;
+        return orig.apply(this, args);
+      };
+    }
+  });
+  await page.goto(`${BASE}/?nosplash`);
+
+  // Level mit allen drei Bewegungsarten: Schiebewand, atmendes Loch, Wächter
+  // mit zwei Wegpunkten. Kommt per Einfüge-Import in die Werkstatt.
+  const moving = {
+    id: 'custom-motion',
+    name: 'Bewegung',
+    pingBudget: 3,
+    floors: [
+      {
+        size: [4, 4],
+        maze: { seed: 5, carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[0, 1], 'e'], [[1, 1], 'e'], [[2, 1], 'e'], [[0, 0], 's'], [[3, 0], 's'], [[0, 1], 's'], [[3, 1], 's'], [[0, 2], 'e'], [[1, 2], 'e'], [[2, 2], 'e'], [[0, 2], 's'], [[3, 2], 's'], [[0, 3], 'e'], [[1, 3], 'e'], [[2, 3], 'e']] },
+        elements: [
+          { type: 'slidingWall', edge: [[1, 0], 's'], cycle: { open: 1, closed: 1, ramp: 0.4, offset: 0 } },
+          { type: 'hole', cell: [2, 1], breathing: { open: 0.5, closed: 0.5, ramp: 0.3, offset: 0 } },
+          { type: 'guard', patrol: [[0, 2], [3, 2]], speed: 120 },
+        ],
+        start: [0, 0],
+        goal: [3, 3],
+      },
+    ],
+  };
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(moving));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  await page.locator('#workshopList .ws-actions .btn-ghost').first().click(); // ✏️ Bearbeiten
+  await page.waitForTimeout(600);
+
+  // Robustheit: Der Import lässt `maze.add` weg (vollkommen gültig – das
+  // Schema füllt es erst beim Parsen). Der Editor arbeitet auf dem ROHEN
+  // Draft; ohne Auffüllen lief paint() auf und die Karte blieb schwarz.
+  const edState = await page.evaluate(() => window.__tiltrEd);
+  check(`Import ohne maze.add öffnet den Editor sauber (${edState ? `${edState.elements} Elemente, add=${edState.add}` : 'kein Paint'})`,
+    !!edState && edState.elements === 3 && edState.add === 0);
+
+  // --- Ton-Vorschau: Element wählen, „Anhören" steht im Auswahl-Kopf --------
+  const noListen = await page.locator('#edProps .ed-listen').count();
+  await page.click('#edTool-select');
+  const geom = await page.evaluate(() => window.__tiltrEd);
+  if (geom) {
+    const box = await page.locator('#edCanvas').boundingBox();
+    const hole = {
+      x: geom.ox / geom.dpr + (2.5 * 100 * geom.scale) / geom.dpr,
+      y: geom.oy / geom.dpr + (1.5 * 100 * geom.scale) / geom.dpr,
+    };
+    await page.mouse.click(box.x + hole.x, box.y + hole.y);
+    await page.waitForTimeout(250);
+  }
+  const sel = await page.evaluate(() => window.__tiltrEd?.selected);
+  const hasListen = (await page.locator('#edProps .ed-listen').count()) > 0;
+  const listenTxt = hasListen ? ((await page.textContent('#edProps .ed-listen')) ?? '') : '';
+  check(`Ton-Vorschau erscheint erst mit Auswahl ("${listenTxt.trim()}", vorher ${noListen})`,
+    noListen === 0 && sel >= 0 && listenTxt.includes('Anhören'));
+  // Klick spielt die Signatur AUS DER REGISTRY – dieselbe, die die Galerie
+  // anspielt (galleryEntries als einzige Quelle). Ob wirklich geklungen hat,
+  // zeigt die Zahl erzeugter Klangquellen: vorher still, nachher nicht.
+  const srcBefore = await page.evaluate(() => window.__srcCount);
+  await page.waitForTimeout(400);
+  const srcIdle = await page.evaluate(() => window.__srcCount);
+  if (hasListen) {
+    await page.click('#edProps .ed-listen');
+    await page.waitForTimeout(500);
+  }
+  const srcAfter = await page.evaluate(() => window.__srcCount);
+  check(`Anhören spielt die Klang-Signatur (Quellen ${srcBefore} → still ${srcIdle} → nach Klick ${srcAfter})`,
+    srcIdle === srcBefore && srcAfter > srcBefore);
+
+  // --- Play/Pause: bewegte Elemente laufen lassen --------------------------
+  const still0 = await page.evaluate(() => window.__tiltrEd?.motion);
+  await page.waitForTimeout(600);
+  const still1 = await page.evaluate(() => window.__tiltrEd?.motion);
+  check(`Ohne Play steht die Karte still (Wand ${still0?.slides?.[0]} / Loch ${still0?.holes?.[0]} / Wächter ${JSON.stringify(still0?.guards?.[0])})`,
+    JSON.stringify(still0) === JSON.stringify(still1));
+
+  await page.click('#edPlay');
+  // Serie statt zweier Stichproben: Ein Zyklus kann zwischen zwei Messpunkten
+  // zufällig denselben Wert zeigen (das Loch stand in seiner Offen-Phase).
+  // Gemessen wird deshalb, wie viele VERSCHIEDENE Werte über eine Sekunde
+  // vorkommen – „bewegt sich" heißt: mehr als einer.
+  const series = { slides: new Set(), holes: new Set(), guards: new Set() };
+  let run1 = null;
+  for (let i = 0; i < 10; i++) {
+    await page.waitForTimeout(120);
+    const st = await page.evaluate(() => window.__tiltrEd);
+    run1 ??= st;
+    series.slides.add(st?.motion?.slides?.[0]);
+    series.holes.add(st?.motion?.holes?.[0]);
+    series.guards.add(st?.motion?.guards?.[0]?.[0]);
+  }
+  const run2 = await page.evaluate(() => window.__tiltrEd);
+  check(`Play lässt die Vorschau-Uhr laufen (t ${run1?.animT?.toFixed(2)} → ${run2?.animT?.toFixed(2)})`,
+    run1?.playing === true && run2?.animT > run1?.animT + 0.5);
+  // Jede Bewegungsart EINZELN: sonst würde ein einziger laufender Wert reichen.
+  check(`Schiebewand, Loch und Wächter bewegen sich alle (${series.slides.size}/${series.holes.size}/${series.guards.size} verschiedene Werte in 1 s)`,
+    series.slides.size > 1 && series.holes.size > 1 && series.guards.size > 1);
+
+  // Pause friert das Bild ein – man kann eine halboffene Wand ansehen.
+  await page.click('#edPlay');
+  await page.waitForTimeout(200);
+  const froze1 = await page.evaluate(() => window.__tiltrEd);
+  await page.waitForTimeout(700);
+  const froze2 = await page.evaluate(() => window.__tiltrEd);
+  check(`Pause friert Bewegung UND Uhr ein (Wand ${froze1?.motion?.slides?.[0]}, t=${froze1?.animT?.toFixed(2)})`,
+    froze1?.playing === false && froze1.animT === froze2.animT &&
+      JSON.stringify(froze1.motion) === JSON.stringify(froze2.motion));
+
+  // Der Knopf trägt seinen Zustand sichtbar (▶ / ⏸ + Akzent).
+  await page.click('#edPlay');
+  await page.waitForTimeout(150);
+  const playing = { txt: (await page.textContent('#edPlay')).trim(), cls: await page.getAttribute('#edPlay', 'class') };
+  await page.click('#edPlay');
+  await page.waitForTimeout(150);
+  const paused = { txt: (await page.textContent('#edPlay')).trim(), cls: await page.getAttribute('#edPlay', 'class') };
+  check(`Knopf zeigt den Zustand ("${playing.txt}" aktiv / "${paused.txt}" pausiert)`,
+    playing.txt === '⏸' && playing.cls.includes('active') && paused.txt === '▶' && !paused.cls.includes('active'));
+
+  // Editor verlassen stoppt die Vorschau (keine Schleife im Hintergrund).
+  await page.click('#edPlay');
+  await page.waitForTimeout(150);
+  await page.click('#edClose');
+  await page.waitForTimeout(300);
+  check('Schließen stoppt die Vorschau', (await page.evaluate(() => window.__tiltrEd?.playing)) === false);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

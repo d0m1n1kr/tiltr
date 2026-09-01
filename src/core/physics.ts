@@ -121,7 +121,7 @@ export class World {
         if (hit) hits.push(hit);
       }
 
-      this.updateGuards(h);
+      this.advanceGuards(h);
       this.updateListeners(h);
 
       // Sog-Anker: Anziehung wächst zum Zentrum hin, bleibt aber immer unter
@@ -204,8 +204,10 @@ export class World {
     return { wall: rect, nx, ny, impact };
   }
 
-  // Wächter laufen ihre Wegpunkte im Ping-Pong ab – deterministisch, ohne Physik.
-  private updateGuards(dt: number): void {
+  /** Wächter laufen ihre Wegpunkte im Ping-Pong ab – deterministisch, ohne
+   *  Physik und ohne Ball. Öffentlich, weil die Editor-Vorschau genau das
+   *  braucht: Patrouillen laufen sehen, ohne zu spielen. */
+  advanceGuards(dt: number): void {
     for (const g of this.guards) {
       let remaining = g.speed * dt;
       while (remaining > 0 && g.waypoints.length > 1) {

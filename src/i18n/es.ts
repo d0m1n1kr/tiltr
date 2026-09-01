@@ -159,6 +159,8 @@ export const es: Dict = {
   'ed.shareBlocked': 'Primero pon en verde todas las insignias obligatorias.',
   'ed.shareBig': 'Ojo: enlace muy largo – mejor exportar como archivo.',
   'ed.fit': 'Ajustar vista',
+  'ed.animate': '▶ Animar los elementos móviles',
+  'ed.animateOff': '⏸ Pausar el movimiento',
   'ed.addFloor': 'Añadir piso',
   'ed.removeFloor': 'Quitar piso activo',
   'ed.transporterTarget': 'Transportador: toca el destino – puedes cambiar de piso con las pestañas.',

@@ -9,6 +9,8 @@
 // Import/Export/Share (M12b).
 
 import { CELL } from '../core/constants';
+import { breathAt } from '../core/breathing';
+import type { GameAudio } from '../audio/audio';
 import { Renderer } from '../render/renderer';
 import { WORLD } from '../render/palette';
 import { loadLevel, type LoadedLevel } from '../levels/loader';
@@ -120,6 +122,9 @@ export interface EditorApi {
 export function setupEditor(opts: {
   onTest: (def: RawLevel) => void;
   onSaved: () => void;
+  /** Für die Ton-Vorschau im Eigenschaften-Panel (dieselbe Klang-Signatur,
+   *  die die Galerie anspielt – eine Quelle: die Element-Registry). */
+  audio: GameAudio;
   /** ‹ schließt den Editor – zurück gehört man in die Werkstatt, nicht
    *  ins Hauptmenü (dort ist man mit einem Tap, über die Werkstatt). */
   onClose: () => void;
@@ -137,6 +142,9 @@ export function setupEditor(opts: {
 
   // Galerie-Miniatur eines Element-Typs (Palette, Auswahl-Kopf, Drawer-Griff).
   const galleryDraws = new Map(galleryEntries().map((e) => [e.type, e.draw]));
+  // Klang-Signaturen aus derselben Registry: Was die Galerie anspielt, spielt
+  // auch das Eigenschaften-Panel – ein Element hat EINEN Klang.
+  const galleryDemos = new Map(galleryEntries().map((e) => [e.type, e.demoSound]));
   const miniCanvas = (type: string): HTMLCanvasElement => {
     const cv = document.createElement('canvas');
     cv.width = 66;
@@ -208,6 +216,26 @@ export function setupEditor(opts: {
   let validateTimer: ReturnType<typeof setTimeout> | null = null;
 
   const floor = (): RawFloor => draft!.floors[activeFloor]!;
+
+  /* Rohe Defs dürfen optionale Felder WEGLASSEN – ein importiertes oder
+     geteiltes Level ohne `maze.add` ist vollkommen gültig (das Schema füllt
+     die Vorgaben erst beim Parsen). Der Editor arbeitet aber direkt auf dem
+     rohen Draft und schiebt in genau diese Listen. Deshalb hier EINMAL beim
+     Öffnen auffüllen, statt an jeder Zugriffsstelle zu prüfen: Danach hält
+     der Draft, was RawFloor verspricht.
+     (Gefunden vom E2E-Lauf 20: Ein Import ohne `add` ließ paint() auflaufen
+     – die Karte blieb schwarz.) */
+  function normalizeDraft(): void {
+    if (!draft) return;
+    draft.floors ??= [];
+    for (const f of draft.floors) {
+      f.maze ??= { seed: 1, carve: [], add: [], brittle: [] };
+      f.maze.carve ??= [];
+      f.maze.add ??= [];
+      f.maze.brittle ??= [];
+      f.elements ??= [];
+    }
+  }
   const flash = (text: string, error = false): void => {
     statusEl.textContent = text;
     statusEl.style.color = error ? 'var(--warning)' : '';
@@ -346,6 +374,53 @@ export function setupEditor(opts: {
 
   /* --- Vorschau + Overlay --------------------------------------------------- */
 
+  /* --- Play/Pause: bewegte Elemente laufen lassen ---------------------------
+     Reine ANSICHT, keine Simulation: Es gibt keinen Ball, keine Physik und
+     keine Kollisionen – nur die Zyklen (atmende Löcher, Schiebewände über
+     dieselbe Uhr wie im Spiel, src/core/breathing.ts) und die Patrouillen
+     (world.advanceGuards). Damit beurteilt man Timing und Taktung, ohne den
+     Entwurf zu verlassen. Stumm, denn ohne Ball gibt es keinen Hörerort –
+     Klang gibt es gezielt über die Ton-Vorschau im Eigenschaften-Panel.
+     Horcher stehen still: Sie jagen den Ball, und den gibt es hier nicht. */
+  let playing = false;
+  /** Vorschau-Uhr in Sekunden (unabhängig von performance.now, damit Pause
+   *  wirklich pausiert statt nur das Zeichnen auszusetzen). */
+  let animT = 0;
+  let lastAnim = 0;
+
+  function animateFrame(now: number): void {
+    if (!playing) return;
+    const dt = Math.min(0.05, (now - lastAnim) / 1000);
+    lastAnim = now;
+    animT += dt;
+    applyAnim(dt);
+    paint();
+    requestAnimationFrame(animateFrame);
+  }
+
+  /** Zyklen und Patrouillen der SICHTBAREN Ebene auf die Vorschau-Uhr setzen. */
+  function applyAnim(dt: number): void {
+    if (!loaded) return;
+    const w = loaded.floors[Math.min(activeFloor, loaded.floors.length - 1)]!.world;
+    for (const h of w.holes) if (h.breathing) h.openness = breathAt(h.breathing, animT).openness;
+    for (const wall of w.walls) if (wall.slide) wall.slide.openness = breathAt(wall.slide.cycle, animT).openness;
+    w.advanceGuards(dt);
+  }
+
+  function setPlaying(on: boolean): void {
+    if (playing === on) return;
+    playing = on;
+    playBtn.textContent = on ? '⏸' : '▶';
+    playBtn.dataset.tip = t(on ? 'ed.animateOff' : 'ed.animate');
+    playBtn.classList.toggle('active', on);
+    if (on) {
+      lastAnim = performance.now();
+      requestAnimationFrame(animateFrame);
+    } else {
+      paint(); // eingefrorenes Bild bleibt stehen – so lässt sich hinsehen
+    }
+  }
+
   function fitView(): void {
     const [cols, rows] = floor().size;
     const rect = canvas.getBoundingClientRect();
@@ -414,6 +489,20 @@ export function setupEditor(opts: {
       add: floor().maze.add.length,
       selected,
       loadError,
+      playing,
+      animT,
+      // Was sich auf der sichtbaren Ebene gerade bewegt (Play-Vorschau):
+      // der Renderer zeichnet genau diese Werte.
+      motion: loaded
+        ? (() => {
+            const w = loaded.floors[Math.min(activeFloor, loaded.floors.length - 1)]!.world;
+            return {
+              slides: w.walls.filter((x) => x.slide).map((x) => Number(x.slide!.openness.toFixed(3))),
+              holes: w.holes.map((h) => Number((h.openness ?? 1).toFixed(3))),
+              guards: w.guards.map((g) => [Math.round(g.x), Math.round(g.y)]),
+            };
+          })()
+        : null,
       // rohe Def (Live-Referenz): E2E prüft Verknüpfungen (opens, target, IDs)
       def: draft,
     };
@@ -877,6 +966,7 @@ export function setupEditor(opts: {
     elementsWrap.id = 'edElements';
     for (const type of PLACEABLE) {
       const b = document.createElement('button');
+      b.id = `edEl-${type}`;
       b.className = 'panel ed-tile' + (tool === 'place' && placeType === type ? ' active' : '');
       b.append(miniCanvas(type), lblSpan(t(`el.${type}.title` as keyof Dict)));
       b.addEventListener('click', () => {
@@ -959,6 +1049,19 @@ export function setupEditor(opts: {
       label.className = 'ed-group-label';
       label.textContent = `${t('ed.selected')}: ${t(`el.${el.type}.title` as keyof Dict)}`;
       head.append(miniCanvas(el.type), label);
+      // Ton-Vorschau: Das Element IST sein Klang – man muss ihn beim Bauen
+      // hören können, nicht erst im Testlauf suchen.
+      const demo = galleryDemos.get(el.type);
+      if (demo) {
+        const listen = document.createElement('button');
+        listen.className = 'btn btn-soft ed-listen';
+        listen.textContent = t('common.listen');
+        listen.addEventListener('click', () => {
+          // Erste Geste im Editor: AudioContext freischalten, dann spielen.
+          void opts.audio.start().then(() => demo(opts.audio));
+        });
+        head.append(listen);
+      }
       propsEl.append(head);
       const num = (label: string, key: string, min: number, max: number, step = 1, obj: Record<string, unknown> = el) =>
         propsEl.append(field(label, numInput(Number(obj[key] ?? 0), min, max, step, (v) => (obj[key] = v))));
@@ -1265,6 +1368,9 @@ export function setupEditor(opts: {
     }
   }
 
+  const playBtn = $<HTMLButtonElement>('edPlay');
+  playBtn.addEventListener('click', () => setPlaying(!playing));
+
   $('edFit').addEventListener('click', () => {
     fitView();
     paint();
@@ -1316,6 +1422,7 @@ export function setupEditor(opts: {
   });
 
   $('edClose').addEventListener('click', () => {
+    setPlaying(false);
     panel.classList.add('hidden');
     opts.onClose();
   });
@@ -1332,6 +1439,7 @@ export function setupEditor(opts: {
 
   $('edTest').addEventListener('click', () => {
     if (!draft || loadError) return;
+    setPlaying(false); // der Testlauf hat seine eigene Zeit
     draft.name = nameInput.value.trim() || t('ed.untitled');
     opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel);
   });
@@ -1367,6 +1475,7 @@ export function setupEditor(opts: {
   return {
     open(def: RawLevel): void {
       draft = JSON.parse(JSON.stringify(def)) as RawLevel;
+      normalizeDraft();
       activeFloor = 0;
       selected = -1;
       pendingGuard = null;
@@ -1378,6 +1487,8 @@ export function setupEditor(opts: {
       updateDrawerHandle();
       tool = 'place';
       placeType = 'hole';
+      setPlaying(false);
+      animT = 0;
       nameInput.value = String(draft.name ?? '');
       panel.classList.remove('hidden');
       applyI18n(panel);

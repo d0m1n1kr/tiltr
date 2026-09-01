@@ -58,8 +58,11 @@ automatically via GitHub Actions (tests → build → pages).
   (three-pane layout on tablets): place elements from the full registry,
   toggle walls, build multi-floor maps with transporters, tweak properties
   — while the test suite's solvability proofs run live as badges (goal
-  reachable, no softlock, timer fits …). Test drafts in the real game loop
-  and jump back with one tap; levels live locally in your library. Share
+  reachable, no softlock, timer fits …). Every selected element plays its
+  own sound signature right in the properties panel, and ▶ animates the
+  moving parts (breathing holes, sliding walls, patrolling guards) so you
+  can judge the rhythm without leaving your draft. Test drafts in the real
+  game loop and jump back with one tap; levels live locally in your library. Share
   finished levels via a serverless link (the level itself travels
   deflate-compressed in the URL hash — sharing unlocks only once all
   required proof badges are green, so shared levels are provably

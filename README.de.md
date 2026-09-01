@@ -59,8 +59,12 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
   schalten, mehrstöckige Karten mit Transportern bauen, Eigenschaften
   feilen – während die Lösbarkeits-Beweise der Testsuite live als Badges
-  mitlaufen (Ziel erreichbar, kein Softlock, Timer reicht …). Entwürfe in
-  der echten Spielschleife testen und mit einem Tap zurückspringen; die
+  mitlaufen (Ziel erreichbar, kein Softlock, Timer reicht …). Jedes gewählte
+  Element spielt seine Klang-Signatur direkt im Eigenschaften-Panel, und ▶
+  lässt die bewegten Teile laufen (atmende Löcher, Schiebewände,
+  patrouillierende Wächter) – so beurteilst du den Rhythmus, ohne den
+  Entwurf zu verlassen. Entwürfe in der echten Spielschleife testen und mit
+  einem Tap zurückspringen; die
   Bibliothek liegt lokal auf dem Gerät. Fertige Level teilst du über
   einen serverlosen Link (das Level reist deflate-komprimiert im
   URL-Hash – Teilen geht erst, wenn alle Pflicht-Badges grün sind:

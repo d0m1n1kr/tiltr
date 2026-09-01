@@ -48,6 +48,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   liegt reload-fest als Draft im Store (saveDraft bei jeder Änderung,
   clearDraft beim Speichern); die Werkstatt bietet „Weiter an …" an und
   bestätigt per Zwei-Tap, bevor Neu/Zufall/Bearbeiten den Draft ersetzen.
+  Der Editor arbeitet auf ROHEN Defs, in denen optionale Felder fehlen
+  dürfen – `normalizeDraft()` füllt sie beim Öffnen EINMAL auf, statt an
+  jeder Zugriffsstelle zu prüfen. Der Auswahl-Kopf spielt die Klang-Signatur
+  des Elements aus der Registry (dieselbe wie die Galerie); `#edPlay` lässt
+  bewegte Elemente laufen – reine Ansicht ohne Ball und Physik (Zyklen über
+  core/breathing.ts, Patrouillen über `world.advanceGuards`), stumm und
+  pausierbar. `window.__tiltrEd.motion` legt offen, was gezeichnet wird.
 - `src/levels/` – Levelformat (zod), Loader, Tutorial-/Kampagnen-Level,
   Quick-Generator. Jedes neue Level braucht einen Lösbarkeits-Test
   (siehe tests/campaign.test.ts – inkl. Tür-Semantik: Schlüssel vor der
@@ -79,6 +86,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
   Position und Breitband-Anteil jeder Reflexion).
 
+- `src/core/breathing.ts` – Atem-Uhr (öffnen → offen → schließen → zu) für
+  atmende Löcher, Schiebewände UND die Play-Vorschau des Editors: EINE
+  Quelle für alle drei (`breathAt`, `breathOpenRemaining`), deterministisch,
+  Units in tests/breathing.test.ts.
 - `src/core/fp.ts` – First Person (M23): zweiter Steuerungsmodus für ALLE
   Varianten (`profile.controls`, Umschalter im Menü-Footer). Draufsicht
   bleibt, aber die Kugel hat ein Heading, das auf dem Screen immer nach

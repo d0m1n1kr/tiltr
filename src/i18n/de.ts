@@ -163,6 +163,8 @@ export const de = {
   'ed.shareBlocked': 'Erst alle Pflicht-Badges grün machen.',
   'ed.shareBig': 'Achtung: sehr großer Link – lieber als Datei exportieren.',
   'ed.fit': 'Ansicht einpassen',
+  'ed.animate': '▶ Bewegte Elemente laufen lassen',
+  'ed.animateOff': '⏸ Bewegung anhalten',
   'ed.addFloor': 'Ebene hinzufügen',
   'ed.removeFloor': 'Aktive Ebene entfernen',
   'ed.transporterTarget': 'Transporter: Ziel antippen – Ebenenwechsel über die Tabs erlaubt.',

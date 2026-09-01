@@ -32,6 +32,7 @@ import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
 import { fpInitial, fpStep } from './core/fp';
+import { breathAt, breathOpenRemaining } from './core/breathing';
 import { newCustomId, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
@@ -490,6 +491,7 @@ function challengeAction(def: LevelDef, seconds: number, label: string): InterAc
 }
 
 const editorApi = setupEditor({
+  audio,
   onTest: (def) => startCustom(def, true),
   onSaved: () => {
     workshopPanel.refresh();
@@ -878,17 +880,7 @@ function onWin(seconds: number): void {
 // Atem-Zyklus der Löcher: öffnen (Rampe) -> offen -> schließen (Rampe) -> zu.
 function updateHoles(nowMs: number): void {
   for (const h of world!.holes) {
-    const br = h.breathing;
-    if (!br) {
-      h.openness = 1;
-      continue;
-    }
-    const period = br.ramp * 2 + br.open + br.closed;
-    const cyc = (nowMs / 1000 + br.offset) % period;
-    if (cyc < br.ramp) h.openness = cyc / br.ramp;
-    else if (cyc < br.ramp + br.open) h.openness = 1;
-    else if (cyc < br.ramp * 2 + br.open) h.openness = 1 - (cyc - br.ramp - br.open) / br.ramp;
-    else h.openness = 0;
+    h.openness = h.breathing ? breathAt(h.breathing, nowMs / 1000).openness : 1;
   }
 }
 
@@ -901,22 +893,9 @@ function updateSlidingWalls(nowMs: number): void {
     const sl = w.slide;
     if (!sl) continue;
     const c = sl.cycle;
-    const period = c.ramp * 2 + c.open + c.closed;
-    const cyc = (nowMs / 1000 + c.offset) % period;
-    let state: NonNullable<typeof sl.lastState>;
-    if (cyc < c.ramp) {
-      sl.openness = cyc / c.ramp;
-      state = 'opening';
-    } else if (cyc < c.ramp + c.open) {
-      sl.openness = 1;
-      state = 'open';
-    } else if (cyc < c.ramp * 2 + c.open) {
-      sl.openness = 1 - (cyc - c.ramp - c.open) / c.ramp;
-      state = 'closing';
-    } else {
-      sl.openness = 0;
-      state = 'closed';
-    }
+    const phase = breathAt(c, nowMs / 1000);
+    sl.openness = phase.openness;
+    const state = phase.state;
     const cx = Math.max(w.x, Math.min(b.x, w.x + w.w));
     const cy = Math.max(w.y, Math.min(b.y, w.y + w.h));
     const dx = cx - b.x,
@@ -928,7 +907,7 @@ function updateSlidingWalls(nowMs: number): void {
       sl.nextTick = undefined;
     }
     if (state === 'open' && audible) {
-      const remaining = c.ramp + c.open - cyc;
+      const remaining = breathOpenRemaining(c, nowMs / 1000);
       if (remaining < 1.3 && (sl.nextTick === undefined || nowMs >= sl.nextTick)) {
         audio.slideTick(dx, dy);
         sl.nextTick = nowMs + 130 + remaining * 220;

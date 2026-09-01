@@ -159,6 +159,8 @@ export const fr: Dict = {
   'ed.shareBlocked': 'Passe d’abord tous les badges obligatoires au vert.',
   'ed.shareBig': 'Attention : lien très long – mieux vaut exporter en fichier.',
   'ed.fit': 'Ajuster la vue',
+  'ed.animate': '▶ Animer les éléments mobiles',
+  'ed.animateOff': '⏸ Arrêter le mouvement',
   'ed.addFloor': 'Ajouter un étage',
   'ed.removeFloor': 'Supprimer l’étage actif',
   'ed.transporterTarget': 'Transporteur : touche la cible – changer d’étage via les onglets est permis.',

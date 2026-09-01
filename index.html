@@ -422,7 +422,10 @@
     #edStatus { min-height: 1.2em; text-align: center; }
     #edFloorRow { display: flex; align-items: center; gap: var(--space-2); }
     #edFloorTabs { display: flex; gap: var(--space-1); flex-wrap: wrap; }
-    #edFit { margin-left: auto; }
+    #edPlay { margin-left: auto; }
+    /* Läuft die Vorschau, trägt der Knopf die Akzentfarbe – man sieht am
+       Kopf, dass sich die Karte gerade von selbst bewegt. */
+    #edPlay.active { color: var(--accent); border-color: rgba(75, 224, 200, 0.45); }
     #wsImportBox { display: grid; gap: var(--space-2); padding: var(--space-3); }
     #wsImportText {
       background: var(--bg-panel); border: var(--border-strong); color: var(--text);
@@ -789,6 +792,7 @@
     <p id="edStatus" class="menu-meta"></p>
     <div id="edFloorRow">
       <span id="edFloorTabs"></span>
+      <button id="edPlay" class="btn btn-ghost tip-below" data-i18n-tip="ed.animate">▶</button>
       <button id="edFit" class="btn btn-ghost tip-below" data-i18n-tip="ed.fit">⤢</button>
     </div>
     <div id="edBody">

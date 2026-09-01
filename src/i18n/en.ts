@@ -159,6 +159,8 @@ export const en: Dict = {
   'ed.shareBlocked': 'Turn all required badges green first.',
   'ed.shareBig': 'Careful: very large link – better export as a file.',
   'ed.fit': 'Fit view',
+  'ed.animate': '▶ Animate moving elements',
+  'ed.animateOff': '⏸ Pause the motion',
   'ed.addFloor': 'Add floor',
   'ed.removeFloor': 'Remove active floor',
   'ed.transporterTarget': 'Transporter: tap the target – switching floors via the tabs is allowed.',
