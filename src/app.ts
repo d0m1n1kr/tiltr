@@ -1,7 +1,7 @@
 import './ui/theme.css';
 import { CELL } from './core/constants';
 import { randomSeed, seedFromString } from './core/rng';
-import type { Hole, WindZone } from './core/types';
+import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
 import type { Ball, World } from './core/physics';
 import { TiltInput } from './input/tilt';
 import { GameAudio } from './audio/audio';
@@ -34,6 +34,8 @@ import { setupWakeLock } from './ui/wakelock';
 import { setupConfetti } from './ui/confetti';
 import { fpInitial, fpStep } from './core/fp';
 import { breathAt, breathOpenRemaining } from './core/breathing';
+import { advance, compileTune, notesAt, type CompiledTune } from './audio/chiptune';
+import { compiledById } from './music';
 import { newCustomId, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
@@ -48,6 +50,13 @@ const CURRENT_HEAR = CELL * 2; // Hörweite des Strömungs-Pulsierens
 const SLIDE_HEAR = CELL * 2.2; // Hörweite von Schleifen/Warn-Takt der Schiebewände
 const LISTENER_HEAR = CELL * 2.4; // Hörweite des Horcher-Schnüffelns
 const ANCHOR_HEAR = CELL * 0.8; // Zusatz-Hörweite ÜBER den Wirkradius hinaus
+const MUSIC_HEAR = CELL * 3.2; // Hörweite der Jukebox – weiter als alles andere
+/** Lookahead des Musik-Schedulers: So weit im Voraus liegen Noten im
+ *  Audio-Takt. 250 ms überbrücken jeden Frame-Ruckler; viel mehr würde einen
+ *  Titelwechsel träge machen, weil er alles Eingeplante wegwirft. */
+const MUSIC_LOOKAHEAD_S = 0.25;
+/** Zwei Treffer in kurzer Folge sind EIN Rempler (Substeps, Nachfassen). */
+const SKIP_DEBOUNCE_MS = 350;
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
@@ -84,6 +93,11 @@ setupGallery(audio);
 // Gespielt wird durch NEIGEN – ohne Bildschirmsperre dimmt Android mitten
 // im Lauf. Die Sperre gilt, solange gespielt oder gehört wird.
 const wake = setupWakeLock();
+// Musik-Bus als Getter: Der E2E-Lauf liest ihn jederzeit frisch – auch OHNE
+// geladenes Level (der Frame-Haken __tiltrJukebox friert im Menü ein, weil die
+// Schleife dort früh aussteigt; „ist der Automat wirklich still?" muss aber
+// gerade dann prüfbar sein).
+Object.defineProperty(window, '__tiltrMusic', { get: () => audio.musicState(), configurable: true });
 // Konfetti zum Sieg – gefeiert wird in JEDEM Modus, Tutorial eingeschlossen.
 const confetti = setupConfetti('confetti');
 
@@ -416,6 +430,7 @@ function showMenu(): void {
   audio.setFog(0);
   audio.setAnchor(0, 0, 0);
   audio.setHeading(0);
+  audio.stopMusic();
   confetti.clear();
   hideInterstitial();
   wake.release();
@@ -930,6 +945,109 @@ function updateSlidingWalls(nowMs: number): void {
   }
 }
 
+/* --- Jukebox (M27) ---------------------------------------------------------
+   Der Automat spielt Noten, keine Datei: Pro Frame wird ein Fenster von
+   MUSIC_LOOKAHEAD_S in den AUDIO-Takt gelegt (nicht in performance.now – die
+   beiden driften, und nach Wanduhr gesetzte Noten eiern hörbar). */
+
+/** Übersetzte EINGEBETTETE Titel. WeakMap, nicht Map: Ein eingebetteter Titel
+ *  ist bei jedem Levelladen ein NEUES Objekt – eine Map hielte alle je
+ *  geladenen für immer fest. Titel aus dem Ordner cacht die Registry selbst.
+ *  `null` = unlesbar/unbekannt (dann bleibt der Automat stumm; der
+ *  'jukebox'-Beweis in validate.ts sagt es im Editor). */
+const embeddedTunes = new WeakMap<object, CompiledTune | null>();
+function tuneOf(entry: PlaylistEntry | undefined): CompiledTune | null {
+  if (entry === undefined) return null;
+  if (typeof entry === 'string') return compiledById(entry) ?? null;
+  const hit = embeddedTunes.get(entry);
+  if (hit !== undefined) return hit;
+  let compiled: CompiledTune | null = null;
+  try {
+    compiled = compileTune(entry);
+  } catch {
+    compiled = null;
+  }
+  embeddedTunes.set(entry, compiled);
+  return compiled;
+}
+
+/** Titel zurückspulen (Titelwechsel, Levelstart, Rückkehr aus dem Hintergrund). */
+function rewindJukebox(j: Jukebox): void {
+  j.epoch = null;
+  j.scheduledS = 0;
+  j.bpm = undefined;
+}
+
+function updateJukeboxes(nowMs: number): void {
+  if (!world || !world.jukeboxes.length) return;
+  const b = world.ball;
+  // ES SPIELT DER NÄCHSTE. Der Musik-Bus ist EINER, und das ist Absicht: Zwei
+  // Automaten gleichzeitig wären Krach ohne Richtung – und die Richtung ist
+  // hier der Sinn (ein Wahrzeichen, an dem man sich orientiert). Dasselbe
+  // Muster wie beim Loch-Grollen und beim Wächter: Es klingt, was zählt.
+  let nearest: Jukebox | null = null;
+  let nearestD = Infinity;
+  for (const j of world.jukeboxes) {
+    const d = Math.hypot(j.x - b.x, j.y - b.y);
+    if (d < nearestD) {
+      nearestD = d;
+      nearest = j;
+    }
+  }
+  for (const j of world.jukeboxes) if (j !== nearest) rewindJukebox(j);
+  if (!nearest) return;
+
+  const closeness = Math.max(0, 1 - nearestD / MUSIC_HEAR) * nearest.volume;
+  const tune = tuneOf(nearest.playlist[nearest.index]);
+  const playing = state === 'playing' && audio.running && tune !== null && closeness > 0.02;
+  audio.setMusic(playing ? closeness : 0, nearest.x - b.x, nearest.y - b.y);
+  if (!playing || !tune) {
+    nearest.bpm = undefined;
+    return;
+  }
+  nearest.bpm = tune.bpm;
+
+  const now = audio.now();
+  if (nearest.epoch === null) {
+    nearest.epoch = now + 0.06;
+    nearest.scheduledS = 0;
+  }
+  // Zurückgekommener Hintergrund-Tab: Wir sind Sekunden hinterher. NICHT
+  // nachplanen – das wären hunderte Noten auf einen Schlag, alle in der
+  // Vergangenheit und damit auf `now` geklemmt. Stattdessen neu ansetzen.
+  if (now - nearest.epoch - nearest.scheduledS > 1) {
+    nearest.epoch = now + 0.06;
+    nearest.scheduledS = 0;
+  }
+  const until = now + MUSIC_LOOKAHEAD_S - nearest.epoch;
+  if (until > nearest.scheduledS) {
+    for (const n of notesAt(tune, nearest.scheduledS, until)) {
+      audio.musicNote(n.voice, n.freq, nearest.epoch + n.atS, n.durS, n.gain * nearest.volume);
+    }
+    nearest.scheduledS = until;
+  }
+  // Ein Titel ohne Loop ist irgendwann durch – dann legt der Automat von
+  // selbst den nächsten auf (das tut eine Jukebox). Eine halbe Sekunde
+  // Nachklang, damit der Titelwechsel nicht die letzte Note abschneidet.
+  if (!tune.loop && nearest.scheduledS > tune.durationS + 0.5) skipJukebox(nearest, 0, nowMs, true);
+}
+
+/** Anrempeln: nächster Titel. Der Plattenkratzer ist kein Schmuck – er sagt
+ *  „ich habe verstanden", noch bevor der neue Titel einsetzt. */
+function skipJukebox(j: Jukebox, hard01: number, nowMs: number, auto = false): void {
+  if (!world) return;
+  if (j.lastSkip !== undefined && nowMs - j.lastSkip < SKIP_DEBOUNCE_MS) return;
+  j.lastSkip = nowMs;
+  audio.stopMusic();
+  // Kein Kratzer, wenn der Automat von selbst weiterlegt – niemand hat ihn
+  // angestoßen. Der Titelname erscheint trotzdem: Er ist die Information.
+  if (!auto) audio.scratch(hard01, j.x - world.ball.x, j.y - world.ball.y);
+  j.index = advance(j.playlist, j.index);
+  rewindJukebox(j);
+  const next = tuneOf(j.playlist[j.index]);
+  if (next) flash(`♫ ${next.title}`);
+}
+
 // Echo-Ping: Umgebung im Radius aufdecken (als Wellenfront) und die
 // Reflexionen verzögert & räumlich zurückkommen lassen.
 function firePing(now: number): void {
@@ -947,8 +1065,14 @@ function firePing(now: number): void {
     if (dist > PING_RANGE) continue;
     w.litFrom = now + (dist / PING_SPEED) * 1000;
     w.litUntil = w.litFrom + 1000;
-    // Schiebewände antworten tiefer, steinerner als normale Wände.
-    reflections.push({ dx: cx - b.x, dy: cy - b.y, dist, freq: w.slide ? 500 : 950 });
+    // Schiebewände antworten tiefer, steinerner als normale Wände; der
+    // Jukebox-Kasten hohl-hölzern dazwischen (er IST ein Möbel).
+    reflections.push({
+      dx: cx - b.x,
+      dy: cy - b.y,
+      dist,
+      freq: w.jukebox !== undefined ? 620 : w.slide ? 500 : 950,
+    });
   }
   for (const h of world.holes) {
     const dist = Math.max(0, Math.hypot(b.x - h.x, b.y - h.y) - h.r);
@@ -1515,6 +1639,7 @@ function mpCheckResult(): void {
   audio.setIce(0);
   audio.setFog(0);
   audio.setAnchor(0, 0, 0);
+  audio.stopMusic();
   const mine = mp.localElapsed ?? 0;
   const theirs = mp.remote.elapsed ?? 0;
   let title: string;
@@ -1611,6 +1736,7 @@ function frame(now: number): void {
 
   updateHoles(now);
   updateSlidingWalls(now);
+  updateJukeboxes(now);
   world.pings = world.pings.filter((p) => ((now - p.start) / 1000) * p.speed < p.range);
 
   if (state === 'playing') {
@@ -1637,6 +1763,12 @@ function frame(now: number): void {
       if (intensity <= 0.06) continue;
       audio.hit(intensity, hit.nx, hit.ny);
       haptics.hit(intensity);
+      // Jukebox angerempelt: nächster Titel. Ein Streifschuss zählt nicht –
+      // sonst schaltet ein an der Kante entlangrollender Ball durch.
+      if (wall.jukebox !== undefined && intensity > 0.1) {
+        const box = world.jukeboxes[wall.jukebox];
+        if (box) skipJukebox(box, intensity, now);
+      }
       // Brüchige Wand: knirscht bei kräftigen Treffern, stürzt irgendwann ein.
       if (wall.hp !== undefined && intensity > 0.2) {
         wall.hp--;
@@ -2082,6 +2214,19 @@ function frame(now: number): void {
   (window as unknown as { __tiltrFp?: unknown }).__tiltrFp = fpOn()
     ? { heading: fpState.heading, turnRate: fpState.turnRate, view: renderer.lastView }
     : null;
+  if (world.jukeboxes.length) {
+    // Es klingt immer nur EINER (der nächste) – und nur der hat ein bpm.
+    const live = world.jukeboxes.find((j) => j.bpm !== undefined) ?? null;
+    (window as unknown as { __tiltrJukebox?: unknown }).__tiltrJukebox = {
+      boxes: world.jukeboxes.length,
+      index: live?.index ?? null,
+      title: live ? (tuneOf(live.playlist[live.index])?.title ?? null) : null,
+      tracks: live?.playlist.length ?? 0,
+      ...audio.musicState(),
+    };
+  } else {
+    (window as unknown as { __tiltrJukebox?: unknown }).__tiltrJukebox = null;
+  }
   (window as unknown as { __tiltrGhost?: unknown }).__tiltrGhost = ghost
     ? { time: ghost.time, active: ghostPos !== null }
     : null;

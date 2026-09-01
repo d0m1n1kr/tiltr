@@ -6,12 +6,14 @@
 // sind im Öffner-Fixpunkt Tür-Öffner wie Schlüssel/Platten. Glasboden und
 // Sog-Anker können konservativ als gesperrte Zellen modelliert werden
 // (hazardsBlocked) – so wird bewiesen, dass sie nie auf einem Pflichtweg
-// liegen.
+// liegen. Jukebox-Zellen sind dagegen IMMER gesperrt: Der Automat ist ein
+// massiver Kasten, keine Gefahr, die man umgehen könnte.
 
 import { generateMaze, mirrorCells, setWall, type Cell } from '../core/maze';
+import { MUSIC_IDS } from '../music';
 import { mulberry32 } from '../core/rng';
 import { loadLevel } from './loader';
-import { parseLevel, type DoorDef, type FloorDef, type LevelDef } from './schema';
+import { parseLevel, type DoorDef, type FloorDef, type JukeboxDef, type LevelDef } from './schema';
 
 export interface CellConfig {
   brittleOpen: boolean;
@@ -31,6 +33,15 @@ export interface CellConfig {
    * eine Ende-zu-Ende-Durchquerung ohne Zuflucht dagegen nicht.
    */
   guardSafe?: boolean;
+  /**
+   * Jukebox-Zellen, die AUSNAHMSWEISE als passierbar gelten. Normalfall:
+   * Ein Automat ist ein massiver Kasten, seine Zelle ist in JEDEM Modell
+   * dicht (anders als Glas/Anker, die nur konservativ gesperrt werden) –
+   * sonst stempelte der Editor ein Level grün, dessen einziger Weg durch das
+   * Möbel führt. Die Ausnahme braucht nur der 'jukebox'-Check selbst, um zu
+   * sagen, WELCHER Automat im Weg steht.
+   */
+  openJukeboxCells?: Set<string>;
 }
 
 export interface StartPos {
@@ -154,6 +165,11 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
             .filter((e) => e.type === 'glass' || e.type === 'anchor')
             .map((e) => e.cell[1] * f.size[0] + e.cell[0])
         : []),
+      // Jukebox: massiver Kasten, immer dicht (siehe CellConfig).
+      ...f.elements
+        .filter((e): e is JukeboxDef => e.type === 'jukebox')
+        .filter((e) => !cfg.openJukeboxCells?.has(cellKey(fi, e.cell)))
+        .map((e) => e.cell[1] * f.size[0] + e.cell[0]),
     ]),
     // Wächterzellen: für normale Schritte gesperrt, über die Wächter-Kanten
     // unten aber betretbar (Schlüssel dürfen auf einer Patrouille liegen).
@@ -259,6 +275,10 @@ export function directedDistances(
   const currents = new Map(
     floor.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * cols + c.cell[0], c.dir]),
   );
+  // Ein Automat steht auch dem Zeitschloss-Weg im Weg.
+  const solid = new Set(
+    floor.elements.filter((e) => e.type === 'jukebox').map((e) => `${e.cell[0]},${e.cell[1]}`),
+  );
   const dist = new Map<string, number>([[`${from[0]},${from[1]}`, 0]]);
   const queue: Array<[number, number]> = [[from[0], from[1]]];
   while (queue.length) {
@@ -272,6 +292,7 @@ export function directedDistances(
       const target = currents.get(ny * cols + nx);
       if (target && dir === OPPOSITE[target]) return; // nie gegen den Strom hinein
       const k = `${nx},${ny}`;
+      if (solid.has(k)) return;
       if (!dist.has(k)) {
         dist.set(k, d + 1);
         queue.push([nx, ny]);
@@ -288,7 +309,17 @@ export function directedDistances(
 /* --- Level-Prüfbericht (Editor-Badges; die Testsuite nutzt die Bausteine
        oben direkt für schärfere, gezielte Assertions) ---------------------- */
 
-export type CheckKey = 'load' | 'links' | 'goal' | 'openers' | 'timer' | 'softlock' | 'hazards' | 'guards' | 'items';
+export type CheckKey =
+  | 'load'
+  | 'links'
+  | 'goal'
+  | 'openers'
+  | 'timer'
+  | 'softlock'
+  | 'hazards'
+  | 'guards'
+  | 'jukebox'
+  | 'items';
 
 export interface CheckResult {
   key: CheckKey;
@@ -443,8 +474,73 @@ export function validateLevel(raw: unknown): CheckResult[] {
   });
   push('guards', guardsOk, guardsDetail);
 
-  // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.
+  // Beide letzten Checks arbeiten im offenen Modell (Türen offen, brüchige
+  // Wände zählen als Durchgang) – EIN BFS für beide.
   const open = reachable(def, { brittleOpen: true, doorsOpen: true });
+
+  // Jukebox: Der Automat ist ein MÖBEL, kein Riegel – und er muss anrempelbar
+  // sein, sonst ist er stumme Deko. Vier Klassen von Fehlern, die der
+  // 'goal'-Check nicht benennen könnte (er wird zwar auch rot, sagt aber
+  // nicht, WARUM):
+  //   1. steht auf Start oder Ziel,
+  //   2. versiegelt den Pflichtweg (Ziel ohne ihn erreichbar, mit ihm nicht),
+  //   3. ist von keiner erreichbaren Zelle aus erreichbar (nicht anrempelbar),
+  //   4. liegt auf einer Wächter-Patrouille (der Wächter liefe durch das Möbel),
+  //   5. nennt einen Titel, den es nicht gibt.
+  const jukes: Array<{ fl: number; el: JukeboxDef }> = [];
+  def.floors.forEach((floor, fl) => {
+    for (const el of floor.elements) if (el.type === 'jukebox') jukes.push({ fl, el });
+  });
+  let jbOk = true;
+  let jbDetail: string | undefined;
+  // Der ERSTE Grund bleibt stehen, nicht der letzte: Ein Automat auf dem Ziel
+  // versiegelt zwangsläufig auch den Pflichtweg – dann ist „Ziel" die
+  // Ursache und „im Pflichtweg" nur die Folge.
+  const jbFail = (detail: string) => {
+    jbOk = false;
+    jbDetail ??= detail;
+  };
+  if (jukes.length) {
+    const at = (fl: number, el: JukeboxDef) => `E${fl + 1} (${el.cell})`;
+    for (const { fl, el } of jukes) {
+      const floor = def.floors[fl]!;
+      if (floor.start[0] === el.cell[0] && floor.start[1] === el.cell[1]) jbFail(`Start ${at(fl, el)}`);
+      if (floor.goal && floor.goal[0] === el.cell[0] && floor.goal[1] === el.cell[1]) jbFail(`Ziel ${at(fl, el)}`);
+      for (const line of patrolLines(floor)) {
+        if (line.some((c) => c[0] === el.cell[0] && c[1] === el.cell[1])) jbFail(`Wächter ${at(fl, el)}`);
+      }
+      for (const entry of el.playlist) {
+        if (typeof entry === 'string' && !MUSIC_IDS.includes(entry)) jbFail(`Titel „${entry}" unbekannt`);
+      }
+      // Anrempelbar: mindestens eine Nachbarzelle ist erreichbar UND die Kante
+      // dorthin ist offen (hinter einer Wand rempelt man die Wand, nicht den
+      // Automaten).
+      const cells = buildFloorCells(floor, { brittleOpen: true, doorsOpen: true }, def.mirror);
+      const [cols, rows] = floor.size;
+      const c = cells[el.cell[1] * cols + el.cell[0]]!;
+      const reachableNeighbour = NEIGHBORS.some(([dir, dx, dy]) => {
+        const nx = el.cell[0] + dx;
+        const ny = el.cell[1] + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || c[dir]) return false;
+        return open.has(cellKey(fl, [nx, ny]));
+      });
+      if (!reachableNeighbour) jbFail(`unerreichbar ${at(fl, el)}`);
+    }
+    // Versiegelt einer den Pflichtweg? Erst global prüfen (ein BFS), dann den
+    // Schuldigen einzeln suchen – so kostet der Normalfall nichts.
+    const allOpen = new Set(jukes.map(({ fl, el }) => cellKey(fl, el.cell)));
+    if (!open.has(goalKey) && reachable(def, { brittleOpen: true, doorsOpen: true, openJukeboxCells: allOpen }).has(goalKey)) {
+      for (const { fl, el } of jukes) {
+        const one = new Set([cellKey(fl, el.cell)]);
+        if (reachable(def, { brittleOpen: true, doorsOpen: true, openJukeboxCells: one }).has(goalKey))
+          jbFail(`im Pflichtweg ${at(fl, el)}`);
+      }
+      if (jbOk) jbFail('im Pflichtweg');
+    }
+  }
+  push('jukebox', jbOk, jbDetail);
+
+  // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.
   let itemsOk = true;
   let itemsDetail: string | undefined;
   def.floors.forEach((floor, fl) => {

@@ -143,6 +143,7 @@ On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 | Echo crystal | bottled ping: collecting it grants +1 echo ping, even beyond the round budget; bright single bell tone |
 | Pull anchor | drags you within its radius — always escapable (its force stays below full tilt), but it costs time; electric hum swells with proximity |
 | Glass floor | first roll-over cracks it as a warning, the second shatters it into an open hole; bright crack, then shattering |
+| Jukebox | a music box standing in its cell, playing 8-bit themes (public-domain classics plus tiltr originals) — spatially locatable, so a landmark in the dark. Music masks the clues: the room around it is hard BECAUSE you cannot hear the walls (the echo ping ducks it by ~12 dB so it stays playable). Bump it to skip to the next track — record scratch included. The cabinet is solid, so its cell is sealed |
 | Blind star 🌑 | optional fourth star per campaign level: finish without a single echo ping |
 | Ghost replay | your best time per level rolls along as a faint shimmer (quick game, daily and campaign); stored locally, beaten only by a faster run |
 | Pressure plate | multiplayer element: held, it opens the linked partner door — release and it closes; click on entry, the door audibly slides |
@@ -190,7 +191,9 @@ replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓ 
 M11 echo crystal, pull anchor, glass floor + generator integration ✓ →
 M12a workshop: level editor with live solvability proofs, library &
 in-game preview ✓ → M12b sharing: serverless level links, JSON
-import/export, multi-floor editing ✓
+import/export, multi-floor editing ✓ → M27 the jukebox: a chiptune engine
+(music as note data, not audio files) and a bumpable music box with an
+editor playlist ✓
 
 ---
 

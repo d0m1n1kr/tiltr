@@ -350,205 +350,218 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
-## M27 „Die Jukebox" (Planung)
+## M27 „Die Jukebox" ✓ (v2.4.0)
 
-Ein Spaß-Element: ein Musikautomat, der im Labyrinth steht und 8-Bit-Themen
-spielt. Der Ball kann ihn anrempeln – ein Treffer schaltet auf den nächsten
-Titel. Im Editor bekommt er eine PLAYLIST (mehrere Titel, Reihenfolge =
-Abspielfolge).
+Ein Spaß-Element mit Ernst dahinter: ein Musikautomat, der im Labyrinth STEHT
+und 8-Bit-Themen spielt. Anrempeln schaltet auf den nächsten Titel, im Editor
+bekommt er eine Playlist. Fünf Entscheidungen tragen das Feature – die erste
+ist eine Rechtsfrage, die letzte eine Physikfrage.
 
 ### Die Rechte-Frage zuerst, weil sie den Inhalt bestimmt
 
-Sie ist entschieden, und zwar restriktiv – deshalb steht sie vor allem
-anderen. Der Kern: An einem Musikstück hängen ZWEI getrennte Rechte, und
-eine 8-Bit-Fassung löst nur das falsche.
+An einem Musikstück hängen ZWEI getrennte Rechte, und eine 8-Bit-Fassung löst
+nur das falsche:
 
 | Ebene | Was geschützt ist | Löst 8-Bit das? |
 |---|---|---|
 | Aufnahme | Tonträgerhersteller + Interpreten (§§ 85, 77 UrhG) | **Ja** – wir benutzen keine Aufnahme, wir erzeugen eigene Töne. |
 | Komposition | Melodie/Werk, 70 Jahre nach Tod des Komponisten | **Nein** – vollkommen unberührt. |
 
-Die Chiptune-Fassung ist eine BEARBEITUNG (§ 23 UrhG) und macht es damit
-eher schlechter: Zum Nutzungsrecht am Werk käme das Bearbeitungsrecht. Die
-Melodie ist das am stärksten geschützte Element eines Musikwerks; Stil,
-Instrumentierung und Akkordfolge sind es nicht. Eine erkennbare
-Star-Wars-Melodie mit Square-Wave bleibt die Star-Wars-Melodie.
+Die Chiptune-Fassung ist eine BEARBEITUNG (§ 23 UrhG) und macht es damit eher
+schlechter: Zum Nutzungsrecht am Werk käme das Bearbeitungsrecht. Zwei
+Hoffnungen tragen nicht: „Freie Benutzung" (§ 24 alt) gibt es seit 2021 nicht
+mehr, und § 51a („Pastiche") verlangt eine künstlerische AUSEINANDERSETZUNG –
+ein Titel, der läuft, weil er gut klingt, ist Nutzung. Eine GEMA-Lizenz hilft
+auch nicht: Für die Verbindung von Musik mit Bild liegt das Recht beim Verlag.
+Dazu die asymmetrische Risikorechnung: tiltr liegt auf GitHub Pages unter
+einem persönlichen Account, eine DMCA-Notice geht an GitHub – ein
+Spaß-Element gegen das ganze Projekt ist ein schlechter Tausch.
 
-Zwei Hoffnungen, die hier nicht tragen:
-
-- **„Freie Benutzung"** (§ 24 alt) gibt es seit 2021 nicht mehr. Geblieben
-  ist § 51a (Parodie, Karikatur, **Pastiche**). Pastiche ist offen
-  formuliert und wird für Remix-/Sampling-Kultur diskutiert, verlangt aber
-  eine künstlerische AUSEINANDERSETZUNG mit dem Original. Ein Titel, der
-  läuft, weil er gut klingt und wiedererkannt wird, ist Nutzung, nicht
-  Auseinandersetzung. Dünnes Eis.
-- **Eine GEMA-Lizenz hilft nicht.** Für die Verbindung von Musik mit Bild
-  (Spiel, Film) hält die GEMA das Recht in der Regel nicht – es liegt beim
-  Musikverlag und wird einzeln verhandelt (Sync-Lizenz). Für ein kostenloses
-  Hobbyprojekt praktisch nicht zu bekommen.
-
-Faktisch existieren tausende Fan-Chiptunes ohne Konsequenz – das ist Risiko,
-nicht Erlaubnis. Und das Risiko ist hier asymmetrisch: tiltr liegt auf
-GitHub Pages unter einem persönlichen Account, eine DMCA-Notice geht an
-GitHub, und das Repo kann eingeschränkt oder offline genommen werden. Ein
-Spaß-Element gegen das ganze Projekt ist ein schlechter Tausch. (Dazu käme
-der Titel „Star Wars" im Editor-UI als eigene MARKEN-Frage, unabhängig von
-der Melodie.)
-
-**Die Regel für den Ordner ist deshalb schlicht: Komponist vor 1956
-gestorben ⇒ frei** (70 Jahre p.m.a., gerechnet ab Jahresende; Stand 2026).
-Dass eine moderne Notenedition eigenen Schutz haben kann, ist irrelevant –
-wir schreiben die Notenfolgen selbst. Der mitgelieferte Satz:
-
-- Beethoven – Ode an die Freude, Für Elise
-- Offenbach – Can-Can
-- Rossini – Wilhelm-Tell-Galopp
-- Grieg – In der Halle des Bergkönigs
-- Bach – Toccata d-moll
-- Mozart – Kleine Nachtmusik
-- Dvořák – Humoreske
-- Tschaikowski – Blumenwalzer
-- **Holst – „Mars" aus Die Planeten** († 1934): der Ur-Vorfahre jeder
-  Bedrohungsmusik in Spielen – und genau der Klang, den man meint, wenn man
-  „Star Wars" sagt. Williams hat sich unüberhörbar daran orientiert.
-- **Prokofjew – Tanz der Ritter** († 1953)
-- **Scott Joplin – The Entertainer** († 1917): der perfekte Jukebox-Klimperer
-- **Sousa – Stars and Stripes Forever** († 1932)
-- **Ravel – Boléro** († 1937): Crescendo über Minuten, ideal als Loop
-- **Mussorgski – Eine Nacht auf dem Kahlen Berge** († 1881)
-
-Plus 2–3 Originale („tiltr-Theme", „Aufzugmusik", „Wächter-Tango"). Ein
-Original IM STIL eines Genres ist erlaubt, solange keine geschützte Melodie
-erkennbar übernommen wird – und die Pointe des Elements ist der Krach, nicht
-das Zitat.
+**Die Regel für `src/music/` ist deshalb eine Zahl: Komponist vor 1956
+gestorben ⇒ frei** (70 Jahre p. m. a., ab Jahresende; Stand 2026), oder eigene
+Komposition. Sie steht als README IM Ordner, damit sie am Ort der
+Entscheidung liegt. Ausgeliefert wurden elf Titel: drei Originale
+(tiltr-Theme, Aufzugmusik, Wächter-Tango) und acht gemeinfreie
+(Bach – Toccata d-Moll, Mozart – Kleine Nachtmusik, Beethoven – Für Elise und
+Ode an die Freude, Rossini – Wilhelm-Tell-Galopp, Grieg – In der Halle des
+Bergkönigs, Joplin – The Entertainer, Holst – Mars). Holst ist der
+interessanteste Fund der Recherche: „Mars" ist der Ur-Vorfahre jeder
+Bedrohungsmusik in Spielen – genau der Klang, den man meint, wenn man an
+Weltraum-Fanfaren denkt, und gemeinfrei seit 2005.
 
 ### Entscheidung 1: Die Songs sind DATEN, keine Audiodateien
 
-Ein Titel ist eine Notenfolge (`src/music/<id>.ts`, wenige Zeilen), die der
-bestehende WebAudio-Graph mit 8-Bit-Stimmen spielt (Square/Triangle/Noise) –
-kein mp3, kein Binärasset. Gründe, die hier den Ausschlag geben:
+Ein Titel ist eine Notenzeile (`src/music/<id>.ts`), die der bestehende
+WebAudio-Graph mit 8-Bit-Stimmen spielt. Gründe:
 
-- **Die PWA cacht ALLES vor** (Workbox precache, aktuell 626 KiB). Ein
-  Dutzend mp3-Titel wären Megabytes im Offline-Install; ein Dutzend
-  Notenfolgen sind ein paar KB.
+- **Die PWA cacht ALLES vor** (Workbox precache). Ein Dutzend mp3-Titel wären
+  Megabytes im Offline-Install; die elf Notenfolgen sind **10 KiB Quelltext**
+  (mit Kopfkommentaren). Der Precache wuchs mit dem ganzen Feature von 626 auf
+  662 KiB – Maschine, Element, Editor-Feld und Übersetzungen eingerechnet.
 - Es IST 8-Bit-Musik – nicht die Aufnahme davon.
-- Es passt zum Leitmedium: EIN Synth, EINE Master-Kette, keine zweite
-  Audio-Welt daneben.
-- Rein und deterministisch ⇒ testbar: `notesAt(tune, fromS, toS)` liefert die
-  Noten eines Zeitfensters, `advance(playlist, i)` den nächsten Titel. Units
-  ohne Browser.
+- Rein und deterministisch ⇒ testbar ohne Browser.
 
-Format (bewusst winzig): `{ id, title, bpm, loop: true, tracks: [{ voice:
-'square'|'triangle'|'noise', notes: 'e4:8 g4:8 …' }] }` – Tonhöhe plus
-Notenlänge als Text, damit ein Titel von Hand schreibbar und im Diff lesbar
-bleibt.
+Notenschrift (`src/audio/chiptune.ts`): `e4:8 g4 a4 b4:4 r:2 c5:2.` – Ton plus
+Notenwert-Nenner, Punkt verlängert. Die Länge ist **KLEBRIG**: Fehlt sie, gilt
+die zuletzt genannte. So schreibt man Musik auf, und die Datenzeilen bleiben
+kurz. Dazu `TrackDef.repeat`, weil eine Schlagwerk-Stimme sonst ihren Takt so
+oft ausschreiben müsste, wie der Titel Takte hat (Textwand statt Datei).
+
+Der LOOP wohnt in `notesAt(tune, von, bis)`, nicht im Scheduler: Die Funktion
+liefert die Noten eines Fensters auf der UNENDLICHEN Zeitachse, mit absoluten
+Startzeiten über die Titelgrenze hinweg. Der Aufrufer merkt sich nur, bis
+wohin er geplant hat – ein Zustand, keine Fallunterscheidung.
 
 ### Entscheidung 2: Die Musik kommt AUS der Jukebox (räumlich)
 
-Sie läuft über denselben HRTF-Pfad wie Wächter, Portal und Strömung: Panning
-nach Richtung, Lautstärke nach Entfernung. Damit ist sie keine
+Derselbe HRTF-Pfad wie Wächter, Portal und Strömung: Panning nach Richtung,
+Lautstärke nach Entfernung (quadratisch, Deckel 0,5). Damit ist sie keine
 Hintergrundmusik, sondern ein **akustisches Wahrzeichen** – man kann sich an
-ihr orientieren. Das ist die tiltr-igste Eigenschaft des ganzen Features.
+ihr orientieren. Und weil es EINEN Musik-Bus gibt, klingt immer nur der
+NÄCHSTE Automat; zwei gleichzeitig wären Krach ohne Richtung. Dasselbe Muster
+wie beim Loch-Grollen und beim Wächter: Es klingt, was zählt.
+
+Geplant wird in der AUDIO-Uhr (`ctx.currentTime`), nicht in
+`performance.now()` – die beiden driften, und nach Wanduhr gesetzte Noten
+eiern hörbar. Lookahead: 250 ms (überbrückt jeden Frame-Ruckler, hält den
+Titelwechsel aber straff, weil er das Eingeplante wegwirft).
 
 ### Entscheidung 3: Musik ist in DIESEM Spiel Störung – und genau das ist der Witz
 
 tiltr navigiert über Klang. Musik verdeckt die Hinweise. Das ist kein Fehler,
 sondern die Pointe: Der Jukebox-Raum ist schwer, WEIL man die Wände nicht
-hört. Zwei Regler halten es faire:
+hört. Zwei Regler halten es fair:
 
-- **Ducking:** Während Echo-Ping und Reflexionen klingen, senkt der
-  Musik-Bus um ~12 dB (Sidechain, ~400 ms Rückkehr). Der Ping bleibt lesbar.
-- **Entfernung:** Die Lautstärke fällt mit dem Abstand – es ist ein lokales
-  Problem, kein globales.
+- **Ducking (Sidechain):** Der Echo-Ping drückt den Musik-Bus auf 0,25
+  (≈ -12 dB), hält 500 ms und lässt ihn über 400 ms zurückkommen. `musicDuck`
+  und `musicVol` sind zwei GETRENNTE Gains – sonst überschrieben sich
+  Ping-Rampe und nachgeführte Entfernung gegenseitig.
+- **Entfernung:** Es ist ein lokales Problem, kein globales.
 
-Und der Rempler bekommt eine zweite Bedeutung: Anrempeln ist, wie man mit
-dem Krach umgeht.
+Und der Rempler bekommt eine zweite Bedeutung: Anrempeln ist, wie man mit dem
+Krach umgeht.
 
 ### Entscheidung 4: Der Rempler fällt aus der bestehenden Physik heraus
 
-Die Jukebox ist ein massiver Kasten in ihrer Zelle – gebaut aus dem
-vorhandenen Wand-Mechanismus (`world.walls`), nur mit `jukebox`-Marke am
-Rechteck. Damit sind Kollision, Echo-Aufleuchten und der Treffer-Klang
-GRATIS; die Spielschleife sieht den Treffer schon heute in `hits` und liest
-`hit.wall.jukebox` – daraus wird „nächster Titel". Kein neuer Kollisionstyp.
+Die Jukebox ist ein massiver Kasten aus dem vorhandenen Wand-Mechanismus
+(`Wall.jukebox` = Index in `world.jukeboxes`). Kollision, Echo-Aufleuchten und
+Treffer-Klang sind damit GRATIS; die Spielschleife liest `hit.wall.jukebox`
+und schaltet weiter (entprellt, und erst ab Anschlagstärke 0,1 – ein
+Streifschuss soll nicht durchschalten).
 
-Wichtige Folge, die ins Beweismodell muss: Die Zelle ist damit
-UNPASSIERBAR. Bei CELL=100 und BALL_R=22 (Durchmesser 44) bliebe neben einem
-mittigen Kasten nur (100−w)/2 Rest – für einen Durchgang müsste der Kasten
-schmaler als 12 Einheiten sein, also unsichtbar klein. Ein Möbelstück
-blockiert seine Zelle, Punkt. Deshalb:
+**Die Folge gehört ins Beweismodell, und zwar stärker als geplant.** Bei
+CELL=100 und Ball-Durchmesser 44 bleiben neben dem Kasten (Einzug 12)
+sieben Einheiten Luft – die Zelle ist DICHT. Das ist keine Gefahr, die man
+umgehen könnte, sondern eine Wand. Deshalb gilt eine Jukebox-Zelle in JEDEM
+Erreichbarkeits-Modell als gesperrt (nicht nur konservativ wie Glas und
+Anker über `hazardsBlocked`) – auch im Zeitschloss-Beweis
+(`directedDistances`). Ein Automat auf dem einzigen Weg macht damit
+zwangsläufig das `goal`-Badge rot, wie es die Wahrheit ist.
 
-- `validate.ts` bekommt einen `jukebox`-Check nach dem Muster von `hazards`
-  und `guards`: Die Jukebox-Zelle gilt als blockiert, und das Level muss
-  OHNE sie lösbar sein. Sonst könnte der Editor ein Level grün stempeln,
-  dessen einziger Weg durch das Möbel führt.
-- Damit ist die Jukebox ein Deko-/Spaß-Element in Nischen und weiten Räumen,
-  nie ein Riegel – und der Editor sagt es sofort mit einem Badge.
+Der zusätzliche `jukebox`-Check sagt, WARUM – fünf Klassen, die `goal` nicht
+benennen könnte: steht auf Start oder Ziel · versiegelt den Pflichtweg (Ziel
+ohne ihn erreichbar, mit ihm nicht; der Schuldige wird einzeln gesucht) · ist
+von keiner erreichbaren Zelle anrempelbar (ein Automat, den man nicht treffen
+kann, ist stumme Deko) · liegt auf einer Wächter-Patrouille (der Wächter liefe
+durch das Möbel) · nennt einen Titel, den es nicht gibt. Es bleibt der ERSTE
+Grund stehen, nicht der letzte: Ein Automat auf dem Ziel versiegelt
+zwangsläufig auch den Pflichtweg – dann ist „Ziel" die Ursache und „im
+Pflichtweg" nur die Folge.
 
 ### Entscheidung 5: Geschützte Titel gehören ins LEVEL, nicht ins Repo
 
-Der Ausweg, der die Jukebox nicht beschneidet und den Deploy trotzdem clean
-hält: Ein Playlist-Eintrag darf ZWEI Formen haben – eine Registry-ID aus
-`src/music/` **oder** eine im Level-Def eingebettete Notenfolge. Damit gilt:
+Ein Playlist-Eintrag hat zwei Formen: eine Registry-ID aus `src/music/` ODER
+ein im Level-Def EINGEBETTETER Titel. Ausgeliefert und vorgecacht wird nur
+der sichere Satz; wer sein eigenes Thema will, trägt es in SEIN Level ein –
+es reist im `#level=`-Token und landet nie in diesem Repo. Ein eingebetteter
+Titel geht durch dasselbe zod-Schema, und dessen `refine` ruft den PARSER:
+Ein Tippfehler im Ton knallt beim Laden, nicht als Stille im Level.
 
-- Ausgeliefert und vorgecacht wird ausschließlich der sichere Satz.
-- Wer sein eigenes Thema will, schreibt es in SEIN Level. Es reist im
-  `#level=`-Token (gemeinsamer deflate-Pfad), landet nie in diesem Repo und
-  nie im Precache – die Rechtsfrage liegt bei dem, der es tut.
-- Es kostet fast nichts, weil Titel ohnehin Daten sind. Genau dafür war
-  Entscheidung 1 gut: Ein eingebetteter Titel ist derselbe Typ wie ein
-  mitgelieferter, nur inline statt referenziert.
+### Editor
 
-Ein eingebetteter Titel geht durch dasselbe zod-Schema wie ein
-mitgelieferter (Stimmen, Notenlängen, Obergrenze für Notenzahl, damit ein
-Token nicht explodiert) – der Editor stempelt ihn also mit denselben Badges.
+Neuer Feldtyp „Mehrfachauswahl": Häkchenliste über die mitgelieferten Titel,
+▶ pro Titel zum Vorhören (über denselben Musik-Bus wie im Spiel, eine Quelle:
+`previewTune`), plus die im Level eingebetteten Titel als Zeilen mit dem
+Vermerk „im Level". Die Ziffer vor dem Titel ist die ABSPIELFOLGE (Reihenfolge
+des Anhakens), nicht die Listenposition – sonst wäre die Reihenfolge, die das
+Format trägt, unsichtbar. Die Schema-Grenzen (min. 1, max. 8) fängt der Editor
+ab, statt das Level bis zum Wiederanhaken unladbar zu machen.
 
-### Umfang
+### Tests
 
-**M27a – Musik-Maschine**
-- `src/audio/chiptune.ts`: Notenformat, Parser, `notesAt()` (rein, Units),
-  Lookahead-Scheduler (~200 ms im Audio-Takt, kein setTimeout pro Note),
-  8-Bit-Stimmen, Musik-Bus mit Ducking + Panner.
-- `src/music/`: der Ordner mit den Titeln + `index.ts` (Registry: id →
-  Titelname für Editor und Galerie) + `README.md` mit der Regel aus der
-  Rechte-Frage (was hier hereindarf und warum).
-- Units: Parser (Tonhöhen, Längen, Pausen), `notesAt` an Fenstergrenzen,
-  Loop-Übergang, `advance()` mit Umlauf, leere Playlist, eingebetteter
-  Titel = mitgelieferter Titel (dieselbe Wiedergabe, dieselben Grenzen).
+`tests/chiptune.test.ts` (24 Units) nagelt die Notenschrift und das
+Scheduler-Fenster fest: klebrige Länge, punktierte Werte, Pausen verbrauchen
+Zeit, `repeat`, Fensterränder (links inklusiv, rechts exklusiv), der
+Loop-Übergang mit absoluten Zeiten, `loop:false`.
+`tests/music.test.ts` (61) prüft den INHALT des Ordners – und die wichtigste
+Invariante ist eine, die man in der Datei nicht sieht: **alle Stimmen eines
+Titels müssen gleich lang sein**, sonst wird es hinten dünn oder es klafft ein
+stummes Loch vor dem Loop (die Toccata hatte genau das: Pedal 29 Beats,
+Melodie 26).
+`tests/jukebox.test.ts` (16) deckt Geometrie und Beweismodell ab. Die
+Gegenprobe zeigte, warum die Geometrie-Zusicherung die wichtigere ist: Mit
+Einzug 46 blockiert der Kasten einen MITTIGEN Anlauf weiterhin – erst der
+Sweep über sieben Versätze quer durch die Zelle findet den Schleichweg am
+Rand. Drei Sabotagen einzeln rot gesehen (Einzug 46, Jukebox aus dem
+`blocked`-Set, `directedDistances` ohne das Möbel).
 
-**M27b – Element**
-- `jukeboxDef` im Schema: `cell`, `playlist` (min. 1 Eintrag; je Eintrag
-  eine bekannte Registry-ID ODER ein eingebetteter Titel, siehe
-  Entscheidung 5), `volume?`, `startIndex?`.
-- Loader: Kasten als Wand mit `jukebox`-Marke; `world.jukeboxes` für Position
-  und Zustand (aktueller Titel, Laufzeit).
-- app: Treffer ⇒ nächster Titel (+ „Plattenkratzer"-Klang; harter Treffer
-  zieht die Tonhöhe kurz nach unten, wie ein aus dem Takt geworfener
-  Plattenspieler). Pro Frame Entfernung/Richtung an den Musik-Bus.
-- `validate.ts`: `jukebox`-Check (Zelle blockiert, Level ohne sie lösbar).
-- Galerie-Eintrag mit Klang-Demo, Weltfarbe (Vorschlag: warmes Magenta-Rosa
-  – nahe der Portal-Familie, aber eigenständig), Renderer-Visual (Kasten mit
-  zwei „Lautsprecher"-Punkten, blinkt im Takt).
+E2E-Lauf 21 fährt den Automaten im Spiel: Er spielt von selbst, die
+Lautstärke steigt mit der Nähe, der Ping duckt und lässt zurückkommen, ein
+Rempler schaltet den Titel weiter (mit Plattenkratzer und Titelname im
+Status), der zweite läuft im Kreis – und über den ganzen Rempel-Vorgang kommt
+der Ball nie über die Kastenoberkante. Lauf 21b prüft den Editor: Badge rot
+bei einem Möbel im Pflichtweg, Teilen gesperrt, die Playlist-Liste mit
+Abspielfolge, ▶ und die Sperre gegen das Abwählen des letzten Titels.
 
-**M27c – Editor + Release**
-- Neuer Feldtyp „Mehrfachauswahl" im Eigenschaften-Panel: Titelliste mit
-  Häkchen (Reihenfolge = Abspielfolge) und ▶ pro Titel zum Vorhören – der
-  Auswahl-Kopf hat seit M24 schon „🔊 Anhören" für das Element selbst.
-  Eingebettete Titel eines importierten Levels stehen mit in der Liste
-  (als „im Level", nicht löschbar über die Häkchen der Registry).
-- i18n ×4 (~10 Schlüssel + Titelnamen), Galerie-Text, README/DESIGN.
-- E2E: Level mit Jukebox importieren, Titel wechseln durch Rempeln
-  (`window.__tiltrJukebox` legt Titelindex und Musik-Gain offen), Ducking
-  beim Ping messbar, Badge rot bei Jukebox auf dem Pflichtweg.
-- Release 2.4.0.
+### Was beim Bauen auffiel
 
-### Entschieden (2026-09-01)
+**Ein Schnappschuss-Haken lügt, ein Getter sagt die Wahrheit.** Zweimal
+dieselbe Klasse: `__tiltrJukebox` hängt am Frame-Haken, und die Spielschleife
+steigt im Menü früh aus – der Haken behielt also den letzten Spielstand, und
+„schweigt der Automat im Menü?" war damit nicht prüfbar (er meldete vol 0,31,
+obwohl der Bus zu war). Genauso stand `__tiltrEd.shareable` immer EINEN
+Prüflauf hinterher, weil `validateLevel` entprellt (250 ms) NACH `paint()`
+läuft. Beides jetzt als Getter (`__tiltrMusic` wie `__tiltrWake`,
+`get shareable()`), die den echten Zustand lesen.
 
-Inhalt und Rechte-Politik stehen (siehe oben): mitgelieferter Satz =
-gemeinfrei + eigene Chiptunes, geschützte Titel niemals im Repo, sondern
-höchstens eingebettet im Level eines Dritten. Damit ist M27 bereit zum
-Bauen; offen sind nur noch Tuning-Werte (Ducking-Tiefe, Entfernungs-Abfall,
-Lautstärke je Titel), die beim Playtest fallen.
+**Ein Ball, der am Kasten LIEGT, erzeugt keinen Anschlag.** Der erste
+E2E-Rempler lief 3 Sekunden gegen den Automaten, ohne den Titel zu wechseln:
+Die Physik meldet einen Treffer nur bei Annäherungsgeschwindigkeit. Der Lauf
+holt jetzt erst Abstand (Nordost-Ecke der Zelle) und stößt dann zu – und er
+wartet auf den Titelwechsel statt auf eine Zeit, weil Physik nicht taktfest
+ist.
+
+**Eine Zusicherung, die aus dem falschen Grund grün ist.** „Teilen ist
+gesperrt, solange das Möbel im Weg steht" war auch ohne den `jukebox`-Check
+erfüllt – im blockierten Level ist ohnehin `goal` rot. Der Sabotage-Lauf zeigte
+es: Der Check ließ sich abschalten, ohne diese Klausel rot zu machen. Ersetzt
+durch die GEGENPROBE, die nur der neue Check tragen kann: derselbe Automat in
+einer Nische, Badge grün und teilbar.
+
+**„Mehr Klangquellen als vorher" ist wertlos, wenn Musik läuft.** Der
+Plattenkratzer war zuerst über den Quellenzähler geprüft – der wächst aber
+laufend, weil jede Note eine Quelle ist. Jetzt zählt `musicState().scratches`
+die Kratzer selbst.
+
+**Der Rest waren Kleinigkeiten mit Lehrgeld:** Der Einfüge-Bereich der
+Werkstatt ist ein UMSCHALTER (der zweite Klick klappt ihn zu), „Bearbeiten"
+bestätigt per Zwei-Tap, solange ein Draft liegt (M15), und eine Nische muss
+aus `maze.add` HERAUS und in `carve` HINEIN – `add` läuft nach `carve` und
+mauert sonst wieder zu.
+
+### Offen (bewusst)
+
+Kein Kampagnen-Level mit Jukebox – das Element ist über Galerie und Werkstatt
+erreichbar, ein eigenes Level wäre eine Design-Aufgabe für sich (und der
+Automat wäre in einem Pflichtweg-Level nur Deko, weil er nie ein Riegel sein
+darf).
+
+Der Titelindex wird im Multiplayer NICHT synchronisiert: Jeder hört seinen
+nächsten Automaten und seinen eigenen Titel. Das ist bewusst – die Jukebox ist
+kein Teil des Rätsels (sie darf nie ein Riegel sein), und ein
+Netzwerk-Roundtrip für „welches Lied läuft" wäre Aufwand ohne Spielwert. Die weiteren gemeinfreien Kandidaten aus der Recherche liegen bereit:
+Offenbach (Can-Can), Prokofjew (Tanz der Ritter), Sousa, Ravel (Boléro als
+Loop), Mussorgski, Dvořák, Tschaikowski.
 
 ## M26 „Konfetti" ✓ (v2.3.0)
 

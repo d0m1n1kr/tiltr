@@ -127,6 +127,7 @@ export const de = {
   'ed.check.hazards': 'Gefahren abseits',
   'ed.check.guards': 'Wächter passierbar',
   'ed.check.items': 'Sammelziele frei',
+  'ed.check.jukebox': 'Jukebox frei',
   'ed.f.dir': 'Richtung',
   'ed.f.force': 'Kraft',
   'ed.f.speed': 'Tempo (px/s)',
@@ -144,6 +145,11 @@ export const de = {
   'ed.relinked': 'Öffner umgehängt auf',
   'ed.orphaned': 'Öffner ohne Tür – siehe Badge „Verknüpfungen".',
   'ed.f.duration': 'Timer (s)',
+  'ed.f.playlist': 'Playlist',
+  'ed.f.volume': 'Lautstärke',
+  'ed.f.embedded': 'im Level',
+  'ed.playlistMin': 'Mindestens ein Titel',
+  'ed.playlistMax': 'Höchstens acht Titel',
   'ed.f.offset': 'Versatz (s)',
   'ed.f.openS': 'Offen (s)',
   'ed.f.closedS': 'Zu (s)',
@@ -373,6 +379,9 @@ export const de = {
   'el.glass.title': 'Glasboden',
   'el.glass.desc':
     'Eine Bodenzelle aus Glas: Beim ersten Überrollen knackt sie warnend, beim zweiten zerbricht sie – und wird zum offenen Loch, in das du stürzt. Einmal ist frei, zweimal ist gefallen. Signatur: helles Knacken, dann Splittern.',
+  'el.jukebox.title': 'Jukebox',
+  'el.jukebox.desc':
+    'Ein Musikautomat, der in seiner Zelle steht und 8-Bit-Themen spielt – räumlich ortbar, also ein Wahrzeichen im Dunkeln. Musik verdeckt hier die Hinweise: Der Raum um ihn ist schwer, WEIL man die Wände nicht hört. Anrempeln schaltet auf den nächsten Titel. Der Kasten ist massiv, seine Zelle also dicht.',
 
   /* --- Welten & Level --- */
   'world.w1': 'Welt 1 – Die Tiefe erwacht',

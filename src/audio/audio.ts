@@ -3,6 +3,29 @@
 // Echo-Ping und Herzschlag. Der Hörer sitzt im Ball; Richtungen kommen als
 // (dx, dy) in Weltkoordinaten.
 
+import type { Voice } from './chiptune';
+
+/** Dämpfung des Musik-Busses während eines Echo-Pings (≈ -12 dB). Musik
+ *  verdeckt in DIESEM Spiel die Hinweise – das ist die Pointe der Jukebox,
+ *  aber der Ping muss lesbar bleiben. */
+const MUSIC_DUCK = 0.25;
+/** So lange bleibt gedämpft, bevor die Musik zurückkommt (Reflexionen
+ *  brauchen bis zu einer halben Sekunde). */
+const MUSIC_DUCK_HOLD = 0.5;
+const MUSIC_DUCK_RELEASE = 0.4;
+
+/** Was hört man gerade von der Jukebox? Test-Haken (window.__tiltrJukebox). */
+export interface MusicDebug {
+  /** Sidechain-Dämpfung: 1 = frei, MUSIC_DUCK = unter dem Ping */
+  duck: number;
+  /** Entfernungs-Lautstärke des Automaten (0 = außer Hörweite) */
+  vol: number;
+  /** Insgesamt eingeplante Noten seit Start (wächst, solange Musik läuft) */
+  notes: number;
+  /** Wie oft der Plattenkratzer geklungen hat (Titelwechsel) */
+  scratches: number;
+}
+
 export interface PingReflection {
   dx: number;
   dy: number;
@@ -59,6 +82,18 @@ export class GameAudio {
   private rivalGain!: GainNode;
   private rivalFilter!: BiquadFilterNode;
   private rivalPanner!: PannerNode;
+  /** Musik-Bus: Note -> duck (Sidechain) -> vol (Entfernung) -> HRTF-Panner.
+   *  Die Musik kommt AUS der Jukebox, nicht vom Schirm – sie ist damit ein
+   *  akustisches Wahrzeichen, an dem man sich orientieren kann. */
+  private musicDuck!: GainNode;
+  private musicVol!: GainNode;
+  private musicPanner!: PannerNode;
+  /** 25-%-Pulswelle: die Stimme der NES-Ära (reines 'square' ist 50 %). */
+  private pulseWave: PeriodicWave | null = null;
+  /** Laufende Musikquellen – ein Titelwechsel muss sie SOFORT abwürgen. */
+  private musicSources: Array<OscillatorNode | AudioBufferSourceNode> = [];
+  private musicNotes = 0;
+  private musicScratches = 0;
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
@@ -108,6 +143,23 @@ export class GameAudio {
     this.rivalGain.gain.value = 0;
     this.rivalPanner = this.panner();
     rival.connect(this.rivalFilter).connect(this.rivalGain).connect(this.rivalPanner).connect(this.master);
+
+    // Musik-Bus (Jukebox). Zwei getrennte Gains mit Absicht: `musicDuck` ist
+    // die Sidechain (der Ping drückt sie kurz herunter), `musicVol` die
+    // Entfernung. Getrennt, weil sonst jede Ping-Rampe die gerade
+    // nachgeführte Entfernung überschreiben würde.
+    this.musicDuck = this.ctx.createGain();
+    this.musicDuck.gain.value = 1;
+    this.musicVol = this.ctx.createGain();
+    this.musicVol.gain.value = 0;
+    this.musicPanner = this.panner();
+    this.musicDuck.connect(this.musicVol).connect(this.musicPanner).connect(this.master);
+    // Fourier-Koeffizienten eines 25-%-Pulses: a_n = 2/(nπ) · sin(nπ·d).
+    const harmonics = 24;
+    const real = new Float32Array(harmonics);
+    const imag = new Float32Array(harmonics);
+    for (let n = 1; n < harmonics; n++) imag[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * 0.25);
+    this.pulseWave = this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
     rival.start();
 
     // Windzonen: helles Rauschen -> Bandpass mit Böen-LFO -> Gain -> Panner
@@ -849,6 +901,9 @@ export class GameAudio {
   echoPing(reflections: PingReflection[], opts: PingOptions = {}): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
+    // Musik weicht dem Ping (Sidechain) – vor dem Chirp, damit schon der
+    // Anschlag frei steht.
+    this.duckMusic();
     const chirpGain = opts.chirpGain ?? 0.25;
     if (chirpGain > 0.001) {
       const chirp = this.ctx.createOscillator();
@@ -1086,6 +1141,166 @@ export class GameAudio {
       osc.start(t0);
       osc.stop(t0 + 0.22);
     });
+  }
+
+  /* --- Jukebox: Musik-Bus (M27) --------------------------------------------
+     Die Musik kommt RÄUMLICH aus dem Automaten (derselbe HRTF-Pfad wie
+     Wächter, Portal und Strömung) – damit ist sie keine Hintergrundmusik,
+     sondern ein akustisches Wahrzeichen, an dem man sich orientieren kann.
+     Der Scheduler wohnt in app.ts, hier stehen nur die Stimmen. */
+
+  /** Läuft der Audio-Graph schon? (Der Scheduler plant nur dann.) */
+  get running(): boolean {
+    return this.ctx !== null;
+  }
+
+  /** Die Audio-Uhr. Der Musik-Scheduler MUSS in dieser Zeitbasis planen:
+   *  performance.now() driftet gegen den Audio-Takt, und Noten, die nach
+   *  Wanduhr gesetzt werden, eiern hörbar. */
+  now(): number {
+    return this.ctx?.currentTime ?? 0;
+  }
+
+  /** Entfernung und Richtung des Automaten (pro Frame). closeness01 = 1 direkt
+   *  daneben, 0 = außer Hörweite. */
+  setMusic(closeness01: number, dx: number, dy: number, immediate = false): void {
+    if (!this.ctx) return;
+    // Quadratisch: Musik soll LOKAL bleiben, ein Problem des Raums – nicht des
+    // Levels. 0.5 Deckel, damit sie den Ping nie ganz zudeckt.
+    const target = Math.min(0.5, closeness01 ** 2 * 0.55);
+    // `immediate` für die Vorschau: Dort soll der erste Ton sofort stehen,
+    // im Spiel darf sich die Entfernung nur weich ändern.
+    if (immediate) this.musicVol.gain.setValueAtTime(target, this.ctx.currentTime);
+    else this.musicVol.gain.setTargetAtTime(target, this.ctx.currentTime, 0.12);
+    if (closeness01 > 0) this.place(this.musicPanner, dx, dy);
+  }
+
+  /** EINE Note einplanen. `atS` liegt in der Audio-Zeitbasis (siehe now()). */
+  musicNote(voice: Voice, freq: number, atS: number, durS: number, gain: number): void {
+    if (!this.ctx) return;
+    const t0 = Math.max(this.ctx.currentTime, atS);
+    const g = this.ctx.createGain();
+    // Schnelle Hüllkurve mit kurzem Abfall – 8-Bit-Kanäle haben keinen
+    // weichen Anschlag, und ein Attack über 5 ms nimmt dem Puls den Biss.
+    const peak = gain * (voice === 'noise' ? 0.16 : voice === 'triangle' ? 0.22 : 0.14);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * 0.55), t0 + Math.min(0.12, durS));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + durS);
+    g.connect(this.musicDuck);
+
+    if (voice === 'noise') {
+      const nz = this.ctx.createBufferSource();
+      nz.buffer = this.noiseBuffer('white');
+      const band = this.ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = 1800;
+      band.Q.value = 0.8;
+      nz.connect(band).connect(g);
+      this.noiseCursor = (this.noiseCursor + 0.173) % 1;
+      nz.start(t0, this.noiseCursor * (nz.buffer.duration - 0.3));
+      nz.stop(t0 + durS + 0.02);
+      this.trackMusicSource(nz);
+    } else {
+      const osc = this.ctx.createOscillator();
+      if (voice === 'triangle') osc.type = 'triangle';
+      else if (this.pulseWave) osc.setPeriodicWave(this.pulseWave);
+      else osc.type = 'square';
+      osc.frequency.value = freq;
+      osc.connect(g);
+      osc.start(t0);
+      osc.stop(t0 + durS + 0.02);
+      this.trackMusicSource(osc);
+    }
+    this.musicNotes++;
+  }
+
+  /** Quellen merken, damit ein Titelwechsel sie abwürgen kann – und die Liste
+   *  dabei ausdünnen (sonst wächst sie über einen langen Lauf unbegrenzt). */
+  private trackMusicSource(src: OscillatorNode | AudioBufferSourceNode): void {
+    src.addEventListener('ended', () => {
+      const i = this.musicSources.indexOf(src);
+      if (i !== -1) this.musicSources.splice(i, 1);
+    });
+    this.musicSources.push(src);
+  }
+
+  /** Alles Eingeplante sofort abwürgen (Titelwechsel, Levelende). */
+  stopMusic(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (const src of this.musicSources.splice(0)) {
+      try {
+        src.stop(t);
+      } catch {
+        /* schon beendet – nichts zu tun */
+      }
+    }
+    this.musicVol.gain.cancelScheduledValues(t);
+    this.musicVol.gain.setValueAtTime(0, t);
+  }
+
+  /** Sidechain: Der Echo-Ping drückt die Musik kurz herunter (≈ -12 dB), damit
+   *  die Reflexionen lesbar bleiben. Musik DARF störend sein – aber nicht das
+   *  einzige Werkzeug des Spielers unbrauchbar machen. */
+  private duckMusic(): void {
+    if (!this.ctx || !this.musicDuck) return;
+    const t = this.ctx.currentTime;
+    const p = this.musicDuck.gain;
+    p.cancelScheduledValues(t);
+    p.setValueAtTime(p.value, t);
+    p.linearRampToValueAtTime(MUSIC_DUCK, t + 0.03);
+    p.setValueAtTime(MUSIC_DUCK, t + MUSIC_DUCK_HOLD);
+    p.linearRampToValueAtTime(1, t + MUSIC_DUCK_HOLD + MUSIC_DUCK_RELEASE);
+  }
+
+  /** Plattenkratzer beim Anrempeln: Rausch-Wischer plus ein Ton, dessen Höhe
+   *  absackt – wie ein aus dem Takt geworfener Plattenspieler. `hard01`
+   *  skaliert die Tiefe des Absackens, nicht nur die Lautstärke. */
+  scratch(hard01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    this.musicScratches++;
+    const t = this.ctx.currentTime;
+    const hard = Math.max(0.15, Math.min(1, hard01));
+    const out = this.spatialOut(dx, dy);
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(70 - hard * 40, t + 0.1 + hard * 0.12);
+    const og = this.ctx.createGain();
+    og.gain.setValueAtTime(0.16 * hard, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.16 + hard * 0.12);
+    osc.connect(og).connect(out);
+    osc.start(t);
+    osc.stop(t + 0.3 + hard * 0.12);
+
+    // Der Wischer: Bandpass fährt zweimal hin und her (Hand auf der Platte).
+    const nz = this.ctx.createBufferSource();
+    nz.buffer = this.noiseBuffer('white');
+    const band = this.ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.Q.value = 3.5;
+    band.frequency.setValueAtTime(2400, t);
+    band.frequency.exponentialRampToValueAtTime(700, t + 0.07);
+    band.frequency.exponentialRampToValueAtTime(2000, t + 0.14);
+    band.frequency.exponentialRampToValueAtTime(600, t + 0.22);
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.22 * hard, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+    nz.connect(band).connect(ng).connect(out);
+    this.noiseCursor = (this.noiseCursor + 0.317) % 1;
+    nz.start(t, this.noiseCursor * (nz.buffer.duration - 0.3));
+    nz.stop(t + 0.3);
+  }
+
+  musicState(): MusicDebug {
+    return {
+      duck: this.musicDuck?.gain.value ?? 1,
+      vol: this.musicVol?.gain.value ?? 0,
+      notes: this.musicNotes,
+      scratches: this.musicScratches,
+    };
   }
 
   win(): void {

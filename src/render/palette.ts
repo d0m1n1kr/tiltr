@@ -36,6 +36,9 @@ export const WORLD = {
   crystal: '75, 224, 200',
   /** Sog-Anker: helles Violett – Gefahr-Familie der Löcher, eigener Ton */
   anchor: '170, 110, 240',
+  /** Jukebox: warmes Magenta-Rosa – nahe der Portal-Familie (auch sie ist
+   *  „Technik in der Wand"), aber wärmer: ein Möbelstück, keine Gefahr. */
+  jukebox: '236, 118, 178',
   // Glasboden nutzt bewusst das Brüchig-Bernstein (WORLD.brittle):
   // gleiche Bedeutung "brüchig, Vorsicht" – nur als Boden statt Wand.
 } as const;

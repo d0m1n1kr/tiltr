@@ -82,6 +82,12 @@ Der Zeitschloss-Schalter gehört zur Tür-Mechanik und bleibt in der
 Gold-Familie (`255, 214, 90`); der Echo-Kristall trägt bewusst das
 Ping-Teal (`75, 224, 200` – er ist abgefüllter Ping), und der Glasboden
 das Brüchig-Bernstein der brüchigen Wände (gleiche Bedeutung, als Boden).
+Die Jukebox trägt warmes Magenta-Rosa (`236, 118, 178`) – nahe der
+Portal-Familie (auch sie ist „Technik in der Wand"), aber wärmer: ein
+Möbelstück, keine Gefahr. Ihr Kasten wird als WAND gezeichnet (er ist eine),
+nur in dieser Farbe; darauf sitzen zwei „Lautsprecher"-Punkte, die im Takt
+des laufenden Titels atmen (Ausschlag auf dem Schlag, Abklingen dazwischen –
+kein Sinus, der wirkt wie Wabern statt Puls).
 
 ## Typografie
 

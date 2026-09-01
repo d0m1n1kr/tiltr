@@ -2133,6 +2133,291 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 21: Die Jukebox (M27) – der Automat als Möbel UND Wahrzeichen.
+// Geprüft wird, was man am Klang nicht sehen kann: dass Noten wirklich in den
+// Audio-Takt gelegt werden, dass die Lautstärke mit der NÄHE steigt, dass der
+// Echo-Ping die Musik wegdrückt (Sidechain – sonst wäre der Raum um den
+// Automaten unspielbar), dass ein Rempler den Titel weiterschaltet und dass
+// der Kasten DICHT ist. ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  // Drei-Zellen-Korridor mit dem Automaten in einer NISCHE unter der letzten
+  // Zelle und dem Ziel in einer Nische unter der ERSTEN. Zwei Absichten:
+  // Der Ball hat am Ostende einen definierten Halt (Weltrand), von dem aus
+  // sich zielsicher rempeln lässt – und er kann beim Rempeln nicht
+  // versehentlich ins Ziel rollen, weil das hinter ihm liegt.
+  const jbLevel = {
+    id: 'custom-jukebox',
+    name: 'Jukebox',
+    pingBudget: 9,
+    floors: [
+      {
+        size: [3, 2],
+        maze: {
+          seed: 3,
+          carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[0, 0], 's'], [[2, 0], 's']],
+          add: [[[1, 0], 's']],
+        },
+        elements: [{ type: 'jukebox', cell: [2, 1], playlist: ['tiltr', 'ode', 'mars'] }],
+        start: [0, 0],
+        goal: [0, 1],
+      },
+    ],
+  };
+
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(jbLevel));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  await page.locator('#workshopList .ws-actions .btn-primary').first().click(); // ▶ Spielen
+  await page.waitForTimeout(4200); // Kalibrier-Countdown
+
+  const jb0 = await page.evaluate(() => window.__tiltrJukebox);
+  check(`Automat spielt von selbst (Titel „${jb0?.title}", ${jb0?.notes} Noten eingeplant, ${jb0?.tracks} in der Playlist)`,
+    !!jb0 && jb0.boxes === 1 && jb0.index === 0 && jb0.title === 'tiltr-Theme' && jb0.notes > 4 && jb0.tracks === 3);
+
+  // NÄHE: Der Automat ist ein Wahrzeichen – näher heißt lauter. Vom Start
+  // (Zelle 0) aus leise, am Ostende direkt über ihm deutlich lauter.
+  const volFar = jb0?.vol ?? 0;
+  await page.keyboard.down('ArrowRight');
+  for (let i = 0; i < 25; i++) {
+    await page.waitForTimeout(100);
+    if ((await page.evaluate(() => window.__tiltrBall))?.x > 240) break;
+  }
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(600); // an der Ostwand auslaufen lassen
+  const near = await page.evaluate(() => ({ jb: window.__tiltrJukebox, ball: window.__tiltrBall }));
+  const volNear = near.jb?.vol ?? 0;
+  check(`Lautstärke steigt mit der Nähe (x 50 → ${near.ball?.x.toFixed(0)}: vol ${volFar.toFixed(3)} → ${volNear.toFixed(3)})`,
+    volFar > 0.001 && volNear > volFar * 1.5);
+  check(`Noten laufen weiter (${jb0?.notes} → ${near.jb?.notes} eingeplant)`, near.jb?.notes > jb0?.notes);
+
+  // DUCKING: Der Echo-Ping drückt die Musik weg (≈ -12 dB) und lässt sie
+  // danach zurückkommen. Ohne das wäre der Raum um den Automaten unspielbar.
+  const duckBefore = (await page.evaluate(() => window.__tiltrJukebox))?.duck ?? 0;
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(150);
+  const duckPing = (await page.evaluate(() => window.__tiltrJukebox))?.duck ?? 0;
+  await page.waitForTimeout(1200);
+  const duckAfter = (await page.evaluate(() => window.__tiltrJukebox))?.duck ?? 0;
+  check(`Ping duckt die Musik und lässt sie zurück (${duckBefore.toFixed(2)} → ${duckPing.toFixed(2)} → ${duckAfter.toFixed(2)})`,
+    duckBefore > 0.9 && duckPing < 0.45 && duckAfter > 0.9);
+
+  // REMPLER: Erst Abstand holen, dann zustoßen – ein Ball, der am Kasten
+  // LIEGT, erzeugt keinen Anschlag mehr (die Physik meldet nur bei
+  // Annäherungsgeschwindigkeit einen Treffer). Gewartet wird auf den
+  // Titelwechsel, nicht auf eine Zeit: Physik ist nicht taktfest.
+  const bump = async () => {
+    const before = (await page.evaluate(() => window.__tiltrJukebox))?.index;
+    // In die Nordost-Ecke der Zelle: dort steht der Ball mittig ÜBER dem
+    // Kasten. Ohne das Nach-rechts hängt er an der Oberkante der Nischenwand
+    // (x 195…205) und rutscht nur zäh hinunter.
+    await page.keyboard.down('ArrowUp');
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(400);
+    await page.keyboard.up('ArrowUp');
+    await page.keyboard.up('ArrowRight');
+    let maxY = 0;
+    await page.keyboard.down('ArrowDown');
+    for (let i = 0; i < 30; i++) {
+      await page.waitForTimeout(100);
+      const st = await page.evaluate(() => ({ jb: window.__tiltrJukebox, ball: window.__tiltrBall }));
+      maxY = Math.max(maxY, st.ball?.y ?? 0);
+      if (st.jb?.index !== before) break;
+    }
+    await page.keyboard.up('ArrowDown');
+    await page.waitForTimeout(200);
+    return {
+      before,
+      maxY,
+      after: await page.evaluate(() => window.__tiltrJukebox),
+      flash: (await page.textContent('#status')).trim(),
+    };
+  };
+
+  const b1 = await bump();
+  check(`Anrempeln schaltet auf den nächsten Titel (${b1.before} „${jb0?.title}" → ${b1.after?.index} „${b1.after?.title}")`,
+    b1.after?.index === 1 && b1.after?.title === 'Ode an die Freude');
+  check(`Der neue Titel steht im Status („${b1.flash}")`, b1.flash.includes('Ode an die Freude'));
+  // Der Plattenkratzer bekommt einen eigenen Zähler: „mehr Klangquellen als
+  // vorher" wäre wertlos, weil die Musik selbst laufend Quellen erzeugt.
+  check(`Der Plattenkratzer klingt (${b1.after?.scratches}× gekratzt)`, b1.after?.scratches === 1);
+  // Der Kasten ist DICHT: Der Ball kam beim Rempeln nie über seine Oberkante
+  // (Zellrand 100 + Einzug 12).
+  check(`Der Kasten ist dicht (tiefster Ballpunkt y=${b1.maxY.toFixed(0)}, Kastenoberkante 112)`,
+    b1.maxY > 40 && b1.maxY < 112);
+
+  const b2 = await bump();
+  check(`Zweiter Rempler läuft weiter im Kreis (${b2.after?.index} „${b2.after?.title}", ${b2.after?.scratches}× gekratzt)`,
+    b2.after?.index === 2 && b2.after?.title === 'Mars' && b2.after?.scratches === 2);
+
+  await page.click('#homeBtn');
+  await page.waitForTimeout(250);
+  const silenced = await page.evaluate(() => window.__tiltrMusic);
+  check(`Zurück im Menü schweigt der Automat (vol ${silenced?.vol}, duck ${silenced?.duck})`,
+    silenced?.vol === 0);
+  await page.close();
+}
+
+// --- Lauf 21b: Der Automat im Editor – Playlist-Feld und der Beweis, dass
+// ein Möbel auf dem Pflichtweg das Level rot stempelt. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    window.__srcCount = 0;
+    for (const fn of ['createOscillator', 'createBufferSource']) {
+      const orig = AudioContext.prototype[fn];
+      AudioContext.prototype[fn] = function (...args) {
+        window.__srcCount++;
+        return orig.apply(this, args);
+      };
+    }
+  });
+  await page.goto(`${BASE}/?nosplash`);
+
+  // Derselbe Korridor, aber der Automat steht MITTEN DRIN (2,0).
+  const blocking = {
+    id: 'custom-jb-block',
+    name: 'Möbel im Weg',
+    pingBudget: 3,
+    floors: [
+      {
+        size: [5, 2],
+        maze: {
+          seed: 3,
+          carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[3, 0], 'e'], [[4, 0], 's']],
+          add: [[[0, 0], 's'], [[1, 0], 's'], [[2, 0], 's'], [[3, 0], 's']],
+        },
+        elements: [{ type: 'jukebox', cell: [2, 0], playlist: ['tiltr', 'ode', 'mars'] }],
+        start: [0, 0],
+        goal: [4, 1],
+      },
+    ],
+  };
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(blocking));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  await page.locator('#workshopList .ws-actions .btn-ghost').first().click(); // ✏️ Bearbeiten
+  await page.waitForTimeout(600);
+
+  // Badge: Das Möbel versiegelt den einzigen Weg – Pflicht-Badge rot.
+  const badges = await page.$$eval('#edBadges .ed-badge', (els) =>
+    els.map((e) => ({ text: e.textContent.trim(), fail: e.className.includes('fail') })),
+  );
+  const jbBadge = badges.find((b) => b.text.includes('Jukebox'));
+  check(`Jukebox im Pflichtweg stempelt das Level rot ("${jbBadge?.text}" fail=${jbBadge?.fail})`,
+    !!jbBadge && jbBadge.fail === true);
+
+  // Playlist-Feld: Auswahl anklicken, dann steht die Titelliste im Panel.
+  await page.click('#edTool-select');
+  const geom = await page.evaluate(() => window.__tiltrEd);
+  if (geom) {
+    const box = await page.locator('#edCanvas').boundingBox();
+    await page.mouse.click(
+      box.x + geom.ox / geom.dpr + (2.5 * 100 * geom.scale) / geom.dpr,
+      box.y + geom.oy / geom.dpr + (0.5 * 100 * geom.scale) / geom.dpr,
+    );
+    await page.waitForTimeout(250);
+  }
+  const tracks = await page.$$eval('#edProps .ed-playlist .ed-track', (els) =>
+    els.map((e) => ({
+      title: e.querySelector('span:not(.ed-order):not(.ed-embedded)')?.textContent ?? '',
+      order: e.querySelector('.ed-order')?.textContent ?? '',
+      checked: e.querySelector('input').checked,
+    })),
+  );
+  check(`Playlist listet alle mitgelieferten Titel (${tracks.length}) und hakt die drei gewählten an (${tracks.filter((t) => t.checked).length})`,
+    tracks.length >= 10 && tracks.filter((t) => t.checked).length === 3);
+  // Die Ziffer ist die ABSPIELFOLGE, nicht die Listenposition: tiltr steht in
+  // der Liste vorn, Mars hinten – die Reihenfolge kommt aus der Playlist.
+  const orders = tracks.filter((t) => t.order).map((t) => `${t.order}${t.title}`);
+  check(`Die Ziffer zeigt die Abspielfolge (${orders.join(' ')})`,
+    orders.length === 3 && orders[0].startsWith('1.') && orders[0].includes('tiltr') &&
+      orders[1].startsWith('2.') && orders[1].includes('Ode') &&
+      orders[2].startsWith('3.') && orders[2].includes('Mars'));
+
+  // ▶ hört den Titel vor – über denselben Musik-Bus wie im Spiel.
+  const srcBefore = await page.evaluate(() => window.__srcCount);
+  await page.waitForTimeout(300);
+  const srcIdle = await page.evaluate(() => window.__srcCount);
+  await page.locator('#edProps .ed-playlist .ed-track button').first().click();
+  await page.waitForTimeout(500);
+  const srcAfter = await page.evaluate(() => window.__srcCount);
+  check(`▶ spielt den Titel vor (Quellen ${srcBefore} → still ${srcIdle} → nach Klick ${srcAfter})`,
+    srcIdle === srcBefore && srcAfter > srcBefore + 4);
+
+  // Der letzte Titel lässt sich nicht abwählen: Eine Jukebox ohne Titel wäre
+  // nach dem Schema unladbar – der Editor fängt es ab, statt das Level zu
+  // zerlegen.
+  const uncheck = async (title) => {
+    const rows = await page.$$('#edProps .ed-playlist .ed-track');
+    for (const r of rows) {
+      const txt = await r.textContent();
+      if (txt.includes(title)) {
+        await r.$eval('input', (i) => i.click());
+        await page.waitForTimeout(200);
+        return;
+      }
+    }
+  };
+  await uncheck('Mars');
+  await uncheck('Ode');
+  const twoGone = await page.$$eval('#edProps .ed-playlist .ed-track input:checked', (e) => e.length);
+  await uncheck('tiltr');
+  const lastLeft = await page.$$eval('#edProps .ed-playlist .ed-track input:checked', (e) => e.length);
+  const warn = (await page.textContent('#edStatus')).trim();
+  check(`Der letzte Titel bleibt (nach zwei Abwahlen ${twoGone}, nach der dritten ${lastLeft}: "${warn}")`,
+    twoGone === 1 && lastLeft === 1 && warn.includes('Mindestens ein Titel'));
+
+  // GEGENPROBE: Derselbe Automat in einer NISCHE ist kein Riegel – Badge grün
+  // und teilbar. Ohne diese Richtung würde ein Check, der immer rot ist, oben
+  // durchgehen.
+  await page.click('#edClose');
+  await page.waitForTimeout(300);
+  const niche = JSON.parse(JSON.stringify(blocking));
+  niche.id = 'custom-jb-niche';
+  niche.name = 'Möbel in der Nische';
+  // Nische unter (2,0) AUFSCHNEIDEN: aus `add` heraus (sonst mauert es die
+  // Kante nach dem Carven wieder zu) und in `carve` hinein – das Seed-Maze
+  // hätte dort sonst vielleicht von sich aus eine Wand.
+  niche.floors[0].maze.add = niche.floors[0].maze.add.filter((e) => !(e[0][0] === 2 && e[1] === 's'));
+  niche.floors[0].maze.carve.push([[2, 0], 's']);
+  niche.floors[0].elements[0].cell = [2, 1];
+  // Der Einfüge-Bereich ist ein Umschalter – nach dem ersten Import steht er
+  // schon offen, ein zweiter Klick würde ihn zuklappen.
+  if (!(await page.locator('#wsImportText').isVisible())) await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(niche));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  // Bearbeiten bestätigt per ZWEI-TAP, wenn noch ein Draft in der Werkstatt
+  // liegt (M15) – der erste Tap fragt nur.
+  await page.locator('#workshopList .ws-actions .btn-ghost').first().click(); // ✏️ Bearbeiten
+  await page.waitForTimeout(400);
+  if ((await page.inputValue('#edName')) !== niche.name) {
+    await page.locator('#workshopList .ws-actions .btn-ghost').first().click();
+    await page.waitForTimeout(600);
+  }
+  const openName = await page.inputValue('#edName');
+  check(`Der Editor zeigt das Nischen-Level ("${openName}")`, openName === niche.name);
+  const nicheBadges = await page.$$eval('#edBadges .ed-badge', (els) =>
+    els.map((e) => ({ text: e.textContent.trim(), fail: e.className.includes('fail') })),
+  );
+  const nicheJb = nicheBadges.find((b) => b.text.includes('Jukebox'));
+  const nicheShare = await page.evaluate(() => window.__tiltrEd?.shareable);
+  check(`In der Nische ist der Automat kein Riegel ("${nicheJb?.text}" fail=${nicheJb?.fail}, teilbar=${nicheShare})`,
+    !!nicheJb && nicheJb.fail === false && nicheShare === true);
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

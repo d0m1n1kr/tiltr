@@ -119,6 +119,30 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Ziel leuchtet ruhig weiter (`goalDone`) und der Ball rollt weiter; sonst
   könnte ein Fertiger dem Coop-Partner keine Druckplatte mehr halten.
   `renderer.goalLit` sagt, ob das Ziel-Licht gezeichnet wurde (E2E).
+- `src/audio/chiptune.ts` + `src/music/` – Die Jukebox spielt NOTEN, keine
+  Dateien: Ein Titel ist eine Notenzeile (klebrige Längen, `repeat` für
+  Begleitstimmen), die der bestehende WebAudio-Graph mit 8-Bit-Stimmen
+  (25-%-Pulswelle, Dreieck, Rauschen) spielt. Grund: Die PWA cacht ALLES vor –
+  ein Dutzend mp3s wären Megabytes offline. `chiptune.ts` ist rein und
+  DOM-frei wie `core/`; der Loop wohnt in `notesAt(tune, von, bis)`, nicht im
+  Scheduler (app.ts plant nur ein Fenster von 250 ms in den AUDIO-Takt – nach
+  `performance.now()` gesetzte Noten eiern hörbar). Musik läuft über EINEN
+  Bus mit Sidechain: Der Echo-Ping duckt sie um ~12 dB, sonst wäre der Raum
+  um den Automaten unspielbar. Was in `src/music/` hereindarf, steht in
+  dessen README (gemeinfrei = Komponist vor 1956 gestorben, oder eigenes) –
+  geschützte Werke NIE ins Repo, sie können als eingebetteter Titel im Level
+  eines Dritten reisen (`playlist`-Eintrag als Objekt statt als ID).
+  Der Automat selbst ist ein MASSIVER Kasten aus dem vorhandenen
+  Wand-Mechanismus (`Wall.jukebox`): Kollision, Echo und Treffer-Klang sind
+  gratis, der Rempler ist `hit.wall.jukebox`. Seine Zelle gilt deshalb in
+  JEDEM Erreichbarkeits-Modell als gesperrt (nicht nur konservativ wie
+  Glas/Anker) – der `jukebox`-Check sagt zusätzlich, WELCHER Automat im Weg
+  steht, auf dem Start/Ziel sitzt, nicht anrempelbar ist oder auf einer
+  Patrouille liegt. Es klingt immer nur der NÄCHSTE Automat (ein Bus, eine
+  Richtung). `window.__tiltrMusic` legt den Bus als GETTER offen (wie
+  `__tiltrWake`) – der Frame-Haken `__tiltrJukebox` friert im Menü ein, weil
+  die Schleife dort früh aussteigt, und „ist es wirklich still?" muss gerade
+  dann prüfbar sein.
 - `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
   Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
   Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und

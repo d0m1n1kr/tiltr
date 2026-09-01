@@ -13,6 +13,7 @@ import type {
   Guard,
   Hole,
   IcePatch,
+  Jukebox,
   Key,
   Listener,
   PingWave,
@@ -53,6 +54,7 @@ export class World {
   keys: Key[] = [];
   gems: Collectible[] = [];
   transporters: Transporter[] = [];
+  jukeboxes: Jukebox[] = [];
   plates: Plate[] = [];
   debris: Wall[] = [];
   pings: PingWave[] = [];

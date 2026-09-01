@@ -619,6 +619,25 @@
       padding: var(--space-1) var(--space-2); font: 500 var(--fs-body-s) var(--font);
     }
     .ed-field textarea { min-height: 64px; resize: vertical; }
+    /* Playlist der Jukebox: Häkchenliste in EINER Spalte, scrollbar – die
+       Titelliste wächst, das Panel darf nicht mitwachsen. Die Ziffer vor dem
+       Titel ist die ABSPIELFOLGE (Reihenfolge des Anhakens), nicht die
+       Listenposition. */
+    .ed-playlist {
+      display: grid; gap: var(--space-1); max-height: 210px; overflow-y: auto;
+      padding: var(--space-1); border: var(--border-strong); border-radius: var(--radius-m);
+      background: var(--bg-panel);
+    }
+    .ed-track {
+      display: flex; align-items: center; gap: var(--space-2);
+      min-height: var(--touch-min); padding: 0 var(--space-1);
+      font: 500 var(--fs-body-s) var(--font);
+    }
+    .ed-track input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--accent); }
+    .ed-track span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ed-track .ed-order { flex: none; width: 1.4em; opacity: 0.55; font-variant-numeric: tabular-nums; }
+    .ed-track .ed-embedded { flex: none; font-size: var(--fs-caption); opacity: 0.55; }
+    .ed-track button { flex: none; min-height: 34px; padding: 0 var(--space-2); }
     .ed-row { display: flex; gap: var(--space-2); align-items: end; }
     .ed-row .ed-field { flex: 1; }
     .gallery-item { display: flex; align-items: flex-start; gap: 14px; }

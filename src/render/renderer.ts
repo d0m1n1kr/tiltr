@@ -263,7 +263,14 @@ export class Renderer {
         }
         continue;
       }
-      const color = w.door ? WORLD.door : w.hp !== undefined || w.cracked ? WORLD.brittle : WORLD.wall;
+      const color =
+        w.jukebox !== undefined
+          ? WORLD.jukebox
+          : w.door
+            ? WORLD.door
+            : w.hp !== undefined || w.cracked
+              ? WORLD.brittle
+              : WORLD.wall;
       addRect(w, wallAlpha(w), color);
     }
     for (const d of world.debris) {
@@ -429,6 +436,26 @@ export class Renderer {
           ctx.lineTo(cx + g.w * s * dx, cy + g.h * s * dy);
         }
         ctx.stroke();
+      }
+    }
+
+    // Jukebox: Der Kasten selbst ist eine Wand (oben mitgezeichnet, in
+    // Magenta-Rosa). Hier kommen die beiden „Lautsprecher" darauf – und sie
+    // ATMEN im Takt des laufenden Titels. Der Takt kommt aus `bpm`, nicht aus
+    // der Audio-Uhr: Ein Blinken muss nicht sample-genau sein, und der
+    // Renderer soll nichts über den Musik-Bus wissen.
+    for (const j of world.jukeboxes) {
+      const alpha = revealAlpha(j, 0.95);
+      if (alpha <= 0.01) continue;
+      // Ausschlag auf dem Schlag, Abklingen dazwischen (kein Sinus – der
+      // wirkt wie Wabern, nicht wie Puls).
+      const beat = j.bpm ? 1 - (((now / 1000) * j.bpm) / 60) % 1 : 0;
+      const pulse = j.bpm ? 0.75 + beat ** 3 * 0.5 : 1;
+      ctx.fillStyle = `rgba(${WORLD.jukebox}, ${alpha})`;
+      for (const fy of [0.34, 0.68]) {
+        ctx.beginPath();
+        ctx.arc(tx(j.bx + j.bw / 2), ty(j.by + j.bh * fy), j.bw * 0.17 * s * pulse, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 

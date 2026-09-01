@@ -18,6 +18,9 @@ import { parseLevel } from '../levels/schema';
 import { validateLevel, isShareable, buildFloorCells, type CheckResult } from '../levels/validate';
 import { encodeLevel, SHARE_WARN_BYTES } from '../levels/shareCodec';
 import { galleryEntries } from '../elements';
+import { MUSIC, compiledById } from '../music';
+import { compileTune, type CompiledTune, type Tune } from '../audio/chiptune';
+import { previewTune } from '../audio/musicPreview';
 import { clearDraft, exportPayload, saveDraft, workshop } from '../workshop';
 import { t, applyI18n, type Dict } from '../i18n';
 
@@ -109,6 +112,7 @@ const PLACEABLE = [
   'listener',
   'anchor',
   'transporter',
+  'jukebox',
 ] as const;
 const EDGE_TYPES = new Set(['door', 'slidingWall']);
 
@@ -234,6 +238,10 @@ export function setupEditor(opts: {
       f.maze.add ??= [];
       f.maze.brittle ??= [];
       f.elements ??= [];
+      // Wie bei maze.add: Ein rohes Def darf Felder auslassen, der Editor
+      // greift aber direkt darauf zu. EINMAL auffüllen statt an jeder
+      // Zugriffsstelle prüfen.
+      for (const el of f.elements) if (el.type === 'jukebox') el.playlist ??= ['tiltr'];
     }
   }
   const flash = (text: string, error = false): void => {
@@ -489,6 +497,13 @@ export function setupEditor(opts: {
       add: floor().maze.add.length,
       selected,
       loadError,
+      // Teilbar = alle Pflicht-Badges grün (E2E; die UI sagt es über
+      // #edStatus, wenn man es trotzdem versucht). Als GETTER, weil die
+      // Prüfung entprellt läuft (250 ms) und erst NACH diesem paint()
+      // fertig ist – ein Schnappschuss wäre immer einen Stand hinterher.
+      get shareable() {
+        return !loadError && isShareable(checks);
+      },
       playing,
       animT,
       // Was sich auf der sichtbaren Ebene gerade bewegt (Play-Vorschau):
@@ -874,6 +889,9 @@ export function setupEditor(opts: {
       if (placeType === 'key' || placeType === 'timedSwitch')
         el.opens = nearestDoorId(activeFloor, target.cell!, placeType === 'key') ?? 'tor1';
       if (placeType === 'hole') el.breathing = { offset: Math.round(Math.random() * 8) / 2 }; // 0,5er-Schritte wie das Eingabefeld
+      // Eine Jukebox ohne Titel gibt es nicht (Schema: min. 1) – das Haus-Thema
+      // ist der Vorgabewert.
+      if (placeType === 'jukebox') el.playlist = ['tiltr'];
       els.push(el);
       selected = els.length - 1;
     }
@@ -1033,6 +1051,107 @@ export function setupEditor(opts: {
     ['w', '←'],
   ];
 
+  /* Playlist der Jukebox: Häkchenliste über den mitgelieferten Titeln plus
+     die im Level EINGEBETTETEN (die kommen aus einem importierten Level und
+     stehen nicht in unserem Ordner – man kann sie hören und abwählen, aber
+     nicht neu anhaken). Die Ziffer vor dem Titel ist die ABSPIELFOLGE: Sie
+     entsteht durch die Reihenfolge des Anhakens, nicht durch die Liste. */
+  function playlistField(el: RawEl): HTMLElement {
+    const list = () => (el.playlist as Array<string | Tune>) ?? [];
+    const wrap = document.createElement('div');
+    wrap.className = 'ed-playlist';
+
+    const preview = (tune: CompiledTune | undefined): void => {
+      if (!tune) return;
+      void opts.audio.start().then(() => previewTune(opts.audio, tune));
+    };
+
+    const row = (
+      label: string,
+      order: number,
+      checked: boolean,
+      embedded: boolean,
+      tune: CompiledTune | undefined,
+      toggle: (on: boolean) => void,
+    ): HTMLElement => {
+      const r = document.createElement('label');
+      r.className = 'ed-track';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = checked;
+      const num = document.createElement('span');
+      num.className = 'ed-order';
+      num.textContent = order > 0 ? `${order}.` : '';
+      const name = document.createElement('span');
+      name.textContent = label;
+      r.append(box, num, name);
+      if (embedded) {
+        const tag = document.createElement('span');
+        tag.className = 'ed-embedded';
+        tag.textContent = t('ed.f.embedded');
+        r.append(tag);
+      }
+      const play = document.createElement('button');
+      play.className = 'btn btn-soft';
+      play.textContent = '▶';
+      play.addEventListener('click', (ev) => {
+        // Im <label>: Ein Klick auf den Knopf darf das Häkchen nicht kippen.
+        ev.preventDefault();
+        ev.stopPropagation();
+        preview(tune);
+      });
+      r.append(play);
+      box.addEventListener('change', () => {
+        toggle(box.checked);
+        renderProps();
+        rebuild();
+      });
+      return r;
+    };
+
+    const setList = (next: Array<string | Tune>): boolean => {
+      // Das Schema verlangt mindestens einen und erlaubt höchstens acht Titel –
+      // hier abfangen, sonst wäre das Level bis zum Wiederanhaken unladbar.
+      if (!next.length) {
+        flash(t('ed.playlistMin'), true);
+        return false;
+      }
+      if (next.length > 8) {
+        flash(t('ed.playlistMax'), true);
+        return false;
+      }
+      el.playlist = next;
+      flash('');
+      return true;
+    };
+
+    for (const tune of MUSIC) {
+      const idx = list().indexOf(tune.id);
+      wrap.append(
+        row(tune.title, idx + 1, idx >= 0, false, compiledById(tune.id), (on) => {
+          if (on) setList([...list(), tune.id]);
+          else setList(list().filter((e) => e !== tune.id));
+        }),
+      );
+    }
+    // Eingebettete Titel des Levels – immer angehakt, solange sie drin sind.
+    list().forEach((entry, i) => {
+      if (typeof entry === 'string') return;
+      let compiled: CompiledTune | undefined;
+      try {
+        compiled = compileTune(entry);
+      } catch {
+        compiled = undefined;
+      }
+      wrap.append(
+        row(entry.title, i + 1, true, true, compiled, () => {
+          setList(list().filter((e) => e !== entry));
+        }),
+      );
+    });
+    return wrap;
+  }
+
   function renderProps(): void {
     if (!draft) return;
     propsEl.replaceChildren();
@@ -1142,6 +1261,11 @@ export function setupEditor(opts: {
         num(t('ed.f.openS'), 'open', 1, 12, 0.2, cycle);
         num(t('ed.f.closedS'), 'closed', 1, 12, 0.2, cycle);
         num(t('ed.f.offset'), 'offset', 0, 12, 0.2, cycle);
+      }
+      if (el.type === 'jukebox') {
+        if (el.volume === undefined) el.volume = 1;
+        propsEl.append(field(t('ed.f.playlist'), playlistField(el)));
+        num(t('ed.f.volume'), 'volume', 0, 1, 0.1);
       }
       if (el.type === 'anchor') {
         if (el.r === undefined) el.r = 120;

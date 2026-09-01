@@ -2,6 +2,7 @@
 // zod validiert beim Laden – Fehler knallen sofort, nicht erst im Spiel.
 
 import { z } from 'zod';
+import { compileTune } from '../audio/chiptune';
 
 export const cellCoord = z.tuple([z.number().int().min(0), z.number().int().min(0)]);
 export const wallDir = z.enum(['n', 'e', 's', 'w']);
@@ -157,6 +158,61 @@ export const glassDef = z.object({
   type: z.literal('glass'),
 });
 
+/* --- Jukebox (M27) ---------------------------------------------------------
+   Ein Playlist-Eintrag hat ZWEI Formen: eine Titel-ID aus src/music/ oder
+   ein im Level EINGEBETTETER Titel. Das ist keine Bequemlichkeit, sondern die
+   Rechte-Politik in Schema-Form: Ausgeliefert und vorgecacht wird nur der
+   sichere Satz im Ordner; wer sein eigenes Thema will, trägt es in SEIN Level
+   ein – es reist dann im #level=-Token und landet nie in diesem Repo.
+   Die Obergrenzen (Zeichen, Stimmen, Titel) halten ein geteiltes Token klein. */
+
+export const musicVoice = z.enum(['square', 'triangle', 'noise']);
+
+export const trackSchema = z.object({
+  voice: musicVoice,
+  gain: z.number().min(0).max(1).optional(),
+  /** Notenzeile – Format siehe src/audio/chiptune.ts */
+  notes: z.string().min(1).max(1200),
+  /** Zeile so oft hintereinander (Schlagwerk schreibt EINEN Takt) */
+  repeat: z.number().int().min(1).max(64).optional(),
+});
+
+export const tuneSchema = z
+  .object({
+    id: z.string().min(1).max(32),
+    title: z.string().min(1).max(48),
+    bpm: z.number().min(40).max(240),
+    loop: z.boolean().optional(),
+    tracks: z.array(trackSchema).min(1).max(4),
+  })
+  // Ein eingebetteter Titel muss auch NOTIERBAR sein: Der Parser ist die
+  // Wahrheit, nicht die Zeichenlänge. Ein Tippfehler im Ton soll beim Laden
+  // knallen, nicht als Stille im Level auffallen.
+  .refine(
+    (t) => {
+      try {
+        return compileTune(t).notes.length > 0;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Eingebetteter Titel: Notenzeile unlesbar oder leer' },
+  );
+
+/** Registry-ID (aus src/music/) ODER eingebetteter Titel. */
+export const playlistEntry = z.union([z.string().min(1).max(32), tuneSchema]);
+
+export const jukeboxDef = z.object({
+  ...base,
+  type: z.literal('jukebox'),
+  /** Reihenfolge = Abspielfolge; Anrempeln schaltet einen weiter */
+  playlist: z.array(playlistEntry).min(1).max(8),
+  /** Lautstärke des Automaten (0 = stumm, aber sichtbar) */
+  volume: z.number().min(0).max(1).default(1),
+  /** Titel, mit dem er beim Levelstart läuft */
+  startIndex: z.number().int().min(0).default(0),
+});
+
 export const elementDef = z.discriminatedUnion('type', [
   holeDef,
   windZoneDef,
@@ -176,6 +232,7 @@ export const elementDef = z.discriminatedUnion('type', [
   echoCrystalDef,
   anchorDef,
   glassDef,
+  jukeboxDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -196,6 +253,9 @@ export type IceDef = z.infer<typeof iceDef>;
 export type EchoCrystalDef = z.infer<typeof echoCrystalDef>;
 export type AnchorDef = z.infer<typeof anchorDef>;
 export type GlassDef = z.infer<typeof glassDef>;
+export type JukeboxDef = z.infer<typeof jukeboxDef>;
+export type TuneDef = z.infer<typeof tuneSchema>;
+export type PlaylistEntry = z.infer<typeof playlistEntry>;
 
 export const floorSchema = z.object({
   /** [Spalten, Zeilen] */

@@ -1,5 +1,10 @@
 // Gemeinsame Typen der Simulation und ihrer Darstellungs-/Audio-Schichten.
 
+// Nur ein TYP-Import, und aus einem reinen, DOM-freien Modul: Die Playlist
+// eines Automaten ist Daten (IDs oder eingebettete Notenfolgen), keine
+// Audio-Abhängigkeit. Die Simulation rührt sie nicht an.
+import type { Tune } from '../audio/chiptune';
+
 export interface Wall {
   x: number;
   y: number;
@@ -19,6 +24,11 @@ export interface Wall {
     lastState?: 'opening' | 'open' | 'closing' | 'closed';
     nextTick?: number;
   };
+  /** Jukebox-Kasten: Index in `World.jukeboxes`. Der Automat ist ein
+   *  MASSIVER Kasten aus dem vorhandenen Wand-Mechanismus – Kollision, Echo
+   *  und Treffer-Klang sind damit gratis, und die Spielschleife erkennt den
+   *  Rempler an dieser Marke (`hit.wall.jukebox`). */
+  jukebox?: number;
   /** Aufleuchten frühestens ab (ms, performance.now-Zeitbasis) – Ping-Wellenfront */
   litFrom?: number;
   /** Aufleuchten bis (ms) */
@@ -212,6 +222,45 @@ export interface Transporter {
   ty: number;
   /** abgeleitet aus Ebenen-Differenz – bestimmt Klang & Glyphe */
   dir: 'up' | 'down' | 'same';
+  litFrom?: number;
+  litUntil?: number;
+}
+
+/** Ein Playlist-Eintrag: Titel-ID aus src/music/ ODER eingebetteter Titel. */
+export type PlaylistEntry = string | Tune;
+
+/**
+ * Jukebox: ein Musikautomat, der als massiver Kasten in seiner Zelle steht
+ * (die Kollision macht die Wand, siehe `Wall.jukebox`). Hier wohnt nur, WAS
+ * er spielt und WO die Titelzeit gerade steht – die Noten plant die
+ * Spielschleife über den Musik-Bus ein.
+ */
+export interface Jukebox {
+  /** Mittelpunkt des Kastens = Klangquelle */
+  x: number;
+  y: number;
+  /** Der Kasten selbst (identisch mit der zugehörigen Wand) */
+  bx: number;
+  by: number;
+  bw: number;
+  bh: number;
+  playlist: readonly PlaylistEntry[];
+  /** Laufender Titel (Index in playlist) */
+  index: number;
+  /** Lautstärke des Automaten (0 = stumm, aber sichtbar) */
+  volume: number;
+  /**
+   * Audio-Zeit (nicht performance.now!), auf die die Titelzeit 0 fällt;
+   * null = noch nicht angelaufen. Ein Titelwechsel setzt beides zurück.
+   */
+  epoch: number | null;
+  /** Bis wohin auf der Titel-Zeitachse schon Noten eingeplant sind */
+  scheduledS: number;
+  /** Zeitpunkt des letzten Remplers (ms) – entprellt den Titelwechsel */
+  lastSkip?: number;
+  /** Tempo des laufenden Titels – nur fürs BILD (der Kasten blinkt im Takt).
+   *  undefined = stumm, dann blinkt nichts. */
+  bpm?: number;
   litFrom?: number;
   litUntil?: number;
 }

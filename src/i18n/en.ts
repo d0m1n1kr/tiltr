@@ -123,6 +123,7 @@ export const en: Dict = {
   'ed.check.hazards': 'Hazards off-path',
   'ed.check.guards': 'Guards passable',
   'ed.check.items': 'Collectibles free',
+  'ed.check.jukebox': 'Jukebox clear',
   'ed.f.dir': 'Direction',
   'ed.f.force': 'Force',
   'ed.f.speed': 'Speed (px/s)',
@@ -140,6 +141,11 @@ export const en: Dict = {
   'ed.relinked': 'opener(s) relinked to',
   'ed.orphaned': 'opener(s) without a door – see the “Links” badge.',
   'ed.f.duration': 'Timer (s)',
+  'ed.f.playlist': 'Playlist',
+  'ed.f.volume': 'Volume',
+  'ed.f.embedded': 'in level',
+  'ed.playlistMin': 'At least one track',
+  'ed.playlistMax': 'At most eight tracks',
   'ed.f.offset': 'Offset (s)',
   'ed.f.openS': 'Open (s)',
   'ed.f.closedS': 'Closed (s)',
@@ -369,6 +375,9 @@ export const en: Dict = {
   'el.glass.title': 'Glass floor',
   'el.glass.desc':
     'A floor cell made of glass: the first roll-over cracks it as a warning, the second shatters it – leaving an open hole you fall into. Once is free, twice is fallen. Signature: a bright crack, then shattering.',
+  'el.jukebox.title': 'Jukebox',
+  'el.jukebox.desc':
+    'A music box standing in its cell, playing 8-bit themes – locatable in space, so a landmark in the dark. Music masks the clues here: the room around it is hard BECAUSE you cannot hear the walls. Bump into it to skip to the next track. The cabinet is solid, so its cell is sealed.',
 
   /* --- Worlds & levels --- */
   'world.w1': 'World 1 – The Deep Awakes',

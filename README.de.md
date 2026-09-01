@@ -146,6 +146,7 @@ Leertaste für den Ping.
 | Echo-Kristall | abgefüllter Ping: Einsammeln gibt +1 Echo-Ping, auch über das Rundenbudget hinaus; heller einzelner Glockenton |
 | Sog-Anker | zieht im Radius an – immer überwindbar (Kraft bleibt unter voller Neigung), kostet aber Zeit; elektrisches Brummen schwillt mit der Nähe an |
 | Glasboden | erstes Überrollen knackt warnend, das zweite zersplittert ihn zum offenen Loch; helles Knacken, dann Splittern |
+| Jukebox | ein Musikautomat, der in seiner Zelle steht und 8-Bit-Themen spielt (gemeinfreie Klassiker plus tiltr-Originale) – räumlich ortbar, also ein Wahrzeichen im Dunkeln. Musik verdeckt die Hinweise: Der Raum um ihn ist schwer, WEIL man die Wände nicht hört (der Echo-Ping duckt sie um ~12 dB, damit es spielbar bleibt). Anrempeln schaltet auf den nächsten Titel – Plattenkratzer inklusive. Der Kasten ist massiv, seine Zelle also dicht |
 | Blind-Stern 🌑 | optionaler vierter Stern pro Kampagnen-Level: geschafft ohne einen einzigen Echo-Ping |
 | Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Schein mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
 | Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
@@ -194,7 +195,9 @@ Geist-Replay ✓ → M10 Welt 4 „Die Stille" (Horcher, Nebel, Eis) +
 Blind-Stern ✓ → M11 Echo-Kristall, Sog-Anker, Glasboden +
 Generator-Integration ✓ → M12a Werkstatt: Level-Editor mit
 Live-Lösbarkeits-Beweisen, Bibliothek & Spiel-Preview ✓ → M12b Teilen:
-serverlose Level-Links, JSON-Import/-Export, Mehr-Ebenen-Editor ✓
+serverlose Level-Links, JSON-Import/-Export, Mehr-Ebenen-Editor ✓ →
+M27 Die Jukebox: Chiptune-Maschine (Musik als Notendaten, keine Audiodateien)
+und ein anrempelbarer Musikautomat mit Playlist im Editor ✓
 
 ---
 

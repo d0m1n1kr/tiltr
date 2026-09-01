@@ -123,6 +123,7 @@ export const fr: Dict = {
   'ed.check.hazards': 'Dangers à l’écart',
   'ed.check.guards': 'Gardes franchissables',
   'ed.check.items': 'Collectibles libres',
+  'ed.check.jukebox': 'Juke-box dégagé',
   'ed.f.dir': 'Direction',
   'ed.f.force': 'Force',
   'ed.f.speed': 'Vitesse (px/s)',
@@ -140,6 +141,11 @@ export const fr: Dict = {
   'ed.relinked': 'ouvreur(s) rattaché(s) à',
   'ed.orphaned': 'ouvreur(s) sans porte – voir le badge « Liaisons ».',
   'ed.f.duration': 'Minuterie (s)',
+  'ed.f.playlist': 'Liste de lecture',
+  'ed.f.volume': 'Volume',
+  'ed.f.embedded': 'dans le niveau',
+  'ed.playlistMin': 'Au moins un morceau',
+  'ed.playlistMax': 'Huit morceaux au maximum',
   'ed.f.offset': 'Décalage (s)',
   'ed.f.openS': 'Ouvert (s)',
   'ed.f.closedS': 'Fermé (s)',
@@ -369,6 +375,9 @@ export const fr: Dict = {
   'el.glass.title': 'Sol de verre',
   'el.glass.desc':
     'Une case de sol en verre : au premier passage elle craque en guise d’avertissement, au second elle vole en éclats – laissant un trou ouvert où tu tombes. Une fois ça passe, deux fois tu tombes. Signature : un craquement clair, puis un fracas.',
+  'el.jukebox.title': 'Juke-box',
+  'el.jukebox.desc':
+    'Un juke-box posté dans sa cellule, qui joue des thèmes 8 bits – localisable dans l’espace, donc un repère dans le noir. Ici la musique masque les indices : la salle autour de lui est difficile PARCE QU’on n’entend plus les murs. Le heurter passe au morceau suivant. Le meuble est massif, sa cellule est donc bouchée.',
 
   /* --- Mondes & niveaux --- */
   'world.w1': 'Monde 1 – Les profondeurs s’éveillent',

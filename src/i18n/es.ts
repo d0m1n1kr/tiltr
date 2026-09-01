@@ -123,6 +123,7 @@ export const es: Dict = {
   'ed.check.hazards': 'Peligros apartados',
   'ed.check.guards': 'Guardias franqueables',
   'ed.check.items': 'Coleccionables libres',
+  'ed.check.jukebox': 'Jukebox libre',
   'ed.f.dir': 'Dirección',
   'ed.f.force': 'Fuerza',
   'ed.f.speed': 'Velocidad (px/s)',
@@ -140,6 +141,11 @@ export const es: Dict = {
   'ed.relinked': 'abridor(es) reasignado(s) a',
   'ed.orphaned': 'abridor(es) sin puerta – ver el badge «Enlaces».',
   'ed.f.duration': 'Temporizador (s)',
+  'ed.f.playlist': 'Lista de reproducción',
+  'ed.f.volume': 'Volumen',
+  'ed.f.embedded': 'en el nivel',
+  'ed.playlistMin': 'Al menos una pista',
+  'ed.playlistMax': 'Ocho pistas como máximo',
   'ed.f.offset': 'Desfase (s)',
   'ed.f.openS': 'Abierto (s)',
   'ed.f.closedS': 'Cerrado (s)',
@@ -369,6 +375,9 @@ export const es: Dict = {
   'el.glass.title': 'Suelo de cristal',
   'el.glass.desc':
     'Una celda de suelo de cristal: al primer paso cruje como aviso, al segundo se hace añicos – dejando un agujero abierto al que caes. Una vez pasa, dos veces caes. Firma: un crujido claro y luego el estallido.',
+  'el.jukebox.title': 'Jukebox',
+  'el.jukebox.desc':
+    'Una máquina de música plantada en su celda que toca temas de 8 bits: localizable en el espacio, así que es un punto de referencia en la oscuridad. Aquí la música tapa las pistas: la sala que la rodea es difícil PORQUE ya no oyes las paredes. Golpearla salta a la pista siguiente. El mueble es macizo, así que su celda queda sellada.',
 
   /* --- Mundos y niveles --- */
   'world.w1': 'Mundo 1 – Las profundidades despiertan',
