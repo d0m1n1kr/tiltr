@@ -25,9 +25,10 @@ const HOLD_MS = 2300;
 /** Verkürzt bei prefers-reduced-motion: nur zeigen, nicht zelebrieren. */
 const HOLD_REDUCED_MS = 1200;
 /** Sicherheitsnetz, falls `animationend` ausfällt (Tab im Hintergrund,
- *  Animationen per Systemeinstellung aus): länger als Akt 3 (160 ms Schrift
- *  + 460 ms Menü-Fahrt). */
-const LEAVE_FALLBACK_MS = 1200;
+ *  Animationen per Systemeinstellung aus). Muss LÄNGER sein als Akt 3
+ *  (160 ms Schrift + 640 ms Menü-Fahrt = 800 ms), sonst schneidet es die
+ *  Einfahrt ab. */
+const LEAVE_FALLBACK_MS = 1500;
 
 export function showSplash(version: string): void {
   const el = document.getElementById('splash');

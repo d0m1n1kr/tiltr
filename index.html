@@ -193,7 +193,14 @@
        läuft. Ohne diese Klasse (?nosplash, nach dem Splash) hat #overlay
        keinen Transform und verhält sich wie immer. */
     body.splashing #overlay { transform: translateY(100%); }
-    body.splash-leaving #overlay { animation: menu-rise 460ms cubic-bezier(0.16, 0.84, 0.3, 1) 160ms both; }
+    /* Die Fahrt ist BEWUSST langsamer als eine Standard-Panel-Animation und
+       bremst am Ende deutlich aus: Die Geschwindigkeitsspitze liegt bei ~150 ms
+       (die Kurve zieht erst an, statt vom ersten Frame an zu schießen), und die
+       letzten 10 % des Weges brauchen ~320 ms – die halbe Animation ist Bremse.
+       Zum Vergleich die erste Fassung (460 ms, cubic-bezier(0.16,0.84,0.3,1)):
+       Spitze 8900 px/s im ersten Frame, nach 17 % der Zeit schon 61 % des Wegs
+       – das schnappte herein statt einzufahren. */
+    body.splash-leaving #overlay { animation: menu-rise 640ms cubic-bezier(0.38, 0.62, 0.2, 1) 160ms both; }
     @keyframes menu-rise {
       from { transform: translateY(100%); }
       to { transform: translateY(0); }

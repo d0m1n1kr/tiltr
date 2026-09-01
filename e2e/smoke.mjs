@@ -688,11 +688,13 @@ const check = (name, cond) => {
       const sp = document.getElementById('splash');
       const ov = document.getElementById('overlay');
       const ball = document.querySelector('.splash-ball');
+      const logo = document.querySelector('.splash-logo');
       return {
         splash: sp ? sp.className : null,
         body: document.body.className,
         menu: getComputedStyle(ov).transform,
         ball: ball ? getComputedStyle(ball).transform : null,
+        logo: logo ? Number(getComputedStyle(logo).opacity) : null,
         vh: innerHeight,
       };
     });
@@ -706,18 +708,43 @@ const check = (name, cond) => {
   // Akt 2: Kugel steht in der Mitte, Titel sichtbar, Menü noch unten.
   await page.waitForTimeout(1600);
   const act2 = await stage();
-  const logoOpacity = await page.evaluate(() => Number(getComputedStyle(document.querySelector('.splash-logo')).opacity));
-  check(`Akt 2: Kugel steht, Titel da (Deckkraft ${logoOpacity}), Menü wartet (${ty(act2.menu).toFixed(0)})`,
-    Math.abs(ty(act2.ball)) < 2 && logoOpacity > 0.9 && ty(act2.menu) > act2.vh - 2);
+  check(`Akt 2: Kugel steht, Titel da (Deckkraft ${act2.logo}), Menü wartet (${ty(act2.menu).toFixed(0)})`,
+    Math.abs(ty(act2.ball)) < 2 && act2.logo > 0.9 && ty(act2.menu) > act2.vh - 2);
 
   // Akt 3: Kugel nach OBEN raus (negative Y) und Menü GLEICHZEITIG unterwegs
   // (zwischen unten und angekommen) – die eigentliche Zusicherung des Umbaus.
   let act3 = null;
+  /* Die FORM der Einfahrt exakt vermessen, statt sie abzutasten: Die
+     Web-Animations-API lässt sich an eine Zeitmarke setzen und der echte
+     Transform ablesen. Nötig, weil ein 60-ms-Raster die Spitze wegglättet –
+     die alte, zu schnelle Kurve (8900 px/s im ersten Frame) maß so nur
+     5464 px/s und wäre durch eine Peak-Schwelle geschlüpft. */
+  let shape = null;
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(60);
     const st = await stage();
     if (st.splash?.includes('leave') && ty(st.menu) > 4 && ty(st.menu) < st.vh - 4) {
       act3 = st;
+      shape = await page.evaluate(() => {
+        const ov = document.getElementById('overlay');
+        const anims = ov.getAnimations();
+        const a = anims.find((x) => x.animationName === 'menu-rise') ?? anims[0];
+        if (!a) return null;
+        const timing = a.effect.getComputedTiming();
+        const dur = Number(timing.duration);
+        const delay = Number(timing.delay);
+        const was = a.currentTime;
+        // Fortschritt (0 = unten, 1 = angekommen) an einer Zeitmarke.
+        const progressAt = (ms) => {
+          a.currentTime = delay + ms;
+          const m = getComputedStyle(ov).transform;
+          const y = m === 'none' ? 0 : Number(m.slice(m.lastIndexOf(',') + 1, -1));
+          return 1 - y / innerHeight;
+        };
+        const out = { dur, early: progressAt(80), half: progressAt(dur / 2) };
+        a.currentTime = was; // weiterlaufen lassen, wo sie war
+        return out;
+      });
       break;
     }
     if (st.splash === null) break;
@@ -726,10 +753,18 @@ const check = (name, cond) => {
     !!act3 && ty(act3.ball) < -20 && act3.body.includes('splash-leaving'));
   // Der Splash-Titel muss WEG sein, bevor das Menü seinen eigenen zeigt –
   // sonst stehen zwei „tiltr" übereinander (genau das zeigte die 1. Fassung).
-  const logoGone = act3
-    ? await page.evaluate(() => Number(getComputedStyle(document.querySelector('.splash-logo')).opacity))
-    : 1;
-  check(`Akt 3: Splash-Titel ist weg, bevor der Menü-Titel kommt (Deckkraft ${logoGone})`, logoGone < 0.15);
+  const logoGone = act3 ? act3.logo : 1;
+  check(`Akt 3: Splash-Titel ist weg, bevor der Menü-Titel kommt (Deckkraft ${logoGone})`,
+    logoGone !== null && logoGone < 0.15);
+
+  // Die Einfahrt ZIEHT AN und BREMST dann aus – beides Zusicherungen an die
+  // Kurve, nicht an ihre Deklaration: „80 ms nach dem Start liegt noch der
+  // Großteil des Weges vor ihr" (die alte Kurve war da schon bei 65 %) und
+  // „zur Hälfte der Zeit ist der Weg fast geschafft, der Rest ist Bremse".
+  check(`Menü zieht an statt zu schnappen (${shape ? Math.round(shape.early * 100) : '?'} % nach 80 ms, Fahrt ${shape?.dur} ms)`,
+    !!shape && shape.dur >= 600 && shape.early < 0.4);
+  check(`Menü bremst am Ende aus (${shape ? Math.round(shape.half * 100) : '?'} % nach halber Zeit – der Rest ist Bremse)`,
+    !!shape && shape.half > 0.8);
 
   await page.waitForTimeout(1200);
   const done = await stage();

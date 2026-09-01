@@ -167,8 +167,13 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
   3. **Abrollen** – die Schrift räumt ZUERST (160 ms), dann rollt die Kugel
      nach OBEN aus dem Bild (420 ms, bewusst `ease-in`: sie bremst nicht, sie
      rollt davon) und GLEICHZEITIG fährt der Startscreen von unten herein
-     (460 ms). Die Reihenfolge ist Pflicht: Der Startscreen trägt selbst ein
-     „tiltr" – überlappen beide Titel, sieht es wie eine Doppelbelichtung aus.
+     (640 ms, `cubic-bezier(0.38, 0.62, 0.2, 1)`). Die Reihenfolge ist
+     Pflicht: Der Startscreen trägt selbst ein „tiltr" – überlappen beide
+     Titel, sieht es wie eine Doppelbelichtung aus. Die Menü-Fahrt ist die
+     EINE Stelle, an der die Regel „immer ease-out, 250 ms" nicht reicht: Sie
+     zieht erst an (Spitze bei ~150 ms statt im ersten Frame) und bremst dann
+     lang aus – die letzten 10 % des Weges brauchen ~320 ms. Die erste Fassung
+     (460 ms, Spitze 8900 px/s sofort) schnappte herein statt einzufahren.
   Der Menü-Transform hängt an `body.splashing` / `body.splash-leaving`, nicht
   an `#overlay` selbst: Ohne diese Klassen hat der Startscreen keinen
   Transform, damit `?nosplash` und reduced-motion nichts von der

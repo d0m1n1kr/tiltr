@@ -381,6 +381,29 @@ aus) – `forwards` behebt es. Und die erste Einfahrt war mit 650 ms und einer
 stark vorgezogenen Kurve praktisch vorbei, bevor man sie sah (bei 150 ms
 stand die Kugel fast in der Mitte) – jetzt 850 ms ease-out.
 
+**Nachtrag v2.2.1 – „fährt zu schnell rein, sollte am Ende bremsen".** Die
+erste Fassung fuhr mit 460 ms und `cubic-bezier(0.16, 0.84, 0.3, 1)`: Spitze
+8900 px/s im ERSTEN Frame, nach 17 % der Zeit schon 61 % des Weges – sie
+schnappte herein. Neu 640 ms mit `cubic-bezier(0.38, 0.62, 0.2, 1)`: Die
+Kurve ZIEHT ERST AN (Spitze 3200 px/s bei ~150 ms, im Browser nachgemessen)
+und bremst dann lang aus – die letzten 10 % des Weges brauchen ~320 ms, die
+halbe Animation ist Bremse.
+
+Die Kurve wurde nicht geraten: Ein kleines Skript wertet die Kandidaten-
+Beziers exakt aus (Spitze, Zeit bis zur halben Strecke, Dauer der letzten
+10 %), danach hat der Browser das Profil bestätigt (2094 → 3256 → 1650 →
+759 → 361 → 232 → 144 → 56 → 17 px/s).
+
+Und eine Lehre für die Zusicherung: Ein 60-ms-Abtastraster GLÄTTET die
+Spitze weg – die alte Kurve maß so nur 5464 statt 8900 px/s und wäre durch
+eine Peak-Schwelle geschlüpft (genau das passierte im ersten Sabotage-Lauf).
+Deshalb vermisst der E2E die FORM der Fahrt exakt über die
+Web-Animations-API (Animation an eine Zeitmarke setzen, echten Transform
+lesen): „80 ms nach dem Start liegt noch der Großteil des Weges vor ihr"
+(23 % statt 63 %) und „zur Hälfte der Zeit ist der Weg fast geschafft"
+(90 %). Beide Klauseln einzeln rot gesehen – die erste mit der alten
+Kurve, die zweite mit `linear`.
+
 Das Ende der Inszenierung hängt am `animationend` der Menü-Fahrt statt an
 einer zweiten Zahl in JS, die mit der CSS-Dauer auseinanderlaufen kann
 (`ev.target === overlay`, weil das Event bubbelt, plus ein Timeout als
