@@ -350,6 +350,130 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M27 „Die Jukebox" (Planung)
+
+Ein Spaß-Element: ein Musikautomat, der im Labyrinth steht und 8-Bit-Themen
+spielt. Der Ball kann ihn anrempeln – ein Treffer schaltet auf den nächsten
+Titel. Im Editor bekommt er eine PLAYLIST (mehrere Titel, Reihenfolge =
+Abspielfolge).
+
+### Die Rechte-Frage zuerst, weil sie den Inhalt bestimmt
+
+Star Wars, Harry Potter & Co. sind geschützte KOMPOSITIONEN; eine
+8-Bit-Fassung ist eine Bearbeitung und klärt die Werkrechte nicht. tiltr
+liegt öffentlich auf GitHub Pages. Der Mechanismus ist davon unberührt –
+deshalb ist die Jukebox INHALTS-AGNOSTISCH: Sie spielt, was im Ordner liegt.
+Mitgeliefert wird ein Satz, der sicher ist (gemeinfreie Melodien plus eigene
+tiltr-Chiptunes); wer weitere Titel einlegen will, legt sie selbst dazu und
+entscheidet damit selbst über die Rechte. Kandidaten für den sicheren Satz –
+alle klingen in 8 Bit hervorragend und sind unverkennbar:
+Beethoven (Ode an die Freude, Für Elise), Offenbach (Can-Can), Rossini
+(Wilhelm-Tell-Galopp), Grieg (In der Halle des Bergkönigs), Bach (Toccata
+d-moll), Mozart (Kleine Nachtmusik), Dvořák (Humoreske), Tschaikowski
+(Blumenwalzer) – plus 2–3 Originale („tiltr-Theme", „Aufzugmusik",
+„Wächter-Tango").
+
+### Entscheidung 1: Die Songs sind DATEN, keine Audiodateien
+
+Ein Titel ist eine Notenfolge (`src/music/<id>.ts`, wenige Zeilen), die der
+bestehende WebAudio-Graph mit 8-Bit-Stimmen spielt (Square/Triangle/Noise) –
+kein mp3, kein Binärasset. Gründe, die hier den Ausschlag geben:
+
+- **Die PWA cacht ALLES vor** (Workbox precache, aktuell 626 KiB). Ein
+  Dutzend mp3-Titel wären Megabytes im Offline-Install; ein Dutzend
+  Notenfolgen sind ein paar KB.
+- Es IST 8-Bit-Musik – nicht die Aufnahme davon.
+- Es passt zum Leitmedium: EIN Synth, EINE Master-Kette, keine zweite
+  Audio-Welt daneben.
+- Rein und deterministisch ⇒ testbar: `notesAt(tune, fromS, toS)` liefert die
+  Noten eines Zeitfensters, `advance(playlist, i)` den nächsten Titel. Units
+  ohne Browser.
+
+Format (bewusst winzig): `{ id, title, bpm, loop: true, tracks: [{ voice:
+'square'|'triangle'|'noise', notes: 'e4:8 g4:8 …' }] }` – Tonhöhe plus
+Notenlänge als Text, damit ein Titel von Hand schreibbar und im Diff lesbar
+bleibt.
+
+### Entscheidung 2: Die Musik kommt AUS der Jukebox (räumlich)
+
+Sie läuft über denselben HRTF-Pfad wie Wächter, Portal und Strömung: Panning
+nach Richtung, Lautstärke nach Entfernung. Damit ist sie keine
+Hintergrundmusik, sondern ein **akustisches Wahrzeichen** – man kann sich an
+ihr orientieren. Das ist die tiltr-igste Eigenschaft des ganzen Features.
+
+### Entscheidung 3: Musik ist in DIESEM Spiel Störung – und genau das ist der Witz
+
+tiltr navigiert über Klang. Musik verdeckt die Hinweise. Das ist kein Fehler,
+sondern die Pointe: Der Jukebox-Raum ist schwer, WEIL man die Wände nicht
+hört. Zwei Regler halten es faire:
+
+- **Ducking:** Während Echo-Ping und Reflexionen klingen, senkt der
+  Musik-Bus um ~12 dB (Sidechain, ~400 ms Rückkehr). Der Ping bleibt lesbar.
+- **Entfernung:** Die Lautstärke fällt mit dem Abstand – es ist ein lokales
+  Problem, kein globales.
+
+Und der Rempler bekommt eine zweite Bedeutung: Anrempeln ist, wie man mit
+dem Krach umgeht.
+
+### Entscheidung 4: Der Rempler fällt aus der bestehenden Physik heraus
+
+Die Jukebox ist ein massiver Kasten in ihrer Zelle – gebaut aus dem
+vorhandenen Wand-Mechanismus (`world.walls`), nur mit `jukebox`-Marke am
+Rechteck. Damit sind Kollision, Echo-Aufleuchten und der Treffer-Klang
+GRATIS; die Spielschleife sieht den Treffer schon heute in `hits` und liest
+`hit.wall.jukebox` – daraus wird „nächster Titel". Kein neuer Kollisionstyp.
+
+Wichtige Folge, die ins Beweismodell muss: Die Zelle ist damit
+UNPASSIERBAR. Bei CELL=100 und BALL_R=22 (Durchmesser 44) bliebe neben einem
+mittigen Kasten nur (100−w)/2 Rest – für einen Durchgang müsste der Kasten
+schmaler als 12 Einheiten sein, also unsichtbar klein. Ein Möbelstück
+blockiert seine Zelle, Punkt. Deshalb:
+
+- `validate.ts` bekommt einen `jukebox`-Check nach dem Muster von `hazards`
+  und `guards`: Die Jukebox-Zelle gilt als blockiert, und das Level muss
+  OHNE sie lösbar sein. Sonst könnte der Editor ein Level grün stempeln,
+  dessen einziger Weg durch das Möbel führt.
+- Damit ist die Jukebox ein Deko-/Spaß-Element in Nischen und weiten Räumen,
+  nie ein Riegel – und der Editor sagt es sofort mit einem Badge.
+
+### Umfang
+
+**M27a – Musik-Maschine**
+- `src/audio/chiptune.ts`: Notenformat, Parser, `notesAt()` (rein, Units),
+  Lookahead-Scheduler (~200 ms im Audio-Takt, kein setTimeout pro Note),
+  8-Bit-Stimmen, Musik-Bus mit Ducking + Panner.
+- `src/music/`: der Ordner mit den Titeln + `index.ts` (Registry: id →
+  Titelname für Editor und Galerie).
+- Units: Parser (Tonhöhen, Längen, Pausen), `notesAt` an Fenstergrenzen,
+  Loop-Übergang, `advance()` mit Umlauf, leere Playlist.
+
+**M27b – Element**
+- `jukeboxDef` im Schema: `cell`, `playlist: string[]` (min. 1, bekannte
+  IDs), `volume?`, `startIndex?`.
+- Loader: Kasten als Wand mit `jukebox`-Marke; `world.jukeboxes` für Position
+  und Zustand (aktueller Titel, Laufzeit).
+- app: Treffer ⇒ nächster Titel (+ „Plattenkratzer"-Klang; harter Treffer
+  zieht die Tonhöhe kurz nach unten, wie ein aus dem Takt geworfener
+  Plattenspieler). Pro Frame Entfernung/Richtung an den Musik-Bus.
+- `validate.ts`: `jukebox`-Check (Zelle blockiert, Level ohne sie lösbar).
+- Galerie-Eintrag mit Klang-Demo, Weltfarbe (Vorschlag: warmes Magenta-Rosa
+  – nahe der Portal-Familie, aber eigenständig), Renderer-Visual (Kasten mit
+  zwei „Lautsprecher"-Punkten, blinkt im Takt).
+
+**M27c – Editor + Release**
+- Neuer Feldtyp „Mehrfachauswahl" im Eigenschaften-Panel: Titelliste mit
+  Häkchen (Reihenfolge = Abspielfolge) und ▶ pro Titel zum Vorhören – der
+  Auswahl-Kopf hat seit M24 schon „🔊 Anhören" für das Element selbst.
+- i18n ×4 (~10 Schlüssel + Titelnamen), Galerie-Text, README/DESIGN.
+- E2E: Level mit Jukebox importieren, Titel wechseln durch Rempeln
+  (`window.__tiltrJukebox` legt Titelindex und Musik-Gain offen), Ducking
+  beim Ping messbar, Badge rot bei Jukebox auf dem Pflichtweg.
+- Release 2.4.0.
+
+### Offene Frage an den Menschen
+
+Welcher Satz landet im Ordner? (siehe Rechte-Frage oben)
+
 ## M26 „Konfetti" ✓ (v2.3.0)
 
 Jeder geschaffte Lauf wird gefeiert – Tutorial eingeschlossen, denn alle
