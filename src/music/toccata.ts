@@ -1,4 +1,11 @@
 // Bach, Toccata und Fuge d-Moll (BWV 565, um 1710) – gemeinfrei.
+//
+// Töne gegengeprüft an Mutopia Project, BachJS/BWV565/ToccataFugue (Satz
+// „Public Domain"): Mordent auf a, dann der Lauf g–f–e–d–cis–d, Halt auf a,
+// das Ganze eine Oktave tiefer, dann die Akkordsäule über dem d-Pedal. Aus
+// dem MIDI der Quelle ließ sich der Lauf nicht automatisch übernehmen (die
+// Verzierung liegt dort als Akkord auf EINEM Zeitpunkt), die Tonfolge ist
+// aber dieselbe. Deshalb: von Hand geschrieben, an der Quelle belegt.
 // 8-Bit-Fassung der Eröffnungsgeste: Mordent, absteigender Lauf, Halt – erst
 // oben, dann eine Oktave tiefer, dann die Akkordsäule. Der Pedalton läuft
 // als Dreiecks-Stimme durch: die Orgel unter dem Automaten.

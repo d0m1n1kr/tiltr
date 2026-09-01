@@ -15,24 +15,26 @@ import { tune as elise } from './elise';
 import { tune as nachtmusik } from './nachtmusik';
 import { tune as toccata } from './toccata';
 import { tune as bergkoenig } from './bergkoenig';
-import { tune as tell } from './tell';
+import { tune as galopp } from './galopp';
 import { tune as entertainer } from './entertainer';
-import { tune as mars } from './mars';
+import { tune as fuenfviertel } from './fuenfviertel';
+import { tune as thaxted } from './thaxted';
 
-/** Reihenfolge = Anzeigereihenfolge im Editor (Eigenes zuerst, dann Klassik
- *  chronologisch). */
+/** Reihenfolge = Anzeigereihenfolge im Editor: EIGENE Stücke zuerst, dann die
+ *  gemeinfreien chronologisch (1710 → 1921). */
 export const MUSIC: readonly Tune[] = [
   tiltr,
   aufzug,
   waechter,
+  galopp,
+  fuenfviertel,
   toccata,
   nachtmusik,
   elise,
   ode,
-  tell,
   bergkoenig,
   entertainer,
-  mars,
+  thaxted,
 ];
 
 export const MUSIC_IDS: readonly string[] = MUSIC.map((t) => t.id);

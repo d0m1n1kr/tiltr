@@ -130,6 +130,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Bus mit Sidechain: Der Echo-Ping duckt sie um ~12 dB, sonst wäre der Raum
   um den Automaten unspielbar. Was in `src/music/` hereindarf, steht in
   dessen README (gemeinfrei = Komponist vor 1956 gestorben, oder eigenes) –
+  und die TÖNE kommen aus einer Quelle, nicht aus dem Gedächtnis:
+  `tools/score2tiltr.py` übersetzt MIDI/MusicXML (Mutopia, music21-Korpus,
+  KernScores) in unsere Notenschrift. Die erste Fassung war frei geschrieben
+  und hatte in drei von acht Klassikern falsche Töne –
   geschützte Werke NIE ins Repo, sie können als eingebetteter Titel im Level
   eines Dritten reisen (`playlist`-Eintrag als Objekt statt als ID).
   Der Automat selbst ist ein MASSIVER Kasten aus dem vorhandenen

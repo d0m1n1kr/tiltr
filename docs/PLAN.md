@@ -380,14 +380,59 @@ Spaß-Element gegen das ganze Projekt ist ein schlechter Tausch.
 **Die Regel für `src/music/` ist deshalb eine Zahl: Komponist vor 1956
 gestorben ⇒ frei** (70 Jahre p. m. a., ab Jahresende; Stand 2026), oder eigene
 Komposition. Sie steht als README IM Ordner, damit sie am Ort der
-Entscheidung liegt. Ausgeliefert wurden elf Titel: drei Originale
-(tiltr-Theme, Aufzugmusik, Wächter-Tango) und acht gemeinfreie
-(Bach – Toccata d-Moll, Mozart – Kleine Nachtmusik, Beethoven – Für Elise und
-Ode an die Freude, Rossini – Wilhelm-Tell-Galopp, Grieg – In der Halle des
-Bergkönigs, Joplin – The Entertainer, Holst – Mars). Holst ist der
-interessanteste Fund der Recherche: „Mars" ist der Ur-Vorfahre jeder
-Bedrohungsmusik in Spielen – genau der Klang, den man meint, wenn man an
-Weltraum-Fanfaren denkt, und gemeinfrei seit 2005.
+Entscheidung liegt. Ausgeliefert werden zwölf Titel: fünf Originale
+(tiltr-Theme, Aufzugmusik, Wächter-Tango, Galopp, Fünfviertel) und sieben
+gemeinfreie, alle an einer Quelle belegt (Bach – Toccata d-Moll, Mozart –
+Kleine Nachtmusik, Beethoven – Für Elise und Ode an die Freude, Grieg – In der
+Halle des Bergkönigs, Joplin – The Entertainer, Holst – Thaxted).
+
+### Die Töne kommen aus einer QUELLE (Nachtrag v2.4.1)
+
+Die erste Fassung war aus dem Gedächtnis geschrieben. Auf die Frage, ob es
+dafür keine freien Datenbanken gebe, kam die unangenehme Antwort: Es gibt
+sie, und drei von acht Klassikern hatten falsche Töne. Belegt am
+**Mutopia Project** (LilyPond + MIDI, jedes Stück mit ausgewiesenem
+Rechtestatus) und übersetzt mit dem neuen `tools/score2tiltr.py` (music21):
+
+- **Bergkönig**: ab Takt 2 falsch. Echt ist `f cis f | e c e`
+  (chromatischer Seitenschritt – daher das Unheimliche), nicht die
+  Wiederholung von Takt 1; die zweite Hälfte steht eine QUINTE höher in fis
+  mit erhöhter Sekunde ais, nicht in D. Tempo 138 statt 116 („Alla marcia
+  molto marcato" der Quelle).
+- **Kleine Nachtmusik**: Tonfolge stimmte, RHYTHMUS nicht – der Anfang ist
+  punktiert (Viertel plus Achtel), in geraden Achteln klingt er wie eine
+  Tonleiterübung. Und die Antwortphrase geht über D7 hinauf (c–a–c–a–c–a–fis–a),
+  nicht hinunter.
+- **Ode an die Freude**: war die vereinfachte Schulbuch-Form in C-Dur. Echt
+  ist G-Dur mit `d–c–a–h` im vierten Takt und der Kadenz `a–fis–g` – genau
+  die zwei Stellen, an denen man das Stück wiedererkennt.
+- **Für Elise** und **The Entertainer**: Tonfolgen waren richtig, die
+  Punktierungen und die Sechzehntel-Auftakte nicht. Jetzt aus der Quelle.
+- **Wilhelm-Tell-Galopp**: keine freie maschinenlesbare Quelle auffindbar
+  (Mutopia hat von Rossini nur „Eduardo e Cristina", IMSLP nur Scans). Das
+  Stück heißt deshalb jetzt „Galopp" und ist als Original ausgewiesen – ein
+  Werk unter dem Namen seines Komponisten auszuliefern und die Melodie dabei
+  zu erfinden, ist keine Bearbeitung, sondern ein Fehler.
+- **Toccata**: an der Quelle gegengeprüft, unverändert. Die Verzierung liegt
+  im Quell-MIDI als Akkord auf EINEM Zeitpunkt, ließ sich also nicht
+  automatisch übernehmen – die Tonfolge ist belegt, die Zeile von Hand.
+- **Mars** (Holst): keine freie Quelle, und die Akkordstöße über dem Ostinato
+  waren ohnehin erfunden. Heißt jetzt „Fünfviertel" und ist als Original
+  ausgewiesen. Holst ist trotzdem im Ordner – mit **„Thaxted"** (1921, der
+  Hymnensatz aus dem Mittelteil von „Jupiter"), belegt am Mutopia Project und
+  mit seinen echten Tönen. Der ruhige Titel der Jukebox, und ein
+  Nebengewinn: Wo alles andere treibt, atmet dieser breit.
+
+Und weil die Lehre nicht in einem Kommentar versauern soll, prüft
+`tests/music.test.ts` sie jetzt MECHANISCH: Jede Titeldatei muss entweder
+„(Original)" im Kopf tragen oder eine QUELLE nennen, und zwar eine der
+bekannten Datenbanken. Ein Werk unter dem Namen seines Komponisten
+auszuliefern und die Melodie dabei zu erfinden, kann damit nicht mehr
+unauffällig passieren. Der E2E-Lauf hängt außerdem nicht mehr an
+Klassiker-Titeln (die dürfen sich durch eine Quelle ändern), sondern an
+Originalen – und seine Zusicherung zur Abspielfolge prüft jetzt zusätzlich,
+dass die Ziffern in Listenreihenfolge NICHT aufsteigen: Sonst wäre sie auch
+erfüllt, wenn der Editor bloß durchnummeriert (im Sabotage-Lauf rot gesehen).
 
 ### Entscheidung 1: Die Songs sind DATEN, keine Audiodateien
 

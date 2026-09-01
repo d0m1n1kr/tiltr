@@ -60,6 +60,30 @@ describe.each(MUSIC.map((t) => [t.id, t] as const))('Titel „%s"', (_id, tune) 
   });
 });
 
+// Die Lehre aus v2.4.0: Drei von acht Klassikern hatten falsche Töne, weil
+// sie aus dem Gedächtnis geschrieben waren. Ein Werk unter dem Namen seines
+// Komponisten auszuliefern und die Melodie dabei zu erfinden, ist keine
+// Bearbeitung, sondern ein Fehler. Diese Prüfung macht die Regel mechanisch:
+// Wer keinen Komponisten nennt, ist ein Original; alle anderen müssen ihre
+// QUELLE nennen (siehe src/music/README.md und tools/score2tiltr.py).
+describe('Herkunft der Töne', () => {
+  // Quelltext über Vites Glob statt über node:fs – dann braucht die Testsuite
+  // keine Node-Typen (tsconfig kennt nur vite/client).
+  const sources = import.meta.glob('../src/music/*.ts', { query: '?raw', import: 'default', eager: true }) as Record<
+    string,
+    string
+  >;
+
+  it.each(MUSIC.map((t) => [t.id] as const))('„%s" nennt Original oder Quelle', (id) => {
+    const src = sources[`../src/music/${id}.ts`];
+    expect(src, `${id}.ts nicht gefunden`).toBeTruthy();
+    const header = src!.slice(0, src!.indexOf('import type'));
+    const isOriginal = header.includes('(Original)');
+    expect(isOriginal || /QUELLE|Quelle/.test(header), `${id}: weder Original noch Quelle genannt`).toBe(true);
+    if (!isOriginal) expect(header, `${id}: Quelle ohne Beleg`).toMatch(/Mutopia|music21|KernScores|IMSLP|abcnotation/);
+  });
+});
+
 describe('compiledById', () => {
   it('übersetzt höchstens einmal (dieselbe Instanz zurück)', () => {
     const a = compiledById('tiltr');

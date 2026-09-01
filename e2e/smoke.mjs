@@ -2162,7 +2162,10 @@ const check = (name, cond) => {
           carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[0, 0], 's'], [[2, 0], 's']],
           add: [[[1, 0], 's']],
         },
-        elements: [{ type: 'jukebox', cell: [2, 1], playlist: ['tiltr', 'ode', 'mars'] }],
+        // Playlist bewusst aus Titeln, die inhaltlich stabil sind: zwei
+        // Originale und die Ode. Der Lauf soll nicht rot werden, wenn ein
+        // Klassiker gegen eine belegte Quelle ausgetauscht wird.
+        elements: [{ type: 'jukebox', cell: [2, 1], playlist: ['tiltr', 'ode', 'galopp'] }],
         start: [0, 0],
         goal: [0, 1],
       },
@@ -2254,7 +2257,7 @@ const check = (name, cond) => {
 
   const b2 = await bump();
   check(`Zweiter Rempler läuft weiter im Kreis (${b2.after?.index} „${b2.after?.title}", ${b2.after?.scratches}× gekratzt)`,
-    b2.after?.index === 2 && b2.after?.title === 'Mars' && b2.after?.scratches === 2);
+    b2.after?.index === 2 && b2.after?.title === 'Galopp' && b2.after?.scratches === 2);
 
   await page.click('#homeBtn');
   await page.waitForTimeout(250);
@@ -2295,7 +2298,7 @@ const check = (name, cond) => {
           carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[3, 0], 'e'], [[4, 0], 's']],
           add: [[[0, 0], 's'], [[1, 0], 's'], [[2, 0], 's'], [[3, 0], 's']],
         },
-        elements: [{ type: 'jukebox', cell: [2, 0], playlist: ['tiltr', 'ode', 'mars'] }],
+        elements: [{ type: 'jukebox', cell: [2, 0], playlist: ['tiltr', 'ode', 'galopp'] }],
         start: [0, 0],
         goal: [4, 1],
       },
@@ -2337,13 +2340,17 @@ const check = (name, cond) => {
   );
   check(`Playlist listet alle mitgelieferten Titel (${tracks.length}) und hakt die drei gewählten an (${tracks.filter((t) => t.checked).length})`,
     tracks.length >= 10 && tracks.filter((t) => t.checked).length === 3);
-  // Die Ziffer ist die ABSPIELFOLGE, nicht die Listenposition: tiltr steht in
-  // der Liste vorn, Mars hinten – die Reihenfolge kommt aus der Playlist.
-  const orders = tracks.filter((t) => t.order).map((t) => `${t.order}${t.title}`);
-  check(`Die Ziffer zeigt die Abspielfolge (${orders.join(' ')})`,
-    orders.length === 3 && orders[0].startsWith('1.') && orders[0].includes('tiltr') &&
-      orders[1].startsWith('2.') && orders[1].includes('Ode') &&
-      orders[2].startsWith('3.') && orders[2].includes('Mars'));
+  // Die Ziffer ist die ABSPIELFOLGE, nicht die Listenposition. Geprüft wird
+  // beides: dass jeder Titel SEINE Playlist-Nummer trägt, und dass die Ziffern
+  // in Listenreihenfolge NICHT aufsteigen – sonst wäre die Zusicherung auch
+  // erfüllt, wenn der Editor einfach durchnummeriert.
+  const numbered = tracks.filter((t) => t.order);
+  const digits = numbered.map((t) => Number(t.order.replace('.', '')));
+  const byTitle = Object.fromEntries(numbered.map((t) => [t.title, Number(t.order.replace('.', ''))]));
+  const ascending = digits.every((d, i) => i === 0 || d > digits[i - 1]);
+  check(`Die Ziffer zeigt die Abspielfolge (${numbered.map((t) => t.order + t.title).join(' ')})`,
+    numbered.length === 3 && byTitle['tiltr-Theme'] === 1 && byTitle['Ode an die Freude'] === 2 &&
+      byTitle['Galopp'] === 3 && !ascending);
 
   // ▶ hört den Titel vor – über denselben Musik-Bus wie im Spiel.
   const srcBefore = await page.evaluate(() => window.__srcCount);
@@ -2369,7 +2376,7 @@ const check = (name, cond) => {
       }
     }
   };
-  await uncheck('Mars');
+  await uncheck('Galopp');
   await uncheck('Ode');
   const twoGone = await page.$$eval('#edProps .ed-playlist .ed-track input:checked', (e) => e.length);
   await uncheck('tiltr');
