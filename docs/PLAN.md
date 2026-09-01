@@ -612,7 +612,61 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
-### Gefunden, aber NICHT hier behoben: Wächter-Riegel in der Tages-Challenge
+## M28 „Der Riegel" ✓ (v2.5.1) – Wächter-Fehler in der Tages-Challenge
+
+**Der Fehler.** Der Daily-Generator würfelte regelmäßig eine
+ZWEI-ZELLEN-PATROUILLE in einen ein Zelle breiten Gang auf dem einzigen Weg
+zum Ziel. An einem Wächter kommt man dort nicht vorbei (Kollision ab 48
+Einheiten, seitlich sind höchstens 23 möglich) und überholen kann man ihn
+nie – der Gang ist DAUERHAFT versiegelt, der Tag unlösbar. Und zwar für alle,
+denn das Level ist für alle dasselbe. Gemessen: **8 von 28 Tagen**. Die
+Kampagne hat den Beweis seit M18, der Generator hatte ihn nie bekommen.
+
+**Der Fix in zwei Schichten**, und die Unterscheidung ist wichtig:
+
+1. **Korrektheit: generieren und BEWEISEN.** Am Ende jedes Tages läuft der
+   echte Wächter-Beweis (`guardsProof`, dieselbe Funktion, die das
+   Editor-Badge zeigt – aus `validateLevel` herausgezogen, ein Beweis, zwei
+   Aufrufer). Ist er rot, wird der SCHULDIGE Wächter gesucht (bei zwei
+   Wächtern versiegelt meist nur einer den Gang – der andere darf bleiben) und
+   entfernt. Das endet garantiert: Jeder Durchlauf nimmt einen Wächter, und
+   ohne Wächter ist der Beweis derselbe wie das offene Modell, in dem jeder
+   Tag erreichbar ist. Ein Tag ohne einen seiner Wächter ist immer noch
+   spielbar; ein Tag mit versiegeltem Gang ist es nicht.
+2. **Qualität: die Ausweichbucht-Regel.** `patrolCrossable` lässt beim
+   AUSWÄHLEN nur Patrouillen zu, an denen man im Beweismodell vorbeikommt:
+   Zwei Zugänge müssen näher beieinander liegen als die Patrouille lang ist –
+   praktisch braucht der Gang irgendwo eine Ausweichbucht.
+
+Der Sabotage-Lauf hat die Rollen sauber getrennt: Ohne die Nachprüfung wird
+die Testsuite ROT, ohne den Filter bleibt sie GRÜN. Der Filter ist also für
+die Korrektheit entbehrlich – aber nicht für die Qualität: Mit ihm überleben
+**76 %** der vorgesehenen Wächter, ohne ihn nur **60 %** (120 Tage gemessen).
+Ein Tag soll so aussehen, wie er entworfen war, nicht nur lösbar sein. Das
+steht als Warnung im Code, damit niemand den Filter als redundant wegräumt.
+
+**Ergebnis:** 120 Tage geprüft, **0 rote Beweise** (vorher ~29 %). Im
+Vergleich alt/neu über 14 Tage (1.–14. September 2026): **6 Tage waren rot,
+jetzt keiner.**
+
+**Was sich für Spieler ändert:** Der Filter verwirft Kandidaten und
+verschiebt damit den Zufallsstrom – jeder Tag MIT Wächtern sieht anders aus
+als vorher (9 von 14 Tagen im Vergleich), Montag und Dienstag haben keine
+Wächter und bleiben identisch. Gespeicherte Tageswerte hängen am Datum, nicht
+am Inhalt; ein bereits gespielter Tag behält also seinen Eintrag, auch wenn
+das Level jetzt minimal anders aussieht. Anders geht es nicht: Ein unlösbarer
+Tag muss sich ändern.
+
+Tests: `tests/daily.test.ts` fordert das `guards`-Badge an jedem der 21
+Prüftage grün (rot gesehen ohne Nachprüfung) und nagelt die
+Ausweichbucht-Regel an vier Fällen fest – Zwei-Zellen-Gang ohne Zugang
+(dicht), derselbe mit zwei Zugängen an EINER Zelle (passierbar),
+Drei-Zellen-Gang mit Zugängen nur an den Enden (dicht, Spanne = Länge), und
+mit zusätzlichem Zugang in der Mitte (passierbar). Die dritte und vierte
+Klausel haben beim ersten Anlauf meine eigene Erwartung widerlegt: Ein Zugang
+allein reicht nie, es braucht ZWEI verschiedene.
+
+### Der Weg dorthin: gefunden beim Messen der Jukebox-Verteilung
 
 Beim Messen fiel auf, dass 8 von 28 Tagen den `guards`-Beweis reißen – **ohne
 Jukebox, also vorbestehend**. Zwei Fälle nachgesehen: beide Male eine
@@ -623,11 +677,11 @@ vorbei (Kollision ab 48 Einheiten, seitlich sind höchstens 23 möglich), der
 Gang ist dauerhaft versiegelt – der Tag ist mit hoher Wahrscheinlichkeit
 UNLÖSBAR. Der Daily-Generator hat die M18-Invariante nie bekommen.
 
-Vorschlag (eigener Meilenstein, weil es JEDEN Tag verändert – der
-Zufallsstrom verschiebt sich): Wächter nach demselben Muster setzen wie Anker
-und Glas, nur mit dem echten Beweis – Patrouille wählen, `guardSafeReachable`
-prüfen, bei Rot eine andere ziehen (begrenzt), sonst den Wächter weglassen.
-Dazu eine Zusicherung über viele Tage, die das Badge grün fordert.
+Behoben in M28 (siehe oben). Der Fund kam nicht aus einem Bug-Report, sondern
+aus einer Vergleichsmessung: Beim Prüfen, ob die neuen Automaten Beweise
+brechen, lief dieselbe Messung EINMAL OHNE sie – und die 8 roten Tage blieben.
+Ohne diese Gegenprobe hätte ich den Fehler der Jukebox zugeschrieben und
+„behoben", indem ich am falschen Ende gedreht hätte.
 
 ### Was beim Bauen auffiel
 

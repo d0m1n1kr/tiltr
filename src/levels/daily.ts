@@ -5,6 +5,7 @@
 // Schwierigkeit steigt über die Woche: Montag sanft, Sonntag das volle Programm.
 
 import { floodMaze, generateMaze, solveMaze, type Cell } from '../core/maze';
+import { guardsProof } from './validate';
 import { mulberry32, seedFromString, type Rng } from '../core/rng';
 import { BALL_R } from '../core/constants';
 import type { ElementDef, LevelDef } from './schema';
@@ -81,6 +82,51 @@ function pickCell(rng: Rng, cols: number, rows: number, forbidden: Set<number>):
   }
 }
 
+const PATROL_NEIGHBORS = [
+  ['n', 0, -1],
+  ['e', 1, 0],
+  ['s', 0, 1],
+  ['w', -1, 0],
+] as const;
+
+/**
+ * Kommt man an dieser Patrouille im BEWEISMODELL (M18) vorbei?
+ *
+ * Dort gilt: Zwei Zugänge sind nur verbunden, wenn ihr Abstand entlang der
+ * Patrouille KLEINER ist als die Patrouille lang – dann bleibt beim Queren
+ * eine Zelle frei, auf der sich der Wächter aufhalten kann. Praktisch heißt
+ * das: Der Gang braucht irgendwo eine Ausweichbucht. Eine Zwei-Zellen-
+ * Patrouille in einem ein Zelle breiten Gang ist DAUERHAFT dicht – an einem
+ * Wächter kommt man dort nicht vorbei (Kollision ab 48 Einheiten, seitlich
+ * sind höchstens 23 möglich).
+ *
+ * Genau diese Klasse machte 8 von 28 Tagen unlösbar: Die Kampagne hat den
+ * Beweis seit M18, der Generator hatte ihn nie.
+ *
+ * ACHTUNG, bevor jemand das hier als überflüssig löscht: Für die KORREKTHEIT
+ * ist es das (der Sabotage-Lauf zeigt es – ohne diesen Filter bleibt die
+ * Testsuite grün, weil die Nachprüfung unten jeden Riegel wieder entfernt).
+ * Es ist eine QUALITÄTS-Maßnahme: Mit dem Filter überleben 76 % der
+ * vorgesehenen Wächter, ohne ihn nur 60 % (gemessen über 120 Tage). Der Tag
+ * soll so aussehen, wie er entworfen war – nicht nur lösbar sein.
+ */
+export function patrolCrossable(cells: Cell[], cols: number, rows: number, run: ReadonlyArray<[number, number]>): boolean {
+  const inRun = (x: number, y: number) => run.some(([rx, ry]) => rx === x && ry === y);
+  const access: Array<{ at: number; key: number }> = [];
+  run.forEach(([x, y], at) => {
+    const c = cells[y * cols + x]!;
+    for (const [dir, dx, dy] of PATROL_NEIGHBORS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || c[dir] || inRun(nx, ny)) continue;
+      access.push({ at, key: ny * cols + nx });
+    }
+  });
+  return access.some((a) =>
+    access.some((b) => b.key !== a.key && Math.abs(b.at - a.at) + 1 < run.length),
+  );
+}
+
 // Gerade, offene Patrouille im Maze suchen (2–3 Zellen); null wenn keine passt.
 function findPatrol(
   cells: Cell[],
@@ -109,6 +155,7 @@ function findPatrol(
     }
     if (run.length < 2) continue;
     if (run.some(([cx, cy]) => forbidden.has(cy * cols + cx))) continue;
+    if (!patrolCrossable(cells, cols, rows, run)) continue;
     for (const [cx, cy] of run) forbidden.add(cy * cols + cx);
     return [run[0]!, run[run.length - 1]!];
   }
@@ -265,11 +312,44 @@ export function generateDailyLevel(date: string): LevelDef {
     });
   }
 
-  return {
+  const def: LevelDef = {
     id: `daily-${date}`,
     name: 'Tages-Challenge',
     intro: `${p.label}. Ein Level für alle, jeden Tag ein neues – dein erster Zieleinlauf zählt als Tageswert.`,
     pingBudget: p.pings,
     floors,
   };
+
+  // GENERIEREN UND BEWEISEN, nicht hoffen. `patrolCrossable` verhindert die
+  // häufigste Falle schon bei der Auswahl, aber der Beweis ist LEVELWEIT: Ob
+  // ein Wächter den Pflichtweg versiegelt, hängt daran, WO die Zugänge liegen,
+  // die der Weg tatsächlich braucht. Also am Ende den echten Beweis führen
+  // (dieselbe Funktion, die das Editor-Badge zeigt) und im Zweifel den
+  // zuletzt gesetzten Wächter wieder wegnehmen.
+  //
+  // Das endet garantiert: Jeder Durchlauf entfernt einen Wächter, und ohne
+  // Wächter ist der Beweis derselbe wie das offene Modell – und in dem ist
+  // jeder Tag erreichbar (tests/daily.test.ts).
+  //
+  // Ein Tag ohne einen seiner Wächter ist immer noch spielbar. Ein Tag mit
+  // einem versiegelten Gang ist unlösbar – und das für ALLE, denn das Level
+  // ist für alle dasselbe.
+  for (;;) {
+    if (guardsProof(def).ok) break;
+    // Den SCHULDIGEN suchen, nicht den letzten: Bei zwei Wächtern versiegelt
+    // meist nur einer den Gang – der andere darf bleiben.
+    const guardsAt: Array<[number, number]> = [];
+    def.floors.forEach((f, fi) => f.elements.forEach((e, ei) => e.type === 'guard' && guardsAt.push([fi, ei])));
+    if (!guardsAt.length) break;
+    const culprit =
+      guardsAt.find(([fi, ei]) => {
+        const kept = def.floors[fi]!.elements[ei]!;
+        def.floors[fi]!.elements.splice(ei, 1);
+        const ok = guardsProof(def).ok;
+        def.floors[fi]!.elements.splice(ei, 0, kept);
+        return ok;
+      }) ?? guardsAt[guardsAt.length - 1]!;
+    def.floors[culprit[0]]!.elements.splice(culprit[1], 1);
+  }
+  return def;
 }

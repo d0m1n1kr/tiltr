@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { generateDailyLevel, todayUTC, formatDate } from '../src/levels/daily';
+import { generateDailyLevel, patrolCrossable, todayUTC, formatDate } from '../src/levels/daily';
 import { loadLevel } from '../src/levels/loader';
+import { generateMaze, setWall } from '../src/core/maze';
+import { mulberry32 } from '../src/core/rng';
 import { buildFloorCells, cellKey, expectAllReachable, reachable, validateLevel } from './helpers';
 
 // Drei Wochen ab Montag, 5.1.2026 – deckt jeden Wochentag dreimal ab.
@@ -100,6 +102,54 @@ describe('Tages-Challenge', () => {
       const jb = validateLevel(def).find((c) => c.key === 'jukebox')!;
       expect(jb.ok, `${date}: ${jb.detail ?? ''}`).toBe(true);
     }
+  });
+
+  it('M28: Wächter versiegeln keinen Gang – der Beweis ist an jedem Tag grün', () => {
+    // DER Fehler der Tages-Challenge: Der Generator würfelte regelmäßig eine
+    // Zwei-Zellen-Patrouille in einen ein Zelle breiten Gang auf dem einzigen
+    // Weg zum Ziel. An einem Wächter kommt man dort nicht vorbei (Kollision ab
+    // 48 Einheiten, seitlich sind höchstens 23 möglich) – der Tag war für ALLE
+    // unlösbar. Die Kampagne hat den Beweis seit M18, der Generator jetzt auch.
+    for (const date of DATES) {
+      const def = generateDailyLevel(date);
+      const g = validateLevel(def).find((c) => c.key === 'guards')!;
+      expect(g.ok, `${date}: ${g.detail ?? ''}`).toBe(true);
+    }
+  });
+
+  it('M28: die Ausweichbucht-Regel (patrolCrossable) im Detail', () => {
+    // 3x3-Gitter, alles offen, dann gezielt zumauern.
+    const build = (walls: Array<[number, number, 'n' | 'e' | 's' | 'w']>) => {
+      const cells = generateMaze(3, 3, mulberry32(1));
+      for (let y = 0; y < 3; y++) {
+        for (let x = 0; x < 3; x++) {
+          if (x < 2) setWall(cells, 3, 3, x, y, 'e', false);
+          if (y < 2) setWall(cells, 3, 3, x, y, 's', false);
+        }
+      }
+      for (const [x, y, d] of walls) setWall(cells, 3, 3, x, y, d, true);
+      return cells;
+    };
+    // Zwei-Zellen-Patrouille in einem ein Zelle breiten Gang: dicht – es gibt
+    // gar keinen Zugang von der Seite.
+    const corridor2 = build([
+      [0, 0, 's'],
+      [1, 0, 's'],
+    ]);
+    expect(patrolCrossable(corridor2, 3, 3, [[0, 0], [1, 0]])).toBe(false);
+    // Dieselbe Patrouille, aber (1,0) hat ZWEI Zugänge (nach unten und nach
+    // Osten): Man kommt an derselben Zelle herein und woanders heraus,
+    // während der Wächter auf der anderen Zelle steht. Passierbar.
+    const withBay = build([[0, 0, 's']]);
+    expect(patrolCrossable(withBay, 3, 3, [[0, 0], [1, 0]])).toBe(true);
+    // Drei Zellen, Zugänge NUR an den beiden Enden: Spanne 3 = Länge 3, also
+    // bleibt beim Queren keine Zelle für den Wächter – dicht.
+    const endsOnly = build([[1, 0, 's']]);
+    expect(patrolCrossable(endsOnly, 3, 3, [[0, 0], [1, 0], [2, 0]])).toBe(false);
+    // Drei Zellen mit zusätzlichem Zugang in der MITTE: Spanne 2 < 3 – der
+    // Wächter kann auf der dritten Zelle warten. Passierbar.
+    const midBay = build([]);
+    expect(patrolCrossable(midBay, 3, 3, [[0, 0], [1, 0], [2, 0]])).toBe(true);
   });
 
   it('Ankunft auf tieferen Ebenen ist ein Checkpoint', () => {

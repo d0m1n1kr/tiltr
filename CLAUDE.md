@@ -63,6 +63,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   links/unten rechts liegen – Achse passend zu Richtungsbezügen im
   Intro-Text wählen ('x' erhält oben/unten, 'y' links/rechts);
   tests/mirror.test.ts erzwingt die Ecken-Verteilung.
+- `src/levels/daily.ts` – Tages-Challenge: Wächter werden GENERIERT UND
+  BEWIESEN. Am Ende läuft `guardsProof` (aus validate.ts herausgezogen –
+  derselbe Beweis, den das Editor-Badge zeigt); ist er rot, wird der
+  schuldige Wächter entfernt. Grund: Eine Zwei-Zellen-Patrouille in einem ein
+  Zelle breiten Gang versiegelt ihn DAUERHAFT (M18-Klasse) – das machte 8 von
+  28 Tagen unlösbar, und zwar für alle, denn das Level ist für alle dasselbe.
+  `patrolCrossable` filtert dieselbe Falle schon bei der Auswahl; das ist
+  QUALITÄT, nicht Korrektheit (mit Filter überleben 76 % der Wächter, ohne
+  60 %) – nicht als redundant wegräumen.
 - `src/levels/duel.ts` – Geist-Duell: Spur auf exaktes 8-Hz-Raster
   resampeln, delta-kodieren und mit Level + Zeit in EIN Token packen
   (`#duel=`, gemeinsamer deflate-Pfad mit `#level=` über

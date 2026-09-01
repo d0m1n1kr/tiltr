@@ -306,6 +306,37 @@ export function directedDistances(
   return dist;
 }
 
+/**
+ * Wächter sind keine Riegel: Ziel, Öffner und Transporter müssen auch dann
+ * erreichbar bleiben, wenn man an keinem Wächter vorbeidrängt. Fängt die
+ * Klasse „Wächter versiegelt den einzigen Ein-Zellen-Korridor", die im
+ * offenen Modell unsichtbar ist.
+ *
+ * Eigene Funktion, weil auch der GENERATOR sie braucht: Die Tages-Challenge
+ * setzt Wächter zufällig und muss danach prüfen, ob sie einen Gang versiegelt
+ * haben (siehe src/levels/daily.ts). Ein Beweis, zwei Aufrufer.
+ */
+export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
+  const goalFl = def.floors.findIndex((f) => f.goal);
+  if (goalFl < 0) return { ok: false, detail: 'kein Ziel' };
+  const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);
+  const past = guardSafeReachable(def);
+  let ok = past.has(goalKey);
+  let detail = ok ? undefined : 'Ziel';
+  def.floors.forEach((floor, fl) => {
+    for (const el of floor.elements) {
+      if (
+        (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch' || el.type === 'transporter') &&
+        !past.has(cellKey(fl, el.cell))
+      ) {
+        ok = false;
+        detail = `${el.type} E${fl + 1} (${el.cell})`;
+      }
+    }
+  });
+  return { ok, detail };
+}
+
 /* --- Level-Prüfbericht (Editor-Badges; die Testsuite nutzt die Bausteine
        oben direkt für schärfere, gezielte Assertions) ---------------------- */
 
@@ -454,25 +485,9 @@ export function validateLevel(raw: unknown): CheckResult[] {
   });
   push('hazards', hazardsOk, hazardsDetail);
 
-  // Wächter sind keine Riegel: Ziel, Öffner und Transporter müssen auch
-  // dann erreichbar bleiben, wenn man an keinem Wächter vorbeidrängt
-  // (guardsBlock – siehe CellConfig). Fängt die Klasse „Wächter versiegelt
-  // den einzigen Ein-Zellen-Korridor", die im offenen Modell unsichtbar ist.
-  const past = guardSafeReachable(def);
-  let guardsOk = past.has(goalKey);
-  let guardsDetail = guardsOk ? undefined : 'Ziel';
-  def.floors.forEach((floor, fl) => {
-    for (const el of floor.elements) {
-      if (
-        (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch' || el.type === 'transporter') &&
-        !past.has(cellKey(fl, el.cell))
-      ) {
-        guardsOk = false;
-        guardsDetail = `${el.type} E${fl + 1} (${el.cell})`;
-      }
-    }
-  });
-  push('guards', guardsOk, guardsDetail);
+  // Wächter sind keine Riegel (Beweis siehe guardsProof).
+  const guards = guardsProof(def);
+  push('guards', guards.ok, guards.detail);
 
   // Beide letzten Checks arbeiten im offenen Modell (Türen offen, brüchige
   // Wände zählen als Durchgang) – EIN BFS für beide.
