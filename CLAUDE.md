@@ -48,6 +48,11 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   liegt reload-fest als Draft im Store (saveDraft bei jeder Änderung,
   clearDraft beim Speichern); die Werkstatt bietet „Weiter an …" an und
   bestätigt per Zwei-Tap, bevor Neu/Zufall/Bearbeiten den Draft ersetzen.
+  In der PREVIEW ist der 👁-Knopf (Debug-Ansicht) IMMER da – im Spiel ist er
+  versteckt (5 Taps auf die Versionsnummer), beim Testen eines eigenen
+  Entwurfs gehört er dazu. `updateDebugButton()` schaltet ihn bei jedem
+  Levelstart: verlässt man die Vorschau, geht er weg UND die Ansicht aus,
+  damit kein aufgedecktes Labyrinth in den nächsten Lauf mitkommt.
   Der Editor arbeitet auf ROHEN Defs, in denen optionale Felder fehlen
   dürfen – `normalizeDraft()` füllt sie beim Öffnen EINMAL auf, statt an
   jeder Zugriffsstelle zu prüfen. Der Auswahl-Kopf spielt die Klang-Signatur

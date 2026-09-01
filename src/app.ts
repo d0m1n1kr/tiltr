@@ -171,6 +171,9 @@ let mode: Mode | null = null;
 let currentDef: LevelDef | null = null;
 let sensorsReady = false;
 let debug = false;
+/** Wurde die Debug-Ansicht dauerhaft freigeschaltet (5 Taps auf die Version)?
+ *  In der Editor-Vorschau ist sie unabhängig davon immer da. */
+let debugUnlocked = false;
 let revealUntil = 0;
 let maxDist = 1;
 let respawnPoint = { floor: 0, x: 0, y: 0 };
@@ -573,12 +576,33 @@ debugBtn.addEventListener('click', () => {
   debug = !debug;
 });
 
+/**
+ * Sichtbarkeit des 👁-Knopfs. Im SPIEL ist die Debug-Ansicht versteckt
+ * (5 Taps auf die Versionsnummer schalten sie frei) – in der
+ * EDITOR-VORSCHAU gehört sie IMMER dazu: Dort testet man den eigenen
+ * Entwurf, und wer bauen will, muss sehen dürfen, was er gebaut hat.
+ *
+ * Aufgerufen wird sie bei JEDEM Levelstart – und nur dort, denn nur dort kann
+ * sie etwas bewirken: Beim Verlassen der Vorschau geht der Knopf damit wieder
+ * weg UND die Ansicht aus. Sonst nähme man ein aufgedecktes Labyrinth in den
+ * nächsten Lauf mit und könnte es ohne Knopf nicht mehr abschalten.
+ * (Ein zusätzlicher Aufruf in showMenu() stand hier zuerst – der
+ * Sabotage-Lauf zeigte, dass ihn niemand bemerkt: Im Menü ist das HUD
+ * versteckt, und gezeichnet wird dort nichts mehr.)
+ */
+function updateDebugButton(editorPreview: boolean): void {
+  const visible = editorPreview || debugUnlocked;
+  debugBtn.classList.toggle('hidden', !visible);
+  if (!visible) debug = false;
+}
+
 // Debug-Ansicht ist versteckt: 5 Taps auf die Versionsnummer schalten sie
 // frei – samt Viewport-Diagnose (Geräte-Wahrheit für Safe-Area-Fragen).
 let versionTaps = 0;
 $('version').addEventListener('click', () => {
-  if (!debugBtn.classList.contains('hidden')) return;
+  if (debugUnlocked) return;
   if (++versionTaps < 5) return;
+  debugUnlocked = true;
   debugBtn.classList.remove('hidden');
   $('version').textContent += ' · 🔧';
   const diag = document.createElement('p');
@@ -688,6 +712,7 @@ function launch(def: LevelDef): void {
   // (der ungespeicherte Entwurf lebt nur im Editor).
   const editorPreview = mode?.kind === 'custom' && customFromEditor;
   $('editBtn').classList.toggle('hidden', !editorPreview);
+  updateDebugButton(editorPreview);
   homeBtn.classList.toggle('hidden', editorPreview);
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   input.calibrate();

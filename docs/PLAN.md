@@ -612,6 +612,31 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M29 „Sehen beim Bauen" ✓ (v2.5.2)
+
+Die Debug-Ansicht (👁, deckt das Labyrinth auf) ist im Spiel versteckt – 5
+Taps auf die Versionsnummer schalten sie frei. In der EDITOR-VORSCHAU ist sie
+jetzt immer da: Dort testet man den eigenen Entwurf, und wer bauen will, muss
+sehen dürfen, was er gebaut hat. Der Freischalt-Trick soll das Spiel schützen,
+nicht das Werkzeug.
+
+`updateDebugButton(editorPreview)` läuft bei JEDEM Levelstart – und nur dort,
+denn nur dort kann es etwas bewirken. Verlässt man die Vorschau, geht der Knopf
+weg UND die Ansicht aus: Sonst nähme man ein aufgedecktes Labyrinth in den
+nächsten Lauf mit und hätte ohne Knopf keine Möglichkeit, es abzuschalten.
+
+Der Sabotage-Lauf hat dabei einen Aufruf ENTLARVT statt bestätigt: Ein
+zusätzliches `updateDebugButton(false)` in `showMenu()` stand zuerst da – seine
+Entfernung fiel keiner Zusicherung auf, weil im Menü das HUD versteckt ist und
+nichts mehr gezeichnet wird. Also ist es weg; der Grund steht als Kommentar
+dort, wo man es sonst wieder hinschreibt.
+
+E2E-Lauf 22 prüft die vier Zustände: normaler Lauf (versteckt), Vorschau
+(sichtbar, ohne Freischalt-Taps), Knopf wirkt (Statuszeile schaltet auf
+„Debug · …"), und der Rückweg lässt nichts zurück. Drei der vier Zusicherungen
+einzeln rot gesehen – die vierte war die, die den überflüssigen Aufruf
+aufgedeckt hat.
+
 ## M28 „Der Riegel" ✓ (v2.5.1) – Wächter-Fehler in der Tages-Challenge
 
 **Der Fehler.** Der Daily-Generator würfelte regelmäßig eine

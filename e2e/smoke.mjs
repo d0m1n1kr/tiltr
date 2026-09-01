@@ -2425,6 +2425,83 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 22: Debug-Ansicht in der Editor-Vorschau (👁 immer da). Im SPIEL
+// ist sie versteckt (5 Taps auf die Versionsnummer), beim TESTEN eines
+// eigenen Entwurfs gehört sie dazu – und darf beim Verlassen nicht in den
+// nächsten Lauf mitkommen. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  const lvl = {
+    id: 'custom-debugview',
+    name: 'Debug-Ansicht',
+    pingBudget: 3,
+    floors: [
+      {
+        size: [3, 2],
+        maze: { seed: 3, carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 's']], add: [[[0, 0], 's'], [[1, 0], 's']] },
+        elements: [],
+        start: [0, 0],
+        goal: [2, 1],
+      },
+    ],
+  };
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(lvl));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+
+  const eyeHidden = async () => (await page.getAttribute('#debugBtn', 'class')).includes('hidden');
+
+  // 1) Normaler Lauf aus der Bibliothek (nicht aus dem Editor): 👁 versteckt.
+  await page.locator('#workshopList .ws-actions .btn-primary').first().click(); // ▶ Spielen
+  await page.waitForTimeout(4200);
+  const hiddenInPlay = await eyeHidden();
+  check(`Im normalen Lauf bleibt die Debug-Ansicht versteckt (hidden=${hiddenInPlay})`, hiddenInPlay === true);
+
+  // 2) Editor-Vorschau: 👁 ist da, ohne Freischalt-Taps.
+  await page.click('#homeBtn');
+  await page.waitForTimeout(250);
+  await page.click('#workshopBtn');
+  await page.locator('#workshopList .ws-actions .btn-ghost').first().click(); // ✏️ Bearbeiten
+  await page.waitForTimeout(400);
+  if ((await page.inputValue('#edName')) !== lvl.name) {
+    await page.locator('#workshopList .ws-actions .btn-ghost').first().click();
+    await page.waitForTimeout(600);
+  }
+  await page.click('#edTest');
+  await page.waitForTimeout(4200);
+  const shownInPreview = !(await eyeHidden());
+  check(`In der Editor-Vorschau ist die Debug-Ansicht immer da (sichtbar=${shownInPreview})`, shownInPreview);
+
+  // 3) Der Knopf wirkt: Die Statuszeile schaltet auf die Debug-Anzeige um.
+  const statusBefore = (await page.textContent('#status')).trim();
+  await page.click('#debugBtn');
+  await page.waitForTimeout(2200); // Flash-Meldungen ausklingen lassen
+  const statusOn = (await page.textContent('#status')).trim();
+  check(`👁 schaltet die Debug-Ansicht ein ("${statusBefore}" → "${statusOn.slice(0, 24)}…")`,
+    !statusBefore.startsWith('Debug') && statusOn.startsWith('Debug'));
+
+  // 4) Und sie kommt NICHT mit: zurück in den Editor, dann normal spielen –
+  // Knopf wieder weg UND Ansicht aus (sonst hätte man ein aufgedecktes
+  // Labyrinth im nächsten Lauf und keinen Knopf, um es abzuschalten).
+  await page.click('#editBtn');
+  await page.waitForTimeout(300);
+  await page.click('#edClose');
+  await page.waitForTimeout(300);
+  await page.locator('#workshopList .ws-actions .btn-primary').first().click(); // ▶ Spielen
+  await page.waitForTimeout(4200);
+  const hiddenAgain = await eyeHidden();
+  const statusAfter = (await page.textContent('#status')).trim();
+  check(`Die Debug-Ansicht kommt nicht mit in den nächsten Lauf (hidden=${hiddenAgain}, Status "${statusAfter}")`,
+    hiddenAgain === true && !statusAfter.startsWith('Debug'));
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 
