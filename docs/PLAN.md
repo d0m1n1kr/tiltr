@@ -359,19 +359,68 @@ Abspielfolge).
 
 ### Die Rechte-Frage zuerst, weil sie den Inhalt bestimmt
 
-Star Wars, Harry Potter & Co. sind geschützte KOMPOSITIONEN; eine
-8-Bit-Fassung ist eine Bearbeitung und klärt die Werkrechte nicht. tiltr
-liegt öffentlich auf GitHub Pages. Der Mechanismus ist davon unberührt –
-deshalb ist die Jukebox INHALTS-AGNOSTISCH: Sie spielt, was im Ordner liegt.
-Mitgeliefert wird ein Satz, der sicher ist (gemeinfreie Melodien plus eigene
-tiltr-Chiptunes); wer weitere Titel einlegen will, legt sie selbst dazu und
-entscheidet damit selbst über die Rechte. Kandidaten für den sicheren Satz –
-alle klingen in 8 Bit hervorragend und sind unverkennbar:
-Beethoven (Ode an die Freude, Für Elise), Offenbach (Can-Can), Rossini
-(Wilhelm-Tell-Galopp), Grieg (In der Halle des Bergkönigs), Bach (Toccata
-d-moll), Mozart (Kleine Nachtmusik), Dvořák (Humoreske), Tschaikowski
-(Blumenwalzer) – plus 2–3 Originale („tiltr-Theme", „Aufzugmusik",
-„Wächter-Tango").
+Sie ist entschieden, und zwar restriktiv – deshalb steht sie vor allem
+anderen. Der Kern: An einem Musikstück hängen ZWEI getrennte Rechte, und
+eine 8-Bit-Fassung löst nur das falsche.
+
+| Ebene | Was geschützt ist | Löst 8-Bit das? |
+|---|---|---|
+| Aufnahme | Tonträgerhersteller + Interpreten (§§ 85, 77 UrhG) | **Ja** – wir benutzen keine Aufnahme, wir erzeugen eigene Töne. |
+| Komposition | Melodie/Werk, 70 Jahre nach Tod des Komponisten | **Nein** – vollkommen unberührt. |
+
+Die Chiptune-Fassung ist eine BEARBEITUNG (§ 23 UrhG) und macht es damit
+eher schlechter: Zum Nutzungsrecht am Werk käme das Bearbeitungsrecht. Die
+Melodie ist das am stärksten geschützte Element eines Musikwerks; Stil,
+Instrumentierung und Akkordfolge sind es nicht. Eine erkennbare
+Star-Wars-Melodie mit Square-Wave bleibt die Star-Wars-Melodie.
+
+Zwei Hoffnungen, die hier nicht tragen:
+
+- **„Freie Benutzung"** (§ 24 alt) gibt es seit 2021 nicht mehr. Geblieben
+  ist § 51a (Parodie, Karikatur, **Pastiche**). Pastiche ist offen
+  formuliert und wird für Remix-/Sampling-Kultur diskutiert, verlangt aber
+  eine künstlerische AUSEINANDERSETZUNG mit dem Original. Ein Titel, der
+  läuft, weil er gut klingt und wiedererkannt wird, ist Nutzung, nicht
+  Auseinandersetzung. Dünnes Eis.
+- **Eine GEMA-Lizenz hilft nicht.** Für die Verbindung von Musik mit Bild
+  (Spiel, Film) hält die GEMA das Recht in der Regel nicht – es liegt beim
+  Musikverlag und wird einzeln verhandelt (Sync-Lizenz). Für ein kostenloses
+  Hobbyprojekt praktisch nicht zu bekommen.
+
+Faktisch existieren tausende Fan-Chiptunes ohne Konsequenz – das ist Risiko,
+nicht Erlaubnis. Und das Risiko ist hier asymmetrisch: tiltr liegt auf
+GitHub Pages unter einem persönlichen Account, eine DMCA-Notice geht an
+GitHub, und das Repo kann eingeschränkt oder offline genommen werden. Ein
+Spaß-Element gegen das ganze Projekt ist ein schlechter Tausch. (Dazu käme
+der Titel „Star Wars" im Editor-UI als eigene MARKEN-Frage, unabhängig von
+der Melodie.)
+
+**Die Regel für den Ordner ist deshalb schlicht: Komponist vor 1956
+gestorben ⇒ frei** (70 Jahre p.m.a., gerechnet ab Jahresende; Stand 2026).
+Dass eine moderne Notenedition eigenen Schutz haben kann, ist irrelevant –
+wir schreiben die Notenfolgen selbst. Der mitgelieferte Satz:
+
+- Beethoven – Ode an die Freude, Für Elise
+- Offenbach – Can-Can
+- Rossini – Wilhelm-Tell-Galopp
+- Grieg – In der Halle des Bergkönigs
+- Bach – Toccata d-moll
+- Mozart – Kleine Nachtmusik
+- Dvořák – Humoreske
+- Tschaikowski – Blumenwalzer
+- **Holst – „Mars" aus Die Planeten** († 1934): der Ur-Vorfahre jeder
+  Bedrohungsmusik in Spielen – und genau der Klang, den man meint, wenn man
+  „Star Wars" sagt. Williams hat sich unüberhörbar daran orientiert.
+- **Prokofjew – Tanz der Ritter** († 1953)
+- **Scott Joplin – The Entertainer** († 1917): der perfekte Jukebox-Klimperer
+- **Sousa – Stars and Stripes Forever** († 1932)
+- **Ravel – Boléro** († 1937): Crescendo über Minuten, ideal als Loop
+- **Mussorgski – Eine Nacht auf dem Kahlen Berge** († 1881)
+
+Plus 2–3 Originale („tiltr-Theme", „Aufzugmusik", „Wächter-Tango"). Ein
+Original IM STIL eines Genres ist erlaubt, solange keine geschützte Melodie
+erkennbar übernommen wird – und die Pointe des Elements ist der Krach, nicht
+das Zitat.
 
 ### Entscheidung 1: Die Songs sind DATEN, keine Audiodateien
 
@@ -436,6 +485,24 @@ blockiert seine Zelle, Punkt. Deshalb:
 - Damit ist die Jukebox ein Deko-/Spaß-Element in Nischen und weiten Räumen,
   nie ein Riegel – und der Editor sagt es sofort mit einem Badge.
 
+### Entscheidung 5: Geschützte Titel gehören ins LEVEL, nicht ins Repo
+
+Der Ausweg, der die Jukebox nicht beschneidet und den Deploy trotzdem clean
+hält: Ein Playlist-Eintrag darf ZWEI Formen haben – eine Registry-ID aus
+`src/music/` **oder** eine im Level-Def eingebettete Notenfolge. Damit gilt:
+
+- Ausgeliefert und vorgecacht wird ausschließlich der sichere Satz.
+- Wer sein eigenes Thema will, schreibt es in SEIN Level. Es reist im
+  `#level=`-Token (gemeinsamer deflate-Pfad), landet nie in diesem Repo und
+  nie im Precache – die Rechtsfrage liegt bei dem, der es tut.
+- Es kostet fast nichts, weil Titel ohnehin Daten sind. Genau dafür war
+  Entscheidung 1 gut: Ein eingebetteter Titel ist derselbe Typ wie ein
+  mitgelieferter, nur inline statt referenziert.
+
+Ein eingebetteter Titel geht durch dasselbe zod-Schema wie ein
+mitgelieferter (Stimmen, Notenlängen, Obergrenze für Notenzahl, damit ein
+Token nicht explodiert) – der Editor stempelt ihn also mit denselben Badges.
+
 ### Umfang
 
 **M27a – Musik-Maschine**
@@ -443,13 +510,16 @@ blockiert seine Zelle, Punkt. Deshalb:
   Lookahead-Scheduler (~200 ms im Audio-Takt, kein setTimeout pro Note),
   8-Bit-Stimmen, Musik-Bus mit Ducking + Panner.
 - `src/music/`: der Ordner mit den Titeln + `index.ts` (Registry: id →
-  Titelname für Editor und Galerie).
+  Titelname für Editor und Galerie) + `README.md` mit der Regel aus der
+  Rechte-Frage (was hier hereindarf und warum).
 - Units: Parser (Tonhöhen, Längen, Pausen), `notesAt` an Fenstergrenzen,
-  Loop-Übergang, `advance()` mit Umlauf, leere Playlist.
+  Loop-Übergang, `advance()` mit Umlauf, leere Playlist, eingebetteter
+  Titel = mitgelieferter Titel (dieselbe Wiedergabe, dieselben Grenzen).
 
 **M27b – Element**
-- `jukeboxDef` im Schema: `cell`, `playlist: string[]` (min. 1, bekannte
-  IDs), `volume?`, `startIndex?`.
+- `jukeboxDef` im Schema: `cell`, `playlist` (min. 1 Eintrag; je Eintrag
+  eine bekannte Registry-ID ODER ein eingebetteter Titel, siehe
+  Entscheidung 5), `volume?`, `startIndex?`.
 - Loader: Kasten als Wand mit `jukebox`-Marke; `world.jukeboxes` für Position
   und Zustand (aktueller Titel, Laufzeit).
 - app: Treffer ⇒ nächster Titel (+ „Plattenkratzer"-Klang; harter Treffer
@@ -464,15 +534,21 @@ blockiert seine Zelle, Punkt. Deshalb:
 - Neuer Feldtyp „Mehrfachauswahl" im Eigenschaften-Panel: Titelliste mit
   Häkchen (Reihenfolge = Abspielfolge) und ▶ pro Titel zum Vorhören – der
   Auswahl-Kopf hat seit M24 schon „🔊 Anhören" für das Element selbst.
+  Eingebettete Titel eines importierten Levels stehen mit in der Liste
+  (als „im Level", nicht löschbar über die Häkchen der Registry).
 - i18n ×4 (~10 Schlüssel + Titelnamen), Galerie-Text, README/DESIGN.
 - E2E: Level mit Jukebox importieren, Titel wechseln durch Rempeln
   (`window.__tiltrJukebox` legt Titelindex und Musik-Gain offen), Ducking
   beim Ping messbar, Badge rot bei Jukebox auf dem Pflichtweg.
 - Release 2.4.0.
 
-### Offene Frage an den Menschen
+### Entschieden (2026-09-01)
 
-Welcher Satz landet im Ordner? (siehe Rechte-Frage oben)
+Inhalt und Rechte-Politik stehen (siehe oben): mitgelieferter Satz =
+gemeinfrei + eigene Chiptunes, geschützte Titel niemals im Repo, sondern
+höchstens eingebettet im Level eines Dritten. Damit ist M27 bereit zum
+Bauen; offen sind nur noch Tuning-Werte (Ducking-Tiefe, Entfernungs-Abfall,
+Lautstärke je Titel), die beim Playtest fallen.
 
 ## M26 „Konfetti" ✓ (v2.3.0)
 
