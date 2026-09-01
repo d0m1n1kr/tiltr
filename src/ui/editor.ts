@@ -1233,6 +1233,18 @@ export function setupEditor(opts: {
     return wrap;
   }
 
+  /** Bereichs-Kopf im Eigenschaften-Panel. Das Panel mischt DREI
+   *  Geltungsbereiche – Element, Level, Ebene – und ohne Beschriftung sieht
+   *  „Spalten" wie eine Level-Eigenschaft aus (Rückmeldung aus der Praxis).
+   *  Jeder Block sagt deshalb selbst, wofür er gilt; `first` lässt die
+   *  Trennlinie am ersten Kopf weg. */
+  function scopeHead(text: string, first = false): HTMLElement {
+    const h = document.createElement('p');
+    h.className = 'ed-group-label ed-scope' + (first ? ' first' : '');
+    h.textContent = text;
+    return h;
+  }
+
   function renderProps(): void {
     if (!draft) return;
     propsEl.replaceChildren();
@@ -1247,7 +1259,7 @@ export function setupEditor(opts: {
       head.className = 'ed-selhead';
       const label = document.createElement('span');
       label.className = 'ed-group-label';
-      label.textContent = `${t('ed.selected')}: ${t(`el.${el.type}.title` as keyof Dict)}`;
+      label.textContent = `${t('ed.selected')}: ${t(`el.${el.type}.title` as keyof Dict)} · ${t('ed.scope.element')}`;
       head.append(miniCanvas(el.type), label);
       // Ton-Vorschau: Das Element IST sein Klang – man muss ihn beim Bauen
       // hören können, nicht erst im Testlauf suchen.
@@ -1368,11 +1380,8 @@ export function setupEditor(opts: {
       propsEl.append(del);
     }
 
-    // Level-Metadaten
-    const meta = document.createElement('p');
-    meta.className = 'ed-group-label';
-    meta.textContent = t('ed.level');
-    propsEl.append(meta);
+    // Level-Metadaten: gelten für ALLE Ebenen.
+    propsEl.append(scopeHead(t('ed.scope.level'), selected < 0));
 
     const intro = document.createElement('textarea');
     intro.value = String(draft.intro ?? '');
@@ -1386,6 +1395,10 @@ export function setupEditor(opts: {
       field(t('ed.par'), numInput(Number(draft.parTimeS ?? 60), 10, 900, 5, (v) => (draft!.parTimeS = v))),
       field(t('ed.pings'), numInput(Number(draft.pingBudget ?? 3), 0, 9, 1, (v) => (draft!.pingBudget = v))),
     );
+
+    // Ab hier gilt alles nur für die AKTIVE Ebene – Größe und Maze sind
+    // Eigenschaften des Stockwerks, nicht des Levels.
+    propsEl.append(scopeHead(t('ed.scope.floor', { n: activeFloor + 1 })));
 
     const sizeRow = document.createElement('div');
     sizeRow.className = 'ed-row';

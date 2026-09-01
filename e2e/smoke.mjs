@@ -2618,6 +2618,62 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 24: Das Eigenschaften-Panel mischt DREI Geltungsbereiche –
+// Element, Level, Ebene. Ohne Beschriftung sieht „Spalten" wie eine
+// Level-Eigenschaft aus. Jeder Block muss deshalb selbst sagen, wofür er
+// gilt, und die Ebenen-Nummer muss MITWANDERN. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  await page.click('#workshopBtn');
+  await page.locator('#wsNewBtn').click();
+  await page.waitForTimeout(600);
+
+  const scopes = () => page.$$eval('#edProps .ed-scope', (els) => els.map((e) => e.textContent.trim()));
+  const selHead = () => page.$$eval('#edProps .ed-selhead .ed-group-label', (els) => els.map((e) => e.textContent.trim()));
+
+  // Ohne Auswahl: zwei Köpfe – Level (alle Ebenen) und Ebene 1 (nur hier).
+  const bare = await scopes();
+  check(`Bereiche ohne Auswahl: ${JSON.stringify(bare)}`,
+    bare.length === 2 && bare[0].includes('alle Ebenen') && bare[1].includes('Ebene 1') && bare[1].includes('nur hier'));
+
+  // Der erste Kopf trägt KEINE Trennlinie (nichts steht darüber).
+  const firstRule = await page.evaluate(() => {
+    const el = document.querySelector('#edProps .ed-scope');
+    return getComputedStyle(el).borderTopWidth;
+  });
+  check(`erster Bereichs-Kopf ohne Trennlinie (${firstRule})`, firstRule === '0px');
+
+  // Ebene 2 anlegen: die Nummer im Ebenen-Kopf wandert mit.
+  await page.locator('#edFloorTabs .chip', { hasText: '＋' }).click();
+  await page.waitForTimeout(500);
+  const onE2 = await scopes();
+  check(`Ebenen-Kopf nennt die AKTIVE Ebene: ${JSON.stringify(onE2)}`,
+    onE2.length === 2 && onE2[1].includes('Ebene 2') && !onE2[1].includes('Ebene 1'));
+
+  // Element setzen und auswählen: der Auswahl-Kopf nennt seinen Bereich,
+  // und Level/Ebene bleiben als eigene Blöcke darunter stehen.
+  await page.locator('.ed-tile', { hasText: /^Loch$/ }).click();
+  const pt = await page.evaluate(() => {
+    const ed = window.__tiltrEd;
+    const box = document.getElementById('edCanvas').getBoundingClientRect();
+    return { x: box.left + (ed.ox + 150 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 150 * ed.scale) / ed.dpr };
+  });
+  await page.mouse.click(pt.x, pt.y);
+  await page.waitForTimeout(400);
+  const head = await selHead();
+  const withSel = await scopes();
+  check(`Auswahl-Kopf nennt seinen Bereich ("${head[0]}")`,
+    head.length === 1 && head[0].includes('Loch') && head[0].includes('nur dieses Element'));
+  check(`alle drei Bereiche gleichzeitig sichtbar (1 + ${withSel.length})`,
+    withSel.length === 2 && withSel[0].includes('alle Ebenen') && withSel[1].includes('Ebene 2'));
+
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

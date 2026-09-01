@@ -612,6 +612,39 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M33 „Wofür gilt dieses Feld?" ✓ (v2.5.6)
+
+**Rückmeldung aus der Praxis:** „Beschreibung, Par-Zeit beziehen sich auf das
+ganze Level, Spalten und Zeilen nur auf die jeweilige Ebene. Und der obere Teil
+auf das selektierte Element. Das wird nicht ganz klar."
+
+Das Eigenschaften-Panel mischt DREI Geltungsbereiche, und beschriftet war nur
+einer davon: Über Intro/Par/Pings UND Spalten/Zeilen stand gemeinsam „Level" –
+also sah „Spalten" wie eine Level-Eigenschaft aus, obwohl es das Stockwerk
+meint. Wer es nicht wusste, musste es ausprobieren.
+
+Jetzt sagt jeder Block selbst, wofür er gilt:
+
+| Block | Kopf |
+|---|---|
+| Auswahl | `Auswahl: Loch · nur dieses Element` |
+| Level | `Level · alle Ebenen` |
+| Ebene | `Ebene 2 · nur hier` (Nummer wandert mit der aktiven Ebene) |
+
+Dazu eine Trennlinie (`.ed-scope`, `--border-subtle`) – der TEXT nennt die
+Grenze, die LINIE zeigt sie; eins von beidem allein reicht nicht. Am obersten
+Kopf entfällt die Linie (`.first`), denn darüber steht nichts.
+
+Der alte Schlüssel `ed.level` ist damit unbenutzt und ENTFERNT statt liegen
+gelassen – ein toter i18n-Eintrag in vier Wörterbüchern ist genau die Art
+Ballast, die beim nächsten Umbau Verwirrung stiftet.
+
+E2E-Lauf 24 liest die Köpfe in der echten UI: ohne Auswahl zwei Bereiche, nach
+„＋" nennt der Ebenen-Kopf die 2 (nicht mehr die 1), mit Auswahl sind alle drei
+gleichzeitig da, und der erste Kopf hat messbar `border-top: 0px`. Sabotage
+(Ebenen-Kopf weg) macht drei der fünf rot – die Nummer-Zusicherung ist die
+wichtigste: ein fester Text „Ebene" hätte sie nicht bemerkt.
+
 ## M32 „Ein Anker ist kein Riegel" ✓ (v2.5.5) – hazards war zu streng
 
 **Der zweite Bug-Report in Folge:** „Und Gefahren abseits ist auch rot. Was

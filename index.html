@@ -613,6 +613,15 @@
     .ed-tile.off { opacity: 0.4; }
     .ed-tile canvas { width: 44px; height: 28px; border-radius: var(--radius-s); flex-shrink: 0; }
     .ed-group-label { font-size: var(--fs-caption); opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+    /* Bereichs-Kopf: Das Panel mischt drei Geltungsbereiche (Element / Level /
+       Ebene). Die Trennlinie macht die Grenze sichtbar, der Text nennt sie –
+       ohne beides sah „Spalten" wie eine Level-Eigenschaft aus. */
+    .ed-scope {
+      margin: var(--space-3) 0 var(--space-1);
+      padding-top: var(--space-2);
+      border-top: var(--border-subtle);
+    }
+    .ed-scope.first { margin-top: 0; padding-top: 0; border-top: none; }
     .ed-badge { font-size: var(--fs-caption); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); }
     .ed-badge.fail { border-color: var(--warning); color: var(--warning); }
     .ed-field { display: grid; gap: var(--space-1); }
