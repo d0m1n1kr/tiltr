@@ -104,6 +104,7 @@ export const en: Dict = {
   'ed.tool.erase': 'Erase',
   'ed.tool.start': 'Start',
   'ed.tool.goal': 'Goal',
+  'ed.startFloor1': 'The start exists only on floor 1 – deeper floors are entered via the transporter.',
   'ed.edgeHint': 'Tap a wall edge (the line between two cells).',
   'ed.guardSecond': 'Guard: tap the second waypoint in the same row/column.',
   'ed.guardBad': 'Patrols must run straight – try again.',

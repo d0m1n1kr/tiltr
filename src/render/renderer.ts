@@ -21,6 +21,10 @@ export interface DrawOptions {
    *  Ball, sodass die Blickrichtung immer Screen-oben ist. 0/undefined =
    *  klassische Draufsicht. */
   heading?: number;
+  /** Kugel weglassen: Es gibt EINE Kugel für alle Ebenen (loader.ts setzt sie
+   *  auf den Start von Ebene 1). Auf einer anderen Ebene wäre sie ein
+   *  Phantom – im Editor sah sie dort aus wie ein eigener Startpunkt. */
+  hideBall?: boolean;
 }
 
 /** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
@@ -97,6 +101,9 @@ export class Renderer {
    *  „geschafft"). Der Renderer sagt selbst, was er gezeichnet hat – so ist
    *  es prüfbar, ohne Pixel zu lesen (siehe e2e/smoke.mjs, Lauf 9). */
   goalLit = false;
+  /** Hat der letzte Frame die Kugel gezeichnet? (Gegenstück zu `goalLit`:
+   *  Der Renderer sagt selbst, was im Bild steht – prüfbar ohne Pixel.) */
+  ballDrawn = false;
   /** First Person: feste Zoomstufe, Ball zentriert, Welt dreht sich. */
   private fpView = false;
   /** Aktive Ansichts-Drehung des letzten Frames (rad) + ihr Zentrum. */
@@ -658,19 +665,22 @@ export class Renderer {
 
     // Ball mit sanftem Glow – der einzige ständige Lichtpunkt.
     const b = world.ball;
-    const br = b.r * s;
-    const glow = ctx.createRadialGradient(tx(b.x), ty(b.y), 0, tx(b.x), ty(b.y), br * 5);
-    glow.addColorStop(0, `rgba(${WORLD.ballGlow}, ${BALL_CORE_ALPHA})`);
-    glow.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(tx(b.x), ty(b.y), br * 5, 0, Math.PI * 2);
-    ctx.fill();
+    this.ballDrawn = opts.hideBall !== true;
+    if (this.ballDrawn) {
+      const br = b.r * s;
+      const glow = ctx.createRadialGradient(tx(b.x), ty(b.y), 0, tx(b.x), ty(b.y), br * 5);
+      glow.addColorStop(0, `rgba(${WORLD.ballGlow}, ${BALL_CORE_ALPHA})`);
+      glow.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(tx(b.x), ty(b.y), br * 5, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = WORLD.ball;
-    ctx.beginPath();
-    ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = WORLD.ball;
+      ctx.beginPath();
+      ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
     this.lastView = { rot: this.rot, ballX: this.rotCx, ballY: this.rotCy, cw: this.canvas.width, ch: this.canvas.height };

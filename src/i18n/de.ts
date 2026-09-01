@@ -108,6 +108,7 @@ export const de = {
   'ed.tool.erase': 'Radieren',
   'ed.tool.start': 'Start',
   'ed.tool.goal': 'Ziel',
+  'ed.startFloor1': 'Start gibt es nur auf Ebene 1 – tiefer kommt man über den Transporter an.',
   'ed.edgeHint': 'Auf eine Wandkante tippen (Linie zwischen zwei Zellen).',
   'ed.guardSecond': 'Wächter: zweiten Wegpunkt in derselben Zeile/Spalte antippen.',
   'ed.guardBad': 'Patrouille muss gerade verlaufen – nochmal ansetzen.',

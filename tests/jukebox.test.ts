@@ -149,6 +149,36 @@ describe('Beweismodell', () => {
     expect(jb.detail).toContain('Start');
   });
 
+  it('auf dem toten Start einer TIEFEREN Ebene: grün', () => {
+    // `start` ist pro Ebene Pflicht (Schema), aber nur floors[0].start setzt
+    // die Kugel (loader.ts). Auf Ebene 2 ist der Wert tot – ein Automat dort
+    // war früher grundlos rot gemeldet.
+    const def = withNiche([]);
+    const f0 = (def.floors as Array<Record<string, unknown>>)[0]!;
+    f0.elements = [{ type: 'transporter', cell: [2, 1], target: { floor: 1, cell: [0, 1] } }];
+    f0.goal = null; // das Ziel wohnt auf Ebene 2
+    (def.floors as unknown[]).push({
+      size: [3, 2],
+      maze: {
+        seed: 4,
+        carve: [
+          [[0, 1], 'e'],
+          [[1, 1], 'e'],
+          [[0, 0], 's'], // die Automaten-Nische ist offen: anrempelbar
+        ],
+        add: [
+          [[1, 0], 's'],
+          [[2, 0], 's'],
+        ],
+      },
+      elements: [jukebox([0, 0])], // genau auf dem toten Start der Ebene 2
+      start: [0, 0],
+      goal: [2, 1],
+    });
+    const checks = validateLevel(def);
+    for (const c of checks) expect(c.ok, `${c.key}: ${c.detail ?? ''}`).toBe(true);
+  });
+
   it('auf dem Ziel: rot mit Grund', () => {
     const jb = by(validateLevel(withNiche([jukebox([4, 0])])), 'jukebox')!;
     expect(jb.ok).toBe(false);

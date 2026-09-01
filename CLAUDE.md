@@ -53,6 +53,17 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Entwurfs gehört er dazu. `updateDebugButton()` schaltet ihn bei jedem
   Levelstart: verlässt man die Vorschau, geht er weg UND die Ansicht aus,
   damit kein aufgedecktes Labyrinth in den nächsten Lauf mitkommt.
+  DER START GEHÖRT EBENE 1: `start` ist pro Ebene Pflicht (Schema), aber nur
+  `floors[0].start` setzt die Kugel (Loader) und startet den Beweis – tiefer
+  kommt man über den Transporter an. Deshalb zeichnet der Editor die (EINE,
+  geteilte) Kugel nur auf Ebene 1 (`hideBall`, prüfbar über
+  `renderer.ballDrawn`), das ●-Werkzeug ist ab E2 gedämpft und erklärt sich
+  beim Tap, und `cellFree`/`jukebox`-Check prüfen den Start nur auf Ebene 1 –
+  sonst sperrt ein toter Wert grundlos einen Bauplatz. Ebenen-Löschung wohnt
+  in der REINEN `removeFloor()`: Sie räumt Transporter auf UND rückt den
+  beförderten Start wie das gerettete Ziel per `freeCellFor()` in eine freie
+  Zelle (Wächter-Wegpunkte gelten als belegt). Sonst wacht die Kugel nach dem
+  Löschen von Ebene 1 in einem Loch auf.
   Der Editor arbeitet auf ROHEN Defs, in denen optionale Felder fehlen
   dürfen – `normalizeDraft()` füllt sie beim Öffnen EINMAL auf, statt an
   jeder Zugriffsstelle zu prüfen. Der Auswahl-Kopf spielt die Klang-Signatur

@@ -104,6 +104,7 @@ export const fr: Dict = {
   'ed.tool.erase': 'Gommer',
   'ed.tool.start': 'Départ',
   'ed.tool.goal': 'Arrivée',
+  'ed.startFloor1': 'Le départ n’existe qu’au niveau 1 – on arrive plus bas par le téléporteur.',
   'ed.edgeHint': 'Touche une arête de mur (la ligne entre deux cases).',
   'ed.guardSecond': 'Sentinelle : touche le second point sur la même ligne/colonne.',
   'ed.guardBad': 'La patrouille doit être rectiligne – recommence.',

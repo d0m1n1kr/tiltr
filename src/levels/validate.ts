@@ -519,7 +519,10 @@ export function validateLevel(raw: unknown): CheckResult[] {
     const at = (fl: number, el: JukeboxDef) => `E${fl + 1} (${el.cell})`;
     for (const { fl, el } of jukes) {
       const floor = def.floors[fl]!;
-      if (floor.start[0] === el.cell[0] && floor.start[1] === el.cell[1]) jbFail(`Start ${at(fl, el)}`);
+      // Start zählt nur auf EBENE 1: Auf tieferen Ebenen ist `start` ein toter
+      // Pflichtwert des Formats (die Kugel kommt aus floors[0], loader.ts) –
+      // ein Automat dort wäre grundlos rot gemeldet worden.
+      if (fl === 0 && floor.start[0] === el.cell[0] && floor.start[1] === el.cell[1]) jbFail(`Start ${at(fl, el)}`);
       if (floor.goal && floor.goal[0] === el.cell[0] && floor.goal[1] === el.cell[1]) jbFail(`Ziel ${at(fl, el)}`);
       for (const line of patrolLines(floor)) {
         if (line.some((c) => c[0] === el.cell[0] && c[1] === el.cell[1])) jbFail(`Wächter ${at(fl, el)}`);

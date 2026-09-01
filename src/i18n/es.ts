@@ -104,6 +104,7 @@ export const es: Dict = {
   'ed.tool.erase': 'Borrar',
   'ed.tool.start': 'Inicio',
   'ed.tool.goal': 'Meta',
+  'ed.startFloor1': 'El inicio solo existe en el nivel 1: a los niveles inferiores se llega por el transportador.',
   'ed.edgeHint': 'Toca una arista de muro (la línea entre dos celdas).',
   'ed.guardSecond': 'Guardián: toca el segundo punto en la misma fila/columna.',
   'ed.guardBad': 'La patrulla debe ser recta – inténtalo de nuevo.',

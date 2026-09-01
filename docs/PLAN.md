@@ -612,6 +612,50 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M30 „Der Start gehört Ebene 1" ✓ (v2.5.3)
+
+**Der Fund kam als Frage:** „Wenn ich neue Ebenen hinzufüge, warum haben die
+einen Start Punkt?" – und die Antwort war unbefriedigend: weil das Format es
+verlangt, obwohl es nichts tut.
+
+`start` ist in `schema.ts` PRO EBENE Pflicht (anders als `goal`, das
+`nullable()` ist), aber nur `floors[0].start` setzt die Kugel (`loader.ts`) und
+nur von dort startet der Erreichbarkeits-Beweis (`validate.ts`). Auf tieferen
+Ebenen kommt man über den TRANSPORTER an; der `start`-Eintrag ist dort ein
+toter Pflichtwert. Drei Folgen hatte das, alle behoben:
+
+1. **Eine Phantom-Kugel.** Es gibt EINE Kugel für alle Ebenen-Welten. Der
+   Editor zeichnete sie auf jeder Ebene – auf E2 also an den Koordinaten von
+   E1s Start. Genau das sah aus wie „die neue Ebene hat einen Startpunkt".
+   Jetzt: `renderer.draw(..., { hideBall })`, plus `renderer.ballDrawn` als
+   Haken (der Renderer sagt selbst, was im Bild steht – wie `goalLit`).
+2. **Ein grundlos gesperrter Bauplatz.** `cellFree()` schützte den Start JEDER
+   Ebene, also war (0,0) auf einer neuen Ebene für Elemente tabu. Und der
+   `jukebox`-Check meldete einen Automaten dort als „Start E2 (0,0)" – ein
+   Fehlalarm. Beide prüfen jetzt nur noch Ebene 1. Das ●-Werkzeug ist ab E2
+   gedämpft und ERKLÄRT sich beim Tap, statt als toter Knopf dazustehen (kein
+   `disabled`: das nimmt Hover UND Fokus, und damit die Tooltip-Blase).
+3. **Die eigentliche Falle.** Ebene 1 löschen befördert E2 zu Ebene 1 – und
+   ihr toter Start wird plötzlich echt. Bisher war das durch (2) abgefedert;
+   nach der Freigabe hätte die Kugel in einem Loch aufwachen können. Der
+   „−"-Knopf reparierte Transporter-Ziele und die Ein-Ziel-Invariante, aber
+   nie den Start.
+
+Für (3) ist die Ebenen-Löschung aus dem Klick-Handler in eine REINE Funktion
+gezogen: `removeFloor(level, index)` in editor.ts, exportiert wie `pickTarget`.
+Sie räumt Transporter auf, rückt den beförderten Start mit `freeCellFor()` aus
+belegten Zellen heraus und setzt das gerettete Ziel ebenfalls in eine FREIE
+Zelle – die Bildschirmecke, in die es vorher stur wanderte, kann längst ein
+Element tragen. Das war der Nachbar-Fehler derselben Klasse und ist mitgefixt.
+`freeCellFor` meidet auch WÄCHTER-WEGPUNKTE, nicht nur Element-Zellen: Auf
+einer Patrouille wacht die Kugel nicht sicher auf.
+
+13 neue Units in `tests/editorFloors.test.ts` (vier Sabotagen einzeln rot
+gesehen, jede hat genau die gemeinte Zusicherung überführt), ein Unit im
+Jukebox-Beweis, und E2E-Lauf 23 fährt den ganzen Ablauf durch die echte UI:
+E1 mit Kugel und scharfem ●, E2 ohne Kugel mit gedämpftem ●, ein Loch auf E2s
+totem Start, dann E1 löschen – und der beförderte Start liegt nicht im Loch.
+
 ## M29 „Sehen beim Bauen" ✓ (v2.5.2)
 
 Die Debug-Ansicht (👁, deckt das Labyrinth auf) ist im Spiel versteckt – 5

@@ -91,6 +91,67 @@ export function pickTarget(
 
 const edgeKey = (e: Edge) => `${e[0][0]},${e[0][1]},${e[1]}`;
 
+/** Zellen, die ein Element belegt – inklusive der Wächter-Wegpunkte, denn
+ *  auf einer Patrouille wacht die Kugel nicht sicher auf. Kanten-Elemente
+ *  (Tür, Schiebewand) belegen KEINE Zelle. */
+function elementCells(fl: RawFloor): Set<string> {
+  const taken = new Set<string>();
+  for (const el of fl.elements) {
+    if (el.cell) taken.add(`${el.cell[0]},${el.cell[1]}`);
+    for (const p of el.patrol ?? []) taken.add(`${p[0]},${p[1]}`);
+  }
+  return taken;
+}
+
+/** Freie Zelle für Start bzw. Ziel: `prefer` gewinnt, wenn sie frei ist –
+ *  sonst die erste freie in Leserichtung. `taken` sperrt zusätzlich (Start
+ *  und Ziel dürfen nicht dieselbe Zelle sein). Exportiert für Tests.
+ *  Ist NICHTS frei, kommt `prefer` zurück: eine Ebene ohne einzige freie
+ *  Zelle ist kein Level mehr, und die Badges sagen das ohnehin. */
+export function freeCellFor(
+  fl: RawFloor,
+  prefer: [number, number],
+  taken: Array<[number, number]> = [],
+): [number, number] {
+  const blocked = elementCells(fl);
+  for (const c of taken) blocked.add(`${c[0]},${c[1]}`);
+  const [cols, rows] = fl.size;
+  if (!blocked.has(`${prefer[0]},${prefer[1]}`) && prefer[0] < cols && prefer[1] < rows) return prefer;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) if (!blocked.has(`${x},${y}`)) return [x, y];
+  }
+  return prefer;
+}
+
+/** Ebene aus einem rohen Level entfernen und die Folgen aufräumen. Rein und
+ *  exportiert, weil hier drei Invarianten gleichzeitig hängen und der
+ *  Ablauf sonst nur per Klick prüfbar wäre (tests/editorFloors.test.ts). */
+export function removeFloor(level: RawLevel, index: number): void {
+  if (level.floors.length < 2 || !level.floors[index]) return;
+  const hadGoal = level.floors[index]!.goal !== null;
+  level.floors.splice(index, 1);
+  // Transporter aufräumen: Ziele auf die Ebene fallen weg, höhere rutschen nach.
+  for (const f of level.floors) {
+    f.elements = f.elements.filter((el) => {
+      const target = (el as { target?: { floor: number } }).target;
+      return !(el.type === 'transporter' && target?.floor === index);
+    });
+    for (const el of f.elements) {
+      const target = (el as { target?: { floor: number } }).target;
+      if (el.type === 'transporter' && target && target.floor > index) target.floor--;
+    }
+  }
+  const f0 = level.floors[0]!;
+  // Ebene 1 gelöscht: Bis jetzt war der Start der nachrückenden Ebene ein
+  // TOTER Zahlenwert (nur Ebene 1 setzt die Kugel, loader.ts) – ab jetzt ist
+  // er echt. Er darf deshalb nicht in einem Loch, an einem Anker oder in
+  // einem Automaten liegen.
+  if (index === 0) f0.start = freeCellFor(f0, f0.start, f0.goal ? [f0.goal] : []);
+  // Ein-Ziel-Invariante retten: das Ziel wandert notfalls auf Ebene 1 – in
+  // eine FREIE Zelle, denn die Ecke kann längst belegt sein.
+  if (hadGoal) f0.goal = freeCellFor(f0, [f0.size[0] - 1, f0.size[1] - 1], [f0.start]);
+}
+
 type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal';
 
 /** Palette: alles außer Druckplatte (MP-only ohne Singleplayer-Semantik). */
@@ -504,6 +565,11 @@ export function setupEditor(opts: {
       get shareable() {
         return !loadError && isShareable(checks);
       },
+      // Stand die Kugel im letzten Frame? Als GETTER, denn dieser Haken wird
+      // VOR renderer.draw() gesetzt – ein Schnappschuss wäre einen Frame alt.
+      get ballDrawn() {
+        return renderer.ballDrawn;
+      },
       playing,
       animT,
       // Was sich auf der sichtbaren Ebene gerade bewegt (Play-Vorschau):
@@ -524,7 +590,10 @@ export function setupEditor(opts: {
     renderer.setManualView(view.scale, view.ox, view.oy);
     if (loaded) {
       const world = loaded.floors[Math.min(activeFloor, loaded.floors.length - 1)]!.world;
-      renderer.draw(world, { debug: true, now: performance.now() });
+      // Es gibt EINE Kugel für alle Ebenen (loader.ts setzt sie auf den Start
+      // von Ebene 1). Auf einer tieferen Ebene stünde sie an FREMDEN
+      // Koordinaten und sah dort aus wie ein eigener Startpunkt – weglassen.
+      renderer.draw(world, { debug: true, now: performance.now(), hideBall: activeFloor !== 0 });
     } else {
       overlay.fillStyle = WORLD.bgDeep;
       overlay.fillRect(0, 0, canvas.width, canvas.height);
@@ -720,6 +789,7 @@ export function setupEditor(opts: {
     } else if (tool === 'start' || tool === 'goal') {
       if (target.kind !== 'cell') return;
       if (tool === 'start') {
+        if (activeFloor !== 0) return flash(t('ed.startFloor1'));
         floor().start = target.cell;
       } else {
         // Ein-Ziel-Invariante über alle Ebenen: das neue Ziel gewinnt.
@@ -783,12 +853,14 @@ export function setupEditor(opts: {
     renderProps();
   }
 
-  // Frei = keine Element-Zelle (inkl. Wächter-Wegpunkte) und nicht Start/Ziel
-  // der aktiven Ebene. Elemente werden NUR in freie Felder gesetzt.
+  // Frei = keine Element-Zelle (inkl. Wächter-Wegpunkte) und nicht Ziel der
+  // aktiven Ebene. Der START zählt nur auf EBENE 1: Auf tieferen Ebenen ist
+  // `start` ein toter Pflichtwert des Formats (loader.ts setzt die Kugel
+  // allein aus floors[0]) – er würde dort grundlos einen Bauplatz sperren.
   function cellFree(cell: [number, number]): boolean {
     if (elementAt({ kind: 'cell', cell }) !== -1) return false;
     const f = floor();
-    if (f.start[0] === cell[0] && f.start[1] === cell[1]) return false;
+    if (activeFloor === 0 && f.start[0] === cell[0] && f.start[1] === cell[1]) return false;
     if (f.goal && f.goal[0] === cell[0] && f.goal[1] === cell[1]) return false;
     return true;
   }
@@ -950,12 +1022,21 @@ export function setupEditor(opts: {
     for (const [tl, ico, lbl] of tools) {
       const b = document.createElement('button');
       b.id = `edTool-${tl}`;
-      b.className = 'panel ed-tile' + (tool === tl ? ' active' : '');
+      // Start gibt es nur auf Ebene 1. Der Knopf bleibt anklickbar und
+      // ERKLÄRT sich (ein `disabled` Knopf nimmt weder Hover noch Fokus –
+      // die Tooltip-Blase käme nie, und ein toter Knopf sagt nichts).
+      const off = tl === 'start' && activeFloor !== 0;
+      b.className = 'panel ed-tile' + (tool === tl ? ' active' : '') + (off ? ' off' : '');
       const i = document.createElement('span');
       i.textContent = ico;
       b.append(i, lblSpan(lbl));
-      b.dataset.tip = lbl; // Tooltip-Blase: Hover (Desktop) / Fokus (Touch)
+      b.dataset.tip = off ? t('ed.startFloor1') : lbl; // Hover (Desktop) / Fokus (Touch)
       b.addEventListener('click', () => {
+        if (off) {
+          flash(t('ed.startFloor1'));
+          document.getElementById(`edTool-${tl}`)?.focus({ preventScroll: true });
+          return;
+        }
         tool = tl;
         clearPendings();
         closeSheet();
@@ -1423,7 +1504,11 @@ export function setupEditor(opts: {
     activeFloor = index;
     selected = -1;
     pendingGuard = null;
+    // Mit dem Start-Werkzeug in der Hand auf eine tiefere Ebene wechseln:
+    // Dort gibt es keinen Start zu setzen – zurück aufs Auswählen.
+    if (tool === 'start' && activeFloor !== 0) tool = 'select';
     renderFloorTabs();
+    renderPalette(); // der ●-Knopf hängt an der Ebene (gedämpft ab E2)
     renderProps();
     fitView();
     paint();
@@ -1466,24 +1551,7 @@ export function setupEditor(opts: {
       rm.dataset.tip = t('ed.removeFloor');
       rm.addEventListener('click', () => {
         const removed = activeFloor;
-        const hadGoal = draft!.floors[removed]!.goal !== null;
-        draft!.floors.splice(removed, 1);
-        // Transporter aufräumen: Ziele auf die Ebene fallen weg, höhere rutschen nach.
-        for (const f of draft!.floors) {
-          f.elements = f.elements.filter((el) => {
-            const target = (el as { target?: { floor: number } }).target;
-            return !(el.type === 'transporter' && target?.floor === removed);
-          });
-          for (const el of f.elements) {
-            const target = (el as { target?: { floor: number } }).target;
-            if (el.type === 'transporter' && target && target.floor > removed) target.floor--;
-          }
-        }
-        // Ein-Ziel-Invariante retten: das Ziel wandert notfalls auf Ebene 1.
-        if (hadGoal) {
-          const f0 = draft!.floors[0]!;
-          f0.goal = [f0.size[0] - 1, f0.size[1] - 1];
-        }
+        removeFloor(draft!, removed);
         pendingTransporter = null;
         switchFloor(Math.max(0, removed - 1));
         rebuild();

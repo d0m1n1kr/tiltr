@@ -2502,6 +2502,122 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 23: Der Start gehört Ebene 1. `start` ist pro Ebene PFLICHT
+// (schema.ts), aber nur floors[0].start setzt die Kugel (loader.ts) – auf
+// tieferen Ebenen kommt man über den Transporter an. Drei Folgen, alle hier
+// festgenagelt: (a) die geteilte Kugel wird auf E2 NICHT gezeichnet, sonst
+// sieht sie dort aus wie ein eigener Startpunkt, (b) das ●-Werkzeug erklärt
+// sich statt zu wirken, (c) die Zelle ist frei bebaubar – und wenn Ebene 1
+// gelöscht wird, rückt der nachrückende Start aus dem Element heraus. ---
+{
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: 'de-DE' });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  // Zwei Ebenen: E1 ein Korridor mit Transporter in der Nische, E2 trägt das
+  // Ziel. E2s `start` steht auf (0,0) – tot, aber vom Format verlangt.
+  const twoFloors = {
+    id: 'custom-two-floors',
+    name: 'Zwei Ebenen',
+    pingBudget: 3,
+    floors: [
+      {
+        size: [3, 2],
+        maze: {
+          seed: 3,
+          carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[1, 0], 's']],
+          add: [[[0, 0], 's'], [[2, 0], 's']],
+        },
+        elements: [{ type: 'transporter', cell: [1, 1], target: { floor: 1, cell: [0, 1] } }],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        size: [3, 2],
+        maze: {
+          seed: 4,
+          carve: [[[0, 1], 'e'], [[1, 1], 'e'], [[0, 0], 's']],
+          add: [[[1, 0], 's'], [[2, 0], 's']],
+        },
+        elements: [],
+        start: [0, 0],
+        goal: [2, 1],
+      },
+    ],
+  };
+  await page.click('#workshopBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(twoFloors));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(300);
+  await page.locator('#workshopList .ws-actions .btn-ghost').first().click(); // ✏️ Bearbeiten
+  await page.waitForTimeout(600);
+
+  const tap = async (cx, cy) => {
+    const pt = await page.evaluate(([cx, cy]) => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById('edCanvas').getBoundingClientRect();
+      return {
+        x: box.left + (ed.ox + (cx * 100 + 50) * ed.scale) / ed.dpr,
+        y: box.top + (ed.oy + (cy * 100 + 50) * ed.scale) / ed.dpr,
+      };
+    }, [cx, cy]);
+    await page.mouse.click(pt.x, pt.y);
+    await page.waitForTimeout(250);
+  };
+  const floorTab = (label) => page.locator('#edFloorTabs .chip', { hasText: label }).first();
+  const startTool = () => page.evaluate(() => {
+    const b = document.getElementById('edTool-start');
+    return { off: b.className.includes('off'), active: b.className.includes('active'), tip: b.dataset.tip };
+  });
+  const ballDrawn = () => page.evaluate(() => window.__tiltrEd.ballDrawn);
+  const status = async () => (await page.textContent('#edStatus')).trim();
+
+  // (a) Ebene 1: Kugel im Bild, ●-Werkzeug normal.
+  const e1 = { ball: await ballDrawn(), tool: await startTool() };
+  check(`Ebene 1: Kugel gezeichnet, ●-Werkzeug scharf (ball=${e1.ball}, off=${e1.tool.off})`,
+    e1.ball === true && e1.tool.off === false);
+
+  // Ebene 2: Die geteilte Kugel steht an FREMDEN Koordinaten – nicht zeichnen.
+  await floorTab('E2').click();
+  await page.waitForTimeout(400);
+  const e2 = { ball: await ballDrawn(), tool: await startTool() };
+  check(`Ebene 2: keine Phantom-Kugel, ●-Werkzeug gedämpft (ball=${e2.ball}, off=${e2.tool.off})`,
+    e2.ball === false && e2.tool.off === true && e2.tool.tip.includes('Ebene 1'));
+
+  // (b) Der gedämpfte Knopf ERKLÄRT sich, statt das Werkzeug zu wechseln.
+  await page.click('#edTool-start');
+  await page.waitForTimeout(250);
+  const afterClick = await startTool();
+  check(`● auf Ebene 2 erklärt sich statt zu wirken ("${(await status()).slice(0, 32)}…")`,
+    afterClick.active === false && (await status()).includes('Ebene 1'));
+
+  // (c) Die Zelle des toten Starts ist frei bebaubar: ein Loch auf (0,0).
+  await page.locator('.ed-tile', { hasText: /^Loch$/ }).click();
+  await tap(0, 0);
+  const placed = await page.evaluate(() => window.__tiltrEd.def.floors[1].elements);
+  check(`Auf dem toten Start der Ebene 2 lässt sich bauen (${JSON.stringify(placed.map((e) => [e.type, e.cell]))})`,
+    placed.length === 1 && placed[0].type === 'hole' && placed[0].cell[0] === 0 && placed[0].cell[1] === 0);
+
+  // Und Ebene 1 löschen befördert diesen toten Start – er muss AUS dem Loch
+  // heraus wandern, sonst wacht die Kugel im nächsten Lauf darin auf.
+  await floorTab('E1').click();
+  await page.waitForTimeout(300);
+  await page.locator('#edFloorTabs .chip', { hasText: '−' }).click();
+  await page.waitForTimeout(600);
+  const promoted = await page.evaluate(() => {
+    const d = window.__tiltrEd.def;
+    return { floors: d.floors.length, start: d.floors[0].start, elements: d.floors[0].elements.map((e) => [e.type, e.cell]) };
+  });
+  const onHole = promoted.elements.some(([type, cell]) =>
+    type === 'hole' && cell[0] === promoted.start[0] && cell[1] === promoted.start[1]);
+  check(`Ebene 1 löschen rückt den beförderten Start aus dem Loch (start=${JSON.stringify(promoted.start)})`,
+    promoted.floors === 1 && onHole === false);
+
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 
