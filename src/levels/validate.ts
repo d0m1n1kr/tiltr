@@ -415,18 +415,46 @@ export function validateLevel(raw: unknown): CheckResult[] {
   const fromStart = coopReachable(def);
   push('goal', fromStart.has(goalKey));
 
-  // Schlüssel/Schalter VOR ihrer Tür erreichbar.
-  const preDoor = reachable(def, { brittleOpen: true, doorsOpen: false });
+  // Öffner VOR ihrer Tür erreichbar – und zwar PRO TÜR, nicht pro Öffner.
+  //
+  // Die Frage ist „öffnet sich diese Tür überhaupt jemals?", also: Ist
+  // mindestens EINER ihrer Öffner erreichbar, wenn GENAU DIESE Tür nie
+  // aufgeht? Alle anderen Türen dürfen dabei normal öffnen – sonst meldet der
+  // Beweis verkettete Türen falsch rot (Schlüssel 1 → Tür 1 → Schlüssel 2 →
+  // Tür 2 ist eine völlig gewöhnliche Progression, und `goal` stempelt sie
+  // grün: zwei Checks, die sich widersprachen).
+  //
+  // Pro TÜR statt pro Öffner, weil zwei Schlüssel dieselbe Tür öffnen dürfen:
+  // Liegt einer davon hinter ihr, ist das kein Fehler, solange der andere
+  // davor liegt. Nur eine Tür, deren SÄMTLICHE Öffner hinter ihr liegen, ist
+  // ein Riegel.
   let openersOk = true;
   let openersDetail: string | undefined;
+  // GEPRÜFT werden nur Türen mit Schlüssel/Zeitschloss – genau der Umfang von
+  // vorher. ERFÜLLEN darf sie jeder Öffner, Platte eingeschlossen: Eine Tür
+  // mit Schlüssel drinnen und Platte draußen geht im Coop auf. Beides
+  // zusammen macht diese Änderung zu einer reinen LOCKERUNG – kein Level, das
+  // heute grün ist, kann dadurch rot werden.
+  type Opener = { fl: number; cell: readonly [number, number]; type: string };
+  const openersByDoor = new Map<string, Opener[]>();
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
-      if ((el.type === 'key' || el.type === 'timedSwitch') && !preDoor.has(cellKey(fl, el.cell))) {
-        openersOk = false;
-        openersDetail = `${el.type} E${fl + 1} (${el.cell})`;
-      }
+      if (el.type !== 'key' && el.type !== 'timedSwitch' && el.type !== 'plate') continue;
+      const list = openersByDoor.get(el.opens) ?? [];
+      list.push({ fl, cell: el.cell, type: el.type });
+      openersByDoor.set(el.opens, list);
     }
   });
+  for (const [doorId, openers] of openersByDoor) {
+    if (!doorIds.has(doorId)) continue; // hängende Verknüpfung: das sagt `links`
+    const keyed = openers.filter((o) => o.type !== 'plate');
+    if (!keyed.length) continue; // reine Platten-Tür: Umfang wie vorher, ungeprüft
+    const withoutThisDoor = coopReachable(def, new Set([doorId]));
+    if (openers.some((o) => withoutThisDoor.has(cellKey(o.fl, o.cell)))) continue;
+    openersOk = false;
+    const o = keyed[0]!;
+    openersDetail ??= `${doorId}: ${o.type} E${o.fl + 1} (${o.cell})`;
+  }
   push('openers', openersOk, openersDetail);
 
   // Zeitschloss-Timer reicht (2,5×-Sicherheitsfaktor auf die Ideallinie).

@@ -612,6 +612,49 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M31 „Zwei Checks, zwei Meinungen" ✓ (v2.5.4) – openers war falsch
+
+**Der Fund kam als Bug-Report:** „Ich hab auf Ebene 3 einen Schlüssel vor der
+Tür, der Transporter-Zielpunkt ist auf der Schlüsselseite. Trotzdem wird es als
+Fehler angezeigt."
+
+**Der Fehler.** Der `openers`-Check schloss ALLE Türen gleichzeitig
+(`reachable(def, { doorsOpen: false })`) und verlangte, dass JEDER Schlüssel in
+dieser Welt erreichbar ist. Damit galt die gewöhnlichste Progression überhaupt
+als Fehler: Schlüssel 1 → Tür 1 → Schlüssel 2 → Tür 2. Schlüssel 2 liegt hinter
+Tür 1 – die man an dieser Stelle längst geöffnet hat.
+
+**Wie es auffiel.** Nicht am gemeldeten Level, sondern am WIDERSPRUCH IM
+BERICHT: `goal` benutzt `coopReachable` (den Fixpunkt: eine Tür gilt als offen,
+sobald ein Öffner erreichbar ist) und stempelte grün – `openers` rot. Zwei
+Checks derselben Datei mit zwei Meinungen; einer musste falsch sein. Das ist
+die verlässlichste Fehlersuche in diesem Modell: nicht das Level anstarren,
+sondern die Checks gegeneinander lesen.
+
+**Der Fix.** Die Frage gehört PRO TÜR gestellt: Ist mindestens einer ihrer
+Öffner erreichbar, wenn genau diese Tür nie aufgeht? Das ist
+`coopReachable(def, new Set([doorId]))` – die Funktion und ihr
+`bannedDoors`-Parameter existierten längst, `openers` hat sie nur nicht
+benutzt. Pro Tür statt pro Schlüssel, weil zwei Schlüssel dieselbe Tür öffnen
+dürfen: Liegt einer dahinter, ist das kein Fehler, solange der andere davor
+liegt. Ein Riegel ist nur eine Tür, deren SÄMTLICHE Öffner hinter ihr liegen.
+Die Meldung nennt jetzt die TÜR (`tor1: key E1 (3,0)`), nicht bloß den
+Schlüssel – die Tür ist die Ursache.
+
+**Reine Lockerung, mit Absicht.** GEPRÜFT werden nur Türen mit
+Schlüssel/Zeitschloss – genau der Umfang von vorher; ERFÜLLEN darf sie jeder
+Öffner, Platte eingeschlossen (Schlüssel drinnen, Platte draußen geht im Coop
+auf). Damit kann kein Level, das heute grün ist, durch diese Änderung rot
+werden – wichtig, denn das Modell urteilt über JEDES geteilte Level. Der erste
+Entwurf prüfte auch reine Platten-Türen und wäre damit eine Verschärfung
+gewesen; das ist bewusst zurückgenommen.
+
+Sieben Units in `tests/openers.test.ts`; mit dem alten Check werden fünf davon
+rot (die zwei anderen waren in beiden Fassungen richtig – ein ehrliches
+Ergebnis, keine Politur). Die 28 Kampagnen-Level und die Coop-Level bleiben
+unberührt: Deren Türen haben je eine Platte außen und eine innen, die äußere
+erfüllt den Beweis.
+
 ## M30 „Der Start gehört Ebene 1" ✓ (v2.5.3)
 
 **Der Fund kam als Frage:** „Wenn ich neue Ebenen hinzufüge, warum haben die

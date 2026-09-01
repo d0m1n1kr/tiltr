@@ -34,7 +34,17 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 - `src/levels/validate.ts` – die Lösbarkeits-Beweise (Erreichbarkeit,
   Öffner-Fixpunkt, Softlock, Timer, hazardsBlocked, links, guards): EINE Quelle der
   Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
-  Live-Badges des Editors. Modell-Änderungen nur hier. Der Loader ist bei
+  Live-Badges des Editors. Modell-Änderungen nur hier.
+  Der `openers`-Check fragt PRO TÜR, nicht pro Schlüssel: Ist mindestens EIN
+  Öffner erreichbar, wenn GENAU DIESE Tür nie aufgeht
+  (`coopReachable(def, {tür})`)? Alle anderen Türen öffnen dabei normal – sonst
+  gilt die gewöhnlichste Progression als Fehler (Schlüssel 1 → Tür 1 →
+  Schlüssel 2 → Tür 2). Pro Tür, weil zwei Schlüssel dieselbe Tür öffnen
+  dürfen: Liegt einer dahinter, ist das kein Fehler, solange der andere davor
+  liegt. GEPRÜFT werden nur Türen mit Schlüssel/Zeitschloss, ERFÜLLEN darf
+  jeder Öffner inklusive Platte (Coop). Wer hier schraubt, prüfe zuerst den
+  BERICHT auf Widersprüche: Der Bug fiel auf, weil `goal` grün und `openers`
+  rot sagte – zwei Checks derselben Datei mit zwei Meinungen. Der Loader ist bei
   Verknüpfungen bewusst MILD (Tür ohne Öffner / Schlüssel ohne Tür laden –
   Editor-Zwischenzustände); die Strenge wohnt im `links`-Check. Wächter
   gehören ins Modell (`guards`): An einem Wächter kommt man in einem
