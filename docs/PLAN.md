@@ -350,6 +350,92 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M23 „First Person" (Planung – Ziel: 2.0.0)
+
+Zweiter, ZUSÄTZLICHER Steuerungsmodus für alle Spielvarianten (Quick,
+Daily, Kampagne, MP, Duell, Werkstatt-Preview). Die Visualisierung bleibt
+die Draufsicht – aber die Kugel bekommt eine BLICKRICHTUNG (Heading), und
+die zeigt auf dem Screen immer nach oben: Es dreht sich die WELT um die
+Kugel, nicht die Kugel auf dem Screen. Die Kugel sitzt fix in der
+Bildschirmmitte (Kamera folgt immer, auch in kleinen Leveln).
+
+### Steuerungsmodell (Lenkrad, entschieden)
+
+Haltung: Handy ~45° vor sich. Die Kalibrierung im Countdown nimmt wie
+bisher die tatsächliche Haltung als Nullpunkt – 45° ist Empfehlung, nicht
+Pflicht (das heutige `beta0/gamma0`-Modell trägt das unverändert).
+
+- **Vor/zurück** = Kippen relativ zum Nullpunkt: flacher (nach vorn
+  gekippt) = vorwärts entlang der Blickrichtung, steiler = rückwärts.
+- **Drehen** = Lenkrad: das Handy um die Blickachse neigen; gehaltene
+  Schräglage = kontinuierliches Drehen. Totzone gegen Drift (liefert
+  `tilt` heute schon), progressive Kurve `x·|x|` für Präzision um die
+  Mitte, volles Einschlagen ≈ 2,4 rad/s (Tuning-Wert).
+- **Kein Strafen**: Die Querachse dreht ausschließlich. Seitliche
+  Bewegung entsteht nur noch aus Impuls (Drift um Kurven – gewollt).
+- **Tastatur-Fallback fällt gratis ab**: `tilt` liefert für Tasten dasselbe
+  {x,y}-Signal – in FP heißt ↑/↓ dann Schub, ←/→ Drehen. Damit ist der
+  Modus auch im E2E fahrbar.
+
+### Warum das dem Spiel besonders steht: Das AUDIO dreht mit
+
+Der Hörer schaut in Blickrichtung (`audio.setHeading(rad)`, gedreht wird
+an EINER Stelle: `place()`/`unitPos()`). Damit wird „links/rechts von MIR"
+zur tragenden Achse – exakt die, die das Ohr laut Hörtest (M20) sicher
+kann. Die schwache Vorn/Hinten-Achse löst man in FP durch DREHEN, bis das
+Ziel-Beacon mittig vorn liegt. First Person macht die HRTF-Ortung damit
+voll spielbar; die Draufsicht bleibt der Modus für die Karten-Denker.
+
+### Architektur: FP ist Steuerung + Kamera + Hörer – NICHT Physik
+
+Der Kern (`src/core/`) bleibt unangetastet: Impuls, Kollisionen, Elemente,
+alles in Weltkoordinaten. FP ist eine reine Transformation davor/danach:
+
+1. `src/core/fp.ts` (NEU, deterministisch, DOM-frei):
+   `fpStep(tilt, heading, dt) -> { worldTilt, heading }` – Drehkurve +
+   Rotation des Schubvektors ins Weltsystem. Heading 0 = Norden (Screen-
+   oben), sodass Level-Intros mit Richtungsbezügen beim Start stimmen.
+   Units nageln die Vorzeichen fest (θ=0, nach vorn gekippt ⇒ Beschleunigung
+   nach Welt-oben; θ=90° ⇒ nach Welt-rechts; Totzone; Kurve; max. Rate).
+2. `app.ts`: hält `heading` pro Lauf (Respawn und Transporter erhalten es),
+   ruft `fpStep` nur im FP-Modus, übergibt `worldTilt` an `world.step`.
+3. `renderer.draw({ heading })`: Rotation um die Ballmitte, Kamera immer
+   zentriert. Alle Weltkoordinaten laufen durch EIN `worldToScreen`
+   (bisher offset+scale, jetzt + Rotation) – damit klemmen auch Partner-
+   Schein/Geist korrekt am gedrehten Rand. Debug-Ansicht dreht mit.
+4. `audio.setHeading(rad)` – siehe oben. Menü/Hörtest bleiben bei 0.
+5. `window.__tiltrFp = { heading, mode }` als E2E-Haken.
+
+**Kompatibilität dadurch gratis:** Geister, Duell-Tokens, Daily-Seeds und
+MP-Positionen sind Weltkoordinaten – ein FP-Spieler kann gegen einen
+Draufsicht-Geist antreten, im MP darf jeder seinen Modus wählen. Kein
+Format, kein Codec, kein Beweis (validate.ts) ändert sich.
+
+### UI
+
+- Umschalter im Startmenü als Chip-Paar neben den Presets
+  („Steuerung: 🥣 Draufsicht / 🧭 First Person"), persistiert in
+  `profile.controls` (`'top' | 'fp'`, Default `'top'`).
+- Kalibrier-Interstitial bekommt je Modus den passenden Hinweis
+  („flach wie ein Tablett halten" vs. „~45° vor dich halten").
+- i18n: ~6 neue Schlüssel ×4 (Toggle-Labels, Untertitel, FP-Kalibrierhinweis).
+- Galerie/README: FP als Steuerungsvariante dokumentieren.
+
+### Meilensteine
+
+- **M23a** `core/fp.ts` + Units (Vorzeichen-Matrix, Totzone, Kurve,
+  Raten-Deckel, Heading-Integration) – rot gesehen.
+- **M23b** Integration: app-Heading, Renderer-Rotation + Zentrier-Kamera,
+  `audio.setHeading`, Respawn/Warp-Verhalten.
+- **M23c** UI (Toggle, i18n ×4, Kalibrierhinweis), E2E-Lauf (per Tastatur:
+  drehen, dann Schub ⇒ Ball bewegt sich in die GEDREHTE Weltrichtung;
+  Heading-Haken; Toggle persistiert), Doku, Release **2.0.0**.
+
+### Tuning-Werte (beim Playtest zu justieren)
+
+`MAX_TURN` ≈ 2,4 rad/s · Drehkurve `x·|x|` · Schub-Skala = bisherige
+Neigungsskala · Totzone aus `tilt` (0,04) übernehmen.
+
 ## M22 „Der Partner ist ein Schein" ✓ (v1.13.0)
 
 Zwei Meldungen aus dem Spielbetrieb, beide über die Darstellung des
