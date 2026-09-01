@@ -350,6 +350,46 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M25 „Der Vorhang" ✓ (v2.2.0)
+
+Die Start-Animation erzählt jetzt eine Bewegung statt zweier: Die Kugel
+rollt von UNTEN ein, Titel und Credits blenden ein und stehen kurz, dann
+rollt die Kugel nach OBEN aus dem Bild – und GLEICHZEITIG fährt der
+Startscreen von unten herein. Vorher rollte die Kugel von links ein und der
+ganze Splash blendete einfach aus; der Übergang ins Menü war ein Schnitt.
+
+Drei Dinge, die beim Bauen nicht offensichtlich waren und jetzt im Code
+stehen (Details in docs/DESIGN.md):
+
+1. **Eine einfarbige Kugel dreht sich unsichtbar.** „Einrollen" braucht eine
+   Marke – ein Glanzpunkt (`.splash-ball::after`) macht aus dem Schieben ein
+   Rollen. 1,5 Umdrehungen sind die Stilisierung (echtes Abrollen wären bei
+   r=9px fast acht).
+2. **Die Reihenfolge in Akt 3 ist Pflicht, nicht Geschmack.** Der
+   Startscreen trägt selbst ein „tiltr". Die erste Fassung ließ Splash-Titel
+   und Menü-Titel überlappen – im Screenshot eine Doppelbelichtung. Jetzt
+   räumt die Schrift zuerst (160 ms), dann fährt das Menü.
+3. **Der Menü-Transform gehört an den `body`, nicht an `#overlay`.** So hat
+   der Startscreen ohne `body.splashing` GAR keinen Transform: `?nosplash`
+   (E2E) und `prefers-reduced-motion` sehen nichts von der Inszenierung, und
+   ein abgebrochener Splash kann das Menü nicht unter dem Bildrand vergessen.
+
+Zwei Sachfehler fielen beim Ansehen der Screenshot-Serie auf: Die Echo-Ringe
+standen wegen `animation-fill-mode: both` schon WÄHREND ihrer Verzögerung
+als Umriss auf der Bühne (mit der wandernden Kugel sah das wie eine Pille
+aus) – `forwards` behebt es. Und die erste Einfahrt war mit 650 ms und einer
+stark vorgezogenen Kurve praktisch vorbei, bevor man sie sah (bei 150 ms
+stand die Kugel fast in der Mitte) – jetzt 850 ms ease-out.
+
+Das Ende der Inszenierung hängt am `animationend` der Menü-Fahrt statt an
+einer zweiten Zahl in JS, die mit der CSS-Dauer auseinanderlaufen kann
+(`ev.target === overlay`, weil das Event bubbelt, plus ein Timeout als
+Sicherheitsnetz für Hintergrund-Tabs). E2E-Lauf 10 prüft die drei Akte an
+den ECHTEN Transforms (Kugel unten → Mitte → oben raus, Menü geparkt →
+unterwegs → ohne Transform) samt „Splash-Titel weg, bevor der Menü-Titel
+kommt"; Lauf 10b deckt reduced-motion und den Tap ab. Alle acht neuen
+Zusicherungen rot gesehen.
+
 ## M24 „Bauen mit Ohr und Auge" ✓ (v2.1.0)
 
 Zwei Wünsche aus dem Editor-Betrieb – beide zielen darauf, einen Entwurf

@@ -72,7 +72,16 @@
       pointer-events: none;
     }
 
-    /* --- Splash: einmalige Intro-Animation beim Laden (docs/DESIGN.md) --- */
+    /* --- Splash: einmalige Intro-Animation beim Laden (docs/DESIGN.md) ---
+       Choreografie in drei Akten, Zeiten in src/ui/splash.ts gespiegelt:
+         1. EINROLLEN  – die Kugel kommt von UNTEN in die Bühne (0–650ms),
+            danach pingt der erste Echo-Ring: „sie ist da".
+         2. TITEL      – Logo, Credit und Version blenden gestaffelt ein und
+            bleiben kurz stehen.
+         3. ABROLLEN   – die Kugel rollt nach OBEN aus dem Bild, der Splash
+            wird durchsichtig, und GLEICHZEITIG fährt der Startscreen von
+            unten herein (der Menü-Transform lebt unter body.splashing,
+            damit ?nosplash und reduced-motion nichts davon sehen). */
     #splash {
       position: fixed; inset: 0;
       height: var(--app-height, auto);
@@ -82,8 +91,22 @@
       align-items: center;
       justify-content: center;
       gap: var(--space-3);
-      background: radial-gradient(circle at 50% 44%, var(--bg-raised) 0%, var(--bg) 72%);
       transition: opacity 500ms ease-out;
+    }
+    /* Der Grund liegt als EIGENE Ebene darunter: Ein Gradient lässt sich
+       nicht auf `none` animieren, eine Opazität schon. Akt 3 macht ihn frei,
+       damit das einfahrende Menü (z-index darunter) sichtbar wird – die
+       Kugel bleibt als Kind darüber. */
+    #splash::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 44%, var(--bg-raised) 0%, var(--bg) 72%);
+    }
+    #splash.leave { pointer-events: none; }
+    #splash.leave::before { animation: splash-bg-out 420ms ease-out both; }
+    @keyframes splash-bg-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
     }
     #splash.fade { opacity: 0; pointer-events: none; }
     .splash-stage { position: relative; width: 120px; height: 56px; }
@@ -93,22 +116,48 @@
       border-radius: 50%;
       background: var(--accent);
       box-shadow: var(--glow-accent);
-      animation: splash-roll 900ms ease-out both;
+      animation: splash-roll-in 850ms ease-out both;
     }
+    /* Glanzpunkt: Ohne Marke ist die Drehung einer einfarbigen Kugel
+       unsichtbar – erst er macht aus dem Schieben ein ROLLEN. */
+    .splash-ball::after {
+      content: '';
+      position: absolute; top: 2.5px; left: 5px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    /* Ausnahme zur ease-out-Regel (docs/DESIGN.md): Der Auslauf
+       BESCHLEUNIGT weg (ease-in) – die Kugel bremst nicht, sie rollt davon. */
+    #splash.leave .splash-ball { animation: splash-roll-out 420ms cubic-bezier(0.45, 0, 0.9, 0.55) both; }
     .splash-ring {
       position: absolute; top: 50%; left: 50%;
       width: 18px; height: 18px; margin: -9px 0 0 -9px;
       border-radius: 50%;
       border: 2px solid var(--accent);
       opacity: 0;
-      animation: splash-ping 1100ms ease-out 2 both;
+      /* `forwards`, NICHT `both`: Mit `both` gilt schon während der
+         Verzögerung der from-Zustand (scale 1, opacity 0.9) – der Ring stand
+         dann als Umriss auf der Bühne, während die Kugel noch unterwegs war,
+         und beides zusammen sah wie eine Pille aus. */
+      animation: splash-ping 1100ms ease-out forwards;
     }
-    .splash-ring.r2 { animation-delay: 1450ms; border-color: var(--accent-2); }
-    .splash-ring.r1 { animation-delay: 900ms; }
-    @keyframes splash-roll {
-      from { transform: translateX(-46vw); opacity: 0; }
-      30% { opacity: 1; }
-      to { transform: translateX(0); opacity: 1; }
+    .splash-ring.r1 { animation-delay: 800ms; }
+    .splash-ring.r2 { animation-delay: 1300ms; border-color: var(--accent-2); }
+    #splash.leave .splash-ring { animation: none; opacity: 0; }
+    /* 1,5 Umdrehungen auf dem Weg: Genug, dass der Glanzpunkt das ROLLEN
+       erzählt, wenig genug, dass es nicht flimmert (echtes Abrollen wären
+       bei r=9px fast acht Umdrehungen). Ein- und Auslauf drehen in DIESELBE
+       Richtung – die Kugel setzt ihren Weg fort, sie kehrt nicht um. */
+    @keyframes splash-roll-in {
+      from { transform: translateY(56vh) rotate(-540deg); opacity: 0; }
+      20% { opacity: 1; }
+      to { transform: translateY(0) rotate(0deg); opacity: 1; }
+    }
+    @keyframes splash-roll-out {
+      from { transform: translateY(0) rotate(0deg); opacity: 1; }
+      70% { opacity: 1; }
+      to { transform: translateY(-56vh) rotate(420deg); opacity: 0; }
     }
     @keyframes splash-ping {
       from { transform: scale(1); opacity: 0.9; }
@@ -121,17 +170,40 @@
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      animation: splash-in 700ms ease-out 600ms both;
+      animation: splash-in 550ms ease-out 850ms both;
     }
-    #splashCredit { font-size: var(--fs-body-s); opacity: 0.7; animation: splash-in 700ms ease-out 1100ms both; }
-    #splashVersion { font-size: var(--fs-caption); opacity: 0.4; animation: splash-in 700ms ease-out 1300ms both; }
+    #splashCredit { font-size: var(--fs-body-s); opacity: 0.7; animation: splash-in 550ms ease-out 1100ms both; }
+    #splashVersion { font-size: var(--fs-caption); opacity: 0.4; animation: splash-in 550ms ease-out 1300ms both; }
+    /* Die Schrift räumt ZUERST, und zwar zügig: Der Startscreen trägt selbst
+       ein „tiltr" – überlappen beide, sieht es wie eine Doppelbelichtung aus
+       (genau das zeigte die erste Fassung). Deshalb 160 ms Schrift raus,
+       danach fährt das Menü los. */
+    #splash.leave .splash-logo,
+    #splash.leave #splashCredit,
+    #splash.leave #splashVersion { animation: splash-out 160ms ease-out both; }
     @keyframes splash-in {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: none; }
     }
+    @keyframes splash-out {
+      from { opacity: 1; transform: none; }
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+    /* Der Startscreen wartet unter dem Bildrand – NUR solange der Splash
+       läuft. Ohne diese Klasse (?nosplash, nach dem Splash) hat #overlay
+       keinen Transform und verhält sich wie immer. */
+    body.splashing #overlay { transform: translateY(100%); }
+    body.splash-leaving #overlay { animation: menu-rise 460ms cubic-bezier(0.16, 0.84, 0.3, 1) 160ms both; }
+    @keyframes menu-rise {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
     @media (prefers-reduced-motion: reduce) {
       #splash * { animation: none !important; }
       .splash-ball { transform: none; }
+      /* Kein Einfahren: Das Menü steht von Anfang an, wo es hingehört. */
+      body.splashing #overlay,
+      body.splash-leaving #overlay { transform: none; animation: none; }
     }
 
     /* --- Startscreen --- */

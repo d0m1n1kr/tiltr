@@ -154,10 +154,29 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
   immer `ease-out`. Spielfeld-Animationen (Echo 1200 ms, Reveal 4000 ms)
   sind Gameplay, nicht UI – sie bleiben im Renderer.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
-  darf nur die Welt. Einzige Ausnahme: der **Splash** beim Laden (Ball rollt
-  ein, zwei Echo-Ringe, Logo/Credits blenden ein) – endlich, überspringbar
-  per Tap, respektiert `prefers-reduced-motion`, `?nosplash` (E2E)
-  unterdrückt ihn ganz.
+  darf nur die Welt. Einzige Ausnahme: der **Splash** beim Laden – endlich,
+  überspringbar per Tap, respektiert `prefers-reduced-motion`, `?nosplash`
+  (E2E) unterdrückt ihn ganz. Seine Choreografie hat drei Akte:
+  1. **Einrollen** – die Kugel kommt von UNTEN in die Bühne (850 ms,
+     ease-out) und dreht dabei 1,5 Umdrehungen; ein Glanzpunkt
+     (`.splash-ball::after`) macht die Drehung überhaupt sichtbar, denn eine
+     einfarbige Kugel dreht sich unsichtbar. Bei der Ankunft pingt der erste
+     Echo-Ring.
+  2. **Titel** – Logo, Credit und Version blenden gestaffelt ein (ab 850 ms)
+     und stehen gut eine halbe Sekunde.
+  3. **Abrollen** – die Schrift räumt ZUERST (160 ms), dann rollt die Kugel
+     nach OBEN aus dem Bild (420 ms, bewusst `ease-in`: sie bremst nicht, sie
+     rollt davon) und GLEICHZEITIG fährt der Startscreen von unten herein
+     (460 ms). Die Reihenfolge ist Pflicht: Der Startscreen trägt selbst ein
+     „tiltr" – überlappen beide Titel, sieht es wie eine Doppelbelichtung aus.
+  Der Menü-Transform hängt an `body.splashing` / `body.splash-leaving`, nicht
+  an `#overlay` selbst: Ohne diese Klassen hat der Startscreen keinen
+  Transform, damit `?nosplash` und reduced-motion nichts von der
+  Inszenierung sehen und ein abgebrochener Splash das Menü nicht unter dem
+  Bildrand vergessen kann. Der Splash-Grund liegt als eigene `::before`-Ebene
+  (ein Gradient lässt sich nicht auf `none` animieren, eine Opazität schon).
+  Das Ende hängt am `animationend` der Menü-Fahrt statt an einer zweiten,
+  parallel gepflegten Zahl (`ev.target === overlay`, weil das Event bubbelt).
 
 ## Sprache & Texte (i18n)
 

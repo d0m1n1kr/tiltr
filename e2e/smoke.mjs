@@ -678,8 +678,63 @@ const check = (name, cond) => {
     `Splash mit Version + Credits ("${splashVersion}" / "${splashCredit}")`,
     splashShown && /^v\d+\.\d+\.\d+$/.test(splashVersion) && splashCredit.includes('Dominik Rössler') && splashCredit.includes('Claude'),
   );
-  await page.waitForTimeout(3400); // Auto-Fade nach ~2,6 s + Ausblenden
-  check('Splash verschwindet von selbst', (await page.locator('#splash').count()) === 0);
+  // --- Choreografie (M25): Kugel von unten ein, Titel, dann Kugel raus
+  // WÄHREND das Menü von unten hereinfährt. Messbar über die echten
+  // Transforms – der Splash steht auf keiner Stoppuhr, die hier doppelt
+  // gepflegt wird. `ty` liest die Y-Verschiebung aus der Matrix. ---
+  const ty = (m) => (m === 'none' ? 0 : Number(m.slice(m.lastIndexOf(',') + 1, -1).trim()));
+  const stage = () =>
+    page.evaluate(() => {
+      const sp = document.getElementById('splash');
+      const ov = document.getElementById('overlay');
+      const ball = document.querySelector('.splash-ball');
+      return {
+        splash: sp ? sp.className : null,
+        body: document.body.className,
+        menu: getComputedStyle(ov).transform,
+        ball: ball ? getComputedStyle(ball).transform : null,
+        vh: innerHeight,
+      };
+    });
+
+  // Akt 1: Die Kugel kommt von UNTEN (positive Y-Verschiebung), das Menü
+  // wartet um eine volle Bildhöhe nach unten geparkt.
+  const act1 = await stage();
+  check(`Akt 1: Kugel rollt von unten ein (dy=${ty(act1.ball).toFixed(0)}px), Menü parkt unten (${ty(act1.menu).toFixed(0)} = ${act1.vh})`,
+    ty(act1.ball) > 40 && act1.body.includes('splashing') && Math.abs(ty(act1.menu) - act1.vh) < 2);
+
+  // Akt 2: Kugel steht in der Mitte, Titel sichtbar, Menü noch unten.
+  await page.waitForTimeout(1600);
+  const act2 = await stage();
+  const logoOpacity = await page.evaluate(() => Number(getComputedStyle(document.querySelector('.splash-logo')).opacity));
+  check(`Akt 2: Kugel steht, Titel da (Deckkraft ${logoOpacity}), Menü wartet (${ty(act2.menu).toFixed(0)})`,
+    Math.abs(ty(act2.ball)) < 2 && logoOpacity > 0.9 && ty(act2.menu) > act2.vh - 2);
+
+  // Akt 3: Kugel nach OBEN raus (negative Y) und Menü GLEICHZEITIG unterwegs
+  // (zwischen unten und angekommen) – die eigentliche Zusicherung des Umbaus.
+  let act3 = null;
+  for (let i = 0; i < 40; i++) {
+    await page.waitForTimeout(60);
+    const st = await stage();
+    if (st.splash?.includes('leave') && ty(st.menu) > 4 && ty(st.menu) < st.vh - 4) {
+      act3 = st;
+      break;
+    }
+    if (st.splash === null) break;
+  }
+  check(`Akt 3: Kugel rollt nach oben raus (dy=${act3 ? ty(act3.ball).toFixed(0) : '?'}px), während das Menü hereinfährt (${act3 ? ty(act3.menu).toFixed(0) : '?'}px über dem Rand)`,
+    !!act3 && ty(act3.ball) < -20 && act3.body.includes('splash-leaving'));
+  // Der Splash-Titel muss WEG sein, bevor das Menü seinen eigenen zeigt –
+  // sonst stehen zwei „tiltr" übereinander (genau das zeigte die 1. Fassung).
+  const logoGone = act3
+    ? await page.evaluate(() => Number(getComputedStyle(document.querySelector('.splash-logo')).opacity))
+    : 1;
+  check(`Akt 3: Splash-Titel ist weg, bevor der Menü-Titel kommt (Deckkraft ${logoGone})`, logoGone < 0.15);
+
+  await page.waitForTimeout(1200);
+  const done = await stage();
+  check(`Splash verschwindet von selbst und lässt das Menü ohne Transform zurück ("${done.body}", ${done.menu})`,
+    (await page.locator('#splash').count()) === 0 && done.body === '' && done.menu === 'none');
 
   // Debug-Ansicht ist versteckt und wird mit 5 Taps auf die Version freigeschaltet.
   const debugHidden = (await page.locator('#debugBtn').getAttribute('class')).includes('hidden');
@@ -692,6 +747,44 @@ const check = (name, cond) => {
   // Grundton = Spielfeld-Ton: kein heller Streifen neben dem Canvas möglich.
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   check(`Body-Grundton ist bg-deep (${bg})`, bg === 'rgb(5, 7, 15)');
+  await page.close();
+}
+
+// --- Lauf 10b: Splash-Sonderwege – prefers-reduced-motion inszeniert NICHT
+// (das Menü darf dort nie unter dem Bildrand parken), und ein Tap überspringt
+// in Akt 3 statt hart abzuschneiden. ---
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE', reducedMotion: 'reduce' });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+  await page.waitForTimeout(250);
+  const rm = await page.evaluate(() => ({
+    splash: document.getElementById('splash') !== null,
+    menuTop: document.getElementById('overlay').getBoundingClientRect().top,
+    menuT: getComputedStyle(document.getElementById('overlay')).transform,
+  }));
+  check(`Reduced Motion: Menü parkt NICHT (top=${rm.menuTop}, ${rm.menuT})`,
+    rm.splash === true && rm.menuTop === 0 && rm.menuT === 'none');
+  await page.waitForTimeout(1600);
+  check('Reduced Motion: Splash geht ohne Inszenierung', (await page.locator('#splash').count()) === 0);
+  await page.close();
+}
+{
+  const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: 'de-DE' });
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/`);
+  await page.waitForTimeout(1000); // mitten in Akt 2 antippen
+  await page.mouse.click(200, 400);
+  await page.waitForTimeout(120);
+  const skipping = await page.evaluate(() => document.body.className);
+  await page.waitForTimeout(1000);
+  const after = await page.evaluate(() => ({
+    gone: document.getElementById('splash') === null,
+    body: document.body.className,
+    menuTop: document.getElementById('overlay').getBoundingClientRect().top,
+  }));
+  check(`Tap überspringt in Akt 3 ("${skipping}") und endet aufgeräumt (top=${after.menuTop})`,
+    skipping.includes('splash-leaving') && after.gone && after.body === '' && after.menuTop === 0);
   await page.close();
 }
 
