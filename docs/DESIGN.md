@@ -66,8 +66,12 @@ Alpha-Werte interpoliert (Echo-Fade). Ball `#4be0c8`, Wand Blau, brüchige
 Wand Bernstein, Loch-Füllung `#000` mit Violett-Ring, Ziel Grün, Ping Teal,
 Wind Hellblau, Herzschlag Rot (`255, 110, 130`), Wächter Rot (`255, 92, 92`),
 Schlüssel/Tür Gold (`255, 214, 90`), Gem Eisblau (`190, 240, 255`),
-Transporter/Portal Magenta (`240, 130, 230`), Partner-Halo Silberblau
-(`210, 225, 255` – auch der Geist der eigenen Bestzeit, nur blasser),
+Transporter/Portal Magenta (`240, 130, 230`), Partner-SCHEIN Silberblau
+(`210, 225, 255` – auch der Geist der eigenen Bestzeit, nur blasser; zwei
+weiche Lichtschichten OHNE gezeichneten Rand und stets unter
+`BALL_CORE_ALPHA`: ein harter Ring liest sich als Körper, und der einzige
+feste Körper im Bild ist der eigene Ball. Im Ziel wechselt der Schein in
+die Zielfarbe),
 Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
 Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
 Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das
@@ -120,6 +124,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
 | `.ws-item` (+ `.ws-actions`, `.ws-icons`, `.ws-icon`) | Werkstatt-Bibliothek: Karte mit Name/Meta-Kopf und EINER Aktionszeile – zwei Text-Buttons links, vier Icon-Aktionen (mit `[data-tip]`) rechts. Die Icon-Gruppe bricht als Ganzes um; ob überhaupt, entscheidet eine Container Query über die KARTENBREITE (`container-type: inline-size`), nicht die Fensterbreite |
+| `.hud-chip.done` | Zeit steht: Im Multiplayer bleibt die Uhr auf der erreichten Zielzeit stehen (grün, `--success`), während der Ball weiterrollen darf. Früher erzählte das der festhängende Ball – und sah wie ein Fehler aus |
 | `.hear-cell` | Hörtest-Kompassrose: 3×3-Raster (`#hearGrid`, max. 320 px) quadratischer Ghost-Buttons – acht Richtungspfeile dort, wo die Richtung klingt (oben = vorn), Mitte (`#hearRepeat`, Akzent-Rand) wiederholt den Ping. Beschriftung als `[data-tip]`, nicht als Text: der Pfeil trägt die Richtung, die Blase den Namen |
 | `.ed-tile` | Editor-Palette: Werkzeug/Element mit Galerie-Miniatur; `.active` = Teal-Outline (ein Modus aktiv) |
 | `.ed-badge` | Live-Validierungs-Badge im Editor-Kopf: Teal = Beweis grün, `.fail` (Bernstein) = verletzt |

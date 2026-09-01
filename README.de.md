@@ -14,7 +14,7 @@ automatisch per GitHub Actions (Tests → Build → Pages).
 
 | Splash | Menü | Echo-Ping | Multiplayer-Lobby | Coop |
 |---|---|---|---|---|
-| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände und Löcher auf"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer-Lobby mit QR-Code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop mit Druckplatte, Tür und Partner-Halo"> |
+| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände und Löcher auf"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer-Lobby mit QR-Code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop mit Druckplatte, Tür und Partner-Schein"> |
 
 ## Spielmodi
 
@@ -36,7 +36,7 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   jeden Klang dämpft, und Eis, über das du gleitest. Bis zu drei Sterne
   pro Level (geschafft, Par-Zeit, alle Gems), dazu ein optionaler
   Blind-Stern 🌑 fürs Durchkommen ohne einen einzigen Echo-Ping – und die
-  eigene Bestzeit rollt bei späteren Versuchen als blasser Geist-Halo mit.
+  eigene Bestzeit rollt bei späteren Versuchen als blasser Geist-Schein mit.
 - **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
   ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über
   eine feste Liste von 8 etablierten Nostr-Relays, kein eigener Server).
@@ -47,9 +47,13 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   für den Nachzügler – gewonnen ist erst, wenn beide drin sind. **Race:**
   identisches Level, wer zuerst ankommt, gewinnt – mit Rematch. Neben den
   handgebauten Leveln würfelt ein 🎲-Generator frische Coop- und
-  Race-Karten – der Gast regeneriert aus der Level-ID exakt dasselbe Level. Ein
-  pulsierender Halo zeigt den Partner – am Screenrand geklemmt, wenn er
-  außer Sicht ist. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
+  Race-Karten – der Gast regeneriert aus der Level-ID exakt dasselbe Level.
+  Ein schwacher, atmender Schein zeigt den Partner – reines Licht ohne Rand,
+  immer blasser als der eigene Ball, am Screenrand geklemmt, wenn er außer
+  Sicht ist, und in Zielgrün, sobald er durch ist. Der Zieleinlauf stoppt
+  die UHR, nicht die Kugel: Die Zeit bleibt stehen und wird grün, das
+  eigene Ziel leuchtet ruhig weiter, und man rollt weiter – im Coop hält man
+  so dem Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
   zum Wiederverbinden.
 - **🛠 Werkstatt** – eigene Level im Touch-Editor bauen (auf Tablets als
   Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
@@ -124,9 +128,9 @@ Leertaste für den Ping.
 | Sog-Anker | zieht im Radius an – immer überwindbar (Kraft bleibt unter voller Neigung), kostet aber Zeit; elektrisches Brummen schwillt mit der Nähe an |
 | Glasboden | erstes Überrollen knackt warnend, das zweite zersplittert ihn zum offenen Loch; helles Knacken, dann Splittern |
 | Blind-Stern 🌑 | optionaler vierter Stern pro Kampagnen-Level: geschafft ohne einen einzigen Echo-Ping |
-| Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Halo mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
+| Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Schein mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
 | Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
-| Partner-Halo | pulsierender Lichtring an der Position des Mitspielers; außer Sicht an den Screenrand geklemmt (mit Ebenen-Label) |
+| Partner-Schein | weiches, atmendes Licht an der Position des Mitspielers – kein Rand, kein Körper (der einzige feste Körper ist der eigene Ball); außer Sicht an den Screenrand geklemmt (mit Ebenen-Label), in Zielgrün sobald er im Ziel war |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
 
 ## Entwicklung

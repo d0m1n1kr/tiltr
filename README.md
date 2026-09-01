@@ -13,7 +13,7 @@ automatically via GitHub Actions (tests → build → pages).
 
 | Splash | Menu | Echo ping | Multiplayer lobby | Co-op |
 |---|---|---|---|---|
-| <img src="docs/screenshots/splash.png" width="150" alt="Animated splash screen"> | <img src="docs/screenshots/menu-en.png" width="150" alt="Start screen with game modes"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo ping reveals walls and holes"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer lobby with QR code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Co-op with pressure plate, door and partner halo"> |
+| <img src="docs/screenshots/splash.png" width="150" alt="Animated splash screen"> | <img src="docs/screenshots/menu-en.png" width="150" alt="Start screen with game modes"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo ping reveals walls and holes"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer lobby with QR code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Co-op with pressure plate, door and partner shimmer"> |
 
 ## Game modes
 
@@ -46,8 +46,13 @@ automatically via GitHub Actions (tests → build → pages).
   only win once both of you are in. **Race:** identical level, first one
   in wins, with rematch. Besides the hand-built levels, a 🎲 random level
   generator creates fresh co-op and race maps on demand — the guest
-  regenerates the exact same level from the room's level id. A pulsing halo shows your partner — clamped to
-  the screen edge when they're out of view. Lost connections get a
+  regenerates the exact same level from the room's level id. A faint,
+  breathing shimmer shows your partner — pure light, no outline, always
+  dimmer than your own ball, clamped to the screen edge when they're out of
+  view and tinted goal-green once they're through. Reaching the goal stops
+  your CLOCK, not your ball: the timer locks on your time and turns green,
+  your goal keeps glowing softly, and you can keep rolling — in co-op that
+  means you can still work the plates for the straggler. Lost connections get a
   10-second reconnect window.
 - **🛠 Workshop** — build your own levels in a touch-first editor
   (three-pane layout on tablets): place elements from the full registry,
@@ -121,9 +126,9 @@ On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 | Pull anchor | drags you within its radius — always escapable (its force stays below full tilt), but it costs time; electric hum swells with proximity |
 | Glass floor | first roll-over cracks it as a warning, the second shatters it into an open hole; bright crack, then shattering |
 | Blind star 🌑 | optional fourth star per campaign level: finish without a single echo ping |
-| Ghost replay | your best time per level rolls along as a faint halo (quick game, daily and campaign); stored locally, beaten only by a faster run |
+| Ghost replay | your best time per level rolls along as a faint shimmer (quick game, daily and campaign); stored locally, beaten only by a faster run |
 | Pressure plate | multiplayer element: held, it opens the linked partner door — release and it closes; click on entry, the door audibly slides |
-| Partner halo | pulsing ring of light at your partner's position; clamped to the screen edge (with floor label) when out of view |
+| Partner shimmer | soft breathing light at your partner's position — no outline, no body (the only solid body is your own ball); clamped to the screen edge (with floor label) when out of view, goal-green once they have finished |
 | Goal beacon | sonar ping: closer = faster, louder, higher |
 
 ## Development

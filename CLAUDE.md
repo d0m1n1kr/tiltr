@@ -79,6 +79,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
   Position und Breitband-Anteil jeder Reflexion).
 
+- `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
+  Bild. Alles Fremde (Partner im MP, Geist der Bestzeit) ist ein SCHEIN:
+  `haloLayers()` liefert weiche Lichtschichten ohne gezeichneten Rand, stets
+  unter `BALL_CORE_ALPHA` (Units in tests/render.test.ts). Wer im MP im Ziel
+  ist, friert NICHT ein – es steht die Uhr (`.hud-chip.done`), das eigene
+  Ziel leuchtet ruhig weiter (`goalDone`) und der Ball rollt weiter; sonst
+  könnte ein Fertiger dem Coop-Partner keine Druckplatte mehr halten.
+  `renderer.goalLit` sagt, ob das Ziel-Licht gezeichnet wurde (E2E).
 - `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
   Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
   Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und

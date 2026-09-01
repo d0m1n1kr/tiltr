@@ -458,7 +458,7 @@ const check = (name, cond) => {
   await pageA.keyboard.up('ArrowRight');
   await pageA.waitForTimeout(400);
   const remoteAtB = await pageB.evaluate(() => window.__tiltrMp?.remote);
-  check(`B kennt A's Position für den Halo (x=${remoteAtB?.x?.toFixed(0)})`, !!remoteAtB && remoteAtB.x > 200);
+  check(`B kennt A's Position für den Schein (x=${remoteAtB?.x?.toFixed(0)})`, !!remoteAtB && remoteAtB.x > 200);
 
   // B rollt zur äußeren Druckplatte: rechts, runter (die Tür stoppt ihn),
   // dann links in die Sackgassen-Nische [4,4].
@@ -476,14 +476,57 @@ const check = (name, cond) => {
   const remoteHoldsA = await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []);
   check(`B hält die Platte, A's Tür ist offen (${JSON.stringify(holdsB)})`, holdsB.includes('g1') && remoteHoldsA.includes('g1'));
 
-  // A rollt durch die offene Tür ins Ziel, friert ein und hält die innere Platte.
+  const litBefore = await pageA.evaluate(() => window.__tiltrMp?.goalLit);
+  // A rollt durch die offene Tür ins Ziel. Ab hier steht die UHR, nicht der Ball.
   await pageA.keyboard.down('ArrowDown');
   await pageA.waitForTimeout(2600);
   await pageA.keyboard.up('ArrowDown');
   await pageA.waitForTimeout(600);
   const finA = await pageA.evaluate(() => window.__tiltrMp?.localFinished);
   const statusA = (await pageA.textContent('#status')).trim();
-  check(`A ist im Ziel und wartet ("${statusA}")`, finA === true && statusA.includes('Warte auf deinen Partner'));
+  check(`A ist im Ziel und darf weiterrollen ("${statusA}")`, finA === true && statusA.includes('Die Uhr steht'));
+
+  // Die Uhr bleibt auf der erreichten Zeit stehen (grüne Pille) – das ist das
+  // „du bist durch", das vorher der festhängende Ball erzählen musste.
+  const timerAtFinish = (await pageA.textContent('#timer')).trim();
+  const timerClass = await pageA.getAttribute('#timer', 'class');
+  await pageA.waitForTimeout(1200);
+  const timerLater = (await pageA.textContent('#timer')).trim();
+  check(`A's Uhr steht auf der Zielzeit (${timerAtFinish} -> ${timerLater}, class="${timerClass}")`,
+    timerAtFinish === timerLater && /\d/.test(timerAtFinish) && timerClass.includes('done'));
+
+  // Der eigentliche Fehler: Vorher fror der Ball im Ziel ein – das sah kaputt
+  // aus UND machte im Coop die Platten unbenutzbar. Jetzt rollt A weiter …
+  const posBefore = await pageA.evaluate(() => window.__tiltrBall);
+  const remoteBefore = await pageB.evaluate(() => window.__tiltrMp?.remote);
+  await pageA.keyboard.down('ArrowUp');
+  await pageA.waitForTimeout(700);
+  await pageA.keyboard.up('ArrowUp');
+  await pageA.waitForTimeout(400);
+  const posAfter = await pageA.evaluate(() => window.__tiltrBall);
+  const holdsAaway = await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? []);
+  check(`A rollt nach dem Zieleinlauf weiter (dy=${(posAfter.y - posBefore.y).toFixed(0)})`,
+    posAfter.y < posBefore.y - 20);
+  // Das Ziel leuchtet ruhig weiter, obwohl A weggerollt ist (kein Debug, kein
+  // Reveal): So SIEHT man, dass man durch ist – vorher sagte es der
+  // festhängende Ball.
+  const litAfter = await pageA.evaluate(() => window.__tiltrMp?.goalLit);
+  check(`Geschafftes Ziel leuchtet weiter (vorher=${litBefore}, nachher=${litAfter})`,
+    litBefore === false && litAfter === true);
+  // … und B sieht den Schein wandern statt festhängen, markiert als „durch".
+  const remoteAfter = await pageB.evaluate(() => window.__tiltrMp?.remote);
+  check(`B sieht A's Schein wandern und als „im Ziel" (fin=${remoteAfter?.finished}, dy=${(remoteAfter.y - remoteBefore.y).toFixed(0)})`,
+    remoteAfter?.finished === true && Math.abs(remoteAfter.y - remoteBefore.y) > 15);
+
+  // A rollt zurück ins Ziel und hält dort wieder die innere Platte – genau das
+  // war mit eingefrorenem Ball unmöglich (Coop-Deadlock für den Nachzügler).
+  await pageA.keyboard.down('ArrowDown');
+  await pageA.waitForTimeout(1400);
+  await pageA.keyboard.up('ArrowDown');
+  await pageA.waitForTimeout(500);
+  const holdsAafter = await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? []);
+  check(`A verlässt die Platte und hält sie wieder (weg=${JSON.stringify(holdsAaway)}, zurück=${JSON.stringify(holdsAafter)})`,
+    holdsAaway.length === 0 && holdsAafter.includes('g1'));
 
   // B verlässt die Platte – die Tür bleibt offen, weil A im Ziel die innere hält.
   await pageB.keyboard.down('ArrowRight');

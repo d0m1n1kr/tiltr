@@ -9,10 +9,51 @@ export interface DrawOptions {
   revealAll?: boolean;
   now?: number;
   /** Partner im Multiplayer: Position (Weltkoordinaten der EIGENEN Ebene
-   *  nur wenn sameFloor), sonst wird der Halo an den Rand geklemmt. */
-  buddy?: { x: number; y: number; sameFloor: boolean; floorLabel?: string } | null;
-  /** Geist-Replay der Bestzeit: gleicher Halo wie der Partner, nur blasser. */
+   *  nur wenn sameFloor), sonst wird der Schein an den Rand geklemmt.
+   *  `done` = schon im Ziel (Schein wechselt in die Zielfarbe). */
+  buddy?: { x: number; y: number; sameFloor: boolean; floorLabel?: string; done?: boolean } | null;
+  /** Geist-Replay der Bestzeit: gleicher Schein wie der Partner, nur blasser. */
   ghost?: { x: number; y: number; sameFloor: boolean } | null;
+  /** Das eigene Ziel ist geschafft: Es leuchtet ruhig weiter, auch ohne
+   *  Reveal – man SIEHT, dass man drin war, und darf trotzdem weiterrollen. */
+  goalDone?: boolean;
+}
+
+/** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
+ *  Alles Fremde (Partner, Geist) bleibt darunter. */
+export const BALL_CORE_ALPHA = 0.5;
+
+export interface HaloLayer {
+  /** Radius in Gerätepixeln */
+  r: number;
+  /** Alpha im Zentrum des Gradienten */
+  alpha: number;
+}
+
+/** Der Partner ist ein SCHEIN, kein Objekt: nur weiche Lichtschichten, kein
+ *  gezeichneter Rand. Ein harter Ring hat ihn vorher wie eine zweite Kugel
+ *  aussehen lassen und mit dem eigenen Ball konkurriert – der Ball ist aber
+ *  der einzige feste Körper im Bild.
+ *
+ *  Reine Funktion, damit die Absicht testbar bleibt (tests/render.test.ts):
+ *  zwei Schichten, außen weiter und blasser als innen, alles unter
+ *  BALL_CORE_ALPHA. Am Rand (andere Ebene / außerhalb) wird der Schein
+ *  kompakter und etwas kräftiger, sonst findet man ihn nicht mehr. */
+export function haloLayers(opts: {
+  radiusPx: number;
+  alphaScale: number;
+  /** 0..1 Atem-Phase */
+  pulse01: number;
+  offscreen: boolean;
+}): HaloLayer[] {
+  const { radiusPx, alphaScale, pulse01, offscreen } = opts;
+  const breath = 0.75 + 0.25 * pulse01;
+  const edge = offscreen ? 1.6 : 1;
+  const spread = offscreen ? 2.2 : 3.2;
+  return [
+    { r: radiusPx * spread, alpha: 0.13 * breath * alphaScale * edge },
+    { r: radiusPx * 1.15, alpha: 0.3 * breath * alphaScale * edge },
+  ];
 }
 
 interface Bucket {
@@ -37,6 +78,10 @@ export class Renderer {
    *  Einpassen/Folge-Kamera. */
   private manualView = false;
   dpr = 1;
+  /** Hat der letzte Frame das Ziel-Licht gezeichnet? (Debug/Reveal oder
+   *  „geschafft"). Der Renderer sagt selbst, was er gezeichnet hat – so ist
+   *  es prüfbar, ohne Pixel zu lesen (siehe e2e/smoke.mjs, Lauf 9). */
+  goalLit = false;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -515,9 +560,13 @@ export class Renderer {
 
     // Ziel: pulsierender Schein nur bei Debug/Reveal (sonst rein akustisch).
     // Auf Ebenen ohne Ziel (Multi-Floor) gibt es nichts zu zeichnen.
-    if ((debug || revealAll) && world.goal) {
+    this.goalLit = (debug || revealAll || opts.goalDone === true) && world.goal !== null && world.goal !== undefined;
+    if (this.goalLit && world.goal) {
       const g = world.goal;
-      const pulse = 0.5 + 0.5 * Math.sin(now / 300);
+      // Geschafft: ruhiges, langsames Leuchten statt des schnellen
+      // Reveal-Pulses – eine Bestätigung, kein Wegweiser.
+      const calm = opts.goalDone === true && !debug && !revealAll;
+      const pulse = calm ? 0.25 + 0.15 * Math.sin(now / 700) : 0.5 + 0.5 * Math.sin(now / 300);
       const r = g.r * s * (1.1 + pulse * 0.3);
       const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), r * 2);
       grad.addColorStop(0, `rgba(${WORLD.goal}, ${0.5 + pulse * 0.3})`);
@@ -532,7 +581,7 @@ export class Renderer {
     const b = world.ball;
     const br = b.r * s;
     const glow = ctx.createRadialGradient(tx(b.x), ty(b.y), 0, tx(b.x), ty(b.y), br * 5);
-    glow.addColorStop(0, `rgba(${WORLD.ballGlow}, 0.5)`);
+    glow.addColorStop(0, `rgba(${WORLD.ballGlow}, ${BALL_CORE_ALPHA})`);
     glow.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
     ctx.fillStyle = glow;
     ctx.beginPath();
@@ -544,11 +593,13 @@ export class Renderer {
     ctx.arc(tx(b.x), ty(b.y), br, 0, Math.PI * 2);
     ctx.fill();
 
-    // Halos: Geist-Replay (blass) unter dem Partner-Halo (Multiplayer) –
-    // auf dem Screen als Ring an der Position, außerhalb (oder auf anderer
-    // Ebene) an den Rand geklemmt.
+    // Schein: Geist-Replay (blasser) unter dem Partner (Multiplayer) – an
+    // seiner Position, außerhalb (oder auf anderer Ebene) an den Rand
+    // geklemmt. Kein Rand, kein Körper: nur Licht.
     if (opts.ghost) this.drawHalo(opts.ghost, now, 0.45, 13);
-    if (opts.buddy) this.drawHalo(opts.buddy, now, 1, 16, opts.buddy.floorLabel);
+    if (opts.buddy) {
+      this.drawHalo(opts.buddy, now, 1, 16, opts.buddy.floorLabel, opts.buddy.done === true);
+    }
   }
 
   private drawHalo(
@@ -557,6 +608,7 @@ export class Renderer {
     alphaScale: number,
     radiusPx: number,
     floorLabel?: string,
+    done = false,
   ): void {
     const ctx = this.ctx;
     const margin = 26 * this.dpr;
@@ -572,22 +624,24 @@ export class Renderer {
       px = Math.max(margin, Math.min(this.canvas.width - margin, px));
       py = Math.max(margin, Math.min(this.canvas.height - margin, py));
     }
-    const r = radiusPx * this.dpr;
-    const pulse = 0.7 + 0.3 * Math.sin(now / 250);
-    const glow = ctx.createRadialGradient(px, py, 0, px, py, r * 2.4);
-    glow.addColorStop(0, `rgba(${WORLD.buddy}, ${0.35 * pulse * alphaScale})`);
-    glow.addColorStop(1, `rgba(${WORLD.buddy}, 0)`);
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(px, py, r * 2.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = `rgba(${WORLD.buddy}, ${(offscreen ? 0.9 : 0.75) * alphaScale})`;
-    ctx.lineWidth = 2.5 * this.dpr;
-    ctx.beginPath();
-    ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.stroke();
+    // Atem statt Blinken: langsamer als Ping und Ziel-Puls – ein Schein,
+    // der lebt, aber nicht um Aufmerksamkeit bittet.
+    const pulse01 = 0.5 + 0.5 * Math.sin(now / 420);
+    // Im Ziel wechselt der Schein in die Zielfarbe: Der Partner rollt weiter,
+    // man sieht aber, dass er durch ist.
+    const rgb = done ? WORLD.goal : WORLD.buddy;
+    for (const layer of haloLayers({ radiusPx: radiusPx * this.dpr, alphaScale, pulse01, offscreen })) {
+      const glow = ctx.createRadialGradient(px, py, 0, px, py, layer.r);
+      glow.addColorStop(0, `rgba(${rgb}, ${layer.alpha})`);
+      glow.addColorStop(0.55, `rgba(${rgb}, ${layer.alpha * 0.35})`);
+      glow.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(px, py, layer.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (floorLabel) {
-      ctx.fillStyle = `rgba(${WORLD.buddy}, 0.9)`;
+      ctx.fillStyle = `rgba(${rgb}, 0.55)`;
       ctx.font = `${11 * this.dpr}px system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(floorLabel, px, py + 4 * this.dpr);

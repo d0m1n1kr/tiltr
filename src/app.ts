@@ -1466,10 +1466,9 @@ function mpLocalFinish(now: number): void {
   if (!mp || mp.localFinished) return;
   mp.localFinished = true;
   mp.localElapsed = (now - t0) / 1000;
-  if (world) {
-    world.ball.vx = 0;
-    world.ball.vy = 0;
-  }
+  // Der Ball wird NICHT gestoppt: Ein eingefrorener Ball sah wie ein Fehler
+  // aus – und im Coop war er einer, denn wer festhängt, kann dem Partner
+  // keine Druckplatte mehr halten. Ab hier steht die UHR, nicht die Kugel.
   audio.checkpoint();
   haptics.checkpoint();
   mp.transport.send('finish', { elapsed: mp.localElapsed });
@@ -1589,11 +1588,12 @@ function frame(now: number): void {
   world.pings = world.pings.filter((p) => ((now - p.start) / 1000) * p.speed < p.range);
 
   if (state === 'playing') {
-    // MP: Ball im Ziel liegt still; bei Verbindungsverlust pausiert das Spiel.
-    const frozen = mp?.localFinished === true;
+    // MP: Nur ein Verbindungsverlust pausiert das Spiel. Wer im Ziel ist,
+    // rollt weiter (die Uhr steht) – im Coop wartet man dort nicht untätig,
+    // sondern hilft dem Nachzügler an den Platten.
     const disconnected = mp?.disconnectedAt != null;
-    const tilt = frozen || disconnected ? { x: 0, y: 0 } : input.tilt;
-    const hits = frozen || disconnected ? [] : world.step(dt, tilt);
+    const tilt = disconnected ? { x: 0, y: 0 } : input.tilt;
+    const hits = disconnected ? [] : world.step(dt, tilt);
 
     for (const hit of hits) {
       const wall = hit.wall;
@@ -1881,7 +1881,7 @@ function frame(now: number): void {
     if (!warpReady && !world.transporters.some((t) => Math.hypot(t.x - world!.ball.x, t.y - world!.ball.y) < t.r + world!.ball.r + 10)) {
       warpReady = true;
     }
-    const pad = warpReady && !frozen && !disconnected ? world.transporterHit() : null;
+    const pad = warpReady && !disconnected ? world.transporterHit() : null;
     if (pad) {
       pad.litFrom = 0;
       pad.litUntil = now + 1200;
@@ -1909,7 +1909,11 @@ function frame(now: number): void {
     // Geist-Replay: eigenen Lauf auf dem 8-Hz-Raster mitschreiben.
     ghostRecorder?.add((now - t0) / 1000, activeFloor, world.ball.x, world.ball.y);
 
-    timerEl.textContent = fmtTime((now - t0) / 1000);
+    // Im Ziel steht die Uhr auf der erreichten Zeit – das unmissverständliche
+    // „du bist durch", während der Ball weiterrollen darf.
+    const shownTime = mp?.localElapsed ?? (now - t0) / 1000;
+    timerEl.textContent = fmtTime(shownTime);
+    timerEl.classList.toggle('done', mp?.localFinished === true);
     // Nur bei Änderung schreiben: erspart Layout-Arbeit pro Frame.
     const pingsTxt = '●'.repeat(pings) + '○'.repeat(Math.max(0, pingMax - pings));
     if (pingsEl.textContent !== pingsTxt) pingsEl.textContent = pingsTxt;
@@ -1919,9 +1923,9 @@ function frame(now: number): void {
       : '';
     if (gemsEl.textContent !== gemsTxt) gemsEl.textContent = gemsTxt;
 
-    const fallen = frozen || disconnected ? null : world.fallenHole();
-    const caught = fallen || frozen || disconnected ? null : world.guardCaught();
-    const heard = fallen || caught || frozen || disconnected ? null : world.listenerCaught();
+    const fallen = disconnected ? null : world.fallenHole();
+    const caught = fallen || disconnected ? null : world.guardCaught();
+    const heard = fallen || caught || disconnected ? null : world.listenerCaught();
     if (heard) {
       // Horcher hat dich erwischt: zurück zum Checkpoint – und er kehrt heim,
       // damit der Respawn nicht sofort wieder in seinen Fängen landet.
@@ -1953,13 +1957,13 @@ function frame(now: number): void {
       haptics.fall();
       statusEl.textContent = t('st.caught');
       setTimeout(respawn, 1300);
-    } else if (mp && !frozen && !disconnected && world.goalReached()) {
-      mpLocalFinish(now);
     } else if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
       statusEl.textContent = t('mp.lostCountdown', { n: remaining.toFixed(0) });
-    } else if (frozen && state === 'playing') {
-      statusEl.textContent = t(mp?.mode === 'coop' ? 'mp.frozenCoop' : 'mp.frozenRace');
+    } else if (mp?.localFinished && state === 'playing') {
+      statusEl.textContent = t(mp.mode === 'coop' ? 'mp.doneCoop' : 'mp.doneRace');
+    } else if (mp && world.goalReached()) {
+      mpLocalFinish(now);
     } else if (!mp && world.goalReached()) {
       state = 'won';
       revealUntil = now + 4000;
@@ -1995,6 +1999,7 @@ function frame(now: number): void {
           y: mp.remote.y,
           sameFloor: mp.remote.floor === activeFloor,
           floorLabel: mp.remote.floor === activeFloor ? undefined : `E${mp.remote.floor + 1}`,
+          done: mp.remote.finished,
         }
       : null;
   // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
@@ -2022,7 +2027,14 @@ function frame(now: number): void {
       audio.setRival(0, 0, 0);
     }
   }
-  renderer.draw(world, { debug, revealAll: revealUntil > now, now, buddy, ghost: ghostOpt });
+  renderer.draw(world, {
+    debug,
+    revealAll: revealUntil > now,
+    now,
+    buddy,
+    ghost: ghostOpt,
+    goalDone: mp?.localFinished === true,
+  });
   // Testbarkeits-Hooks für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {
     x: world.ball.x,
@@ -2042,6 +2054,7 @@ function frame(now: number): void {
         levelId: mp.level?.id ?? null,
         remote: { ...mp.remote },
         localFinished: mp.localFinished,
+        goalLit: renderer.goalLit,
         localHolds: [...mp.localHolds],
         remoteHolds: [...mp.remoteHolds],
       }

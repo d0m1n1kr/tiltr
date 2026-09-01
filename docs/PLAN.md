@@ -350,6 +350,48 @@ ein und statt Loader-Exceptions gibt es Badge + Hinweis.
   Magenta-Linie (gleiche Ebene) bzw. „→E<n>"-Label, Ziel in den Props +
   🔗 „Ziel neu wählen" per Tap (auch über Ebenen).
 
+## M22 „Der Partner ist ein Schein" ✓ (v1.13.0)
+
+Zwei Meldungen aus dem Spielbetrieb, beide über die Darstellung des
+Mitspielers – und die zweite entpuppte sich als echter Coop-Fehler.
+
+**1. Der Partner sah wie eine zweite Kugel aus.** Der Halo bestand aus
+weichem Schein PLUS einem gezeichneten Ring (`stroke`, Alpha 0,75) – und ein
+harter Rand liest sich als Körper. Der Ball ist aber der einzige feste
+Körper im Bild; alles Fremde soll Licht bleiben. Der Ring ist weg, geblieben
+sind zwei weiche Lichtschichten (`haloLayers`, rein und deshalb testbar):
+außen weit und blass, innen kompakt und etwas heller, alles unter
+`BALL_CORE_ALPHA`. Der Atem ist langsamer als Ping und Ziel-Puls (420 ms
+statt 250) – ein Schein, der lebt, aber nicht ruft. Am Bildrand (oder auf
+einer anderen Ebene) wird er kompakter und kräftiger, sonst findet man ihn
+nicht mehr. Der Geist der eigenen Bestzeit nutzt denselben Schein mit
+`alphaScale` 0,45.
+
+**2. Wer zuerst im Ziel war, hing fest.** Das sah wie ein Bug aus – und war
+im Coop einer: Ein eingefrorener Ball kann dem Nachzügler keine Druckplatte
+mehr HALTEN, die er nicht schon unter sich hat. Neu gilt: Ab dem Zieleinlauf
+steht die **UHR**, nicht die Kugel.
+
+- Die Uhr bleibt auf der erreichten Zeit stehen und wird grün
+  (`.hud-chip.done`) – das unmissverständliche „du bist durch".
+- Das eigene Ziel leuchtet ruhig weiter (`goalDone`, langsamer Puls, ohne
+  Debug/Reveal): Man SIEHT, dass man drin war, auch nachdem man weggerollt
+  ist.
+- Der Ball rollt weiter, Gefahren und Transporter bleiben scharf. Ein Sturz
+  danach kostet nichts – die Zeit ist gebucht (`localFinished` ist sticky,
+  `mpLocalFinish` läuft nur einmal).
+- Der Partner-Schein wechselt in die Zielfarbe, sobald er durch ist: Er
+  bewegt sich UND man weiß, dass er fertig ist.
+
+Testbar ohne Pixel zu lesen: `haloLayers` ist eine reine Funktion (6 Units
+in tests/render.test.ts, u. a. „bleibt in jeder Lage schwächer als der
+Ball-Glow"), und der Renderer sagt selbst, was er gezeichnet hat
+(`renderer.goalLit` → `window.__tiltrMp.goalLit`). E2E-Lauf 9 prüft jetzt
+den ganzen Ablauf: Uhr steht auf der Zielzeit und ist grün, das geschaffte
+Ziel leuchtet weiter, A rollt nach dem Zieleinlauf weiter, B sieht den
+Schein wandern und als „durch" markiert, und A verlässt seine Platte und
+hält sie wieder – der Coop-Deadlock ist damit festgenagelt.
+
 ## M21 „Bildschirm bleibt wach" ✓ (v1.12.0)
 
 Meldung aus dem Spielbetrieb: Android dunkelt nach kurzer Zeit ab und

@@ -180,6 +180,14 @@
 .hud-chip:empty {
   display: none;
 }
+/* Zeit steht: Im Multiplayer bleibt die Uhr auf der erreichten Zielzeit
+   stehen, während der Ball weiterrollen darf – die grüne Pille ist das
+   „du bist durch" (früher hing dafür der Ball fest und sah kaputt aus). */
+.hud-chip.done {
+  color: var(--success);
+  border-color: rgba(75, 224, 140, 0.45);
+  background: rgba(75, 224, 140, 0.1);
+}
 
 /* Modus-Karte im Startmenü: Icon | Titel + Untertitel | Meta rechts.
    Einheitliche, scannbare Zeile für jeden Spielmodus. */
