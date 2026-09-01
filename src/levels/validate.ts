@@ -3,9 +3,10 @@
 // ebenso Strömungen (aus einer Strömungszelle geht es nur in Fließrichtung
 // hinaus, niemand betritt sie gegen den Strom). Schiebewände zählen als
 // offen (sie öffnen sich zyklisch – Warten genügt). Zeitschloss-Schalter
-// sind im Öffner-Fixpunkt Tür-Öffner wie Schlüssel/Platten. Glasboden und
-// Sog-Anker können konservativ als gesperrte Zellen modelliert werden
-// (hazardsBlocked) – so wird bewiesen, dass sie nie auf einem Pflichtweg
+// sind im Öffner-Fixpunkt Tür-Öffner wie Schlüssel/Platten. Glasboden- und
+// Sog-Anker-Zellen können als gesperrt modelliert werden (`glassBlocked` /
+// `anchorsBlocked`, getrennt und BEWUSST zu wählen) – so wird bewiesen, dass
+// sie nie auf einem Pflichtweg
 // liegen. Jukebox-Zellen sind dagegen IMMER gesperrt: Der Automat ist ein
 // massiver Kasten, keine Gefahr, die man umgehen könnte.
 
@@ -20,8 +21,16 @@ export interface CellConfig {
   doorsOpen: boolean;
   /** Nur diese Tür-IDs gelten als offen (wenn doorsOpen false ist). */
   openDoorIds?: Set<string>;
-  /** Konservativ: Glasboden- und Sog-Anker-Zellen als gesperrt behandeln. */
-  hazardsBlocked?: boolean;
+  /** Glasboden-Zellen als gesperrt behandeln. Glas hält EINE Überfahrt aus
+   *  (knacken, dann brechen) – ein Weg, der zweimal darüber muss, tötet.
+   *  Deshalb die Design-Regel: Glas ist Abkürzung oder Köder, nie Pflichtweg. */
+  glassBlocked?: boolean;
+  /** Sog-Anker-Zellen als gesperrt behandeln. NUR für Design-Regeln der
+   *  eigenen Generatoren – als Lösbarkeits-Aussage ist es FALSCH: Der Sog
+   *  bleibt per Schema-Invariante unter der Neigungs-Beschleunigung
+   *  (force ≤ 2400 vs. accel 2600), man kommt also immer wieder heraus. Ein
+   *  Anker kostet Zeit, er versperrt nichts. */
+  anchorsBlocked?: boolean;
   /**
    * Wächter ernst nehmen. In einem Ein-Zellen-Korridor passt man nicht an
    * einem Wächter vorbei (Kollision ab 48 Einheiten, seitlich sind höchstens
@@ -160,10 +169,11 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
       f.elements.filter((e) => e.type === 'current').map((c) => [c.cell[1] * f.size[0] + c.cell[0], c.dir]),
     ),
     blocked: new Set([
-      ...(cfg.hazardsBlocked
-        ? f.elements
-            .filter((e) => e.type === 'glass' || e.type === 'anchor')
-            .map((e) => e.cell[1] * f.size[0] + e.cell[0])
+      ...(cfg.glassBlocked
+        ? f.elements.filter((e) => e.type === 'glass').map((e) => e.cell[1] * f.size[0] + e.cell[0])
+        : []),
+      ...(cfg.anchorsBlocked
+        ? f.elements.filter((e) => e.type === 'anchor').map((e) => e.cell[1] * f.size[0] + e.cell[0])
         : []),
       // Jukebox: massiver Kasten, immer dicht (siehe CellConfig).
       ...f.elements
@@ -497,10 +507,20 @@ export function validateLevel(raw: unknown): CheckResult[] {
   }
   push('softlock', softlockOk, softlockDetail);
 
-  // Anker/Glas abseits des Pflichtwegs: Ziel + Checkpoints bleiben mit
-  // gesperrten Gefahren-Zellen erreichbar (brüchige Wände sind brechbar
-  // und zählen als offen – w1-07 & Co. führen bewusst hindurch).
-  const safe = reachable(def, { brittleOpen: true, doorsOpen: true, hazardsBlocked: true });
+  // GLAS abseits des Pflichtwegs: Ziel + Checkpoints bleiben mit gesperrten
+  // Glaszellen erreichbar (brüchige Wände sind brechbar und zählen als offen –
+  // w1-07 & Co. führen bewusst hindurch).
+  //
+  // Der SOG-ANKER gehört hier ausdrücklich NICHT dazu, auch wenn er zur
+  // Gefahren-Familie zählt: Sein Sog bleibt per Schema-Invariante unter der
+  // Neigungs-Beschleunigung (force ≤ 2400 vs. accel 2600) – man kommt immer
+  // wieder heraus. Ihn als Wand zu modellieren machte ein beweisbar lösbares
+  // Level unteilbar (`isShareable` verlangt dieses Badge) und widersprach
+  // `goal`/`softlock`, die dasselbe Level grün stempelten. Ein Anker im Gang
+  // ist ein Hindernis, kein Riegel. Dass Anker abseits der Pflichtwege
+  // liegen, bleibt eine Regel für UNSERE Generatoren – die prüfen sie über
+  // `anchorsBlocked` in tests/levels.test.ts und tests/daily.test.ts.
+  const safe = reachable(def, { brittleOpen: true, doorsOpen: true, glassBlocked: true });
   let hazardsOk = safe.has(goalKey);
   let hazardsDetail = hazardsOk ? undefined : 'Ziel';
   def.floors.forEach((floor, fl) => {

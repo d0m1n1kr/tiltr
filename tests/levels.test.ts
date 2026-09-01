@@ -340,7 +340,7 @@ describe('Schnelles Spiel', () => {
         expect(count('glass'), `${preset}/${seed}`).toBe(PRESETS[preset].glass);
         // Konservatives Modell: Glas- und Anker-Zellen komplett gesperrt –
         // Ziel, Checkpoints UND Kristalle müssen erreichbar bleiben.
-        const safe = reachable(def, { brittleOpen: false, doorsOpen: true, hazardsBlocked: true });
+        const safe = reachable(def, { brittleOpen: false, doorsOpen: true, glassBlocked: true, anchorsBlocked: true });
         expect(safe.has(cellKey(0, floor.goal!)), `${preset}/${seed}: Ziel`).toBe(true);
         for (const el of floor.elements) {
           if (el.type === 'checkpoint' || el.type === 'echoCrystal') {

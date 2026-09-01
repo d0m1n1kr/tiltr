@@ -612,6 +612,47 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M32 „Ein Anker ist kein Riegel" ✓ (v2.5.5) – hazards war zu streng
+
+**Der zweite Bug-Report in Folge:** „Und Gefahren abseits ist auch rot. Was
+aber auch nicht stimmt."
+
+**Der Fehler.** Der `hazards`-Check sperrte Glas- UND Ankerzellen als Wände.
+Für den Anker ist das nachweislich falsch, und der Beweis steht im eigenen
+Code: `anchorDef.force` ist auf **2400** px/s² begrenzt („MUSS unter der
+Neigungs-Beschleunigung bleiben: ein Anker ist zäh, nie eine Falle"), die
+Neigung schiebt mit **2600** (`World.accel`). Man kommt immer wieder heraus –
+ein Anker kostet Zeit, er versperrt nichts.
+
+Die Folge war schlimmer als ein falsches Badge: `isShareable` verlangt alle
+Badges außer `items`, also war ein Level mit einem Anker im Gang NICHT
+TEILBAR – obwohl `goal` und `softlock` dasselbe Level grün stempelten. Wieder
+derselbe Fehlertyp wie bei M31: Checks derselben Datei, die sich widersprechen.
+
+**Der Fix.** `hazardsBlocked` ist in `glassBlocked` und `anchorsBlocked`
+aufgeteilt – nicht aus Ordnungsliebe, sondern damit JEDE Aufrufstelle sagen
+muss, was sie meint. `validateLevel` sperrt nur Glas; die Generator-Tests
+(levels/daily) übergeben beide und behalten damit ihre strengere DESIGN-Regel
+für unsere eigenen Level. Das Badge heißt jetzt ehrlich „Glas abseits" (i18n
+×4) statt „Gefahren abseits".
+
+**Glas bleibt gesperrt, und das ist eine Entscheidung, keine Notwendigkeit:**
+Glas hält eine Überfahrt aus, ein Weg dorthin überquert es also genau einmal
+und wäre lösbar. Aber ein Weg, der zweimal darüber muss, tötet – und dieses
+Modell zählt Erreichbarkeit, nicht Wege. Solange es das nicht kann, bleibt
+Glas ganz draußen (Abkürzung oder Köder, nie Pflichtweg).
+
+**Folgenabschätzung, vorher gemacht:** Anker und Glas kommen in der Kampagne
+NULL Mal vor – nur in den Generatoren. Das Lockern berührt also kein
+handgebautes Level, und die Generator-Regel bleibt über die Testaufrufe
+erhalten.
+
+5 Units in `tests/hazards.test.ts`, darunter die Invariante selbst
+(`anchorDef` lehnt `force: 2600` ab und der Default liegt unter `World.accel`)
+– die Zahl steht damit nicht als Kommentar, sondern als Test. Zwei Sabotagen
+einzeln rot gesehen: Anker wieder als Wand → der Anker-Fall fällt; Glas nicht
+gesperrt → der Glas-Fall fällt.
+
 ## M31 „Zwei Checks, zwei Meinungen" ✓ (v2.5.4) – openers war falsch
 
 **Der Fund kam als Bug-Report:** „Ich hab auf Ebene 3 einen Schlüssel vor der

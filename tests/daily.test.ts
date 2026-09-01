@@ -76,7 +76,7 @@ describe('Tages-Challenge', () => {
     // Zellen sind komplett gesperrt.
     for (const date of DATES) {
       const def = generateDailyLevel(date);
-      const safe = reachable(def, { brittleOpen: false, doorsOpen: true, hazardsBlocked: true });
+      const safe = reachable(def, { brittleOpen: false, doorsOpen: true, glassBlocked: true, anchorsBlocked: true });
       def.floors.forEach((floor, fl) => {
         if (floor.goal) expect(safe.has(cellKey(fl, floor.goal)), `${date}: Ziel E${fl}`).toBe(true);
         for (const el of floor.elements) {

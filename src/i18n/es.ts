@@ -121,7 +121,7 @@ export const es: Dict = {
   'ed.check.openers': 'Llaves antes de puerta',
   'ed.check.timer': 'Temporizador suficiente',
   'ed.check.softlock': 'Sin bloqueo',
-  'ed.check.hazards': 'Peligros apartados',
+  'ed.check.hazards': 'Cristal apartado',
   'ed.check.guards': 'Guardias franqueables',
   'ed.check.items': 'Coleccionables libres',
   'ed.check.jukebox': 'Jukebox libre',

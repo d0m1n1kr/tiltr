@@ -121,7 +121,7 @@ export const fr: Dict = {
   'ed.check.openers': 'Ouvreurs avant porte',
   'ed.check.timer': 'Minuterie suffisante',
   'ed.check.softlock': 'Pas de blocage',
-  'ed.check.hazards': 'Dangers à l’écart',
+  'ed.check.hazards': 'Verre à l’écart',
   'ed.check.guards': 'Gardes franchissables',
   'ed.check.items': 'Collectibles libres',
   'ed.check.jukebox': 'Juke-box dégagé',

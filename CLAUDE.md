@@ -35,6 +35,17 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Öffner-Fixpunkt, Softlock, Timer, hazardsBlocked, links, guards): EINE Quelle der
   Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
   Live-Badges des Editors. Modell-Änderungen nur hier.
+  Das `hazards`-Badge heißt „GLAS abseits" und prüft nur Glas: Es hält EINE
+  Überfahrt aus (knacken, dann brechen), ein Pflichtweg zweimal darüber tötet –
+  also bleibt Glas Abkürzung oder Köder. Der SOG-ANKER gehört ausdrücklich
+  NICHT hinein, obwohl er zur Gefahren-Familie zählt: `force ≤ 2400` liegt per
+  Schema-Invariante unter `accel 2600`, man kommt immer wieder heraus. Ihn als
+  Wand zu modellieren machte ein beweisbar lösbares Level UNTEILBAR
+  (`isShareable` verlangt das Badge). Dass Anker abseits der Pflichtwege
+  liegen, ist eine Regel für UNSERE Generatoren – geprüft über
+  `anchorsBlocked` in tests/levels.test.ts und tests/daily.test.ts. Die Flags
+  `glassBlocked`/`anchorsBlocked` sind deshalb GETRENNT: Jede Aufrufstelle
+  sagt, was sie meint.
   Der `openers`-Check fragt PRO TÜR, nicht pro Schlüssel: Ist mindestens EIN
   Öffner erreichbar, wenn GENAU DIESE Tür nie aufgeht
   (`coopReachable(def, {tür})`)? Alle anderen Türen öffnen dabei normal – sonst

@@ -125,7 +125,7 @@ export const de = {
   'ed.check.openers': 'Öffner vor Tür',
   'ed.check.timer': 'Timer reicht',
   'ed.check.softlock': 'Kein Softlock',
-  'ed.check.hazards': 'Gefahren abseits',
+  'ed.check.hazards': 'Glas abseits',
   'ed.check.guards': 'Wächter passierbar',
   'ed.check.items': 'Sammelziele frei',
   'ed.check.jukebox': 'Jukebox frei',

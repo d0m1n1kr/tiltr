@@ -121,7 +121,7 @@ export const en: Dict = {
   'ed.check.openers': 'Openers before door',
   'ed.check.timer': 'Timer fits',
   'ed.check.softlock': 'No softlock',
-  'ed.check.hazards': 'Hazards off-path',
+  'ed.check.hazards': 'Glass off-path',
   'ed.check.guards': 'Guards passable',
   'ed.check.items': 'Collectibles free',
   'ed.check.jukebox': 'Jukebox clear',
