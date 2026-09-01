@@ -4,7 +4,7 @@ import { generatedBrittleEdges, loadLevel } from '../src/levels/loader';
 import { generateQuickLevel, PRESETS, type Preset } from '../src/levels/quick';
 import { generateMaze, mazeToWalls, setWall, solveMaze } from '../src/core/maze';
 import { mulberry32 } from '../src/core/rng';
-import { cellKey, reachable } from './helpers';
+import { cellKey, reachable, validateLevel } from './helpers';
 
 const minimalLevel = {
   id: 't-1',
@@ -345,6 +345,27 @@ describe('Schnelles Spiel', () => {
         for (const el of floor.elements) {
           if (el.type === 'checkpoint' || el.type === 'echoCrystal') {
             expect(safe.has(cellKey(0, el.cell)), `${preset}/${seed}: ${el.type} ${el.cell}`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it('M27: Musikautomaten nach Preset – nie ein Riegel, immer anrempelbar', () => {
+    // Der Automat ist eine WAND: Er darf weder das Ziel noch ein
+    // Sammelziel wegmauern. Der 'jukebox'-Beweis in validate.ts prüft
+    // genau das (plus Start/Ziel, Erreichbarkeit, unbekannte Titel), also
+    // wird hier über viele Seeds der ganze Prüfbericht abgefragt.
+    for (const seed of [1, 7, 42, 99, 555, 1234, 4711, 90210, 31337, 8080]) {
+      for (const preset of ['easy', 'normal', 'hard'] as Preset[]) {
+        const def = generateQuickLevel(seed, preset);
+        const floor = def.floors[0]!;
+        const boxes = floor.elements.filter((e) => e.type === 'jukebox');
+        expect(boxes.length, `${preset}/${seed}`).toBe(PRESETS[preset].jukeboxes);
+        for (const checks of [validateLevel(def)]) {
+          for (const c of checks) {
+            if (c.key === 'items') continue; // optional (Gems dürfen hinter Glas liegen)
+            expect(c.ok, `${preset}/${seed}: ${c.key} (${c.detail ?? ''})`).toBe(true);
           }
         }
       }

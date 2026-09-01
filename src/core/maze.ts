@@ -133,6 +133,43 @@ export function solveMaze(
   return path.reverse();
 }
 
+/**
+ * Alle von `from` aus erreichbaren Zellen, wobei `blocked` (Zell-Indizes)
+ * als undurchdringlich gilt. Fürs Setzen von MASSIVEN Elementen (Jukebox):
+ * Ein Möbelstück nimmt seine Zelle für immer, und was dahinter liegt, liegt
+ * für immer dahinter – wer ein zweites setzen will, muss wissen, was das
+ * erste schon abgeschnitten hat.
+ */
+export function floodMaze(
+  cells: Cell[],
+  cols: number,
+  rows: number,
+  from: { x: number; y: number },
+  blocked: ReadonlySet<number> = new Set(),
+): Set<number> {
+  const startKey = from.y * cols + from.x;
+  const seen = new Set<number>();
+  if (blocked.has(startKey)) return seen;
+  seen.add(startKey);
+  const queue: Array<[number, number]> = [[from.x, from.y]];
+  while (queue.length) {
+    const [x, y] = queue.shift()!;
+    const c = cells[y * cols + x]!;
+    const step = (nx: number, ny: number, open: boolean) => {
+      if (!open || nx < 0 || ny < 0 || nx >= cols || ny >= rows) return;
+      const k = ny * cols + nx;
+      if (blocked.has(k) || seen.has(k)) return;
+      seen.add(k);
+      queue.push([nx, ny]);
+    };
+    step(x, y - 1, !c.n);
+    step(x + 1, y, !c.e);
+    step(x, y + 1, !c.s);
+    step(x - 1, y, !c.w);
+  }
+  return seen;
+}
+
 // Wände als achsenparallele Rechtecke in Weltkoordinaten. Wände liegen
 // zentriert auf den Gitterlinien, Dopplungen werden vermieden
 // (Nord-/Westwand nur am Rand, sonst reichen Ost- und Südwände).

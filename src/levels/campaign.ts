@@ -443,6 +443,9 @@ const defs2: unknown[] = [
           { type: 'transporter', cell: [0, 4], target: { floor: 1, cell: [0, 0] } },
           { type: 'gem', cell: [5, 0] },
           { type: 'checkpoint', cell: [0, 8] },
+          // M27: In der Kathedrale spielt eine Jukebox – Orgel und Hymne,
+          // in einer Nische abseits des Wegs (validate.ts beweist es).
+          { type: 'jukebox', cell: [1, 5], playlist: ['toccata', 'thaxted'] },
         ],
         start: [0, 0],
         goal: [6, 8],
@@ -521,6 +524,9 @@ const defs2: unknown[] = [
           { type: 'gem', cell: [11, 2] },
           { type: 'gem', cell: [4, 10] },
           { type: 'gem', cell: [9, 9] },
+          // M27: In der Weite ist ein Musikautomat vor allem ein WAHRZEICHEN –
+          // mitten im Feld, hörbar ortbar, gleich weit von Start und Ziel.
+          { type: 'jukebox', cell: [6, 5], playlist: ['thaxted', 'nachtmusik'] },
         ],
         start: [0, 0],
         goal: [12, 0],
@@ -657,6 +663,8 @@ const defs3: unknown[] = [
           { type: 'timedSwitch', cell: [3, 9], opens: 'kammer', durationS: 6 },
           { type: 'current', cell: [1, 9], dir: 'e' },
           { type: 'guard', patrol: [[2, 0], [5, 0]], speed: 85 },
+          // M27: Ein Musikautomat im Uhrwerk – mechanischer geht Musik nicht.
+          { type: 'jukebox', cell: [3, 6], playlist: ['entertainer', 'galopp'] },
           { type: 'checkpoint', cell: [0, 5] },
           { type: 'checkpoint', cell: [0, 9] },
           { type: 'hole', cell: [4, 5], breathing: { offset: 0 } },
@@ -714,6 +722,9 @@ const defs3: unknown[] = [
           { type: 'gem', cell: [12, 0] },
           { type: 'gem', cell: [5, 11] },
           { type: 'gem', cell: [9, 6] },
+          // M27: Ein Musikautomat in der Taktstraße – das Finale der
+          // Rhythmus-Welt bekommt einen, der selbst den Takt hält.
+          { type: 'jukebox', cell: [8, 7], playlist: ['fuenfviertel', 'bergkoenig'] },
         ],
         start: [0, 0],
         goal: [12, 14],

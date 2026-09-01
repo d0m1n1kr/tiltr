@@ -4,10 +4,11 @@
 // Maze voll zusammenhängend – die Kette ist damit beweisbar lösbar).
 // Schwierigkeit steigt über die Woche: Montag sanft, Sonntag das volle Programm.
 
-import { generateMaze, solveMaze, type Cell } from '../core/maze';
+import { floodMaze, generateMaze, solveMaze, type Cell } from '../core/maze';
 import { mulberry32, seedFromString, type Rng } from '../core/rng';
 import { BALL_R } from '../core/constants';
 import type { ElementDef, LevelDef } from './schema';
+import { playlistFrom } from '../music';
 
 export function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
@@ -33,17 +34,20 @@ interface DayParams {
   crystals: number;
   anchors: number;
   glass: number;
+  /** M27: Auf WIE VIELEN Ebenen steht ein Musikautomat (höchstens einer je
+   *  Ebene – es gibt einen Musik-Bus, es klingt immer nur der nächste). */
+  jukeboxFloors: number;
 }
 
 // Index = getUTCDay(): 0 = Sonntag.
 const WEEKDAYS: DayParams[] = [
-  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5, crystals: 2, anchors: 2, glass: 2 },
-  { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0 },
-  { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0 },
-  { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 0 },
-  { label: 'Donnerstag – drei Ebenen tief', floors: 3, cols: 5, rows: 6, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 4, gems: 3, crystals: 1, anchors: 1, glass: 1 },
-  { label: 'Freitag – es wird eng', floors: 3, cols: 6, rows: 7, holes: 4, wind: 2, guards: 1, brittleChance: 0.12, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 1 },
-  { label: 'Samstag – tief und wachsam', floors: 3, cols: 6, rows: 8, holes: 5, wind: 2, guards: 2, brittleChance: 0.15, pings: 3, gems: 4, crystals: 2, anchors: 1, glass: 2 },
+  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5, crystals: 2, anchors: 2, glass: 2, jukeboxFloors: 2 },
+  { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0, jukeboxFloors: 0 },
+  { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0, jukeboxFloors: 0 },
+  { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 0, jukeboxFloors: 0 },
+  { label: 'Donnerstag – drei Ebenen tief', floors: 3, cols: 5, rows: 6, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 4, gems: 3, crystals: 1, anchors: 1, glass: 1, jukeboxFloors: 1 },
+  { label: 'Freitag – es wird eng', floors: 3, cols: 6, rows: 7, holes: 4, wind: 2, guards: 1, brittleChance: 0.12, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 1, jukeboxFloors: 1 },
+  { label: 'Samstag – tief und wachsam', floors: 3, cols: 6, rows: 8, holes: 5, wind: 2, guards: 2, brittleChance: 0.15, pings: 3, gems: 4, crystals: 2, anchors: 1, glass: 2, jukeboxFloors: 2 },
 ];
 
 // Zelle mit Zusatzfilter: Kandidaten aufzählen (terminiert garantiert);
@@ -130,6 +134,17 @@ export function generateDailyLevel(date: string): LevelDef {
   const crystalsPer = deal(p.crystals);
   const anchorsPer = deal(p.anchors);
   const glassPer = deal(p.glass);
+  // Höchstens EIN Automat je Ebene: deterministisch auswählen, WELCHE Ebenen
+  // einen bekommen (nicht wie bei den anderen Zutaten frei verteilen).
+  const jukeFloors = new Set<number>();
+  {
+    const order = Array.from({ length: p.floors }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [order[i], order[j]] = [order[j]!, order[i]!];
+    }
+    for (const f of order.slice(0, Math.min(p.jukeboxFloors, p.floors))) jukeFloors.add(f);
+  }
 
   // Landepunkte der Transporter-Kette vorab würfeln (Ebene k -> k+1);
   // auch der Start auf Ebene 1 ist zufällig, nicht immer oben links.
@@ -208,6 +223,37 @@ export function generateDailyLevel(date: string): LevelDef {
     for (let i = 0; i < glassPer[f]!; i++) {
       const cell = pickCellWhere(rng, cols, rows, forbidden, offPath);
       if (cell) elements.push({ type: 'glass', cell });
+    }
+    // M27: Der Musikautomat ist eine WAND und braucht deshalb einen
+    // STRENGEREN Filter als Anker und Glas: Wer hinter ihm liegt, liegt für
+    // immer hinter ihm. Neben dem Rückgrat der Ebene sind darum auch die Wege
+    // zu Gems und Kristallen geschützt – ein eingemauertes Sammelziel wäre
+    // an dem Tag für alle unerreichbar (das Level ist für alle dasselbe).
+    if (jukeFloors.has(f)) {
+      // Alles, was ERREICHBAR bleiben muss, bekommt seinen Weg geschützt.
+      // Im perfekten Maze ist das der vollständige Beweis: Der Grundriss ist
+      // ein BAUM, eine gesperrte Zelle nimmt also genau ihren eigenen Ast –
+      // und in dem liegt dann nichts Gebrauchtes. (Der erste Anlauf schützte
+      // nur Rückgrat, Gems und Kristalle; die Testsuite fand sofort einen Tag,
+      // an dem ein Automat den ZUGANG ZU EINER WÄCHTER-PATROUILLE zumauerte –
+      // die Patrouillenzellen selbst sind gesperrt, ihr Zuweg war es nicht.)
+      const sealed = new Set(spine);
+      const protect = (target: readonly [number, number]) => {
+        for (const c of solveMaze(cells, cols, rows, { x: landing[0], y: landing[1] }, { x: target[0], y: target[1] })) {
+          sealed.add(c.y * cols + c.x);
+        }
+      };
+      for (const el of elements) {
+        if (el.type === 'gem' || el.type === 'echoCrystal' || el.type === 'checkpoint') protect(el.cell);
+        else if (el.type === 'transporter') protect(el.cell);
+        else if (el.type === 'guard') for (const wp of el.patrol) protect(wp);
+      }
+      // Und die Zelle muss von der Ankunft aus erreichbar sein – ein
+      // eingemauerter Automat ist stumme Deko.
+      const open = floodMaze(cells, cols, rows, { x: landing[0], y: landing[1] });
+      const placeable = (key: number) => !sealed.has(key) && open.has(key);
+      const cell = pickCellWhere(rng, cols, rows, forbidden, placeable);
+      if (cell) elements.push({ type: 'jukebox', cell, playlist: playlistFrom(rng), volume: 1, startIndex: 0 });
     }
 
     floors.push({

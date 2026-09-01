@@ -13,7 +13,10 @@ export {
   coopReachable,
   directedDistances,
   reachable,
+  validateLevel,
+  isShareable,
   type CellConfig,
+  type CheckResult,
   type StartPos,
 } from '../src/levels/validate';
 

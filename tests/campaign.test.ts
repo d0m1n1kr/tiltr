@@ -3,7 +3,7 @@ import { CAMPAIGN_LEVELS, WORLDS } from '../src/levels/campaign';
 import { loadLevel } from '../src/levels/loader';
 import { setWall } from '../src/core/maze';
 import type { DoorDef } from '../src/levels/schema';
-import { buildFloorCells, cellKey, coopReachable, directedDistances, reachable } from './helpers';
+import { buildFloorCells, cellKey, coopReachable, directedDistances, reachable, validateLevel } from './helpers';
 
 describe('Kampagne', () => {
   it('Welt 1 hat 10, Welt 2–4 haben je 6 Level; IDs eindeutig, Intro + Par überall', () => {
@@ -162,6 +162,27 @@ describe('Kampagne', () => {
       const goal = def.floors[goalFloorIndex]!.goal!;
       const reachableWithoutJumps = goalFloorIndex === 0 && seen.has(goal.join(','));
       expect(reachableWithoutJumps, `${def.id}: Ziel ohne Transporter erreichbar`).toBe(false);
+    }
+  });
+
+  it('M27: die vier Level mit Jukebox sind vollständig bewiesen', () => {
+    // Ein Musikautomat ist eine WAND: Er nimmt seine Zelle für immer. In
+    // handgebauten, austarierten Leveln ist das kein Detail – deshalb läuft
+    // hier der GANZE Prüfbericht über jedes Kampagnen-Level, nicht nur der
+    // jukebox-Check. Wer einen Automaten verschiebt, sieht sofort, ob er
+    // damit einen Pflichtweg, eine Patrouille oder ein Gem zumauert.
+    const withBox = CAMPAIGN_LEVELS.filter((l) =>
+      l.floors.some((f) => f.elements.some((e) => e.type === 'jukebox')),
+    );
+    expect(withBox.map((l) => l.id)).toEqual(['w2-05', 'w2-06', 'w3-05', 'w3-06']);
+    for (const lvl of CAMPAIGN_LEVELS) {
+      for (const floor of lvl.floors) {
+        expect(floor.elements.filter((e) => e.type === 'jukebox').length, lvl.id).toBeLessThanOrEqual(1);
+      }
+      for (const c of validateLevel(lvl)) {
+        if (c.key === 'items') continue; // optional: Gems dürfen hinter Glas liegen
+        expect(c.ok, `${lvl.id}: ${c.key} (${c.detail ?? ''})`).toBe(true);
+      }
     }
   });
 

@@ -1,10 +1,11 @@
 // Schnelles Spiel: erzeugt aus Seed + Preset deterministisch eine LevelDef –
 // derselbe Weg wie Kampagnen-Level, nur generiert statt handgebaut.
 
-import { generateMaze, solveMaze } from '../core/maze';
+import { floodMaze, generateMaze, solveMaze } from '../core/maze';
 import { mulberry32, type Rng } from '../core/rng';
 import { BALL_R } from '../core/constants';
 import type { ElementDef, LevelDef } from './schema';
+import { playlistFrom } from '../music';
 
 export type Preset = 'easy' | 'normal' | 'hard';
 
@@ -23,6 +24,9 @@ export const PRESETS: Record<
     crystals: number;
     anchors: number;
     glass: number;
+    /** M27: Musikautomat – 0 oder 1. Mehr als EINER pro Ebene wäre sinnlos:
+     *  Es gibt einen Musik-Bus, es klingt immer nur der nächste. */
+    jukeboxes: 0 | 1;
   }
 > = {
   easy: {
@@ -37,6 +41,7 @@ export const PRESETS: Record<
     crystals: 1,
     anchors: 0,
     glass: 0,
+    jukeboxes: 0,
   },
   normal: {
     label: 'Mittel',
@@ -50,6 +55,7 @@ export const PRESETS: Record<
     crystals: 1,
     anchors: 1,
     glass: 1,
+    jukeboxes: 1,
   },
   // Deutlich größer als der Screen (Multi-Screen): die Kamera folgt dem Ball.
   hard: {
@@ -64,6 +70,7 @@ export const PRESETS: Record<
     crystals: 2,
     anchors: 2,
     glass: 3,
+    jukeboxes: 1,
   },
 };
 
@@ -179,6 +186,29 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
   }
   for (const cell of pickCellsWhere(p.glass, forbidden, rng, cols, rows, offPath)) {
     elements.push({ type: 'glass', cell });
+  }
+  // M27: Der Musikautomat ist eine WAND – er muss noch strenger abseits
+  // liegen als Anker und Glas, denn er nimmt die Zelle für immer. Derselbe
+  // offPath-Filter (Lösungsweg + Wege zu den Kristallen) leistet genau das:
+  // Im perfekten Maze schneidet eine Zelle abseits dieser Pfade nur ihren
+  // eigenen Ast ab, und dort steht nichts, was man braucht.
+  // Der Automat ist eine WAND und muss noch strenger abseits liegen als
+  // Anker und Glas: Er nimmt die Zelle für immer. Derselbe offPath-Filter
+  // (Lösungsweg + Wege zu den Kristallen) leistet das – im perfekten Maze
+  // schneidet eine Zelle abseits dieser Pfade nur ihren eigenen Ast ab, und
+  // dort steht nichts, was man braucht. Zusätzlich muss die Zelle vom Start
+  // aus erreichbar sein, sonst könnte man den Automaten nicht anrempeln
+  // (deshalb `floodMaze` – ein eingemauerter Automat ist stumme Deko).
+  //
+  // Nur EINER pro Ebene, und das ist keine Sparsamkeit: Es gibt einen
+  // Musik-Bus, es klingt immer nur der nächste Automat. Zwei nebeneinander
+  // wären außerdem eine Fehlerquelle für sich – der erste kann dem zweiten
+  // den Zuweg nehmen (genau das fand die Testsuite in zwei Anläufen).
+  if (p.jukeboxes) {
+    const open = floodMaze(cells, cols, rows, { x: start[0], y: start[1] });
+    const placeable = (key: number) => offPath(key) && open.has(key);
+    const [cell] = pickCellsWhere(1, forbidden, rng, cols, rows, placeable);
+    if (cell) elements.push({ type: 'jukebox', cell, playlist: playlistFrom(rng), volume: 1, startIndex: 0 });
   }
 
   return {

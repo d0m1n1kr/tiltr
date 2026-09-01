@@ -143,7 +143,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Glas/Anker) – der `jukebox`-Check sagt zusätzlich, WELCHER Automat im Weg
   steht, auf dem Start/Ziel sitzt, nicht anrempelbar ist oder auf einer
   Patrouille liegt. Es klingt immer nur der NÄCHSTE Automat (ein Bus, eine
-  Richtung). `window.__tiltrMusic` legt den Bus als GETTER offen (wie
+  Richtung) – deshalb steht in Zufalls- wie Kampagnenleveln HÖCHSTENS EINER
+  pro Ebene; zwei wären nicht doppelt Musik, nur doppelt Fehlerquelle. Die
+  Generatoren (quick/daily) setzen ihn abseits ALLER Pflichtwege: geschützt
+  sind Rückgrat plus die Wege zu Gems, Kristallen, Transportern und
+  Wächter-Patrouillen, und die Zelle muss vom Start aus erreichbar sein
+  (`floodMaze` in core/maze.ts). In der Kampagne stehen vier von Hand
+  gesetzte Automaten (w2-05, w2-06, w3-05, w3-06) – nie im Tutorial, nie in
+  Welt 1 und nie in Welt 4 „Die Stille". `window.__tiltrMusic` legt den Bus als GETTER offen (wie
   `__tiltrWake`) – der Frame-Haken `__tiltrJukebox` friert im Menü ein, weil
   die Schleife dort früh aussteigt, und „ist es wirklich still?" muss gerade
   dann prüfbar sein.

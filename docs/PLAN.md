@@ -558,6 +558,77 @@ der Ball nie über die Kastenoberkante. Lauf 21b prüft den Editor: Badge rot
 bei einem Möbel im Pflichtweg, Teilen gesperrt, die Playlist-Liste mit
 Abspielfolge, ▶ und die Sperre gegen das Abwählen des letzten Titels.
 
+### Nachtrag v2.5.0: Automaten in Zufalls- und Kampagnenleveln
+
+Zwei Fragen nach dem Release: Kommen Automaten auch in Zufallslevel? (Nein –
+noch nicht.) Und könnten nicht auch bestehende Level welche bekommen?
+
+**Zufall (Schnelles Spiel, Tages-Challenge).** Ein Automat ist eine WAND und
+braucht deshalb einen strengeren Filter als Anker und Glas: Was hinter ihm
+liegt, liegt für immer dahinter. Geschützt sind darum nicht nur das Rückgrat
+der Ebene, sondern die Wege zu ALLEM, was erreichbar bleiben muss – Gems,
+Kristalle, Transporter und Wächter-Patrouillen. Im perfekten Maze ist das ein
+vollständiger Beweis: Der Grundriss ist ein BAUM, eine gesperrte Zelle nimmt
+genau ihren eigenen Ast, und in dem liegt dann nichts Gebrauchtes.
+Vorkommen: Schnelles Spiel 0/1/1 (leicht bleibt pur), Daily an vier von
+sieben Wochentagen. In 60 Seeds × 3 Presets = 180 Leveln kein einziger
+Beweis rot.
+
+**Höchstens EINER pro Ebene**, und das ist keine Sparsamkeit: Es gibt einen
+Musik-Bus, es klingt immer nur der nächste Automat. Zwei auf einer Ebene sind
+also nicht doppelt so viel Musik, sondern nur doppelt so viel Fehlerquelle –
+was die Testsuite in drei Anläufen vorgeführt hat. Erst mauerte ein Automat
+den Zugang zu einer WÄCHTER-PATROUILLE zu (die Patrouillenzellen selbst waren
+gesperrt, ihr Zuweg nicht). Dann, nach „Zuweg schützen", landete der zweite
+Automat IM Ast, den der erste abgeschnitten hatte. Dann, nach `floodMaze`,
+stand der zweite auf der Zugangszelle des ersten. Jeder Anlauf war ein
+Sonderfall mehr – die Regel „einer pro Ebene" beseitigt die ganze Klasse.
+Nebenprodukt: `floodMaze` in core/maze.ts (Erreichbarkeit mit gesperrten
+Zellen, rein und deterministisch).
+
+**Kampagne: vier Level, thematisch ausgesucht.** Nicht per Zufall verstreut,
+sondern dort, wo ein Musikautomat etwas BEDEUTET – und nie im Tutorial oder
+in Welt 1 (die lehren einzelne Elemente, Musik verdeckt genau die Hinweise)
+und nie in Welt 4 „Die Stille" (dort ist Zuhören das Thema; ein Krachmacher
+kämpft gegen das Leveldesign, statt es zu ergänzen):
+
+| Level | Warum | Playlist |
+|---|---|---|
+| w2-05 „Kathedrale" | eine Kathedrale mit Musikautomat | Toccata + Thaxted (Orgel und Hymne) |
+| w2-06 „Die Weite" | im weiten Feld ist er ein WAHRZEICHEN – das beste Argument für das Element | Thaxted + Kleine Nachtmusik |
+| w3-05 „Uhrwerk" | mechanischer geht Musik nicht | The Entertainer + Galopp |
+| w3-06 „Taktstraße" | das Finale der Rhythmus-Welt bekommt einen, der selbst den Takt hält | Fünfviertel + Bergkönig |
+
+Die Plätze sind nicht geraten: Ein Skript hat für jedes Kampagnen-Level ALLE
+Zellen durchprobiert und mit `validateLevel` gefiltert (jedes Level hat
+zwischen 7 und 165 gültige Plätze). Ausgewählt wurden Sackgassen mit Abstand
+zu Start und Ziel. `tests/campaign.test.ts` fährt jetzt den GANZEN Prüfbericht
+über jedes Kampagnen-Level – wer einen Automaten verschiebt, sieht sofort, ob
+er einen Pflichtweg, eine Patrouille oder ein Gem zumauert (Gegenprobe rot
+gesehen).
+
+Eine Falle dabei: Die Elementlisten von w1-09 und w3-05 enden identisch, der
+erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
+dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
+Level einen haben.
+
+### Gefunden, aber NICHT hier behoben: Wächter-Riegel in der Tages-Challenge
+
+Beim Messen fiel auf, dass 8 von 28 Tagen den `guards`-Beweis reißen – **ohne
+Jukebox, also vorbestehend**. Zwei Fälle nachgesehen: beide Male eine
+ZWEI-ZELLEN-Patrouille in einem ein Zelle breiten Gang (beide Zellen Grad 2,
+keine Ausweichbucht) auf dem einzigen Weg zum Ziel. Das ist genau die Klasse,
+die M18 für die Kampagne behoben hat: An einem Wächter kommt man dort nicht
+vorbei (Kollision ab 48 Einheiten, seitlich sind höchstens 23 möglich), der
+Gang ist dauerhaft versiegelt – der Tag ist mit hoher Wahrscheinlichkeit
+UNLÖSBAR. Der Daily-Generator hat die M18-Invariante nie bekommen.
+
+Vorschlag (eigener Meilenstein, weil es JEDEN Tag verändert – der
+Zufallsstrom verschiebt sich): Wächter nach demselben Muster setzen wie Anker
+und Glas, nur mit dem echten Beweis – Patrouille wählen, `guardSafeReachable`
+prüfen, bei Rot eine andere ziehen (begrenzt), sonst den Wächter weglassen.
+Dazu eine Zusicherung über viele Tage, die das Badge grün fordert.
+
 ### Was beim Bauen auffiel
 
 **Ein Schnappschuss-Haken lügt, ein Getter sagt die Wahrheit.** Zweimal

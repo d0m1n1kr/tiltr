@@ -47,6 +47,19 @@ export const tuneById = (id: string): Tune | undefined => byId.get(id);
  *  oft er in Playlists auftaucht. */
 const compiled = new Map<string, CompiledTune>();
 
+/**
+ * Deterministische Playlist für die GENERATOREN (Schnelles Spiel, Daily).
+ * Nimmt eine Startposition und dann aufeinanderfolgende Titel – so kommt
+ * derselbe Titel nicht zweimal in dieselbe Playlist, und dasselbe Seed
+ * liefert dieselbe Musik (Voraussetzung für die Tages-Challenge: ein Level
+ * für alle).
+ */
+export function playlistFrom(rng: () => number, count = 2): string[] {
+  const start = Math.floor(rng() * MUSIC.length);
+  const n = Math.max(1, Math.min(count, MUSIC.length));
+  return Array.from({ length: n }, (_, i) => MUSIC_IDS[(start + i) % MUSIC.length]!);
+}
+
 export function compiledById(id: string): CompiledTune | undefined {
   const hit = compiled.get(id);
   if (hit) return hit;

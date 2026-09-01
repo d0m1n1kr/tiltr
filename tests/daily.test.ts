@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateDailyLevel, todayUTC, formatDate } from '../src/levels/daily';
 import { loadLevel } from '../src/levels/loader';
-import { buildFloorCells, cellKey, expectAllReachable, reachable } from './helpers';
+import { buildFloorCells, cellKey, expectAllReachable, reachable, validateLevel } from './helpers';
 
 // Drei Wochen ab Montag, 5.1.2026 – deckt jeden Wochentag dreimal ab.
 const DATES = Array.from({ length: 21 }, (_, i) => {
@@ -83,6 +83,22 @@ describe('Tages-Challenge', () => {
           }
         }
       });
+    }
+  });
+
+  it('M27: höchstens EIN Musikautomat je Ebene, und nie ein Riegel', () => {
+    // Ein Automat ist eine WAND: Er darf weder das Ziel noch ein Sammelziel
+    // noch eine Wächter-Patrouille wegmauern, und man muss ihn anrempeln
+    // können. Genau das prüft der 'jukebox'-Beweis in validate.ts.
+    // (Der Tag ist für ALLE derselbe – ein eingemauertes Gem wäre an diesem
+    // Tag für niemanden erreichbar.)
+    for (const date of DATES) {
+      const def = generateDailyLevel(date);
+      for (const floor of def.floors) {
+        expect(floor.elements.filter((e) => e.type === 'jukebox').length, date).toBeLessThanOrEqual(1);
+      }
+      const jb = validateLevel(def).find((c) => c.key === 'jukebox')!;
+      expect(jb.ok, `${date}: ${jb.detail ?? ''}`).toBe(true);
     }
   });
 
