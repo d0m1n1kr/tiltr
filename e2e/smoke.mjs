@@ -306,7 +306,10 @@ if (want("2")) {
     await fireL(32, 0); // Unterkante unten
     await land.waitForTimeout(700);
     const q1 = await land.evaluate(() => window.__tiltrBall);
-    await fireL(20, 12); // rechte Kante unten
+    // Rechte GERÄTEkante liegt bei 90° am OBEREN Bildrand (gemessen, M53/M54):
+    // rechte Kante unten (γ > 0) rollt nach oben – vom Start aus versperrt.
+    // Deshalb die Gegenprobe: linke Kante unten (γ < 0) rollt nach UNTEN.
+    await fireL(20, -12);
     await land.waitForTimeout(700);
     const q2 = await land.evaluate(() => window.__tiltrBall);
     check(
@@ -314,7 +317,7 @@ if (want("2")) {
       q1.x > q0.x + 10 && Math.abs(q1.y - q0.y) < 15,
     );
     check(
-      `Querformat 90°: rechte Kante unten rollt nach UNTEN (dy=${(q2.y - q1.y).toFixed(0)})`,
+      `Querformat 90°: linke Gerätekante unten (γ < 0) rollt nach UNTEN – die rechte liegt oben im Bild (dy=${(q2.y - q1.y).toFixed(0)})`,
       q2.y > q1.y + 10,
     );
     await land.close();

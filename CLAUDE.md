@@ -318,13 +318,20 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   HRTF: Die Feier kommt vom Schirm, nicht aus der Welt.
   ACHTUNG: Eine Canvas-Ebene braucht `width`/`height` EXPLIZIT – mit
   `inset: 0` allein streckt sich ein replaced element nicht (siehe DESIGN.md).
-- `src/core/orientation.ts` – NEIGUNG → BILDSCHIRM (`screenTilt`, v3.0.3):
+- `src/core/orientation.ts` – NEIGUNG → BILDSCHIRM (`screenTilt`, v3.0.5):
   Der Sensor meldet beta/gamma IMMER im Geräterahmen (Hochformat); die
   Drehung nach `screen.orientation.angle` wohnt hier, rein und mit Units in
   der Sprache der Kanten („Unterkante unten → wohin rollt es"). 90° (Oberkante
-  links) = (gy, gx), 270° = (−gy, −gx), 180° = (−gx, −gy). Das weit kopierte
-  Schnipsel mit y = −gamma bei 90° war FALSCH (Kugel rollte im Querformat
-  bergauf). E2E Lauf 2 dreht den Bildschirm synthetisch per defineProperty.
+  links) = (gy, −gx), 270° = (−gy, gx), 180° = (−gx, −gy) – das ist das seit M1
+  verwendete Schnipsel, GEMESSEN auf einem iPhone (M53/M54). 3.0.3 hatte es
+  mit einer falschen Kantenzuordnung „korrigiert" (rechte Gerätekante liegt
+  bei 90° OBEN im Bild, nicht unten): Herleitung ohne Messung ist Vermutung.
+  E2E Lauf 2 dreht den Bildschirm synthetisch per defineProperty.
+  WELCHER WINKEL: `physicalAngle()` in tilt.ts – iPadOS zählt
+  `screen.orientation.angle` von der QUERlage (landscape-secondary = 180°),
+  der Sensor vom Hochformat; deshalb auf Apple-Geräten der TYP über
+  `angleFromType` (Spec-Tabelle für Hochformat-Geräte, auf iPhone und iPad
+  gemessen), sonst `angle`. Das war die Tablet-Meldung „Achsen vertauscht".
   SENSOR-DIAGNOSE (v3.0.4): Debug-Modus (5× Version oder `?debug`) zeigt in
   `#diag` Typ/Winkel/natürliche Lage, β/γ/α, accelerationIncludingGravity und
   tilt – Geräte weichen von der Spec ab (Tablets!), also ERST messen, dann

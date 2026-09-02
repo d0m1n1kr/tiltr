@@ -1,11 +1,32 @@
 // Neigungssensor (DeviceOrientation) mit Kalibrierung + Tastatur-Fallback für Desktop.
 
 import type { Tilt } from '../core/types';
-import { screenTilt } from '../core/orientation';
+import { angleFromType, screenTilt } from '../core/orientation';
 
 // iOS-Erweiterung: requestPermission existiert nur dort.
 interface DeviceOrientationEventiOS {
   requestPermission?: () => Promise<'granted' | 'denied'>;
+}
+
+/** Apple-Geräte (iPhone, iPad – iPadOS gibt sich als „MacIntel" mit Touch aus). */
+function isApple(): boolean {
+  const ua = navigator.userAgent;
+  return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+/** Drehwinkel des Bildschirms gegen den SENSOR-Rahmen (v3.0.5). Android:
+ *  `screen.orientation.angle` (relativ zur natürlichen Lage = Sensor-Rahmen).
+ *  Apple: der Sensor misst immer im Hochformat, aber iPadOS zählt `angle` von
+ *  der Querlage – deshalb dort der TYP über die Spec-Tabelle (angleFromType),
+ *  hilfsweise das physisch korrekte Legacy-`window.orientation`. */
+export function physicalAngle(): number {
+  const so = screen.orientation as ScreenOrientation | undefined;
+  const legacy = (window as unknown as { orientation?: number }).orientation;
+  if (isApple()) {
+    if (so?.type) return angleFromType(so.type, so.angle);
+    if (typeof legacy === 'number') return legacy;
+  }
+  return so?.angle ?? legacy ?? 0;
 }
 
 export class TiltInput {
@@ -68,12 +89,15 @@ export class TiltInput {
   diagnostics(): string {
     const raw = screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
     const type = screen.orientation?.type ?? '?';
-    const landscapeNow = innerWidth > innerHeight;
-    const natural = (raw % 180 === 0) === landscapeNow ? 'landscape' : 'portrait';
+    const legacy = (window as unknown as { orientation?: number }).orientation;
+    const phys = physicalAngle();
     const t = this.tilt;
+    // Unkalibriert (β0 = γ0 = 0): das Mapping ohne die Referenz der letzten
+    // Kalibrierung – im Menü ist die oft alt, `tilt` steht dann am Anschlag.
+    const r = screenTilt(this.gamma / this.maxAngle, this.beta / this.maxAngle, phys);
     const acc = this.acc ? `acc ${this.acc.x.toFixed(1)} ${this.acc.y.toFixed(1)} ${this.acc.z.toFixed(1)}` : 'acc –';
     const sensor = this.hasSensor ? '' : ' · kein Sensor';
-    return `${type} ${raw}° natural:${natural} · β ${this.beta.toFixed(0)} γ ${this.gamma.toFixed(0)} α ${this.alpha.toFixed(0)} · ${acc} · tilt ${t.x.toFixed(2)} ${t.y.toFixed(2)}${sensor}`;
+    return `${type} angle ${raw}° win ${legacy ?? '–'} → phys ${phys}° · β ${this.beta.toFixed(0)} γ ${this.gamma.toFixed(0)} α ${this.alpha.toFixed(0)} · ${acc} · tilt ${t.x.toFixed(2)} ${t.y.toFixed(2)} · raw→ ${r.x.toFixed(2)} ${r.y.toFixed(2)}${sensor}`;
   }
 
   calibrate(): void {
@@ -93,8 +117,7 @@ export class TiltInput {
       // Units) – hier nur den Winkel liefern. Rotation Lock: screen.orientation
       // meldet die DARGESTELLTE Ausrichtung, also genau die, in die gedreht
       // werden muss.
-      const raw = screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
-      const { x, y } = screenTilt(gx, gy, raw);
+      const { x, y } = screenTilt(gx, gy, physicalAngle());
       return { x: clamp(dead(x)), y: clamp(dead(y)) };
     }
     const k = this.keys;

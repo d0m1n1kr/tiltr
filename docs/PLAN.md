@@ -612,6 +612,42 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M54 „Zurück auf Anfang, mit Beweis" ✓ (v3.0.5) – 3.0.3 war falsch
+
+Die Messung (M53, iPhone standalone, landscape-primary 90°, natural:portrait):
+obere Bildkante gesenkt → γ −7 → +22, acc.x −1,0 → +3,7; rechte Bildkante
+gesenkt → β −1 → +26, acc.y 0,2 → −4,5. Alles spec-konform – und das
+3.0.3-Mapping lieferte für die gesenkte OBERE Bildkante tilt.y = +1 (nach
+unten). Der Fehler der Herleitung in M52: „Bildschirm-unten = rechte
+Gerätekante". Falsch. Bei einem gegen den Uhrzeigersinn gedrehten Gerät
+(Oberkante links) wandert die rechte Gerätekante nach OBEN, die linke nach
+unten. Damit ist y_S = −x_D, nicht +x_D, und das alte Schnipsel (90°: (gy,
+−gx), 270°: (−gy, gx)) war seit M1 richtig. 3.0.5 stellt es wieder her –
+jetzt mit korrekter Kantenzuordnung im Kommentar, Units, die die Messung
+nachstellen (γ +22 ⇒ tilt.y < 0), und E2E Lauf 2 mit gedrehtem Bildschirm
+in der richtigen Richtung. Die Diagnose zeigt zusätzlich `raw→`, das Mapping
+ohne die (im Menü oft alte) Kalibrier-Referenz – `tilt` stand deshalb in
+allen Screenshots auf 1,00.
+
+**Das Tablet (iPad, standalone, Querformat):** `landscape-secondary` mit
+`screen.orientation.angle` **180°**, Sensor aber im Hochformat-Rahmen: rechte
+Bildkante gesenkt → β −30 (Geräte-Oberkante liegt rechts, acc.y +4,9), obere
+Bildkante gesenkt → γ −24 (linke Gerätekante liegt oben, acc.x −2,9). Physisch
+ist das 270° (Oberkante rechts) – iPadOS zählt `angle` von der QUERlage, der
+Sensor vom Hochformat. Mit 180° drehten wir um 90° falsch: „oben/unten und
+rechts/links vertauscht", in jeder Querlage, mit oder ohne Rotation Lock. Das
+war die ursprüngliche Tablet-Meldung. Fix: `physicalAngle()` in tilt.ts –
+auf Apple-Geräten (iPhone, iPad; iPadOS gibt sich als MacIntel mit Touch aus)
+den Winkel aus `screen.orientation.type` über die Spec-Tabelle für
+Hochformat-Geräte (`angleFromType`: portrait-primary 0, landscape-primary 90,
+portrait-secondary 180, landscape-secondary 270 – auf iPhone UND iPad physisch
+bestätigt), sonst `angle`. Die Diagnose zeigt `angle`, `win`
+(window.orientation) und `phys` nebeneinander.
+
+Lektion: Eine Herleitung ohne Messung ist eine Vermutung mit Formeln – und
+ein Sensorwert ist erst dann einer, wenn man weiß, gegen welchen Rahmen er
+zählt.
+
 ## M53 „Erst messen" ✓ (v3.0.4) – Sensor-Diagnose für die Achsenfrage
 
 Nach 3.0.3 die Rückmeldung: „Auf dem Tablet sind in JEDER Ausrichtung
