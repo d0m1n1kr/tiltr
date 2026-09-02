@@ -4,6 +4,8 @@
 // der Loader validieren beim Laden über parseLevel/loadLevel.
 
 import { parseLevel } from './levels/schema';
+import { decodeLevel } from './levels/shareCodec';
+import { decodeDuel } from './levels/duel';
 
 const KEY = 'tiltr.workshop.v1';
 
@@ -166,6 +168,12 @@ export function importLevel(text: string): CustomLevel | null {
   if (typeof data !== 'object' || data === null) return null;
   const obj = data as Record<string, unknown>;
   const raw = obj.format === FILE_FORMAT && typeof obj.def === 'object' && obj.def ? (obj.def as Record<string, unknown>) : obj;
+  return importRaw(raw);
+}
+
+/** Rohe Def in die Bibliothek: validieren, fremde/kollidierende IDs frisch
+ *  vergeben, speichern. Gemeinsamer Endpunkt für JSON UND Teilen-Link. */
+export function importRaw(raw: Record<string, unknown>): CustomLevel | null {
   try {
     parseLevel(raw);
   } catch {
@@ -175,6 +183,35 @@ export function importLevel(text: string): CustomLevel | null {
     raw.id = newCustomId();
   }
   return workshop.save(raw) ? workshop.get(String(raw.id)) : null;
+}
+
+/** Teilen-Token aus freiem Text: kompletter Link, nackter Hash („#level=…")
+ *  oder das Token allein (beginnt mit der Codec-Version 0/1). Duell-Links
+ *  tragen das Level mit – auch das lässt sich in die Werkstatt holen. Rein,
+ *  für Tests; null = das ist kein Teilen-Text. */
+export function parseShareText(text: string): { kind: 'level' | 'duel'; token: string } | null {
+  const s = text.trim();
+  const m = s.match(/#(level|duel)=([A-Za-z0-9_-]{8,})/);
+  if (m) return { kind: m[1] as 'level' | 'duel', token: m[2]! };
+  if (/^[01][A-Za-z0-9_-]{8,}$/.test(s)) return { kind: 'level', token: s };
+  return null;
+}
+
+/** Import aus JSON ODER Teilen-Link. Der Grund für die zweite Quelle: Ein
+ *  geteilter Link öffnet immer den BROWSER, nie die installierte PWA – wer
+ *  das Level dort haben will, muss den Link einfügen können. JSON zuerst
+ *  (synchron, kein Codec), dann der Link. */
+export async function importAny(text: string): Promise<CustomLevel | null> {
+  const viaJson = importLevel(text);
+  if (viaJson) return viaJson;
+  const share = parseShareText(text);
+  if (!share) return null;
+  try {
+    const raw = share.kind === 'duel' ? (await decodeDuel(share.token)).def : await decodeLevel(share.token);
+    return importRaw(raw);
+  } catch {
+    return null;
+  }
 }
 
 /** Leeres Startgerüst für ein neues Level (6x8, zufälliger Maze-Seed). */

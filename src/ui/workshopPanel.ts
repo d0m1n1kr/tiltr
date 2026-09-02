@@ -14,7 +14,7 @@ import {
   clearDraft,
   draftUpdatedAt,
   exportPayload,
-  importLevel,
+  importAny, importLevel,
   loadDraft,
   newCustomId,
   workshop,
@@ -244,7 +244,27 @@ export function setupWorkshopPanel(opts: {
     importBox.classList.toggle('hidden');
     importStatus.textContent = '';
   });
-  $('wsImportGo').addEventListener('click', () => finishImport(importLevel(importText.value)));
+  $('wsImportGo').addEventListener('click', () => void importAny(importText.value).then(finishImport));
+  // 📋 Zwischenablage: In der installierten PWA ist „Link einfügen" sonst
+  // Langdruck im Textfeld. readText braucht eine Nutzergeste (die haben wir)
+  // und kann fehlen (kein HTTPS, alter Browser) oder verweigert werden –
+  // beides landet als EIN Hinweis in der Statuszeile, das Textfeld bleibt.
+  $('wsImportPaste').addEventListener('click', () => {
+    const clip = navigator.clipboard;
+    if (!clip || typeof clip.readText !== 'function') {
+      importStatus.textContent = t('ed.pasteFail');
+      return;
+    }
+    clip
+      .readText()
+      .then((txt) => {
+        importText.value = txt;
+        return importAny(txt);
+      })
+      .then(finishImport, () => {
+        importStatus.textContent = t('ed.pasteFail');
+      });
+  });
   $('wsImportFile').addEventListener('click', () => $('wsImportInput').click());
   $<HTMLInputElement>('wsImportInput').addEventListener('change', (ev) => {
     const file = (ev.target as HTMLInputElement).files?.[0];

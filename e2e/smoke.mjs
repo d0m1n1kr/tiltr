@@ -2674,6 +2674,76 @@ const check = (name, cond) => {
   await page.close();
 }
 
+// --- Lauf 25: Import aus dem Teilen-Link. Ein geteilter Link öffnet immer
+// den BROWSER, nie die installierte PWA – also muss die Werkstatt den Link
+// auch EINGEFÜGT annehmen: als Text im Feld und per 📋 aus der Zwischenablage.
+// Beides durch dieselbe Stelle wie JSON. ---
+{
+  const page = await browser.newPage({
+    viewport: { width: 1024, height: 768 },
+    locale: 'de-DE',
+    permissions: ['clipboard-read', 'clipboard-write'],
+  });
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  // Einen Link ERZEUGEN wie die App selbst: gleicher Codec, gleiche Form.
+  const def = {
+    id: 'custom-linktest', name: 'Per Link', pingBudget: 3,
+    floors: [{ size: [4, 4], maze: { seed: 11 }, elements: [], start: [0, 0], goal: [3, 3] }],
+  };
+  const url = await page.evaluate(async (d) => {
+    const json = new TextEncoder().encode(JSON.stringify(d));
+    const packed = new Uint8Array(await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+    let bin = '';
+    for (const b of packed) bin += String.fromCharCode(b);
+    const token = '1' + btoa(bin).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+    return `${location.origin}${location.pathname}#level=${token}`;
+  }, def);
+
+  await page.click('#workshopBtn');
+  const countBefore = await page.locator('#workshopList .ws-item').count();
+  await page.click('#wsImportBtn');
+  const placeholder = await page.getAttribute('#wsImportText', 'placeholder');
+  check(`Import-Feld nennt den Link als Quelle ("${placeholder}")`, /Link/.test(placeholder ?? ''));
+
+  // (a) Link als Text einfügen.
+  await page.fill('#wsImportText', url);
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(400);
+  const statusA = (await page.textContent('#wsImportStatus')).trim();
+  const countA = await page.locator('#workshopList .ws-item').count();
+  check(`Teilen-Link im Textfeld importiert ("${statusA}", ${countBefore} → ${countA})`,
+    statusA.includes('Per Link') && statusA.includes('✓') && countA === countBefore + 1);
+
+  // (b) Link aus der Zwischenablage, ein Tap. Zweiter Import desselben
+  // Levels bekommt eine frische ID – die Bibliothek wächst um eins.
+  await page.evaluate((u) => navigator.clipboard.writeText(u), url);
+  await page.click('#wsImportPaste');
+  await page.waitForTimeout(500);
+  const statusB = (await page.textContent('#wsImportStatus')).trim();
+  const countB = await page.locator('#workshopList .ws-item').count();
+  const fieldB = await page.inputValue('#wsImportText');
+  check(`📋 liest die Zwischenablage und importiert ("${statusB}", ${countA} → ${countB})`,
+    statusB.includes('Per Link') && statusB.includes('✓') && countB === countA + 1);
+  check('nach Erfolg ist das Feld geleert', fieldB === '');
+
+  // (c) Müll bleibt Müll – und JSON geht weiterhin.
+  await page.fill('#wsImportText', 'https://example.test/#level=nichtsGutes');
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(400);
+  const statusC = (await page.textContent('#wsImportStatus')).trim();
+  check(`kaputter Link wird abgewiesen ("${statusC}")`, statusC.includes('Kein gültiges'));
+  await page.fill('#wsImportText', JSON.stringify({ ...def, name: 'Per JSON' }));
+  await page.click('#wsImportGo');
+  await page.waitForTimeout(400);
+  const statusD = (await page.textContent('#wsImportStatus')).trim();
+  check(`JSON läuft über dasselbe Feld ("${statusD}")`, statusD.includes('Per JSON') && statusD.includes('✓'));
+
+  await page.close();
+}
+
 check('keine Konsolen-/Seitenfehler', errors.length === 0);
 if (errors.length) console.log(errors);
 

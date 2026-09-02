@@ -64,7 +64,9 @@ automatically via GitHub Actions (tests → build → pages).
   can judge the rhythm without leaving your draft. Test drafts in the real
   game loop and jump back with one tap; levels live locally in your library. Share
   finished levels via a serverless link (the level itself travels
-  deflate-compressed in the URL hash — sharing unlocks only once all
+  deflate-compressed in the URL hash; in the installed app you paste a
+  received link into the import field, because links always open in the
+  browser there — sharing unlocks only once all
   required proof badges are green, so shared levels are provably
   solvable), or exchange them as JSON files (export + import via file or
   paste).

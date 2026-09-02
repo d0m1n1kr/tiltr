@@ -612,6 +612,31 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M34 „Der Link, der im falschen Fenster aufgeht" ✓ (v2.6.0)
+
+**Das Problem ist die Plattform, nicht der Code:** Ein geteilter Link
+(`https://…/tiltr/#level=…`) öffnet auf dem Handy immer den BROWSER – die
+installierte PWA bekommt ihn nie zu sehen. Wer ein geschicktes Level in
+seiner App haben will, hatte bisher keinen Weg außer „im Browser spielen".
+
+**Der Weg:** Das Import-Feld der Werkstatt nimmt jetzt neben JSON auch den
+Link – komplett, als nackter Hash oder als bloßes Token (das beginnt immer
+mit der Codec-Version 0/1, JSON immer mit `{`, also ist die Reihenfolge
+JSON → Link eindeutig). Duell-Links tragen ihr Level mit und werden ebenso
+angenommen. Dazu ein 📋-Knopf: `navigator.clipboard.readText()` unter der
+Nutzergeste – in der PWA ist Einfügen sonst Langdruck im Textfeld. Fehlt die
+API oder wird sie verweigert, sagt es die Statuszeile und das Feld bleibt.
+
+`importLevel` (JSON) und der neue Link-Pfad enden in EINEM `importRaw`:
+validieren, fremde oder kollidierende IDs frisch vergeben, speichern – die
+ID-Regel steht damit einmal, nicht zweimal.
+
+9 Units in `tests/shareImport.test.ts` (Parser inklusive Negativfälle,
+Roundtrip Level-Link und Duell-Link, kaputte Tokens werfen nicht). E2E-Lauf
+25 baut den Link mit dem ECHTEN Codec im Browser, importiert ihn als Text und
+per 📋 (Playwright gewährt `clipboard-read/-write`), weist einen kaputten
+Link ab und prüft, dass JSON weiter über dasselbe Feld läuft.
+
 ## M33 „Wofür gilt dieses Feld?" ✓ (v2.5.6)
 
 **Rückmeldung aus der Praxis:** „Beschreibung, Par-Zeit beziehen sich auf das

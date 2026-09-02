@@ -67,7 +67,9 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   einem Tap zurückspringen; die
   Bibliothek liegt lokal auf dem Gerät. Fertige Level teilst du über
   einen serverlosen Link (das Level reist deflate-komprimiert im
-  URL-Hash – Teilen geht erst, wenn alle Pflicht-Badges grün sind:
+  URL-Hash; in der installierten App fügst du einen erhaltenen Link einfach
+  ins Import-Feld ein, weil Links dort immer im Browser aufgehen – Teilen
+  geht erst, wenn alle Pflicht-Badges grün sind:
   geteilte Level sind beweisbar lösbar) oder als JSON-Datei (Export +
   Import per Datei oder Einfügen).
 - **🏁 Geist-Duell** – aus einem Lauf wird eine Herausforderung: Der Link

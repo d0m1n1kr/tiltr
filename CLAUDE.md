@@ -85,6 +85,12 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   beförderten Start wie das gerettete Ziel per `freeCellFor()` in eine freie
   Zelle (Wächter-Wegpunkte gelten als belegt). Sonst wacht die Kugel nach dem
   Löschen von Ebene 1 in einem Loch auf.
+  IMPORT NIMMT JSON UND TEILEN-LINK: Ein geteilter Link (`#level=`, auch
+  `#duel=`) öffnet immer den BROWSER, nie die installierte PWA – deshalb
+  akzeptiert das Import-Feld den Link (oder das nackte Token) eingefügt, plus
+  📋 aus der Zwischenablage. `parseShareText` (rein) zieht Kind + Token aus
+  freiem Text, `importAny` versucht JSON zuerst (synchron), dann den Codec;
+  beide enden in `importRaw` (validieren, fremde IDs frisch, speichern).
   Der Editor arbeitet auf ROHEN Defs, in denen optionale Felder fehlen
   dürfen – `normalizeDraft()` füllt sie beim Öffnen EINMAL auf, statt an
   jeder Zugriffsstelle zu prüfen. Der Auswahl-Kopf spielt die Klang-Signatur
