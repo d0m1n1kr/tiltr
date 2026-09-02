@@ -563,6 +563,10 @@
     .ws-bundle-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
     .ws-bundle-row select { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ws-bundle-row .btn { flex: 0 0 auto; min-width: var(--touch-min); padding: 0 var(--space-2); }
+    /* Zwei-Tap „Bundle löschen": Die Frage ersetzt die übrigen Aktionen, statt
+       die Zeile zu sprengen – der Knopf darf schrumpfen und kürzt mit „…". */
+    .ws-bundle-row.confirming .btn:not(.armed) { display: none; }
+    .ws-bundle-row .btn.armed { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #wsBundleDesc { overflow-wrap: anywhere; white-space: normal; }
     #wsBundleMeta { white-space: normal; overflow-wrap: anywhere; }
     #wsBundlePlay { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }

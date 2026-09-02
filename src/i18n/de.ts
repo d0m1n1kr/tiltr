@@ -90,7 +90,7 @@ export const de = {
   'ws.bundle.playStart': '▶ Spielen',
   'ws.bundle.export': 'Bundle als Datei teilen',
   'ws.bundle.delete': 'Bundle löschen',
-  'ws.bundle.deleteConfirm': 'Bundle mit {n} Leveln wirklich löschen?',
+  'ws.bundle.deleteConfirm': '{n} Level löschen?',
   'ws.bundle.progress': '{done}/{total} geschafft',
   'ws.bundle.version': 'v{n}',
   'ws.bundle.up': 'Nach oben',

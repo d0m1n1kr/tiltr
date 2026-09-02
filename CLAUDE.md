@@ -33,10 +33,18 @@ von `page.click`) riss vorher den ganzen Arbeiter mit, und die Läufe hinter
 ihm fehlten STILL – 207 ✓ statt 247, exit 0 an keiner Stelle rot. Der
 Dispatcher meldet zusätzlich jeden zugeteilten Lauf, der nie sein `# Lauf X`
 druckte (`NICHT gelaufen`), und setzt exit ≠ 0. Ein Lauf, der allein grün ist
-und unter 4 Arbeitern rot, ist ein LAST-Flake (Lauf 9 „Coop" mit 34 s Sleep,
-Lauf 21 „Jukebox-Rempler" mit festen Wartezeiten, Lauf 17 „Hörtest" mit
-Antwort-Klicks auf Zeit – je etwa einer von zehn Volläufen): Sleeps durch
-Zustands-Warten ersetzen, nicht die Arbeiterzahl senken.
+und unter 4 Arbeitern rot, ist ein LAST-Flake: Sleeps durch Zustands-Warten
+ersetzen, nicht die Arbeiterzahl senken. Dafür gibt es seit v3.0.1 die Helfer
+`until(fn, {timeout})` (pollt bis wahr, gibt sonst den letzten Wert zurück –
+die Zusicherung danach sagt, was fehlte), `settled(page)` (Ball ruht) und
+`holdUntil(page, key, pred)`: Taste halten, bis die Bedingung gilt UND der
+Ball ruht. Das UND ist die Lektion aus Lauf 9 „Coop": Wer die Taste im Flug
+loslässt, prallt von der Wand zurück – A rollte in Spalte 4 zurück, B aus der
+Platten-Nische; die alten festen 2,6 s hatten den Ball bis dahin angepinnt.
+Lauf 17 „Hörtest" wartet auf den NEUEN `__tiltrPing` (Fallback: der alte,
+wenn dieselbe Richtung zweimal kommt), Lauf 21 „Jukebox" auf Noten, Ducking
+und Titel. Eine neue Zusicherung nach einer Bewegung oder einem Klick wartet
+auf den Zustand, den sie prüft – nie auf eine Zeit.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem
@@ -155,6 +163,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Landeplatz ist KEIN Element: `elementAt`/`cellFree` kennen ihn nicht, die
   Zelle bleibt bebaubar. `__tiltrEd.landings`, `.edgeState(e)`, `.selEdge`
   legen das für E2E offen.
+  ZWEI-TAP (`twoTap`/`disarm` in workshopPanel.ts): Der bewaffnete Knopf
+  stellt Text und Tip in BEIDEN Pfaden zurück (Ausführen und 3-s-Ablauf) –
+  vorher blieb der Bundle-Löschknopf nach dem Löschen mit dem langen Text
+  stehen. In der Bundle-Leiste bekommt die Zeile `.confirming`: die übrigen
+  Aktionen weichen, die kurze Frage („2 Level löschen?") ersetzt sie, statt
+  die Zeile auf dem Phone zu sprengen (E2E Lauf 28 misst Überlauf und
+  Zeilenhöhe bei 400 px).
   ⚑ TEST AB HIER: Das Werkzeug setzt einen Teststart (Ebene + Zelle,
   `testStart`, Tap auf dieselbe Zelle hebt auf) – die Vorschau setzt die Kugel
   DORT ab und wechselt auf die Ebene (`startCustom(def, true, from)` →

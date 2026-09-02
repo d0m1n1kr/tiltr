@@ -612,6 +612,33 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M50 „Ruhe im Test" ✓ (v3.0.1) – Bundle-Löschen ohne Layoutbruch, E2E ohne Last-Flakes
+
+**Bundle löschen.** Der Zwei-Tap-Knopf in der Bundle-Leiste zeigte als Frage
+„Bundle mit 2 Leveln wirklich löschen?" – auf dem Phone 156 px Überlauf, die
+Zeile brach. Und nach dem zweiten Tap blieb der Knopf mit dem langen Text
+stehen: `twoTap` stellte Text und Tip nur im Ablauf-Pfad zurück, die
+Level-Knöpfe rettete der Neuaufbau der Karten, den statischen Bundle-Knopf
+niemand. Jetzt: `disarm()` in beiden Pfaden (Rest-Text/Tip im dataset), die
+Zeile trägt `.confirming` (übrige Aktionen weichen, der bewaffnete Knopf darf
+schrumpfen), und die Frage ist kurz („2 Level löschen?", ×4 Sprachen). Lauf 28
+misst bei 400 px Überlauf, Zeilenhöhe und den Knopf danach – mit dem alten
+Code rot gesehen (Überlauf 156 px, Text bleibt).
+
+**Last-Flakes.** Drei Läufe waren allein grün und unter vier Arbeitern etwa
+jeden zehnten Volllauf rot, weil sie nach Bewegungen und Klicks feste Zeiten
+warteten und unter Last den Zustand von VOR dem Ereignis lasen. Neue Helfer
+in smoke.mjs: `until(fn, {timeout})`, `settled(page)`, `holdUntil(page, key,
+pred)`. Der Umbau förderte eine zweite Wahrheit zutage: Nur „bis x > 500"
+polling und dann loslassen ließ den Ball von der Wand ZURÜCKPRALLEN – A stand
+danach in Spalte 4 statt 5, B rollte aus der Platten-Nische und ließ die
+Platte los; die festen 2,6 s hatten ihn bis dahin angepinnt. Deshalb hält
+`holdUntil` die Taste, bis die Bedingung gilt UND der Ball ruht. Lauf 17
+wartet auf den neuen `__tiltrPing` (mit Fallback bei gleicher Richtung
+zweimal), Lauf 21 auf eingeplante Noten, Ducking-Wegdrücken/-Rückkehr und den
+Titel im Status. Kontrolle: 9/17/21 dreimal seriell grün, Vollsuite parallel
+zweimal grün.
+
 ## M49 „3.0.0" ✓ (Phase 6) – Release: sieben Phasen, ein Push
 
 Der Kampagnen-Umbau nach dem Review – Spielregeln (M43), Welten 1–4 (M44),

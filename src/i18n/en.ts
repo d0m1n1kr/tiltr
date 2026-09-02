@@ -86,7 +86,7 @@ export const en: Dict = {
   'ws.bundle.playStart': '▶ Play',
   'ws.bundle.export': 'Share bundle as file',
   'ws.bundle.delete': 'Delete bundle',
-  'ws.bundle.deleteConfirm': 'Really delete this bundle with {n} levels?',
+  'ws.bundle.deleteConfirm': 'Delete {n} levels?',
   'ws.bundle.progress': '{done}/{total} done',
   'ws.bundle.version': 'v{n}',
   'ws.bundle.up': 'Move up',

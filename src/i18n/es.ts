@@ -86,7 +86,7 @@ export const es: Dict = {
   'ws.bundle.playStart': '▶ Jugar',
   'ws.bundle.export': 'Compartir bundle como archivo',
   'ws.bundle.delete': 'Eliminar bundle',
-  'ws.bundle.deleteConfirm': '¿Eliminar de verdad este bundle con {n} niveles?',
+  'ws.bundle.deleteConfirm': '¿Borrar {n} niveles?',
   'ws.bundle.progress': '{done}/{total} superados',
   'ws.bundle.version': 'v{n}',
   'ws.bundle.up': 'Subir',

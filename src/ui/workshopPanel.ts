@@ -86,26 +86,38 @@ export function setupWorkshopPanel(opts: {
     }, 3000);
   }
 
-  /** Zwei-Tap-Bewaffnung eines Buttons: zweiter Tap innerhalb 3 s führt aus. */
+  /** Bewaffnung zurücknehmen: Text, Tip und Zustand wie vor dem ersten Tap –
+   *  in BEIDEN Pfaden (Ausführen und Ablauf). Vorher stellte nur der Ablauf
+   *  zurück, und der Bundle-Löschknopf blieb nach dem Löschen mit dem langen
+   *  Bestätigungstext stehen (Level-Knöpfe rettete der Neuaufbau der Karten). */
+  function disarm(b: HTMLButtonElement): void {
+    b.dataset.armed = '';
+    b.classList.remove('armed');
+    b.closest('.ws-bundle-row')?.classList.remove('confirming');
+    if (b.dataset.restText !== undefined) b.textContent = b.dataset.restText;
+    if (b.dataset.restTip !== undefined) b.dataset.tip = b.dataset.restTip;
+    delete b.dataset.restText;
+    delete b.dataset.restTip;
+  }
+
+  /** Zwei-Tap-Bewaffnung eines Buttons: zweiter Tap innerhalb 3 s führt aus.
+   *  In der Bundle-Leiste weichen die übrigen Aktionen, solange die Frage
+   *  steht (`.confirming`) – die Frage ersetzt sie, statt die Zeile zu sprengen. */
   function twoTap(b: HTMLButtonElement, armedText: string, action: () => void): void {
     if (b.dataset.armed === '1') {
-      b.dataset.armed = '';
-      b.classList.remove('armed');
+      disarm(b);
       action();
       return;
     }
-    const prevText = b.textContent;
-    const prevTip = b.dataset.tip;
+    b.dataset.restText = b.textContent ?? '';
+    if (b.dataset.tip !== undefined) b.dataset.restTip = b.dataset.tip;
     b.dataset.armed = '1';
     b.classList.add('armed');
     b.textContent = armedText;
     b.dataset.tip = armedText;
+    b.closest('.ws-bundle-row')?.classList.add('confirming');
     setTimeout(() => {
-      if (b.dataset.armed !== '1') return;
-      b.dataset.armed = '';
-      b.classList.remove('armed');
-      b.textContent = prevText;
-      if (prevTip !== undefined) b.dataset.tip = prevTip;
+      if (b.dataset.armed === '1') disarm(b);
     }, 3000);
   }
 

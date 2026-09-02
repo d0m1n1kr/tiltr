@@ -103,6 +103,43 @@ const want = (id) => {
   return yes;
 };
 
+/** Auf einen ZUSTAND warten statt auf eine Zeit (v3.0.1): pollt `fn`, bis es
+ *  etwas Wahres liefert, und gibt das zurück – nach `timeout` den letzten
+ *  Wert (die Zusicherung danach sagt dann, was fehlte). Feste Sleeps nach
+ *  Bewegungen und Klicks waren die Last-Flakes der Läufe 9, 17 und 21: allein
+ *  grün, unter vier Arbeitern lasen sie den Zustand von vor dem Ereignis. */
+const until = async (fn, { timeout = 8000, step = 50 } = {}) => {
+  const t0 = Date.now();
+  for (;;) {
+    const v = await fn();
+    if (v) return v;
+    if (Date.now() - t0 > timeout) return v;
+    await new Promise((r) => setTimeout(r, step));
+  }
+};
+/** Taste halten, bis die Bedingung gilt UND der Ball ruht (an Wand, Tür oder
+ *  in der Nische gepinnt), dann loslassen. Loslassen im Flug ließ ihn von der
+ *  Wand zurückprallen: A rollte zurück in Spalte 4, B aus der Platten-Nische –
+ *  die festen 2,6 s hatten das nur kaschiert. */
+const holdUntil = async (page, key, pred, timeout = 8000) => {
+  await page.keyboard.down(key);
+  const ok = await until(pred, { timeout });
+  if (ok) await settled(page);
+  await page.keyboard.up(key);
+  return ok;
+};
+/** Wartet, bis der Ball steht (zwei Messungen im Abstand von 120 ms gleich). */
+const settled = (page) =>
+  until(
+    async () => {
+      const a = await page.evaluate(() => window.__tiltrBall);
+      await page.waitForTimeout(120);
+      const b = await page.evaluate(() => window.__tiltrBall);
+      return a && b && Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 ? b : null;
+    },
+    { timeout: 4000, step: 0 },
+  );
+
 const browser = await chromium.launch({
   executablePath,
   args: ["--autoplay-policy=no-user-gesture-required"],
@@ -865,7 +902,7 @@ if (want("9")) {
       .locator("#mpLevelList .level-item:not(#mpRandomBtn)")
       .first()
       .click(); // coop-01 Schleuse
-    await pageA.waitForTimeout(300);
+    await until(async () => (await pageA.innerHTML("#mpQr")).includes("<svg"));
     const qrHtml = await pageA.innerHTML("#mpQr");
     const codeShown = (await pageA.textContent("#mpCode")).trim();
     check(
@@ -877,7 +914,7 @@ if (want("9")) {
     await pageB.click("#mpBtn");
     await pageB.fill("#mpCodeInput", "TESTE2E");
     await pageB.click("#mpJoinBtn");
-    await pageB.waitForTimeout(600);
+    await until(async () => (await pageB.textContent("#interTitle")).includes("Schleuse"));
 
     const introA = (await pageA.textContent("#interTitle")).trim();
     const introB = (await pageB.textContent("#interTitle")).trim();
@@ -888,7 +925,12 @@ if (want("9")) {
 
     await pageA.click("#interPrimary"); // Bereit!
     await pageB.click("#interPrimary");
-    await pageA.waitForTimeout(4200); // Kalibrier-Countdown beider Seiten
+    // Kalibrier-Countdown beider Seiten: warten, bis beide spielen.
+    await until(
+      async () =>
+        (await pageA.evaluate(() => window.__tiltrMp?.phase)) === "playing" &&
+        (await pageB.evaluate(() => window.__tiltrMp?.phase)) === "playing",
+    );
 
     const hudA = !(await pageA.locator("#hud").getAttribute("class")).includes(
       "hidden",
@@ -908,11 +950,11 @@ if (want("9")) {
     );
 
     // A rollt nach rechts – B empfängt die Position (Datenbasis des Partner-Halos).
-    await pageA.keyboard.down("ArrowRight");
-    await pageA.waitForTimeout(2600);
-    await pageA.keyboard.up("ArrowRight");
-    await pageA.waitForTimeout(400);
-    const remoteAtB = await pageB.evaluate(() => window.__tiltrMp?.remote);
+    await holdUntil(pageA, "ArrowRight", async () => (await pageA.evaluate(() => window.__tiltrBall))?.x > 500);
+    const remoteAtB = await until(async () => {
+      const r = await pageB.evaluate(() => window.__tiltrMp?.remote);
+      return r && r.x > 200 ? r : null;
+    });
     check(
       `B kennt A's Position für den Schein (x=${remoteAtB?.x?.toFixed(0)})`,
       !!remoteAtB && remoteAtB.x > 200,
@@ -920,22 +962,17 @@ if (want("9")) {
 
     // B rollt zur äußeren Druckplatte: rechts, runter (die Tür stoppt ihn),
     // dann links in die Sackgassen-Nische [4,4].
-    await pageB.keyboard.down("ArrowRight");
-    await pageB.waitForTimeout(2600);
-    await pageB.keyboard.up("ArrowRight");
-    await pageB.keyboard.down("ArrowDown");
-    await pageB.waitForTimeout(2600);
-    await pageB.keyboard.up("ArrowDown");
-    await pageB.keyboard.down("ArrowLeft");
-    await pageB.waitForTimeout(1000);
-    await pageB.keyboard.up("ArrowLeft");
-    await pageB.waitForTimeout(800);
-    const holdsB = await pageB.evaluate(
-      () => window.__tiltrMp?.localHolds ?? [],
+    const ballB = () => pageB.evaluate(() => window.__tiltrBall);
+    await holdUntil(pageB, "ArrowRight", async () => (await ballB())?.x > 500);
+    await holdUntil(pageB, "ArrowDown", async () => (await ballB())?.y > 400); // die Tür stoppt ihn in [5,4]
+    await holdUntil(pageB, "ArrowLeft", async () =>
+      (await pageB.evaluate(() => window.__tiltrMp?.localHolds ?? [])).includes("g1"),
     );
-    const remoteHoldsA = await pageA.evaluate(
-      () => window.__tiltrMp?.remoteHolds ?? [],
-    );
+    const holdsB = await pageB.evaluate(() => window.__tiltrMp?.localHolds ?? []);
+    const remoteHoldsA = await until(async () => {
+      const h = await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []);
+      return h.includes("g1") ? h : null;
+    });
     check(
       `B hält die Platte, A's Tür ist offen (${JSON.stringify(holdsB)})`,
       holdsB.includes("g1") && remoteHoldsA.includes("g1"),
@@ -943,12 +980,13 @@ if (want("9")) {
 
     const litBefore = await pageA.evaluate(() => window.__tiltrMp?.goalLit);
     // A rollt durch die offene Tür ins Ziel. Ab hier steht die UHR, nicht der Ball.
-    await pageA.keyboard.down("ArrowDown");
-    await pageA.waitForTimeout(2600);
-    await pageA.keyboard.up("ArrowDown");
-    await pageA.waitForTimeout(600);
-    const finA = await pageA.evaluate(() => window.__tiltrMp?.localFinished);
-    const statusA = (await pageA.textContent("#status")).trim();
+    const finA = await holdUntil(pageA, "ArrowDown", () => pageA.evaluate(() => window.__tiltrMp?.localFinished === true));
+    const statusA = (
+      await until(async () => {
+        const st = (await pageA.textContent("#status")).trim();
+        return st.includes("Die Uhr steht") ? st : null;
+      }, { timeout: 2000 })
+    ) ?? (await pageA.textContent("#status")).trim();
     check(
       `A ist im Ziel und darf weiterrollen ("${statusA}")`,
       finA === true && statusA.includes("Die Uhr steht"),
@@ -971,10 +1009,7 @@ if (want("9")) {
     // aus UND machte im Coop die Platten unbenutzbar. Jetzt rollt A weiter …
     const posBefore = await pageA.evaluate(() => window.__tiltrBall);
     const remoteBefore = await pageB.evaluate(() => window.__tiltrMp?.remote);
-    await pageA.keyboard.down("ArrowUp");
-    await pageA.waitForTimeout(700);
-    await pageA.keyboard.up("ArrowUp");
-    await pageA.waitForTimeout(400);
+    await holdUntil(pageA, "ArrowUp", async () => (await pageA.evaluate(() => window.__tiltrBall))?.y < posBefore.y - 25, 4000);
     const posAfter = await pageA.evaluate(() => window.__tiltrBall);
     const holdsAaway = await pageA.evaluate(
       () => window.__tiltrMp?.localHolds ?? [],
@@ -992,7 +1027,11 @@ if (want("9")) {
       litBefore === false && litAfter === true,
     );
     // … und B sieht den Schein wandern statt festhängen, markiert als „durch".
-    const remoteAfter = await pageB.evaluate(() => window.__tiltrMp?.remote);
+    const remoteAfter =
+      (await until(async () => {
+        const r = await pageB.evaluate(() => window.__tiltrMp?.remote);
+        return r?.finished === true && Math.abs(r.y - remoteBefore.y) > 15 ? r : null;
+      }, { timeout: 3000 })) ?? (await pageB.evaluate(() => window.__tiltrMp?.remote));
     check(
       `B sieht A's Schein wandern und als „im Ziel" (fin=${remoteAfter?.finished}, dy=${(remoteAfter.y - remoteBefore.y).toFixed(0)})`,
       remoteAfter?.finished === true &&
@@ -1001,26 +1040,23 @@ if (want("9")) {
 
     // A rollt zurück ins Ziel und hält dort wieder die innere Platte – genau das
     // war mit eingefrorenem Ball unmöglich (Coop-Deadlock für den Nachzügler).
-    await pageA.keyboard.down("ArrowDown");
-    await pageA.waitForTimeout(1400);
-    await pageA.keyboard.up("ArrowDown");
-    await pageA.waitForTimeout(500);
-    const holdsAafter = await pageA.evaluate(
-      () => window.__tiltrMp?.localHolds ?? [],
-    );
+    await holdUntil(pageA, "ArrowDown", async () =>
+      (await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? [])).includes("g1"), 5000);
+    const holdsAafter = await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? []);
     check(
       `A verlässt die Platte und hält sie wieder (weg=${JSON.stringify(holdsAaway)}, zurück=${JSON.stringify(holdsAafter)})`,
       holdsAaway.length === 0 && holdsAafter.includes("g1"),
     );
 
     // B verlässt die Platte – die Tür bleibt offen, weil A im Ziel die innere hält.
-    await pageB.keyboard.down("ArrowRight");
-    await pageB.waitForTimeout(1000);
-    await pageB.keyboard.up("ArrowRight");
-    await pageB.keyboard.down("ArrowDown");
-    await pageB.waitForTimeout(1600);
-    await pageB.keyboard.up("ArrowDown");
-    await pageB.waitForTimeout(2600); // Ergebnis-Karte erscheint nach 1,8 s
+    await holdUntil(pageB, "ArrowRight", async () => (await ballB())?.x > 500);
+    await holdUntil(pageB, "ArrowDown", () => pageB.evaluate(() => window.__tiltrMp?.localFinished === true));
+    // Ergebnis-Karte erscheint nach 1,8 s – auf sie warten, nicht auf die Zeit.
+    await until(
+      async () =>
+        (await pageA.textContent("#interTitle")).includes("Gemeinsam geschafft") &&
+        (await pageB.textContent("#interTitle")).includes("Gemeinsam geschafft"),
+    );
 
     const resultA = (await pageA.textContent("#interTitle")).trim();
     const resultB = (await pageB.textContent("#interTitle")).trim();
@@ -1033,8 +1069,10 @@ if (want("9")) {
     // Rematch: beide klicken "Nochmal" – startet sofort neu (ohne Countdown).
     await pageA.click("#interPrimary");
     await pageB.click("#interPrimary");
-    await pageA.waitForTimeout(800);
-    const rematchPhase = await pageA.evaluate(() => window.__tiltrMp?.phase);
+    const rematchPhase = await until(async () => {
+      const ph = await pageA.evaluate(() => window.__tiltrMp?.phase);
+      return ph === "playing" ? ph : null;
+    }, { timeout: 4000 });
     check(
       `Rematch startet sofort (phase=${rematchPhase})`,
       rematchPhase === "playing",
@@ -1044,8 +1082,11 @@ if (want("9")) {
     // Synthetisch ausgelöst: beim echten Tab-Schließen flusht der
     // BroadcastChannel nicht zuverlässig, der Handler ist derselbe.
     await pageB.evaluate(() => window.dispatchEvent(new Event("pagehide")));
-    await pageA.waitForTimeout(800);
-    const statusGone = (await pageA.textContent("#status")).trim();
+    const statusGone =
+      (await until(async () => {
+        const st = (await pageA.textContent("#status")).trim();
+        return st.includes("Verbindung verloren") ? st : null;
+      }, { timeout: 3000 })) ?? (await pageA.textContent("#status")).trim();
     check(
       `Disconnect-Countdown bei A ("${statusGone}")`,
       statusGone.includes("Verbindung verloren"),
@@ -1061,7 +1102,7 @@ if (want("9")) {
     await pageC.goto(`${BASE}/?mpcode=TESTR01&nosplash`);
     await pageC.click("#mpBtn");
     await pageC.click("#mpRandomBtn");
-    await pageC.waitForTimeout(300);
+    await until(async () => (await pageC.innerHTML("#mpQr")).includes("<svg"));
     const rndLobby = !(
       await pageC.locator("#mpLobby").getAttribute("class")
     ).includes("hidden");
@@ -1072,7 +1113,7 @@ if (want("9")) {
     await pageD.click("#mpBtn");
     await pageD.fill("#mpCodeInput", "TESTR01");
     await pageD.click("#mpJoinBtn");
-    await pageD.waitForTimeout(600);
+    await until(async () => (await pageD.textContent("#interTitle")).includes("Zufallslevel"));
     const rndIntroC = (await pageC.textContent("#interTitle")).trim();
     const rndIntroD = (await pageD.textContent("#interTitle")).trim();
     check(
@@ -1082,7 +1123,11 @@ if (want("9")) {
 
     await pageC.click("#interPrimary");
     await pageD.click("#interPrimary");
-    await pageC.waitForTimeout(4200);
+    await until(
+      async () =>
+        (await pageC.evaluate(() => window.__tiltrMp?.phase)) === "playing" &&
+        (await pageD.evaluate(() => window.__tiltrMp?.phase)) === "playing",
+    );
     const idC = await pageC.evaluate(() => window.__tiltrMp?.levelId);
     const idD = await pageD.evaluate(() => window.__tiltrMp?.levelId);
     const phaseC = await pageC.evaluate(() => window.__tiltrMp?.phase);
@@ -2938,7 +2983,7 @@ if (want("17")) {
     await page.goto(`${BASE}/?nosplash`);
 
     await page.click("#hearingBtn");
-    await page.waitForTimeout(700);
+    await until(() => page.locator("#hearing").isVisible());
     const open = await page.locator("#hearing").isVisible();
     const cells = await page.locator("#hearGrid .hear-cell").count();
     const dirCells = await page
@@ -2991,9 +3036,16 @@ if (want("17")) {
       nw: [-Q, -Q],
     };
     const readPing = async (dir) => {
+      // Auf den NEUEN Ping warten, nicht auf eine Zeit: Unter Last las die
+      // 120-ms-Pause den Ping der Vorrunde (gleiche Richtung zweimal in Folge
+      // gibt es – dann läuft die kurze Frist ab und der Wert ist derselbe).
+      const prev = await page.evaluate(() => JSON.stringify(window.__tiltrPing ?? null));
       await page.click("#hearRepeat");
-      await page.waitForTimeout(120);
-      const ping = await page.evaluate(() => window.__tiltrPing);
+      const ping =
+        (await until(async () => {
+          const p = await page.evaluate(() => window.__tiltrPing);
+          return p && JSON.stringify(p) !== prev ? p : null;
+        }, { timeout: 1200 })) ?? (await page.evaluate(() => window.__tiltrPing));
       const [ex, ez] = VEC[dir].map((v) => v * 3);
       return {
         ping,
@@ -3018,8 +3070,11 @@ if (want("17")) {
     heard.add(`${pings[0].ping?.refl?.[0]?.x},${pings[0].ping?.refl?.[0]?.z}`);
     const wrong = DIRS[(DIRS.indexOf(state0.asked) + 2) % 8];
     await page.click(`#hearGrid .hear-cell[data-dir="${wrong}"]`);
-    await page.waitForTimeout(200);
-    const feedback = (await page.textContent("#hearStatus")).trim();
+    const feedback =
+      (await until(async () => {
+        const f = (await page.textContent("#hearStatus")).trim();
+        return f.startsWith("✗") ? f : null;
+      }, { timeout: 2000 })) ?? (await page.textContent("#hearStatus")).trim();
     check(
       `Falsche Antwort nennt die echte Richtung ("${feedback}")`,
       feedback.startsWith("✗") && feedback.includes("es kam aus"),
@@ -3067,8 +3122,7 @@ if (want("17")) {
 
     // Neuer Durchgang setzt zurück (frische Zufallsfolge, Zähler auf 0).
     await page.click("#hearRestart");
-    await page.waitForTimeout(300);
-    const fresh = await hook();
+    const fresh = await awaitState((s) => s.round === 0 && s.done === false);
     const resultHidden = await page.locator("#hearResult").isVisible();
     check(
       `Neuer Durchgang startet bei 0 (round=${fresh?.round}, Ergebnis sichtbar=${resultHidden})`,
@@ -3076,7 +3130,7 @@ if (want("17")) {
     );
 
     await page.click("#hearClose");
-    await page.waitForTimeout(200);
+    await until(async () => !(await page.locator("#hearing").isVisible()), { timeout: 2000 });
     check(
       "Schließen führt zurück ins Menü",
       !(await page.locator("#hearing").isVisible()) &&
@@ -3675,9 +3729,11 @@ if (want("21")) {
       .locator("#workshopList .ws-actions .btn-primary")
       .first()
       .click(); // ▶ Spielen
-    await page.waitForTimeout(4200); // Kalibrier-Countdown
-
-    const jb0 = await page.evaluate(() => window.__tiltrJukebox);
+    // Kalibrier-Countdown: warten, bis der Automat spielt (Noten eingeplant).
+    const jb0 = await until(async () => {
+      const j = await page.evaluate(() => window.__tiltrJukebox);
+      return j && j.notes > 4 ? j : null;
+    });
     check(
       `Automat spielt von selbst (Titel „${jb0?.title}", ${jb0?.notes} Noten eingeplant, ${jb0?.tracks} in der Playlist)`,
       !!jb0 &&
@@ -3697,7 +3753,7 @@ if (want("21")) {
       if ((await page.evaluate(() => window.__tiltrBall))?.x > 240) break;
     }
     await page.keyboard.up("ArrowRight");
-    await page.waitForTimeout(600); // an der Ostwand auslaufen lassen
+    await settled(page); // an der Ostwand auslaufen lassen
     const near = await page.evaluate(() => ({
       jb: window.__tiltrJukebox,
       ball: window.__tiltrBall,
@@ -3717,12 +3773,17 @@ if (want("21")) {
     const duckBefore =
       (await page.evaluate(() => window.__tiltrJukebox))?.duck ?? 0;
     await page.keyboard.press(" ");
-    await page.waitForTimeout(150);
-    const duckPing =
-      (await page.evaluate(() => window.__tiltrJukebox))?.duck ?? 0;
-    await page.waitForTimeout(1200);
-    const duckAfter =
-      (await page.evaluate(() => window.__tiltrJukebox))?.duck ?? 0;
+    const duck = () => page.evaluate(() => window.__tiltrJukebox?.duck ?? 0);
+    // Erst das Wegdrücken abwarten, dann die Rückkehr – beides als Zustand.
+    const duckWhen = async (pred, timeout) => {
+      const hit = await until(async () => {
+        const d = await duck();
+        return pred(d) ? { d } : null;
+      }, { timeout });
+      return hit ? hit.d : await duck();
+    };
+    const duckPing = await duckWhen((d) => d < 0.45, 1000);
+    const duckAfter = await duckWhen((d) => d > 0.9, 3000);
     check(
       `Ping duckt die Musik und lässt sie zurück (${duckBefore.toFixed(2)} → ${duckPing.toFixed(2)} → ${duckAfter.toFixed(2)})`,
       duckBefore > 0.9 && duckPing < 0.45 && duckAfter > 0.9,
@@ -3754,13 +3815,14 @@ if (want("21")) {
         if (st.jb?.index !== before) break;
       }
       await page.keyboard.up("ArrowDown");
-      await page.waitForTimeout(200);
-      return {
-        before,
-        maxY,
-        after: await page.evaluate(() => window.__tiltrJukebox),
-        flash: (await page.textContent("#status")).trim(),
-      };
+      const after = await page.evaluate(() => window.__tiltrJukebox);
+      // Der Status trägt den neuen Titel – auf ihn warten, nicht auf 200 ms.
+      const flash =
+        (await until(async () => {
+          const f = (await page.textContent("#status")).trim();
+          return after?.title && f.includes(after.title) ? f : null;
+        }, { timeout: 1500 })) ?? (await page.textContent("#status")).trim();
+      return { before, maxY, after, flash };
     };
 
     const b1 = await bump();
@@ -3794,8 +3856,11 @@ if (want("21")) {
     );
 
     await page.click("#homeBtn");
-    await page.waitForTimeout(250);
-    const silenced = await page.evaluate(() => window.__tiltrMusic);
+    const silenced =
+      (await until(async () => {
+        const m = await page.evaluate(() => window.__tiltrMusic);
+        return m && m.vol === 0 ? m : null;
+      }, { timeout: 2000 })) ?? (await page.evaluate(() => window.__tiltrMusic));
     check(
       `Zurück im Menü schweigt der Automat (vol ${silenced?.vol}, duck ${silenced?.duck})`,
       silenced?.vol === 0,
@@ -5204,8 +5269,23 @@ if (want("28")) {
         /v9/.test(replaced.status ?? ""),
     );
 
-    // (10) Bundle löschen (Zwei-Tap): weg aus dem Umschalter.
+    // (10) Bundle löschen (Zwei-Tap): weg aus dem Umschalter. Die Frage darf
+    // die Leiste nicht sprengen (v3.0.1: Der lange Text drückte die Zeile in
+    // den Umbruch), und nach dem Löschen ist der Knopf wieder das kleine 🗑.
+    await page.setViewportSize({ width: 400, height: 800 }); // Phone – dort brach die Zeile
     await page.click("#wsBundleDelete");
+    const armed = await page.evaluate(() => {
+      const bar = document.getElementById("wsBundleBar");
+      const row = document.querySelector(".ws-bundle-row");
+      return {
+        text: document.getElementById("wsBundleDelete").textContent,
+        overflow: bar.scrollWidth - bar.clientWidth,
+        rowH: row.getBoundingClientRect().height,
+        newHidden:
+          getComputedStyle(document.getElementById("wsBundleNew")).display ===
+          "none",
+      };
+    });
     await page.click("#wsBundleDelete");
     await page.waitForTimeout(200);
     const afterDelete = await page.evaluate(() =>
@@ -5213,10 +5293,30 @@ if (want("28")) {
         (o) => o.textContent,
       ),
     );
+    const delRest = await page.evaluate(() => ({
+      text: document.getElementById("wsBundleDelete").textContent,
+      armed: document
+        .getElementById("wsBundleDelete")
+        .classList.contains("armed"),
+      newShown:
+        getComputedStyle(document.getElementById("wsBundleNew")).display !==
+        "none",
+    }));
+    await page.setViewportSize({ width: 1024, height: 768 });
     check(
       `Bundle löschen per Zwei-Tap (${afterDelete.join(" | ")})`,
       !afterDelete.some((o) => o.startsWith("Turnier")) &&
         afterDelete.length === 2,
+    );
+    check(
+      `Bestätigung sprengt die Leiste nicht („${armed.text}", Überlauf ${armed.overflow}px, Zeile ${armed.rowH.toFixed(0)}px, ＋ weicht: ${armed.newHidden}) – und der Knopf ist danach wieder klein („${delRest.text}", armed=${delRest.armed}, ＋ zurück: ${delRest.newShown})`,
+      /Level löschen\?/.test(armed.text) &&
+        armed.overflow <= 0 &&
+        armed.rowH < 60 &&
+        armed.newHidden &&
+        delRest.text === "🗑" &&
+        !delRest.armed &&
+        delRest.newShown,
     );
 
     // (11) Editor speichert ins AKTUELLE Bundle.
