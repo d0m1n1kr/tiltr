@@ -2384,6 +2384,34 @@ if (want("14")) {
       reqCount === 1 && reqAll === "all" && reqAny === undefined,
     );
 
+    // 2.11.3: ⇩ im Editor teilt als Datei (text/plain), wie Werkstatt und Backup.
+    await page.evaluate(() => {
+      window.__shared = null;
+      navigator.canShare = () => true;
+      navigator.share = (d) => {
+        window.__shared = {
+          n: d.files?.length ?? 0,
+          type: d.files?.[0]?.type,
+          name: d.files?.[0]?.name,
+        };
+        return Promise.resolve();
+      };
+    });
+    await page.click("#edExport");
+    await page.waitForTimeout(200);
+    const edShared = await page.evaluate(() => {
+      const s = window.__shared;
+      delete navigator.share;
+      delete navigator.canShare;
+      return s;
+    });
+    check(
+      `Editor-Export teilt als Datei (${edShared?.n} Datei, ${edShared?.type}, ${edShared?.name})`,
+      edShared?.n === 1 &&
+        edShared?.type === "text/plain" &&
+        /^tiltr-level-.*\.json$/.test(edShared?.name ?? ""),
+    );
+
     // M41: Ebenen-Licht – „hell" schreibt bright in die Ebene, „dunkel" räumt es.
     const lightSel = page.locator("#edFloorBright");
     await lightSel.selectOption("bright");

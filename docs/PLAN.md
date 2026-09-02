@@ -675,6 +675,9 @@ von Anfang an. Der Datei-Import nimmt zusätzlich `.txt`/`text/plain` an.
 E2E (Lauf 28) stubbt `navigator.share`, klickt Export und verlangt genau
 eine Datei mit `text/plain` und `.json`-Namen – rot gesehen mit
 `application/json`. Was ich nicht prüfen kann: Signal selbst.
+Nachzügler 2.11.3: Der ⇩-Knopf IM EDITOR baute noch selbst einen
+`application/json`-Blob am Download-Link – jetzt derselbe `saveTextFile`-Weg
+(E2E Lauf 14 mit Share-Stub, rot gesehen).
 
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
