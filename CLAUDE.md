@@ -292,10 +292,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   ist `--bg-deep`; E2E-Lauf 26 prüft Tag ↔ Bildgröße ↔ Token. Zweiter Teil des
   Weißblitzes: WebKits Leinwand vor dem ersten Paint – `color-scheme: dark`
   (Meta + :root). Neues Gerät ⇒ ein Eintrag in DEVICES.
-- `src/ui/download.ts` – `saveTextFile(name, text)`: Web Share mit DATEI, wenn
-  möglich, sonst Download. MIME ist IMMER `text/plain` (`SHARE_MIME`), auch
-  für `.json`: Mit `application/json` schickte iOS an Signal nur den
-  Dateinamen. Importe lesen den Inhalt, nie den Typ.
+- `src/ui/download.ts` – `saveTextFile(name, text, kind)`: Web Share mit
+  DATEI, wenn möglich, sonst Download. ZWEI Sorten, am Signal-Test auf iOS
+  gelernt: 'text' (`text/plain`, Backup .txt) fügt Signal als NACHRICHT ein;
+  'file' (`application/octet-stream`, Endung `EXPORT_EXT` = `.tiltr`) kommt
+  als ANHANG an. `application/json` ging gar nicht (nur der Titel kam an).
+  Level-/Bundle-Exporte sind 'file'; Importe lesen den Inhalt, nie den Typ,
+  und nehmen `.tiltr`/`.json`/`.txt`.
 - `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
   Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
   Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und

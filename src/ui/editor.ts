@@ -19,7 +19,7 @@ import { validateLevel, isShareable, buildFloorCells, type CheckResult } from '.
 import { encodeLevel, SHARE_WARN_BYTES } from '../levels/shareCodec';
 import { galleryEntries } from '../elements';
 import { extraEntries } from './gallery';
-import { saveTextFile } from './download';
+import { EXPORT_EXT, saveTextFile } from './download';
 import { MUSIC, compiledById } from '../music';
 import { compileTune, type CompiledTune, type Tune } from '../audio/chiptune';
 import { previewTune } from '../audio/musicPreview';
@@ -1832,8 +1832,9 @@ export function setupEditor(opts: {
     // Derselbe Weg wie Werkstatt und Backup: Teilen als Datei (text/plain),
     // sonst Download – der nackte Download-Link war in der iOS-PWA tot.
     void saveTextFile(
-      `tiltr-level-${draft.name.replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}.json`,
+      `tiltr-level-${draft.name.replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}${EXPORT_EXT}`,
       exportPayload(draft as unknown as Record<string, unknown>),
+      'file',
     );
   });
 

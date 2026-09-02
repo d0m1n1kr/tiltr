@@ -7,7 +7,7 @@
 // ganze Bundle-Dateien, die eine ältere Kopie derselben ID ersetzen.
 
 import { parseLevel } from '../levels/schema';
-import { saveTextFile } from './download';
+import { EXPORT_EXT, saveTextFile } from './download';
 import { generatedBrittleEdges } from '../levels/loader';
 import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
@@ -193,7 +193,7 @@ export function setupWorkshopPanel(opts: {
     const text = bundles.exportFile(cur.id);
     if (!text) return;
     const b = bundles.get(cur.id)!;
-    void saveTextFile(`tiltr-bundle-${slug(b.title || b.id)}-v${b.version}.json`, text);
+    void saveTextFile(`tiltr-bundle-${slug(b.title || b.id)}-v${b.version}${EXPORT_EXT}`, text, 'file');
     render();
   });
   $('wsBundleDelete').addEventListener('click', (ev) => {
@@ -266,8 +266,8 @@ export function setupWorkshopPanel(opts: {
       })();
     });
     iconBtn('⇩', t('ed.export'), () => {
-      const name = `tiltr-level-${slug(String(level.def.name ?? level.id))}.json`;
-      void saveTextFile(name, exportPayload(level.def));
+      const name = `tiltr-level-${slug(String(level.def.name ?? level.id))}${EXPORT_EXT}`;
+      void saveTextFile(name, exportPayload(level.def), 'file');
     });
     // Löschen bleibt Zwei-Tap: der zweite Tap innerhalb von 3 s löscht.
     const del = iconBtn('🗑', t('ed.delete'), (b) => {

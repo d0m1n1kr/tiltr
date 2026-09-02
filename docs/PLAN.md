@@ -678,6 +678,15 @@ eine Datei mit `text/plain` und `.json`-Namen – rot gesehen mit
 Nachzügler 2.11.3: Der ⇩-Knopf IM EDITOR baute noch selbst einen
 `application/json`-Blob am Download-Link – jetzt derselbe `saveTextFile`-Weg
 (E2E Lauf 14 mit Share-Stub, rot gesehen).
+2.11.4, Bericht vom Gerät: Mit `text/plain` fügt Signal den INHALT als
+Nachricht ein (kein Anhang), `application/json` gab nur den Dateinamen. Als
+Anhang landet, was iOS als generische Datei sieht: `application/octet-stream`
+mit eigener Endung `.tiltr` (public.data statt public.plain-text). Deshalb
+zwei Sorten in `saveTextFile`: 'text' für das Backup (.txt, „In Dateien
+sichern" funktioniert damit), 'file' für Level- und Bundle-Exporte. Der
+Import nimmt `.tiltr` zusätzlich zu `.json`/`.txt` – gelesen wird der Inhalt.
+E2E: Share-Stubs verlangen jetzt octet-stream und `.tiltr`. Signal selbst
+bleibt Gerätetest.
 
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 

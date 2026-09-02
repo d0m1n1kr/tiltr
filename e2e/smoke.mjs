@@ -2408,8 +2408,8 @@ if (want("14")) {
     check(
       `Editor-Export teilt als Datei (${edShared?.n} Datei, ${edShared?.type}, ${edShared?.name})`,
       edShared?.n === 1 &&
-        edShared?.type === "text/plain" &&
-        /^tiltr-level-.*\.json$/.test(edShared?.name ?? ""),
+        edShared?.type === "application/octet-stream" &&
+        /^tiltr-level-.*\.tiltr$/.test(edShared?.name ?? ""),
     );
 
     // M41: Ebenen-Licht – „hell" schreibt bright in die Ebene, „dunkel" räumt es.
@@ -5068,7 +5068,7 @@ if (want("28")) {
     );
     await page.click("#campaignClose");
 
-    // (8) Export zählt die Version hoch (Datei heißt …-v2.json).
+    // (8) Export zählt die Version hoch (Datei heißt …-v2.tiltr).
     await page.click("#workshopBtn");
     await page.selectOption("#wsBundleSelect", bundleId);
     await page.waitForTimeout(150);
@@ -5083,7 +5083,7 @@ if (want("28")) {
     const metaAfter = await page.textContent("#wsBundleMeta");
     check(
       `Bundle-Export: ${dlName}, Format ${exported.format}, v${exported.bundle.version}, ${exported.bundle.levels.length} Level; Leiste zeigt ${metaAfter}`,
-      /^tiltr-bundle-turnier-v2\.json$/.test(dlName) &&
+      /^tiltr-bundle-turnier-v2\.tiltr$/.test(dlName) &&
         exported.format === "tiltr-bundle" &&
         exported.bundle.version === 2 &&
         exported.bundle.levels.length === 2 &&
@@ -5117,8 +5117,8 @@ if (want("28")) {
     check(
       `Bundle-Export teilt als Datei (${shared?.n} Datei, ${shared?.type}, ${shared?.name})`,
       shared?.n === 1 &&
-        shared?.type === "text/plain" &&
-        /^tiltr-bundle-turnier-v3\.json$/.test(shared?.name ?? ""),
+        shared?.type === "application/octet-stream" &&
+        /^tiltr-bundle-turnier-v3\.tiltr$/.test(shared?.name ?? ""),
     );
 
     // (9) Re-Import: gleiche Version → Nachfrage (Zwei-Tap), dann ersetzt;
