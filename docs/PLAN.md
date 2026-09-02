@@ -612,6 +612,29 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M55 „Wem gehört das" ✓ (v3.0.6) – Lizenz
+
+Bis 3.0.5 hatte das Repo keine Lizenz: keine LICENSE-Datei, kein Feld in
+package.json – rechtlich „alle Rechte vorbehalten", also auch kein privates
+Forken erlaubt. Ziel: nicht-kommerzielle Nutzung frei, kommerzielle nur mit
+Zustimmung. Entscheidung: **PolyForm Noncommercial License 1.0.0** für den
+Code (dafür geschrieben, definiert „nicht-kommerziell" klar: persönlich,
+Bildung, Forschung, Non-Profit, Behörden) und **CC BY-NC-SA 4.0** für
+Level-Inhalte, Notenschrift und Doku (Creative Commons rät von CC für
+Software ab, für Inhalte ist es die Norm). Beide Texte liegen VOLLSTÄNDIG im
+Repo (PolyForm aus dem SPDX-Textkorpus, CC Legal Code von creativecommons.org)
+– mit zweisprachigem Kopf, Required Notice und Kontaktweg (GitHub-Issues).
+`tests/license.test.ts` prüft Vorhandensein, Vollständigkeit (Text endet
+nicht abgeschnitten) und die Verweise aus package.json und beiden READMEs.
+Abhängigkeiten (MIT) sind damit verträglich; ein späterer Lizenzwechsel
+braucht die Zustimmung aller Beitragenden – derzeit eine Person.
+
+Nebenbei der vierte Last-Flake: Lauf 10 „Splash" las die Kugelposition 200 ms
+nach `goto` plus drei Text-Checks – unter Last war die Einfahrt da schon
+vorbei (dy 0–10 statt 200). Jetzt misst er den GRÖSSTEN Versatz während der
+Einfahrt (Schleife ab goto, Abbruch wenn er wieder fällt) und wartet für
+Akt 2 auf den eingeblendeten Titel statt 1600 ms.
+
 ## M54 „Zurück auf Anfang, mit Beweis" ✓ (v3.0.5) – 3.0.3 war falsch
 
 Die Messung (M53, iPhone standalone, landscape-primary 90°, natural:portrait):

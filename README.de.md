@@ -216,3 +216,13 @@ und ein anrempelbarer Musikautomat mit Playlist im Editor ✓
 ---
 
 Ein Spiel von **Dominik Rössler & Claude**.
+
+## Lizenz
+
+Der **Quellcode** steht unter der
+[PolyForm Noncommercial License 1.0.0](LICENSE): Nicht-kommerzielle Nutzung,
+Änderung und Weitergabe sind erlaubt; **kommerzielle Nutzung braucht eine
+gesonderte Vereinbarung** mit dem Rechteinhaber. **Level-Inhalte,
+Notenschrift und Dokumentation** stehen unter
+[CC BY-NC-SA 4.0](LICENSE-CONTENT). Kommerzielle Anfragen: ein Issue auf
+GitHub.

@@ -1,7 +1,8 @@
 {
   "name": "tiltr",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "description": "Das unsichtbare Labyrinth – ein immersives Sensor-Spiel als PWA",
   "scripts": {

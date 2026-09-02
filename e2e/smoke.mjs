@@ -1322,17 +1322,6 @@ if (want("10")) {
     });
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(`${BASE}/`);
-    await page.waitForTimeout(200);
-    const splashShown = await page.locator("#splash").isVisible();
-    const splashVersion = (await page.textContent("#splashVersion")).trim();
-    const splashCredit = (await page.textContent("#splashCredit")).trim();
-    check(
-      `Splash mit Version + Credits ("${splashVersion}" / "${splashCredit}")`,
-      splashShown &&
-        /^v\d+\.\d+\.\d+$/.test(splashVersion) &&
-        splashCredit.includes("Dominik Rössler") &&
-        splashCredit.includes("Claude"),
-    );
     // --- Choreografie (M25): Kugel von unten ein, Titel, dann Kugel raus
     // WÄHREND das Menü von unten hereinfährt. Messbar über die echten
     // Transforms – der Splash steht auf keiner Stoppuhr, die hier doppelt
@@ -1356,18 +1345,49 @@ if (want("10")) {
       });
 
     // Akt 1: Die Kugel kommt von UNTEN (positive Y-Verschiebung), das Menü
-    // wartet um eine volle Bildhöhe nach unten geparkt.
-    const act1 = await stage();
+    // wartet um eine volle Bildhöhe nach unten geparkt. Gemessen wird der
+    // GRÖSSTE Versatz während der Einfahrt, nicht ein Zeitpunkt: Unter Last war
+    // die Einfahrt nach den festen 200 ms plus Text-Checks schon vorbei (dy 0
+    // bis 10) – zweimal rot in einem Tag (v3.0.6).
+    let act1 = null;
+    let maxDy = -1;
+    const t1 = Date.now();
+    while (Date.now() - t1 < 2000) {
+      const st = await stage();
+      if (st.ball !== null) {
+        const d = ty(st.ball);
+        if (d > maxDy) {
+          maxDy = d;
+          act1 = st;
+        } else if (act1 && d < maxDy - 30) break; // Einfahrt klingt aus
+      }
+      await page.waitForTimeout(25);
+    }
     check(
-      `Akt 1: Kugel rollt von unten ein (dy=${ty(act1.ball).toFixed(0)}px), Menü parkt unten (${ty(act1.menu).toFixed(0)} = ${act1.vh})`,
-      ty(act1.ball) > 40 &&
+      `Akt 1: Kugel rollt von unten ein (größter Versatz dy=${maxDy.toFixed(0)}px), Menü parkt unten (${act1 ? ty(act1.menu).toFixed(0) : "?"} = ${act1?.vh})`,
+      !!act1 &&
+        maxDy > 40 &&
         act1.body.includes("splashing") &&
         Math.abs(ty(act1.menu) - act1.vh) < 2,
     );
+    const splashShown = await page.locator("#splash").isVisible();
+    const splashVersion = (await page.textContent("#splashVersion")).trim();
+    const splashCredit = (await page.textContent("#splashCredit")).trim();
+    check(
+      `Splash mit Version + Credits ("${splashVersion}" / "${splashCredit}")`,
+      splashShown &&
+        /^v\d+\.\d+\.\d+$/.test(splashVersion) &&
+        splashCredit.includes("Dominik Rössler") &&
+        splashCredit.includes("Claude"),
+    );
 
-    // Akt 2: Kugel steht in der Mitte, Titel sichtbar, Menü noch unten.
-    await page.waitForTimeout(1600);
-    const act2 = await stage();
+    // Akt 2: Kugel steht in der Mitte, Titel sichtbar, Menü noch unten – auf
+    // den Zustand warten (Titel eingeblendet), nicht 1600 ms.
+    const act2 =
+      (await until(async () => {
+        const st = await stage();
+        return st.ball !== null && Math.abs(ty(st.ball)) < 2 && st.logo > 0.9 ? st : null;
+      }, { timeout: 3000 })) ?? (await stage());
     check(
       `Akt 2: Kugel steht, Titel da (Deckkraft ${act2.logo}), Menü wartet (${ty(act2.menu).toFixed(0)})`,
       Math.abs(ty(act2.ball)) < 2 &&
@@ -1384,7 +1404,7 @@ if (want("10")) {
      die alte, zu schnelle Kurve (8900 px/s im ersten Frame) maß so nur
      5464 px/s und wäre durch eine Peak-Schwelle geschlüpft. */
     let shape = null;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 60; i++) {
       await page.waitForTimeout(60);
       const st = await stage();
       if (

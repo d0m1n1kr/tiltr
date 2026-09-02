@@ -43,8 +43,11 @@ loslässt, prallt von der Wand zurück – A rollte in Spalte 4 zurück, B aus d
 Platten-Nische; die alten festen 2,6 s hatten den Ball bis dahin angepinnt.
 Lauf 17 „Hörtest" wartet auf den NEUEN `__tiltrPing` (Fallback: der alte,
 wenn dieselbe Richtung zweimal kommt), Lauf 21 „Jukebox" auf Noten, Ducking
-und Titel. Eine neue Zusicherung nach einer Bewegung oder einem Klick wartet
-auf den Zustand, den sie prüft – nie auf eine Zeit.
+und Titel. Lauf 10 „Splash" misst den GRÖSSTEN Kugel-Versatz während der
+Einfahrt (Schleife ab goto) statt eines Zeitpunkts – nach 200 ms plus
+Text-Checks war die Einfahrt unter Last schon vorbei (v3.0.6). Eine neue
+Zusicherung nach einer Bewegung oder einem Klick wartet auf den Zustand, den
+sie prüft – nie auf eine Zeit.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem
@@ -437,6 +440,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   und brechen erst in der installierten PWA. Jede Layout-Änderung muss
   den Safe-Area-Lauf in `e2e/smoke.mjs` (nachgebildete Insets 62/34 +
   Gegenprobe) grün halten; neue Zusicherungen einmal rot sehen.
+
+## Lizenz
+
+Code: PolyForm Noncommercial License 1.0.0 (`LICENSE`, vollständiger Text mit
+Required Notice). Inhalte (Level, Notenschrift, docs/): CC BY-NC-SA 4.0
+(`LICENSE-CONTENT`). Kommerzielle Nutzung nur nach Vereinbarung – Kontakt über
+GitHub-Issues. `tests/license.test.ts` hält Dateien, Vollständigkeit und die
+Verweise (package.json, README ×2) fest. Neue Abhängigkeiten müssen dazu
+passen (MIT/BSD/Apache ja; GPL-Familie vorher prüfen).
 
 ## Git
 

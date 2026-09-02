@@ -210,3 +210,13 @@ editor playlist ✓
 ---
 
 A game by **Dominik Rössler & Claude**.
+
+## License
+
+The **source code** is licensed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE): noncommercial use,
+modification and redistribution are permitted; **commercial use requires a
+separate agreement** with the copyright holder. **Level content, music
+notation and documentation** are licensed under
+[CC BY-NC-SA 4.0](LICENSE-CONTENT). Commercial inquiries: open an issue on
+GitHub.
