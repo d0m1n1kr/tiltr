@@ -352,6 +352,9 @@
     .inter-card h2 { font-size: var(--fs-h2); }
     .inter-card p { font-size: var(--fs-body); line-height: 1.55; opacity: 0.9; white-space: pre-line; }
     .inter-buttons { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-2); }
+    .inter-card .inter-stars { font-size: var(--fs-small); opacity: 0.75; letter-spacing: 0.02em; }
+    .inter-new { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+    .inter-new .chip { border-color: var(--accent); color: var(--accent); }
 
     #banners {
       position: fixed;
@@ -806,6 +809,7 @@
       <div id="controlsRow">
         <button class="btn chip" data-ctl="top" data-i18n="ctl.top">🥣 Draufsicht</button>
         <button class="btn chip" data-ctl="fp" data-i18n="ctl.fp">🧭 First Person</button>
+        <button id="tutBrightBtn" class="btn chip" data-i18n="ctl.tutBright">💡 Tutorial hell</button>
       </div>
       <div id="langRow">
         <button class="btn chip" data-lang="de">DE</button>
@@ -842,6 +846,12 @@
     <div class="panel inter-card">
       <h2 id="interTitle"></h2>
       <p id="interText"></p>
+      <!-- Sterne-Vorschau (M43): Was der zweite und dritte Stern verlangen –
+           VOR dem Level, nicht erst auf der Ergebnis-Karte. -->
+      <p id="interStars" class="inter-stars hidden"></p>
+      <!-- „Neu hier" (M43): Elemente, die dieses Level zum ersten Mal bringt.
+           Ein Tap spielt die Klang-Signatur aus der Galerie. -->
+      <div id="interNew" class="inter-new hidden"></div>
       <!-- Leise Zusatzaktion (Duell herausfordern/Revanche): schließt die
            Karte NICHT, man teilt und entscheidet dann weiter. -->
       <button id="interExtra" class="btn btn-soft hidden"></button>

@@ -250,6 +250,13 @@ export const es: Dict = {
   'calib.textFp': 'Sujeta el móvil <b>~45° delante de ti</b>, como un volante.<br>Inclinar = avanzar/retroceder, ladear = girar.',
   'ctl.top': '🥣 Vista cenital',
   'ctl.fp': '🧭 Primera persona',
+  'ctl.tutBright': '💡 Tutorial iluminado',
+  'st.dusk': 'La luz se apaga … 🌘',
+  'inter.new': 'Nuevo',
+  'inter.stars': '★ meta · ★★ menos de {par} s · ★★★ {third}',
+  'inter.gems': 'todas las {n} gemas',
+  'inter.noFall': 'sin caídas',
+  'el.wallBrittle.title': 'Muro frágil',
 
   /* --- Estado / avisos --- */
   'st.fell': '¡Caíste en un agujero! 🕳',
@@ -443,10 +450,10 @@ export const es: Dict = {
 
   'lv.tut-1.name': 'Rodar y escuchar',
   'lv.tut-1.intro':
-    'Inclina el móvil con suavidad: la bola rueda. Escucha el ping sonar: viene de la dirección de la meta y se acelera cuanto más cerca estás. ¡Rueda a la derecha!',
+    'Por primera vez ves el laberinto. Inclina el móvil con suavidad: la bola rueda. Escucha el ping sonar: viene de la dirección de la meta y se acelera cuanto más cerca estás. ¡Rueda a la derecha!',
   'lv.tut-2.name': 'Muros y eco',
   'lv.tut-2.intro':
-    'Los muros son invisibles. Si tocas uno, oyes un golpe sordo desde su dirección, y brilla un instante. Ve palpando el camino.',
+    'Conoces esta sala. En cuanto toques un muro, la luz se apaga; desde entonces los oyes: un golpe sordo desde su dirección y un breve brillo. La meta está ahora abajo a la derecha. Ve palpando el camino.',
   'lv.tut-3.name': 'El ping de eco',
   'lv.tut-3.intro':
     'Toca la pantalla: un ping de eco revela el entorno un instante; los muros cercanos responden primero. Tu reserva es escasa, úsala con cabeza.',

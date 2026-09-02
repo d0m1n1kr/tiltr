@@ -250,6 +250,13 @@ export const fr: Dict = {
   'calib.textFp': 'Tiens ton téléphone <b>~45° devant toi</b>, comme un volant.<br>Incliner = avancer/reculer, pencher sur le côté = tourner.',
   'ctl.top': '🥣 Vue du dessus',
   'ctl.fp': '🧭 Première personne',
+  'ctl.tutBright': '💡 Tutoriel éclairé',
+  'st.dusk': 'La lumière s’éteint … 🌘',
+  'inter.new': 'Nouveau',
+  'inter.stars': '★ arrivée · ★★ sous {par} s · ★★★ {third}',
+  'inter.gems': 'toutes les {n} gemmes',
+  'inter.noFall': 'sans chute',
+  'el.wallBrittle.title': 'Mur fragile',
 
   /* --- Statut / flash --- */
   'st.fell': 'Tombé dans un trou ! 🕳',
@@ -443,10 +450,10 @@ export const fr: Dict = {
 
   'lv.tut-1.name': 'Rouler & écouter',
   'lv.tut-1.intro':
-    'Incline doucement ton téléphone – la bille roule. Écoute le ping sonar : il vient de la direction de l’arrivée et s’accélère quand tu approches. Roule vers la droite !',
+    'Pour la première fois, tu vois le labyrinthe. Incline doucement ton téléphone – la bille roule. Écoute le ping sonar : il vient de la direction de l’arrivée et s’accélère quand tu approches. Roule vers la droite !',
   'lv.tut-2.name': 'Murs & écho',
   'lv.tut-2.intro':
-    'Les murs sont invisibles. Si tu en touches un, tu entends un coup sourd venant de sa direction – et il s’illumine un instant. Avance à tâtons.',
+    'Tu connais cette pièce. Dès que tu touches un mur, la lumière s’éteint – ensuite tu les entends : un coup sourd venant de leur direction, et une brève lueur. L’arrivée est maintenant en bas à droite. Avance à tâtons.',
   'lv.tut-3.name': 'Le ping d’écho',
   'lv.tut-3.intro':
     'Touche l’écran : un ping d’écho révèle brièvement les environs – les murs proches répondent en premier. Ta réserve est limitée, utilise-la bien.',

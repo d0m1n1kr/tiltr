@@ -18,6 +18,25 @@ describe('Kampagne', () => {
     }
   });
 
+  it('Par-Band (M43): 1,2 bis 2,6 s je Zelle – große Felder nicht nach dem Rückgrat schätzen', () => {
+    // „Die Weite" hatte 0,77 s/Zelle, „Taktstraße" 1,13: Par aus der Länge des
+    // Rückgrats, obwohl man sich auf großen Feldern proportional zur FLÄCHE
+    // verirrt. Das Band ist der Prüfstein für jedes neue Level.
+    for (const l of CAMPAIGN_LEVELS) {
+      const cells = l.floors.reduce((n, f) => n + f.size[0] * f.size[1], 0);
+      const perCell = l.parTimeS! / cells;
+      expect(perCell, `${l.id}: ${perCell.toFixed(2)} s/Zelle`).toBeGreaterThanOrEqual(1.2);
+      expect(perCell, `${l.id}: ${perCell.toFixed(2)} s/Zelle`).toBeLessThanOrEqual(2.6);
+    }
+  });
+
+  it('Ping-Budget ist je Welt konstant (M43): 3 / 4 / 4 / 3 – Knappheit ist der Schwierigkeits-Dial, nicht die Levelgröße', () => {
+    const want = [3, 4, 4, 3];
+    WORLDS.forEach((w, i) => {
+      for (const l of w.levels) expect(l.pingBudget, l.id).toBe(want[i]);
+    });
+  });
+
   it('alle Level laden ohne Fehler (Türen offen, Schlüssel passend, Transporter-Ziele gültig)', () => {
     for (const def of CAMPAIGN_LEVELS) {
       expect(() => loadLevel(def), def.id).not.toThrow();

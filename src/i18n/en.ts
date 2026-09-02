@@ -250,6 +250,13 @@ export const en: Dict = {
   'calib.textFp': 'Hold your phone <b>~45° in front of you</b>, like a steering wheel.<br>Tip = forward/back, lean sideways = turn.',
   'ctl.top': '🥣 Top-down',
   'ctl.fp': '🧭 First person',
+  'ctl.tutBright': '💡 Bright tutorial',
+  'st.dusk': 'The light goes out … 🌘',
+  'inter.new': 'New',
+  'inter.stars': '★ finish · ★★ under {par} s · ★★★ {third}',
+  'inter.gems': 'all {n} gems',
+  'inter.noFall': 'no falls',
+  'el.wallBrittle.title': 'Brittle wall',
 
   /* --- Status / flash --- */
   'st.fell': 'Fell into a hole! 🕳',
@@ -443,10 +450,10 @@ export const en: Dict = {
 
   'lv.tut-1.name': 'Roll & Listen',
   'lv.tut-1.intro':
-    'Tilt your phone gently – the ball rolls. Listen to the sonar ping: it comes from the direction of the goal and gets faster the closer you are. Roll right!',
+    'For the first time you can see the maze. Tilt your phone gently – the ball rolls. Listen to the sonar ping: it comes from the direction of the goal and gets faster the closer you are. Roll right!',
   'lv.tut-2.name': 'Walls & Echo',
   'lv.tut-2.intro':
-    'The walls are invisible. Touch one and you hear a dull thump from its direction – and it lights up briefly. Feel your way forward.',
+    'You know this room. The moment you touch a wall, the light goes out – from then on you hear them: a dull thump from their direction, and a brief glow. The goal is now at the bottom right. Feel your way.',
   'lv.tut-3.name': 'The Echo Ping',
   'lv.tut-3.intro':
     'Tap the screen: an echo ping briefly reveals your surroundings – nearby walls answer first. Your supply is scarce, use it wisely.',

@@ -15,6 +15,8 @@ import { loadLevel, type LoadedLevel } from './levels/loader';
 import { generateQuickLevel, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
+import { newFeaturesIn } from './levels/firstAppearances';
+import { galleryEntries } from './elements/registry';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang, type Dict } from './i18n';
 import { GhostRecorder, loadGhost, saveGhost, sampleGhost, type GhostData } from './ghost';
@@ -29,7 +31,7 @@ import { renderSVG } from 'uqr';
 import { parseLevel, type LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
-import { setupGallery } from './ui/gallery';
+import { setupGallery, extraEntries } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel, type TestStart } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
@@ -78,6 +80,8 @@ const homeBtn = $('homeBtn');
 const interstitial = $('interstitial');
 const interTitle = $('interTitle');
 const interText = $('interText');
+const interStars = $('interStars');
+const interNew = $('interNew');
 const interPrimary = $<HTMLButtonElement>('interPrimary');
 const interSecondary = $<HTMLButtonElement>('interSecondary');
 const interExtra = $<HTMLButtonElement>('interExtra');
@@ -183,6 +187,16 @@ let debugUnlocked = false;
 let revealUntil = 0;
 let maxDist = 1;
 let respawnPoint = { floor: 0, x: 0, y: 0 };
+// Dämmerung (M43): Zeitpunkt der ersten Wandberührung auf einer dusk-Ebene,
+// null = das Licht brennt noch.
+let duskStart: number | null = null;
+const DUSK_MS = 2000;
+// Aufleuchten (M43): Element-Typen, die dieses Level zum ersten Mal bringt,
+// und bis wann sie leuchten. Lehr-Reihenfolge: Tutorial, dann Kampagne.
+let spotTypes = new Set<string>();
+let spotUntil = 0;
+const SPOT_MS = 4000;
+const TEACH_LEVELS = [...TUTORIAL_LEVELS, ...CAMPAIGN_LEVELS];
 let t0 = 0;
 let message = '';
 let messageUntil = 0;
@@ -226,6 +240,23 @@ interface InterAction {
   onClick: () => void;
 }
 
+// „Neu hier" (M43): Titel und Klang-Demo eines Merkmals aus der Galerie-
+// Registry – dieselbe Signatur, die Galerie und Editor spielen. Die brüchige
+// Wand hat keinen eigenen Eintrag, sie klingt wie die Wand mit Echo.
+const galleryDemos = new Map([...galleryEntries(), ...extraEntries()].map((e) => [e.type, e.demoSound] as const));
+function featureTitle(type: string): string {
+  return t(`el.${type}.title` as keyof Dict);
+}
+function featureDemo(type: string): ((a: GameAudio) => void) | undefined {
+  return galleryDemos.get(type === 'wallBrittle' ? 'wallEcho' : type) ?? undefined;
+}
+/** Sterne-Vorschau (M43): Par und die Bedingung des dritten Sterns. */
+function starLine(def: LevelDef): string | undefined {
+  if (def.parTimeS === undefined) return undefined;
+  const gems = def.floors.reduce((n, f) => n + f.elements.filter((e) => e.type === 'gem').length, 0);
+  return t('inter.stars', { par: def.parTimeS, third: gems > 0 ? t('inter.gems', { n: gems }) : t('inter.noFall') });
+}
+
 function showInterstitial(opts: {
   title: string;
   text: string;
@@ -234,9 +265,26 @@ function showInterstitial(opts: {
   /** Leise Zusatzaktion (Duell herausfordern/Revanche): Karte bleibt offen,
    *  man teilt den Link und entscheidet danach weiter. */
   extra?: InterAction;
+  /** Sterne-Vorschau (M43): was der zweite und dritte Stern verlangen. */
+  stars?: string;
+  /** „Neu hier" (M43): Element-Typen, die dieses Level zum ersten Mal bringt –
+   *  je ein Chip, Tap spielt die Galerie-Signatur. */
+  news?: string[];
 }): void {
   interTitle.textContent = opts.title;
   interText.textContent = opts.text;
+  interStars.textContent = opts.stars ?? '';
+  interStars.classList.toggle('hidden', !opts.stars);
+  interNew.replaceChildren();
+  for (const type of opts.news ?? []) {
+    const chip = document.createElement('button');
+    chip.className = 'btn chip';
+    const demo = featureDemo(type);
+    chip.textContent = `${t('inter.new')}: ${featureTitle(type)}${demo ? ' 🔊' : ''}`;
+    if (demo) chip.addEventListener('click', () => void audio.start().then(() => demo(audio)));
+    interNew.append(chip);
+  }
+  interNew.classList.toggle('hidden', !opts.news?.length);
   if (opts.extra) {
     interExtra.textContent = opts.extra.label;
     interExtra.onclick = () => opts.extra!.onClick();
@@ -705,6 +753,17 @@ for (const chip of ctlChips) {
 }
 refreshCtl();
 
+// Zugänglichkeit (M43): Tutorial hell spielen – nur das Tutorial.
+const tutBrightBtn = $('tutBrightBtn');
+const refreshTutBright = (): void => {
+  tutBrightBtn.classList.toggle('active', profile.tutorialBright);
+};
+tutBrightBtn.addEventListener('click', () => {
+  profile.tutorialBright = !profile.tutorialBright;
+  refreshTutBright();
+});
+refreshTutBright();
+
 // Anzeigename für Duell-Links (optional; leer = anonymer „Rivale").
 const playerNameInput = $<HTMLInputElement>('playerName');
 playerNameInput.value = profile.name;
@@ -806,9 +865,12 @@ function beginLevel(): void {
         : mode.kind === 'duel'
           ? `\n\n${t('daily.targetLine', { time: fmtTime(mode.time) })}`
           : '';
+    const teaching = mode.kind === 'tutorial' || mode.kind === 'campaign';
     showInterstitial({
       title,
       text: intro + targetLine,
+      stars: mode.kind === 'campaign' ? starLine(def) : undefined,
+      news: teaching ? newFeaturesIn(TEACH_LEVELS, def.id) : undefined,
       primary: { label: t('common.go'), onClick: () => launch(def) },
       secondary: { label: t('common.menu'), onClick: showMenu },
     });
@@ -817,9 +879,34 @@ function beginLevel(): void {
   }
 }
 
-/** Helle Ebene (floor.bright): alles sichtbar wie in der Debug-Ansicht. */
+/** Licht auf der aktiven Ebene, 0–1: helle Ebene (floor.bright), die
+ *  Tutorial-Option „hell" oder Dämmerung (floor.dusk) – die blendet nach der
+ *  ersten Wandberührung über DUSK_MS aus. */
+function lightGain(now: number): number {
+  const floor = loaded?.floors[activeFloor];
+  if (!floor) return 0;
+  if (floor.bright) return 1;
+  if (mode?.kind === 'tutorial' && profile.tutorialBright) return 1;
+  if (floor.dusk) return duskStart === null ? 1 : Math.max(0, 1 - (now - duskStart) / DUSK_MS);
+  return 0;
+}
 function bright(): boolean {
-  return loaded?.floors[activeFloor]?.bright === true;
+  return lightGain(performance.now()) > 0;
+}
+/** Renderer-Optionen für Licht und Aufleuchten (M43) – an EINER Stelle für
+ *  beide draw()-Aufrufe. Der Ping deckt voll auf, das Licht mit seinem Gain;
+ *  das Aufleuchten pulst und blendet in den letzten 800 ms aus. */
+function lightOpts(now: number): {
+  revealAll: boolean;
+  revealGain: number;
+  spotlight: { types: ReadonlySet<string>; gain: number } | null;
+} {
+  const light = lightGain(now);
+  const pinged = revealUntil > now;
+  const left = spotUntil - now;
+  const spotlight =
+    left > 0 && spotTypes.size > 0 ? { types: spotTypes, gain: (0.6 + 0.4 * Math.sin(now / 110)) * Math.min(1, left / 800) } : null;
+  return { revealAll: pinged || light > 0, revealGain: pinged ? 1 : light, spotlight };
 }
 
 function activateFloor(index: number): void {
@@ -874,6 +961,15 @@ function launch(def: LevelDef): void {
     renderer.follow(ball.x, ball.y, true);
   }
   respawnPoint = { floor: activeFloor, x: loaded.world.ball.x, y: loaded.world.ball.y };
+  duskStart = null;
+  // Aufleuchten (M43): Nur Tutorial und Kampagne lehren – dort leuchtet, was
+  // das Level neu bringt, und die erste Signatur spielt einmal.
+  const teaching = mode?.kind === 'tutorial' || mode?.kind === 'campaign';
+  spotTypes = new Set(teaching ? newFeaturesIn(TEACH_LEVELS, def.id) : []);
+  spotUntil = spotTypes.size > 0 ? performance.now() + SPOT_MS : 0;
+  const firstNew = [...spotTypes][0];
+  const demo = firstNew !== undefined ? featureDemo(firstNew) : undefined;
+  if (demo) void audio.start().then(() => demo(audio));
   // Bundle: „weiter, wo ich aufgehört habe" – der Stand ist der zuletzt GESTARTETE Level.
   if (mode?.kind === 'bundle') profile.setBundlePos(mode.bundleId, mode.index);
   t0 = performance.now();
@@ -911,6 +1007,10 @@ function startWarp(tx: number, ty: number, targetFloor: number, dir: 'up' | 'dow
     b.y = ty;
     b.vx = 0;
     b.vy = 0;
+    // Landeplatz = Respawn (M43): Ein Sturz auf der neuen Ebene führt hierher
+    // zurück, nicht auf die Ebene des letzten Checkpoints – sonst wäre jeder
+    // Fehler auf Ebene 3 eine Wiederholung von Ebene 1 samt Transporterfahrt.
+    respawnPoint = { floor: targetFloor, x: tx, y: ty };
     warpReady = false; // erst wieder scharf, wenn der Ball das Ziel-Pad verlassen hat
     state = 'playing';
     flash(
@@ -2020,6 +2120,12 @@ function frame(now: number): void {
 
     for (const hit of hits) {
       const wall = hit.wall;
+      // Dämmerung (M43): Die erste Berührung löscht das Licht – außer der
+      // Spieler hat sich das Tutorial ausdrücklich hell gewünscht.
+      if (duskStart === null && loaded?.floors[activeFloor]?.dusk === true && !(mode?.kind === 'tutorial' && profile.tutorialBright)) {
+        duskStart = now;
+        flash(t('st.dusk'));
+      }
       wall.litFrom = 0; // Berührung leuchtet sofort, ohne Ping-Verzögerung
       wall.litUntil = now + 1200; // Echo: berührte Wand kurz sichtbar machen
       const intensity = Math.min(1, hit.impact / 500);
@@ -2300,7 +2406,7 @@ function frame(now: number): void {
       pad.litUntil = now + 1200;
       startWarp(pad.tx, pad.ty, pad.targetFloor, pad.dir);
       renderer.follow(world.ball.x, world.ball.y);
-      renderer.draw(world, { debug, revealAll: revealUntil > now || bright(), now });
+      renderer.draw(world, { debug, ...lightOpts(now), now });
       return;
     }
 
@@ -2441,7 +2547,7 @@ function frame(now: number): void {
   }
   renderer.draw(world, {
     debug,
-    revealAll: revealUntil > now || bright(),
+    ...lightOpts(now),
     now,
     buddy,
     ghost: ghostOpt,
@@ -2458,6 +2564,9 @@ function frame(now: number): void {
     anchors: world.anchors.length,
     glass: world.glass.length,
     bright: bright(),
+    lightGain: lightGain(now),
+    respawnFloor: respawnPoint.floor,
+    spotlight: [...spotTypes],
   };
   (window as unknown as { __tiltrFp?: unknown }).__tiltrFp = fpOn()
     ? { heading: fpState.heading, turnRate: fpState.turnRate, view: renderer.lastView }

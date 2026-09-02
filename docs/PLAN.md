@@ -612,6 +612,65 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M43 „Spielregeln" ✓ (Phase 0 von 3.0.0) – Landeplatz = Respawn, Tutorial mit Licht, Aufleuchten
+
+Erste Phase des Kampagnen-Umbaus „Trugbild" (Review-Artefakt + Plan, sieben
+Phasen, EIN Release 3.0.0 vom Arbeits-Branch `claude/v3-trugbild`). Phase 0
+fasst kein Level an und verbessert trotzdem alle: Spielregeln.
+
+**Landeplatz = Respawn.** `respawnPoint` wurde nur an zwei Stellen gesetzt –
+Start und Checkpoint. In „Fahrstuhl" (3 Ebenen, 1 Checkpoint), „Kathedrale"
+und „Das Ohr" (3 Ebenen, 3 Horcher, EIN Checkpoint auf Ebene 3) schickte
+jeder Sturz auf der tiefen Ebene zurück auf Ebene 1 samt Transporterfahrt –
+Wiederholung, keine Schwierigkeit. Jetzt setzt die Transporter-Ankunft in
+`startWarp` den Respawn auf den Landeplatz. Eine Zeile, gilt auch für
+Werkstatt-Level; E2E Lauf 29 prüft `__tiltrWorld.respawnFloor` nach dem Warp
+(Sabotage rot gesehen).
+
+**Tutorial mit Licht.** Die ersten zwei Minuten eines Neigungsspiels handeln
+von der Steuerung – wer sie im Dunkeln lernt, weiß nicht, ob er sich verirrt
+hat oder das Handy falsch hält. tut-1 ist HELL (`bright`, 4×3, Seed 7, obere
+Zeile offen: „Roll nach rechts" bleibt), tut-2 ist DERSELBE Raum mit
+`floor.dusk`: hell, bis der Ball die erste Wand berührt, dann blendet das
+Licht in 2 s aus („Du kennst diesen Raum. Jetzt hör ihn."). Dafür hat der
+Renderer `revealGain` (0–1 auf alles, was nur wegen `revealAll` sichtbar ist,
+Ziel-Schein eingeschlossen; Debug ignoriert ihn) und app.ts EINE Stelle
+`lightGain(now)`/`lightOpts(now)` für beide draw()-Aufrufe. Die Kampagne
+bleibt dunkel. Zugänglichkeit: Profil-Flag `tutorialBright` (Chip „💡
+Tutorial hell" im Menü-Footer) hält das Licht auf ALLEN Tutorial-Ebenen an –
+nur dort.
+
+**Aufleuchten neuer Elemente.** Zehn Elemente hatten kein Tutorial und wurden
+nur im Intro-TEXT eingeführt – in einem Spiel, dessen Leitmedium der Klang
+ist. `levels/firstAppearances.ts` (rein) leitet aus der Lehr-Reihenfolge
+(Tutorial, dann Kampagne) ab, welches Merkmal – Element-Typ oder Wand-Variante
+brüchig/Schallschutz – in welchem Level ZUERST vorkommt; kein Level-Feld
+nötig. Beim Start eines solchen Levels leuchten diese Elemente 4 s pulsierend
+in ihrer Weltfarbe (Renderer `spotlight`, unabhängig von Ping und Licht, auch
+Türen, Schiebewände, Zonen) und die Galerie-Signatur des ersten spielt einmal;
+der Intro-Screen zeigt je Merkmal einen Chip „Neu: Wächter 🔊" (Tap
+wiederholt die Signatur – dieselbe `demoSound` wie Galerie und Editor). Der
+Spieler sieht EINMAL, was er ab dann nur noch hört.
+
+**Sterne-Vorschau.** Der Intro-Screen der Kampagne sagt vorab, was der zweite
+und dritte Stern verlangen („★ Ziel · ★★ unter 75 s · ★★★ sturzfrei" bzw.
+„alle 3 Gems") – die zwei Regeln für den dritten Stern waren vorher erst auf
+der Ergebnis-Karte zu erfahren.
+
+**Par-Band und Ping-Budgets.** `tests/campaign.test.ts` verlangt 1,2 bis 2,6 s
+Par je Zelle: „Die Weite" hatte 0,77 („Taktstraße" 1,13) – Par nach dem
+Rückgrat geschätzt, obwohl man sich auf großen Feldern proportional zur
+FLÄCHE verirrt. Vorläufig 260/240 s, Phase 1 baut die Level um. Ping-Budget je
+Welt konstant (3/4/4/3, Test): Knappheit ist der Schwierigkeits-Dial, nicht
+die Levelgröße; die Finale bekommen in Phase 1 dafür Checkpoints.
+
+**Horcher-Deckung.** `updateListeners` skaliert das gehörte Rollen mit
+`ABSORB_GAIN`, wenn eine Schallschutzwand zwischen Ball und Horcher liegt –
+dieselbe Regel wie für jede andere Klangquelle, nur in Gegenrichtung
+(`tests/listenerCover.test.ts`: leises Rollen hinter der Wand ungehört, lautes
+dringt durch, ohne Schallschutz hört er durch jede Wand wie bisher). Deckung
+wird damit zur Schleich-Mechanik für Welt 4 (Phase 1).
+
 ## M42 „Rätsel im Licht" ✓ (v2.12.0) – Generatoren: Ebenen, helle Ebenen, Tür-Rätsel
 
 **Die Frage:** Können Zufallsspiel und Tages-Challenge mehrere Ebenen haben,

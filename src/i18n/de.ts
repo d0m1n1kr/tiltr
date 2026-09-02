@@ -254,6 +254,13 @@ export const de = {
   'calib.textFp': 'Halte das Handy <b>~45° vor dir</b>, wie ein Lenkrad.<br>Kippen = vor/zurück, seitlich neigen = drehen.',
   'ctl.top': '🥣 Draufsicht',
   'ctl.fp': '🧭 First Person',
+  'ctl.tutBright': '💡 Tutorial hell',
+  'st.dusk': 'Das Licht geht aus … 🌘',
+  'inter.new': 'Neu',
+  'inter.stars': '★ Ziel · ★★ unter {par} s · ★★★ {third}',
+  'inter.gems': 'alle {n} Gems',
+  'inter.noFall': 'sturzfrei',
+  'el.wallBrittle.title': 'Brüchige Wand',
 
   /* --- Status / Flash --- */
   'st.fell': 'In ein Loch gestürzt! 🕳',
@@ -447,10 +454,10 @@ export const de = {
 
   'lv.tut-1.name': 'Rollen & Lauschen',
   'lv.tut-1.intro':
-    'Neige das Handy sanft – der Ball rollt. Höre auf den Sonar-Ping: Er kommt aus Richtung des Ziels und wird schneller, je näher du bist. Roll nach rechts!',
+    'Zum ersten Mal siehst du das Labyrinth. Neige das Handy sanft – die Kugel rollt. Höre auf den Sonar-Ping: Er kommt aus Richtung des Ziels und wird schneller, je näher du bist. Roll nach rechts!',
   'lv.tut-2.name': 'Wände & Echo',
   'lv.tut-2.intro':
-    'Die Wände sind unsichtbar. Berührst du eine, hörst du einen dumpfen Schlag aus ihrer Richtung – und sie leuchtet kurz auf. Ertaste dir den Weg.',
+    'Du kennst diesen Raum. Sobald du eine Wand berührst, geht das Licht aus – von da an hörst du sie: ein dumpfer Schlag aus ihrer Richtung, und sie leuchtet kurz auf. Das Ziel liegt jetzt unten rechts. Ertaste dir den Weg.',
   'lv.tut-3.name': 'Der Echo-Ping',
   'lv.tut-3.intro':
     'Tippe aufs Display: Ein Echo-Ping deckt die Umgebung kurz auf – nahe Wände antworten zuerst. Dein Vorrat ist knapp, setze ihn klug ein.',

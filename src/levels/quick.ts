@@ -269,6 +269,7 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
       start,
       goal: isLast ? exit : null,
       bright: bright[f]!,
+      dusk: false,
     });
   }
 

@@ -25,6 +25,7 @@ import type {
   WallHit,
   WindZone,
 } from './types';
+import { ABSORB_GAIN, shielded } from './occlusion';
 
 export class Ball {
   vx = 0;
@@ -237,11 +238,16 @@ export class World {
   // Deterministisch: hängt nur von Ballzustand und dt ab.
   private updateListeners(dt: number): void {
     const b = this.ball;
-    const moving = b.speed > this.listenerWakeSpeed;
     for (const l of this.listeners) {
+      // Deckung (M43): Liegt eine Schallschutzwand zwischen Ball und Horcher,
+      // kommt das Rollen nur gedämpft an – dieselbe Regel wie für jede andere
+      // Klangquelle (occlusion.ts), nur in Gegenrichtung. Hinter der Wand darf
+      // man also rollen, solange man nicht rast.
+      const heardSpeed = shielded(this.walls, b.x, b.y, l.x, l.y) ? b.speed * ABSORB_GAIN : b.speed;
+      const moving = heardSpeed > this.listenerWakeSpeed;
       const target = moving ? b : l.home;
-      // Jagd skaliert mit der Rollgeschwindigkeit; Rückzug mit halber Kraft.
-      const v = moving ? l.speed * Math.min(1, b.speed / 260) : l.speed * 0.5;
+      // Jagd skaliert mit der gehörten Rollgeschwindigkeit; Rückzug mit halber Kraft.
+      const v = moving ? l.speed * Math.min(1, heardSpeed / 260) : l.speed * 0.5;
       const dx = target.x - l.x,
         dy = target.y - l.y;
       const d = Math.hypot(dx, dy);

@@ -90,6 +90,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Schlüssel-Bedingungen. `coopReachable` und der `openers`-Check rechnen
   'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
   HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
+  DÄMMERUNG (M43): `floor.dusk` = hell bis zur ersten Wandberührung, dann
+  blendet app.ts über 2 s aus (`duskStart`, Renderer `revealGain`). Licht
+  hat EINE Quelle: `lightGain(now)`/`lightOpts(now)` in app.ts speist beide
+  draw()-Aufrufe; `profile.tutorialBright` (Chip „💡 Tutorial hell") hält
+  NUR Tutorial-Ebenen hell. LANDEPLATZ = RESPAWN (M43): `startWarp` setzt
+  `respawnPoint` auf die Ankunft – sonst wirft ein Sturz auf Ebene 3 zurück
+  auf Ebene 1 (das war „Das Ohr" mit einem Checkpoint auf drei Ebenen).
 - `src/workshop.ts` + `src/ui/editor.ts` – Werkstatt: eigene Level in
   localStorage, seit M40 in LEVEL-BUNDLES (`tiltr.workshop.v2`): ein Bundle =
   geordnete Level-Reihe mit ID, Version, Titel, Beschreibung – spielbar wie
@@ -183,6 +190,18 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   links/unten rechts liegen – Achse passend zu Richtungsbezügen im
   Intro-Text wählen ('x' erhält oben/unten, 'y' links/rechts);
   tests/mirror.test.ts erzwingt die Ecken-Verteilung.
+- `src/levels/firstAppearances.ts` – AUFLEUCHTEN (M43): rein abgeleitet, in
+  welchem Level ein Merkmal (Element-Typ, `wallBrittle`, `wallAbsorb`) zuerst
+  vorkommt – Lehr-Reihenfolge Tutorial, dann Kampagne (`TEACH_LEVELS` in
+  app.ts). Beim Start eines solchen Levels: Renderer `spotlight` (4 s Puls,
+  unabhängig von Ping/Licht) + Galerie-`demoSound` des ersten Merkmals; der
+  Intro-Screen zeigt „Neu: … 🔊"-Chips (`#interNew`) und in der Kampagne die
+  Sterne-Vorschau (`#interStars`). Kein Level-Feld: Wer ein Level einfügt,
+  ändert die Liste automatisch – `tests/firstAppearances.test.ts` hält die
+  Lehr-Reihenfolge fest. Kampagnen-Regeln aus dem Review (tests/campaign):
+  Par-Band 1,2–2,6 s je ZELLE (nicht nach dem Rückgrat schätzen), Ping-Budget
+  je Welt konstant (3/4/4/3). Horcher hören abgeschirmt (`shielded` in
+  `updateListeners`, ABSORB_GAIN) – Deckung ist eine Schleich-Mechanik.
 - `src/levels/puzzle.ts` – TÜR-RÄTSEL für die Generatoren (M42):
   `planDoorPuzzle` setzt EINE Tür auf den Pflichtweg einer Ebene, alle Öffner
   (Schlüssel, optional Zeitschloss ≤ 6 Zellen davor, 8 s) in den

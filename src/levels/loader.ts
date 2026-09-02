@@ -17,6 +17,8 @@ export interface LoadedFloor {
   rows: number;
   /** Helle Ebene: alles sichtbar (Renderer revealAll) */
   bright: boolean;
+  /** Dämmerung: hell bis zur ersten Wandberührung, dann ausblenden (app.ts) */
+  dusk: boolean;
 }
 
 export interface LoadedLevel {
@@ -156,7 +158,7 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
 
     const world = new World(walls, ball, goal);
     buildElements(floor.elements, { world, cell: CELL, cols, rows, floorIndex });
-    floors.push({ world, cols, rows, bright: floor.bright });
+    floors.push({ world, cols, rows, bright: floor.bright, dusk: floor.dusk });
   });
 
   if (goalFloor === -1) throw new Error(`Level ${def.id}: kein Ziel definiert`);

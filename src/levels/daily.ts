@@ -342,6 +342,7 @@ export function generateDailyLevel(date: string): LevelDef {
       start: landing,
       goal: isLast ? exit : null,
       bright: brightFloors.has(f),
+      dusk: false,
     });
   }
 

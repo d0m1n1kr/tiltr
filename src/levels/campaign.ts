@@ -115,7 +115,7 @@ const defs: unknown[] = [
     intro:
       'Hörst du das helle Doppel-Echo auf deinen Ping? Gems! Sie liegen abseits des Weges. Wer alle drei sammelt, verdient sich den dritten Stern.',
     parTimeS: 80,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [6, 8],
@@ -161,7 +161,7 @@ const defs: unknown[] = [
     intro:
       'Hier ist der Weg vermauert – aber es knirscht verdächtig. Ramm die brüchigen Wände, weich dem Wächter unten aus und sammle, was funkelt.',
     parTimeS: 90,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [6, 8],
@@ -189,7 +189,7 @@ const defs: unknown[] = [
     intro:
       'Zwei Wächter, eine Tür. Der Schlüssel liegt mitten im bewachten Gang rechts – schnapp ihn dir, wenn die Wache vorbeigezogen ist.',
     parTimeS: 110,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [7, 9],
@@ -215,7 +215,7 @@ const defs: unknown[] = [
     intro:
       'Der lange Abstieg: Fünf Löcher atmen im Takt gegeneinander, und unten schiebt dich der Wind genau dorthin, wo du nicht hinwillst. Geduld gewinnt.',
     parTimeS: 120,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [7, 10],
@@ -243,7 +243,7 @@ const defs: unknown[] = [
     intro:
       'Alles, was du gelernt hast: Zwei Wachen, eine Tür, brüchige Abkürzungen, atmende Löcher und Wind. Zwei Wege führen ans Ziel – wähle weise.',
     parTimeS: 170,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [8, 11],
@@ -283,7 +283,7 @@ const defs2: unknown[] = [
     intro:
       'Eine Mauer versiegelt den Weg – aber hörst du das Schweben? Ein Transporter führt hinab. Unten quer durch die Dunkelheit, an anderer Stelle wieder hinauf.',
     parTimeS: 75,
-    pingBudget: 3,
+    pingBudget: 4,
     floors: [
       {
         size: [5, 6],
@@ -489,8 +489,8 @@ const defs2: unknown[] = [
     name: 'Die Weite',
     intro:
       'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, und abseits des Weges funkelt es.',
-    parTimeS: 150,
-    pingBudget: 5,
+    parTimeS: 260,
+    pingBudget: 4,
     floors: [
       {
         // Multi-Screen-Level: 13x15 Zellen (~2 Screens breit auf dem Handy),
@@ -547,7 +547,7 @@ const defs3: unknown[] = [
     intro:
       'Hörst du das Steinschleifen? Hier schieben sich Wände im Takt auf und zu – nur voll geöffnet kommst du durch. Wenn der Takt schneller klackt, schließt sie gleich. Warte. Lausche. Roll.',
     parTimeS: 65,
-    pingBudget: 3,
+    pingBudget: 4,
     floors: [
       {
         size: [5, 7],
@@ -569,7 +569,7 @@ const defs3: unknown[] = [
     intro:
       'Der Schalter auf dem Weg spannt ein Uhrwerk: Die Tür vor dem Ziel springt auf – aber nur für neun Takte. Das Ticken zählt mit und wird hektisch, wenn die Zeit knapp wird. Dann roll, was das Zeug hält!',
     parTimeS: 75,
-    pingBudget: 3,
+    pingBudget: 4,
     floors: [
       {
         size: [6, 7],
@@ -682,8 +682,8 @@ const defs3: unknown[] = [
     name: 'Taktstraße',
     intro:
       'Das Finale des Räderwerks, weiter als dein Bildschirm: Strömungen reißen dich von Schleuse zu Schleuse, Schiebewände geben den Takt vor, und ganz am Ende tickt das Zeitschloss vor der Zielkammer. Hör den Rhythmus – und tanz mit.',
-    parTimeS: 220,
-    pingBudget: 5,
+    parTimeS: 240,
+    pingBudget: 4,
     floors: [
       {
         // Multi-Screen-Finale: 13x15 Zellen. Spine als U: oberste Zeile quer
@@ -765,7 +765,7 @@ const defs4: unknown[] = [
     intro:
       'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Präg dir den Kurs ein, bevor du eintauchst, und trau deinem Gefühl, bis die Ohren wieder aufklaren.',
     parTimeS: 75,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [6, 7],
@@ -792,7 +792,7 @@ const defs4: unknown[] = [
     intro:
       'Spiegelglattes Eis: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Hör auf das Sirren unter dir und plane den Schwung, bevor du ihn nimmst.',
     parTimeS: 85,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [6, 8],
@@ -819,7 +819,7 @@ const defs4: unknown[] = [
     intro:
       'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Beweg dich in kurzen Stößen – und lausche in den Pausen, wo das Schnüffeln steht.',
     parTimeS: 120,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [7, 9],
@@ -848,7 +848,7 @@ const defs4: unknown[] = [
     intro:
       'Die Jagd auf Glatteis: Auf dem Eis gleitest du – und der Horcher hört jedes Gleiten. Wer schlittert, kann nicht stillstehen. Nimm Schwung mit Bedacht und bremse, bevor er zubeißt.',
     parTimeS: 150,
-    pingBudget: 4,
+    pingBudget: 3,
     floors: [
       {
         size: [7, 10],
@@ -877,7 +877,7 @@ const defs4: unknown[] = [
     intro:
       'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel. Beweg dich wie ein Flüstern.',
     parTimeS: 240,
-    pingBudget: 5,
+    pingBudget: 3,
     floors: [
       {
         size: [7, 8],

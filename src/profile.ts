@@ -29,6 +29,9 @@ export interface ProfileData {
   /** Level-Bundles (M40): zuletzt gespielter Index je Bundle-ID – „weiter, wo
    *  ich aufgehört habe". Bestzeiten der Level liegen weiter in `best`. */
   bundleAt: Record<string, number>;
+  /** Zugänglichkeit (M43): Tutorial-Ebenen immer hell spielen – NUR das
+   *  Tutorial, die Kampagne bleibt dunkel. */
+  tutorialBright: boolean;
 }
 
 const DEFAULTS: ProfileData = {
@@ -42,6 +45,7 @@ const DEFAULTS: ProfileData = {
   daily: null,
   streak: null,
   bundleAt: {},
+  tutorialBright: false,
 };
 
 const data: ProfileData = load();
@@ -62,6 +66,7 @@ function load(): ProfileData {
       daily: parsed.daily && typeof parsed.daily.date === 'string' ? parsed.daily : null,
       streak: parsed.streak && typeof parsed.streak.last === 'string' ? parsed.streak : null,
       bundleAt: typeof parsed.bundleAt === 'object' && parsed.bundleAt ? parsed.bundleAt : {},
+      tutorialBright: parsed.tutorialBright === true,
     };
   } catch {
     return { ...DEFAULTS };
@@ -90,6 +95,14 @@ export const profile = {
   },
   set controls(c: Controls) {
     data.controls = c;
+    save();
+  },
+
+  get tutorialBright(): boolean {
+    return data.tutorialBright;
+  },
+  set tutorialBright(v: boolean) {
+    data.tutorialBright = v;
     save();
   },
 

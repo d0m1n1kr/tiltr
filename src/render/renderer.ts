@@ -7,6 +7,15 @@ import { WORLD } from './palette';
 export interface DrawOptions {
   debug?: boolean;
   revealAll?: boolean;
+  /** Dämmerung (M43): Faktor 0–1 auf alles, was NUR wegen `revealAll`
+   *  sichtbar ist – das Licht der Tutorial-Ebene blendet damit aus. Debug
+   *  ignoriert ihn. */
+  revealGain?: number;
+  /** Aufleuchten neuer Elemente (M43): Diese Element-Typen (bzw. Wand-
+   *  Varianten wallBrittle/wallAbsorb) werden unabhängig von Ping und Licht
+   *  mit `gain` gezeichnet – der Spieler sieht EINMAL, was er ab jetzt nur
+   *  noch hört. */
+  spotlight?: { types: ReadonlySet<string>; gain: number } | null;
   now?: number;
   /** Partner im Multiplayer: Position (Weltkoordinaten der EIGENEN Ebene
    *  nur wenn sameFloor), sonst wird der Schein an den Rand geklemmt.
@@ -205,6 +214,13 @@ export class Renderer {
 
   draw(world: World, opts: DrawOptions): void {
     const { debug = false, revealAll = false, now = performance.now() } = opts;
+    const gain = debug ? 1 : Math.max(0, Math.min(1, opts.revealGain ?? 1));
+    const spot = opts.spotlight ?? null;
+    const spotAlpha = (type: string, base: number): number => (spot && spot.types.has(type) ? base * spot.gain : 0);
+    // Wand-Variante für das Aufleuchten: Tür, Schiebewand, Automat,
+    // Schallschutz oder brüchig – eine schlichte Wand leuchtet nie auf.
+    const wallType = (w: World['walls'][number]): string =>
+      w.door ? 'door' : w.slide ? 'slidingWall' : w.jukebox !== undefined ? 'jukebox' : w.absorb ? 'wallAbsorb' : w.hp !== undefined ? 'wallBrittle' : 'wall';
     const ctx = this.ctx;
     const s = this.scale,
       ox = this.offsetX,
@@ -245,18 +261,20 @@ export class Renderer {
       b.path.rect(tx(r.x), ty(r.y), r.w * s, r.h * s);
     };
     // litFrom verzögert das Aufleuchten: so breitet sich der Echo-Ping als Welle aus.
-    const wallAlpha = (w: { litFrom?: number; litUntil?: number }): number => {
-      if (debug || revealAll) return 0.55;
-      if (w.litFrom && now < w.litFrom) return 0;
-      if (w.litUntil && w.litUntil > now) return Math.min(1, (w.litUntil - now) / 1200) * 0.9;
-      return 0;
+    const wallAlpha = (w: World['walls'][number]): number => {
+      if (debug || revealAll) return 0.55 * gain;
+      let a = 0;
+      if (w.litFrom && now < w.litFrom) a = 0;
+      else if (w.litUntil && w.litUntil > now) a = Math.min(1, (w.litUntil - now) / 1200) * 0.9;
+      return Math.max(a, spotAlpha(wallType(w), 0.55));
     };
     // Aufdeckbare Objekte: sichtbar bei Debug/Reveal oder nach Ping (litFrom/litUntil).
-    const revealAlpha = (o: { litFrom?: number; litUntil?: number }, base: number): number => {
-      if (debug || revealAll) return base;
-      if (o.litFrom && now < o.litFrom) return 0;
-      if (o.litUntil && o.litUntil > now) return Math.min(1, (o.litUntil - now) / 1200) * base;
-      return 0;
+    const revealAlpha = (o: { litFrom?: number; litUntil?: number }, base: number, type?: string): number => {
+      if (debug || revealAll) return base * gain;
+      let a = 0;
+      if (o.litFrom && now < o.litFrom) a = 0;
+      else if (o.litUntil && o.litUntil > now) a = Math.min(1, (o.litUntil - now) / 1200) * base;
+      return type ? Math.max(a, spotAlpha(type, base)) : a;
     };
     for (const w of world.walls) {
       if (w.door?.open) continue; // offene Türen unten als Umriss, nicht als Fläche
@@ -298,17 +316,19 @@ export class Renderer {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.globalCompositeOperation = 'source-over';
 
-    // Wind- und Strömungszonen: nur bei Debug/Reveal, Fläche mit Richtungspfeil.
-    if (debug || revealAll) {
-      const drawZone = (z: { x: number; y: number; w: number; h: number; fx: number; fy: number }, color: string) => {
-        ctx.fillStyle = `rgba(${color}, 0.08)`;
+    // Wind- und Strömungszonen: nur bei Debug/Reveal (oder im Aufleuchten),
+    // Fläche mit Richtungspfeil.
+    const zoneGain = (type: string): number => (debug || revealAll ? gain : spot && spot.types.has(type) ? spot.gain : 0);
+    if (debug || revealAll || spot) {
+      const drawZone = (z: { x: number; y: number; w: number; h: number; fx: number; fy: number }, color: string, g: number) => {
+        ctx.fillStyle = `rgba(${color}, ${0.08 * g})`;
         ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
         const cx = tx(z.x + z.w / 2),
           cy = ty(z.y + z.h / 2);
         const f = Math.hypot(z.fx, z.fy) || 1;
         const dx = (z.fx / f) * z.w * s * 0.3,
           dy = (z.fy / f) * z.h * s * 0.3;
-        ctx.strokeStyle = `rgba(${color}, 0.6)`;
+        ctx.strokeStyle = `rgba(${color}, ${0.6 * g})`;
         ctx.lineWidth = 2 * this.dpr;
         ctx.beginPath();
         ctx.moveTo(cx - dx, cy - dy);
@@ -318,17 +338,22 @@ export class Renderer {
         ctx.lineTo(cx + dx - (dx - dy) * 0.35, cy + dy - (dy + dx) * 0.35);
         ctx.stroke();
       };
-      for (const z of world.windZones) drawZone(z, WORLD.wind);
-      for (const z of world.currents) drawZone(z, WORLD.current);
+      const gWind = zoneGain('windZone'),
+        gCur = zoneGain('current'),
+        gFog = zoneGain('fogZone'),
+        gIce = zoneGain('ice');
+      if (gWind > 0) for (const z of world.windZones) drawZone(z, WORLD.wind, gWind);
+      if (gCur > 0) for (const z of world.currents) drawZone(z, WORLD.current, gCur);
       // Nebel: weicher Schleier; Eis: kalte Fläche mit Schlieren.
-      for (const z of world.fogZones) {
-        ctx.fillStyle = `rgba(${WORLD.fog}, 0.16)`;
+      if (gFog > 0)
+        for (const z of world.fogZones) {
+          ctx.fillStyle = `rgba(${WORLD.fog}, ${0.16 * gFog})`;
+          ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
+        }
+      if (gIce > 0) for (const z of world.ice) {
+        ctx.fillStyle = `rgba(${WORLD.ice}, ${0.12 * gIce})`;
         ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
-      }
-      for (const z of world.ice) {
-        ctx.fillStyle = `rgba(${WORLD.ice}, 0.12)`;
-        ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
-        ctx.strokeStyle = `rgba(${WORLD.ice}, 0.4)`;
+        ctx.strokeStyle = `rgba(${WORLD.ice}, ${0.4 * gIce})`;
         ctx.lineWidth = 1.5 * this.dpr;
         ctx.beginPath();
         ctx.moveTo(tx(z.x + z.w * 0.25), ty(z.y + z.h * 0.7));
@@ -342,8 +367,9 @@ export class Renderer {
     // Checkpoints: Ring – sichtbar bei Debug/Reveal oder kurz nach Aktivierung.
     for (const cp of world.checkpoints) {
       let alpha = 0;
-      if (debug || revealAll) alpha = cp.reached ? 0.7 : 0.4;
+      if (debug || revealAll) alpha = (cp.reached ? 0.7 : 0.4) * gain;
       else if (cp.litUntil && cp.litUntil > now) alpha = Math.min(1, (cp.litUntil - now) / 2000);
+      alpha = Math.max(alpha, spotAlpha('checkpoint', 0.4));
       if (alpha <= 0.01) continue;
       ctx.strokeStyle = `rgba(${WORLD.checkpoint}, ${alpha})`;
       ctx.lineWidth = 3 * this.dpr;
@@ -357,7 +383,7 @@ export class Renderer {
     for (const w of world.walls) {
       const openSlide = w.slide !== undefined && w.slide.openness > 0.98;
       if (!w.door?.open && !openSlide) continue;
-      const alpha = debug || revealAll ? 0.5 : w.litUntil && w.litUntil > now ? 0.5 : 0.25;
+      const alpha = debug || revealAll ? 0.5 * gain : w.litUntil && w.litUntil > now ? 0.5 : 0.25;
       ctx.strokeStyle = `rgba(${openSlide ? WORLD.slider : WORLD.door}, ${alpha})`;
       ctx.lineWidth = 1.5 * this.dpr;
       ctx.setLineDash([6 * this.dpr, 6 * this.dpr]);
@@ -367,7 +393,7 @@ export class Renderer {
 
     // Druckplatten: goldener Rahmen, gefüllt solange gehalten.
     for (const pl of world.plates) {
-      const alpha = debug || revealAll ? 0.9 : revealAlpha(pl, 0.9);
+      const alpha = debug || revealAll ? 0.9 * gain : revealAlpha(pl, 0.9, 'plate');
       if (alpha <= 0.01 && !pl.held) continue;
       const a = Math.max(alpha, pl.held ? 0.9 : 0);
       const r = pl.r * s;
@@ -384,7 +410,7 @@ export class Renderer {
     // leert sich der Bogen im Uhrzeigersinn.
     for (const sw of world.switches) {
       const active = sw.openUntil !== null && sw.openUntil > now;
-      const alpha = debug || revealAll ? 0.9 : Math.max(revealAlpha(sw, 0.9), active ? 0.9 : 0);
+      const alpha = debug || revealAll ? 0.9 * gain : Math.max(revealAlpha(sw, 0.9, 'timedSwitch'), active ? 0.9 : 0);
       if (alpha <= 0.01) continue;
       const cx = tx(sw.x),
         cy = ty(sw.y);
@@ -406,9 +432,10 @@ export class Renderer {
     // einem Absturz oder Echo-Ping. Der Radius atmet mit dem Öffnungsgrad.
     for (const hole of world.holes) {
       let alpha = 0;
-      if (debug || revealAll) alpha = 0.8;
+      if (debug || revealAll) alpha = 0.8 * gain;
       else if (hole.litFrom && now < hole.litFrom) alpha = 0;
       else if (hole.litUntil && hole.litUntil > now) alpha = Math.min(1, (hole.litUntil - now) / 1500);
+      alpha = Math.max(alpha, spotAlpha('hole', 0.8));
       if (alpha <= 0.01) continue;
       const r = hole.r * s * (0.25 + 0.75 * (hole.openness ?? 1));
       ctx.fillStyle = WORLD.holeFill;
@@ -425,7 +452,7 @@ export class Renderer {
     // Zerbrochen (state 2) übernimmt das eingesetzte Loch die Darstellung.
     for (const g of world.glass) {
       if (g.state === 2) continue;
-      const alpha = revealAlpha(g, 0.7);
+      const alpha = revealAlpha(g, 0.7, 'glass');
       if (alpha <= 0.01) continue;
       ctx.strokeStyle = `rgba(${WORLD.brittle}, ${alpha})`;
       ctx.lineWidth = 1.5 * this.dpr;
@@ -454,7 +481,7 @@ export class Renderer {
     // der Audio-Uhr: Ein Blinken muss nicht sample-genau sein, und der
     // Renderer soll nichts über den Musik-Bus wissen.
     for (const j of world.jukeboxes) {
-      const alpha = revealAlpha(j, 0.95);
+      const alpha = revealAlpha(j, 0.95, 'jukebox');
       if (alpha <= 0.01) continue;
       // Ausschlag auf dem Schlag, Abklingen dazwischen (kein Sinus – der
       // wirkt wie Wabern, nicht wie Puls).
@@ -471,7 +498,7 @@ export class Renderer {
     // Sog-Anker: violetter Kern mit offenen Spiral-Ringen; im Debug/Reveal
     // zusätzlich der Wirkradius.
     for (const a of world.anchors) {
-      const alpha = revealAlpha(a, 0.9);
+      const alpha = revealAlpha(a, 0.9, 'anchor');
       if (alpha <= 0.01) continue;
       const cx = tx(a.x),
         cy = ty(a.y);
@@ -498,7 +525,7 @@ export class Renderer {
     // Echo-Kristalle: vierstrahliger Teal-Stern.
     for (const c of world.crystals) {
       if (c.collected) continue;
-      const alpha = revealAlpha(c, 0.95);
+      const alpha = revealAlpha(c, 0.95, 'echoCrystal');
       if (alpha <= 0.01) continue;
       const cx = tx(c.x),
         cy = ty(c.y);
@@ -516,7 +543,7 @@ export class Renderer {
     // Schlüssel: goldene Raute.
     for (const key of world.keys) {
       if (key.collected) continue;
-      const alpha = revealAlpha(key, 0.95);
+      const alpha = revealAlpha(key, 0.95, 'key');
       if (alpha <= 0.01) continue;
       ctx.save();
       ctx.translate(tx(key.x), ty(key.y));
@@ -530,7 +557,7 @@ export class Renderer {
     // Gems: eisblaue Raute mit Ring.
     for (const gem of world.gems) {
       if (gem.collected) continue;
-      const alpha = revealAlpha(gem, 0.95);
+      const alpha = revealAlpha(gem, 0.95, 'gem');
       if (alpha <= 0.01) continue;
       ctx.save();
       ctx.translate(tx(gem.x), ty(gem.y));
@@ -544,13 +571,13 @@ export class Renderer {
     // Wächter: rote Scheibe; im Debug zusätzlich der Patrouillen-Pfad.
     for (const g of world.guards) {
       if (debug || revealAll) {
-        ctx.strokeStyle = `rgba(${WORLD.guard}, 0.3)`;
+        ctx.strokeStyle = `rgba(${WORLD.guard}, ${0.3 * gain})`;
         ctx.lineWidth = 2 * this.dpr;
         ctx.beginPath();
         g.waypoints.forEach((p, i) => (i ? ctx.lineTo(tx(p.x), ty(p.y)) : ctx.moveTo(tx(p.x), ty(p.y))));
         ctx.stroke();
       }
-      const alpha = revealAlpha(g, 0.9);
+      const alpha = revealAlpha(g, 0.9, 'guard');
       if (alpha <= 0.01) continue;
       const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), g.r * s * 2.2);
       grad.addColorStop(0, `rgba(${WORLD.guard}, ${alpha * 0.35})`);
@@ -568,7 +595,7 @@ export class Renderer {
     // Horcher: orangerote Scheibe mit Lausch-Bögen (kein Patrouillen-Pfad –
     // er hat keinen).
     for (const l of world.listeners) {
-      const alpha = revealAlpha(l, 0.9);
+      const alpha = revealAlpha(l, 0.9, 'listener');
       if (alpha <= 0.01) continue;
       const cx = tx(l.x),
         cy = ty(l.y);
@@ -597,7 +624,7 @@ export class Renderer {
 
     // Transporter: Doppelring mit Richtungs-Glyphe (▼ runter, ▲ hoch, ◆ Portal).
     for (const t of world.transporters) {
-      const alpha = revealAlpha(t, 0.9);
+      const alpha = revealAlpha(t, 0.9, 'transporter');
       if (alpha <= 0.01) continue;
       const cx = tx(t.x),
         cy = ty(t.y);
@@ -656,8 +683,11 @@ export class Renderer {
       const calm = opts.goalDone === true && !debug && !revealAll;
       const pulse = calm ? 0.25 + 0.15 * Math.sin(now / 700) : 0.5 + 0.5 * Math.sin(now / 300);
       const r = g.r * s * (1.1 + pulse * 0.3);
+      // Dämmerung: auch der Ziel-Schein geht mit dem Licht aus (ein fertiges
+      // Ziel leuchtet unabhängig davon ruhig weiter).
+      const gg = opts.goalDone === true || debug ? 1 : gain;
       const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), r * 2);
-      grad.addColorStop(0, `rgba(${WORLD.goal}, ${0.5 + pulse * 0.3})`);
+      grad.addColorStop(0, `rgba(${WORLD.goal}, ${(0.5 + pulse * 0.3) * gg})`);
       grad.addColorStop(1, `rgba(${WORLD.goal}, 0)`);
       ctx.fillStyle = grad;
       ctx.beginPath();

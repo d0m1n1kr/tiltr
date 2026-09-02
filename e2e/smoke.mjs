@@ -80,6 +80,7 @@ const KNOWN_RUNS = [
   "26",
   "27",
   "28",
+  "29",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -5245,6 +5246,155 @@ if (want("28")) {
   } catch (e) {
     check(
       `Lauf 28 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 29: Spielregeln (M43). Landeplatz = Respawn: Ein Sturz auf Ebene 2
+// führte vorher auf Ebene 1 zurück, weil nur Start und Checkpoint den
+// Respawn setzten. Tutorial mit Licht: tut-1 ist HELL, tut-2 derselbe Raum
+// mit Dämmerung – die erste Wandberührung löscht das Licht in 2 s. Aufleuchten
+// neuer Elemente + „Neu hier"-Chip + Sterne-Vorschau im Intro. Option
+// „Tutorial hell" hält das Licht an – nur im Tutorial.
+if (want("29")) {
+  try {
+    // A) Kampagne w2-01: Sterne-Vorschau, Neu-Chip, Respawn nach dem Warp.
+    const page = await browser.newPage({
+      viewport: { width: 400, height: 800 },
+      locale: "de-DE",
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?unlock&nosplash`);
+    await page.click("#campaignBtn");
+    await page.waitForTimeout(200);
+    await page.locator(".level-item").nth(10).click(); // W2-01 Unterführung
+    await page.waitForTimeout(3300); // Countdown
+    const stars = (await page.textContent("#interStars")).trim();
+    check(
+      `Sterne-Vorschau im Intro ("${stars}")`,
+      /★★ unter 75 s/.test(stars) && /★★★ sturzfrei/.test(stars),
+    );
+    const news = await page.locator("#interNew .chip").allTextContents();
+    check(
+      `„Neu hier"-Chip nennt den Transporter (${JSON.stringify(news)})`,
+      news.length === 1 && /Transporter/.test(news[0]),
+    );
+    await page.click("#interPrimary"); // Los!
+    await page.waitForTimeout(200);
+    const spot = await page.evaluate(() => window.__tiltrWorld);
+    check(
+      `Aufleuchten kennt den Transporter als neu (${JSON.stringify(spot?.spotlight)}); Respawn zunächst auf E1 (${spot?.respawnFloor})`,
+      !!spot?.spotlight?.includes("transporter") && spot?.respawnFloor === 0,
+    );
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(2400);
+    await page.keyboard.up("ArrowRight");
+    await page.waitForTimeout(1200); // Warp-Pause + Ankunft
+    const floor2 = (await page.textContent("#floor")).trim();
+    const after = await page.evaluate(() => window.__tiltrWorld);
+    check(
+      `Landeplatz = Respawn: nach dem Warp (${floor2}) liegt der Respawn auf Ebene 2 (respawnFloor=${after?.respawnFloor})`,
+      floor2 === "⬍ E2" && after?.respawnFloor === 1,
+    );
+    await page.close();
+
+    // B) tut-1 ist hell – der Spieler SIEHT das Labyrinth, während er die
+    // Steuerung lernt. Kein Neu-Chip: Das Level bringt kein Element.
+    const p1 = await browser.newPage({
+      viewport: { width: 400, height: 800 },
+      locale: "de-DE",
+    });
+    p1.on("pageerror", (e) => errors.push(String(e)));
+    await p1.goto(`${BASE}/?nosplash`);
+    await p1.click("#tutorialBtn");
+    await p1.waitForTimeout(3300);
+    const newHidden = await p1.evaluate(() =>
+      document.getElementById("interNew").classList.contains("hidden"),
+    );
+    await p1.click("#interPrimary");
+    await p1.waitForTimeout(300);
+    const w1 = await p1.evaluate(() => window.__tiltrWorld);
+    check(
+      `tut-1 ist hell (bright=${w1?.bright}, lightGain=${w1?.lightGain}), kein Neu-Chip (${newHidden})`,
+      w1?.bright === true && w1?.lightGain === 1 && newHidden,
+    );
+    await p1.close();
+
+    // C) tut-2: derselbe Raum, Dämmerung. Direkt hinein über den Fortschritt
+    // im Profil (tut-1 erledigt). Das Licht brennt, bis der Ball eine Wand
+    // berührt – die Außenwand links reicht.
+    const ctxDusk = await browser.newContext({
+      viewport: { width: 400, height: 800 },
+      locale: "de-DE",
+    });
+    const p2 = await ctxDusk.newPage();
+    p2.on("pageerror", (e) => errors.push(String(e)));
+    await p2.addInitScript(() => {
+      localStorage.setItem(
+        "tiltr.profile",
+        JSON.stringify({ tutorialDone: ["tut-1"] }),
+      );
+    });
+    await p2.goto(`${BASE}/?nosplash`);
+    await p2.click("#tutorialBtn");
+    await p2.waitForTimeout(3300);
+    const title2 = (await p2.textContent("#interTitle")).trim();
+    await p2.click("#interPrimary");
+    await p2.waitForTimeout(300);
+    const before = await p2.evaluate(() => window.__tiltrWorld);
+    await p2.keyboard.down("ArrowLeft");
+    await p2.waitForTimeout(600);
+    await p2.keyboard.up("ArrowLeft");
+    const status = (await p2.textContent("#status")).trim();
+    const mid = await p2.evaluate(() => window.__tiltrWorld);
+    await p2.waitForTimeout(2200);
+    const dark = await p2.evaluate(() => window.__tiltrWorld);
+    check(
+      `tut-2 ("${title2}"): hell vor der Berührung (${before?.lightGain}), Dämmerung danach (${mid?.lightGain?.toFixed(2)}, "${status}"), dunkel nach 2 s (${dark?.lightGain}, bright=${dark?.bright})`,
+      title2.includes("Wände & Echo") &&
+        before?.lightGain === 1 &&
+        mid?.lightGain < 1 &&
+        /Licht/.test(status) &&
+        dark?.lightGain === 0 &&
+        dark?.bright === false,
+    );
+    await ctxDusk.close();
+
+    // D) Option „Tutorial hell": dieselbe Berührung, das Licht bleibt an.
+    const ctxBright = await browser.newContext({
+      viewport: { width: 400, height: 800 },
+      locale: "de-DE",
+    });
+    const p3 = await ctxBright.newPage();
+    p3.on("pageerror", (e) => errors.push(String(e)));
+    await p3.addInitScript(() => {
+      localStorage.setItem(
+        "tiltr.profile",
+        JSON.stringify({ tutorialDone: ["tut-1"], tutorialBright: true }),
+      );
+    });
+    await p3.goto(`${BASE}/?nosplash`);
+    const chipActive = await p3.evaluate(() =>
+      document.getElementById("tutBrightBtn").classList.contains("active"),
+    );
+    await p3.click("#tutorialBtn");
+    await p3.waitForTimeout(3300);
+    await p3.click("#interPrimary");
+    await p3.waitForTimeout(300);
+    await p3.keyboard.down("ArrowLeft");
+    await p3.waitForTimeout(600);
+    await p3.keyboard.up("ArrowLeft");
+    await p3.waitForTimeout(2200);
+    const still = await p3.evaluate(() => window.__tiltrWorld);
+    check(
+      `Option „Tutorial hell" (Chip aktiv: ${chipActive}): das Licht bleibt nach der Berührung an (${still?.lightGain})`,
+      chipActive && still?.lightGain === 1 && still?.bright === true,
+    );
+    await ctxBright.close();
+  } catch (e) {
+    check(
+      `Lauf 29 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

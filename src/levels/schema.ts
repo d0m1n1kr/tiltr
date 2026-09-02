@@ -286,6 +286,10 @@ export const floorSchema = z.object({
   /** Helle Ebene: Labyrinth und Elemente sind sichtbar wie in der
    *  Debug-Ansicht (Renderer revealAll) – Default ist die dunkle Welt. */
   bright: z.boolean().default(false),
+  /** Dämmerung (Tutorial): hell wie `bright`, bis der Ball zum ersten Mal
+   *  eine Wand berührt – dann blendet das Licht in zwei Sekunden aus und die
+   *  Ebene ist dunkel wie jede andere. „Du kennst diesen Raum. Jetzt hör ihn." */
+  dusk: z.boolean().default(false),
 });
 export type FloorDef = z.infer<typeof floorSchema>;
 

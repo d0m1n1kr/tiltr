@@ -12,19 +12,26 @@ const row = (y: number, x0: number, x1: number): Array<[[number, number], 'e']> 
 };
 
 const defs: unknown[] = [
+  // Mit Licht beginnen (M43): Die ersten zwei Minuten handeln von der
+  // STEUERUNG – wie stark reagiert die Kugel, wie viel Schwung trägt sie.
+  // Wer das im Dunkeln lernen muss, weiß nicht, ob er sich verirrt hat oder
+  // das Handy falsch hält. Deshalb ist tut-1 HELL, und tut-2 ist DERSELBE
+  // Raum (Seed, Carve), in dem das Licht bei der ersten Wandberührung
+  // ausgeht: „Du kennst diesen Raum. Jetzt hör ihn."
   {
     id: 'tut-1',
     name: 'Rollen & Lauschen',
     intro:
-      'Neige das Handy sanft – der Ball rollt. Höre auf den Sonar-Ping: Er kommt aus Richtung des Ziels und wird schneller, je näher du bist. Roll nach rechts!',
+      'Zum ersten Mal siehst du das Labyrinth. Neige das Handy sanft – die Kugel rollt. Höre auf den Sonar-Ping: Er kommt aus Richtung des Ziels und wird schneller, je näher du bist. Roll nach rechts!',
     pingBudget: 0,
     floors: [
       {
-        size: [3, 2],
-        maze: { seed: 1, carve: row(0, 0, 2) },
+        size: [4, 3],
+        maze: { seed: 7, carve: row(0, 0, 3) },
         elements: [],
         start: [0, 0],
-        goal: [2, 0],
+        goal: [3, 0],
+        bright: true,
       },
     ],
   },
@@ -32,15 +39,16 @@ const defs: unknown[] = [
     id: 'tut-2',
     name: 'Wände & Echo',
     intro:
-      'Die Wände sind unsichtbar. Berührst du eine, hörst du einen dumpfen Schlag aus ihrer Richtung – und sie leuchtet kurz auf. Ertaste dir den Weg.',
+      'Du kennst diesen Raum. Sobald du eine Wand berührst, geht das Licht aus – von da an hörst du sie: ein dumpfer Schlag aus ihrer Richtung, und sie leuchtet kurz auf. Das Ziel liegt jetzt unten rechts. Ertaste dir den Weg.',
     pingBudget: 0,
     floors: [
       {
         size: [4, 3],
-        maze: { seed: 7 },
+        maze: { seed: 7, carve: row(0, 0, 3) },
         elements: [],
         start: [0, 0],
         goal: [3, 2],
+        dusk: true,
       },
     ],
   },
