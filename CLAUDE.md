@@ -219,6 +219,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `__tiltrWake`) – der Frame-Haken `__tiltrJukebox` friert im Menü ein, weil
   die Schleife dort früh aussteigt, und „ist es wirklich still?" muss gerade
   dann prüfbar sein.
+- `tools/startup.mjs` – iOS-STARTBILDSCHIRM: Beim Kaltstart der installierten
+  PWA zeigt iOS einen System-Startbildschirm, und der ist WEISS, solange kein
+  `apple-touch-startup-image` EXAKT zur Pixelgröße passt (Manifest-
+  background_color ignoriert iOS dafür). EINE Geräteliste (`DEVICES`), aus der
+  der Build die PNGs (emitFile, 1-Bit-Palette, ~500 Byte je Bild) UND die
+  `<link>`-Tags erzeugt – nichts eingecheckt, nichts doppelt gepflegt. Farbe
+  ist `--bg-deep`; E2E-Lauf 26 prüft Tag ↔ Bildgröße ↔ Token. Zweiter Teil des
+  Weißblitzes: WebKits Leinwand vor dem ersten Paint – `color-scheme: dark`
+  (Meta + :root). Neues Gerät ⇒ ein Eintrag in DEVICES.
 - `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
   Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
   Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und

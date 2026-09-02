@@ -75,6 +75,8 @@ const KNOWN_RUNS = [
   "23",
   "24",
   "25",
+  ,
+  "26",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -3968,6 +3970,98 @@ if (want("25")) {
   check(
     `JSON läuft über dasselbe Feld ("${statusD}")`,
     statusD.includes("Per JSON") && statusD.includes("✓"),
+  );
+
+  await page.close();
+}
+
+// --- Lauf 26: iOS-Startbildschirm. Die installierte PWA war beim Kaltstart
+// kurz WEISS: iOS zeigt vor dem Laden einen System-Startbildschirm und nimmt
+// dafür NUR apple-touch-startup-image – und nur bei EXAKT passender Pixelgröße,
+// sonst still verworfen. Deshalb hier: jedes Tag hat ein Bild, jedes Bild hat
+// genau die Größe, die sein Media-Query verspricht, und die Farbe ist der
+// Spielfeld-Ton. Dazu color-scheme dark für die Leinwand vor dem ersten Paint. ---
+if (want("26")) {
+  const page = await browser.newPage({
+    viewport: { width: 400, height: 800 },
+    locale: "de-DE",
+  });
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/?nosplash`);
+
+  const scheme = await page.getAttribute(
+    'meta[name="color-scheme"]',
+    "content",
+  );
+  check(`color-scheme dark im Head ("${scheme}")`, scheme === "dark");
+  const rootScheme = await page.evaluate(
+    () => getComputedStyle(document.documentElement).colorScheme,
+  );
+  check(
+    `color-scheme dark auch als CSS ("${rootScheme}")`,
+    rootScheme === "dark",
+  );
+
+  const links = await page.$$eval(
+    'link[rel="apple-touch-startup-image"]',
+    (els) =>
+      els.map((e) => ({
+        media: e.getAttribute("media") ?? "",
+        href: e.getAttribute("href") ?? "",
+      })),
+  );
+  check(`18 Startbilder verlinkt (${links.length})`, links.length === 18);
+  check(
+    "jedes Media-Query ist Hochkant (Manifest: portrait)",
+    links.every((l) => /orientation: portrait/.test(l.media)),
+  );
+
+  // Farbe des Spielfelds, wie sie wirklich gerendert ist – gegen die Palette des PNG.
+  const bgDeep = await page.evaluate(() =>
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--bg-deep")
+      .trim(),
+  );
+  const hexToRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+  let sizeOk = 0,
+    colourOk = 0,
+    tiny = 0,
+    missing = [];
+  for (const l of links) {
+    const m = l.media.match(
+      /device-width: (\d+)px\) and \(device-height: (\d+)px\) and \(-webkit-device-pixel-ratio: (\d+)\)/,
+    );
+    const res = await page.request.get(`${BASE}/${l.href}`);
+    if (!m || res.status() !== 200) {
+      missing.push(l.href);
+      continue;
+    }
+    const buf = Buffer.from(await res.body());
+    const w = buf.readUInt32BE(16),
+      h = buf.readUInt32BE(20); // IHDR
+    if (w === Number(m[1]) * Number(m[3]) && h === Number(m[2]) * Number(m[3]))
+      sizeOk++;
+    const plte = buf.indexOf("PLTE", 0, "ascii");
+    const rgb = [buf[plte + 4], buf[plte + 5], buf[plte + 6]];
+    if (rgb.join(",") === hexToRgb(bgDeep).join(",")) colourOk++;
+    if (buf.length < 2048) tiny++;
+  }
+  check(
+    `jedes Bild ist da (fehlend: ${JSON.stringify(missing)})`,
+    missing.length === 0,
+  );
+  check(
+    `jedes Bild hat GENAU die Pixelgröße seines Media-Querys (${sizeOk}/${links.length})`,
+    sizeOk === links.length,
+  );
+  check(
+    `jedes Bild trägt den Spielfeld-Ton --bg-deep ${bgDeep} (${colourOk}/${links.length})`,
+    colourOk === links.length,
+  );
+  check(
+    `jedes Bild bleibt unter 2 KB – Precache-Disziplin (${tiny}/${links.length})`,
+    tiny === links.length,
   );
 
   await page.close();

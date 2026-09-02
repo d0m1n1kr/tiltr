@@ -612,6 +612,48 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M36 „Der weiße Moment" ✓ (v2.6.2) – iOS-Startbildschirm
+
+**Die Meldung:** „Wenn ich nach einer Weile unter iOS die gespeicherte PWA
+öffne, ist zuerst die Seite kurz weiß."
+
+**Zwei Weiße, zwei Ursachen.** Erst der SYSTEM-Startbildschirm: iOS zeigt ihn,
+bevor die Seite überhaupt lädt, und nimmt dafür ausschließlich
+`apple-touch-startup-image` – das Manifest-`background_color` ignoriert es.
+Ohne passendes Bild: weiß. Und „passend" heißt PIXELGENAU; ein Bild in der
+falschen Größe wird still verworfen. Dann die Leinwand von WebKit zwischen
+Start der Web-View und erstem Paint: ohne `color-scheme` hell.
+
+**Der Weg.** `tools/startup.mjs` hält EINE Geräteliste (18 Hochkant-Maße,
+iPhone SE bis iPad Pro 13"); ein Vite-Plugin erzeugt daraus beim Build die
+PNGs (`emitFile`) und die `<link>`-Tags (`transformIndexHtml`). Nichts wird
+eingecheckt, die Liste ist die einzige Wahrheit. Die Bilder sind einfarbig im
+Spielfeld-Ton `--bg-deep` – kein Logo-Splash, die Welt offenbart sich über
+sparsames Licht. Einfarbig heißt 1-Bit-Palette: ein 1290×2796-Bild hat
+**536 Byte**, alle 18 zusammen liegen unter 10 KB Precache. Dazu
+`<meta name="color-scheme" content="dark">` und `color-scheme: dark` auf
+`:root` für den zweiten Teil.
+
+E2E-Lauf 26 (7 Checks) liest die Tags aus dem gebauten Head, lädt jedes Bild
+und prüft: Status 200, IHDR-Größe = Media-Query × Pixeldichte, PLTE-Farbe =
+gerendertes `--bg-deep`, unter 2 KB, Hochkant. Sabotage – und hier eine Lektion: Meine erste
+Sabotage (eine Pixeldichte in DEVICES falsch) kippte NICHTS, und das ist
+richtig so. Tag und Bild kommen aus EINEM Datensatz; ein Fehler in der Quelle
+macht beide konsistent falsch, und Konsistenz ist alles, was der Test prüfen
+kann. Eine falsche Gerätetabelle fängt kein Test – nur Apples Tabelle. Was
+der Lauf fängt, sind PIPELINE-Fehler: Maße im Encoder vertauscht (Größen-Check
+rot), falsche Farbe (Farb-Check rot), kein emitFile (Bilder fehlen). Genau die
+sind rot gesehen. Und die PNGs sind im Precache (workbox globPatterns) – das
+Default-Glob sah emittierte Assets außerhalb von public/ nicht. Nebenbefund
+beim Nachrechnen der Precache-Größe (673 → 740 KiB, obwohl 18 Bilder nur
+9 KB wiegen): Die beiden APP-ICONS (57 KB) waren bisher gar nicht im
+Precache – `includeAssets` kopiert sie, das Default-Glob nahm keine PNGs.
+Jetzt sind sie drin; die Differenz stimmt auf das Kilobyte.
+
+**Ehrlich zur Wirkung:** Wie kurz der Moment auf dem Gerät jetzt wirklich ist,
+kann ich nicht messen – die E2E beweist, dass iOS ein passendes Bild
+VORFINDET, nicht, wie es sich anfühlt. Das bleibt dein Bericht.
+
 ## M35 „Die Suite schläft" ✓ (v2.6.1) – E2E-Filter und Parallelisierung
 
 **Die Frage:** „Die Tests und die CI laufen mittlerweile sehr lange. Kann man

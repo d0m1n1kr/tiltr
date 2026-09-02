@@ -2,6 +2,7 @@
    Wer UI baut, benutzt diese Tokens und Klassen, keine Magic Values. */
 
 :root {
+  color-scheme: dark; /* Formulare, Scrollbalken, Leinwand: dunkel – siehe <meta name="color-scheme"> */
   /* Grundflächen */
   --bg-deep: #05070f; /* Spielfeld – reines Schwarz gehört den Löchern */
   --bg: #0b1020;

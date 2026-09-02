@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { startupImagesPlugin } from './tools/startup.mjs';
 import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
@@ -30,6 +31,9 @@ export default defineConfig({
     __BUILD_TIME__: JSON.stringify(buildTime),
   },
   plugins: [
+    
+    // iOS-Startbildschirm: sonst ist die installierte PWA beim Kaltstart kurz WEISS (tools/startup.mjs).
+    startupImagesPlugin(),
     versionJson(),
     VitePWA({
       // 'prompt': neue Version wird gemeldet und erst auf Klick aktiviert.
@@ -61,6 +65,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Startbilder liegen NICHT in public/ (emitFile) – das Default-Glob
+        // (js/css/html + includeAssets) sähe sie nicht. 18 × ~500 Byte.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+
         // version.json immer frisch vom Netz holen (Update-Anzeige).
         navigateFallbackDenylist: [/version\.json$/],
         runtimeCaching: [
