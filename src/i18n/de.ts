@@ -485,6 +485,7 @@ export const de = {
   'world.w2': 'Welt 2 – Zwischen den Ebenen',
   'world.w3': 'Welt 3 – Das Räderwerk',
   'world.w4': 'Welt 4 – Die Stille',
+  'world.w5': 'Welt 5 – Trugbild',
 
   'lv.tut-1.name': 'Rollen & Lauschen',
   'lv.tut-1.intro':
@@ -598,6 +599,27 @@ export const de = {
   'lv.w4-06.name': 'Das Ohr',
   'lv.w4-06.intro':
     'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel – ein Echo-Kristall am Rand des Kerns gibt dir den Ping noch einmal klar zurück. Beweg dich wie ein Flüstern. Wer hier ohne einen einzigen Ping ankommt, trägt den Blind-Stern zu Recht.',
+  'lv.w5-01.name': 'Lichtung',
+  'lv.w5-01.intro':
+    'Zum ersten Mal in der Kampagne: Licht. Du siehst das Labyrinth, die Wache, das Loch. Aber Sehen ersetzt nicht Hören – der Wächter läuft, ob du hinschaust oder nicht. Hör auf sein Brummen, bevor du dich auf deine Augen verlässt.',
+  'lv.w5-02.name': 'Spiegelsaal',
+  'lv.w5-02.intro':
+    'Jede zweite Wand hier ist aus poliertem Metall: Dein Ping meldet sie doppelt so weit, als sie steht. Du hörst sechs Wände, und es gibt drei. Präg dir ein, wo der Rempler kam – nicht, wo das Echo war.',
+  'lv.w5-03.name': 'Taubes Ohr',
+  'lv.w5-03.intro':
+    'Um das Ziel stehen Wände aus Dämmstoff: Sein Sonar ist tot, aus fast jeder Richtung. Vorn hallt ein Saal, der jede Wand doppelt so weit klingen lässt. Nur der Echo-Kristall am Eingang gibt dir den Ping klar zurück – finde ihn zuerst.',
+  'lv.w5-04.name': 'Lockruf',
+  'lv.w5-04.intro':
+    'Zwei Horcher, zwei Glocken. Überrollst du eine Glocke, laufen beide zu ihr – vier Sekunden lang gehört der Weg dir. Ablenken statt Vermeiden; und hinter den Dämmwänden hören sie dein Rollen nur leise.',
+  'lv.w5-05.name': 'Zwei Uhren',
+  'lv.w5-05.intro':
+    'Die Tür vor dem Ziel braucht alles auf einmal: die Stimmgabel – ein Schlüssel, der tönt statt klimpert –, das Zeitschloss oben und das Zeitschloss unten in der hellen Ebene. Unten trägt Glas nur einmal. Zieh beide Uhren auf, dann lauf.',
+  'lv.w5-06.name': 'Mühlstein',
+  'lv.w5-06.intro':
+    'Zwei Steine, die du vor dir herschiebst – mit Schwung, eine Zelle weit. Einer gehört auf die Druckplatte, die die Tür vor dem Ziel hält. Der andere in das Loch, das dir den Weg versperrt. Hör das Mahlen, hör den Schlag: Der Stein sagt dir, wo er steht.',
+  'lv.w5-07.name': 'Dämmerung',
+  'lv.w5-07.intro':
+    'Drei Ebenen: hell, dunkel, hell. In der Mitte schläft ein Wächter – dein Ping würde ihn wecken, genau dort, wo du ihn bräuchtest. Sanduhren schenken Zeit, fünf Gems liegen abseits, und ganz unten spielt ein Automat. Die Kampagne endet mit Musik. Beweg dich wie ein Flüstern.',
 
   'lv.coop-01.name': 'Schleuse',
   'lv.coop-01.intro':

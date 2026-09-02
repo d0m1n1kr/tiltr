@@ -612,6 +612,43 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M48 „Trugbild" ✓ (Phase 5 von 3.0.0) – Welt 5: sieben Level aus den ungenutzten Bausteinen
+
+Welt 4 hat dem Spieler das Hören genommen (Nebel). Welt 5 gibt ihm etwas,
+das er noch nie hatte – Licht – und nimmt ihm dafür das Vertrauen ins Echo.
+Gebaut wie Welt 1: ein Element pro Level, dann Kombination, dann Finale.
+Ping-Budget 4, Par im Band, ein Checkpoint je Ebene.
+
+| Level | Neu | Bau |
+|---|---|---|
+| w5-01 „Lichtung" | helle Ebene | 5×7 hell, Wächter in einer Seitengasse, Loch, Gem – Sehen ersetzt nicht Hören |
+| w5-02 „Spiegelsaal" | Echo-Spiegel | 6×7, fünf bestehende Wände spiegeln (Spine-Spalte, untere Zeile) |
+| w5-03 „Taubes Ohr" | Schallschutz-Ring + Kristall + Hallraum | 6×8, zweiter Zielkammer-Eingang zugemauert und gedämmt, Hallraum im Vorraum, Kristall am Eingang, Sanduhr |
+| w5-04 „Lockruf" | Lockglocke | 7×9, zwei Horcher, zwei Glocken, Dämmwände als Deckung neben den Posten |
+| w5-05 „Zwei Uhren" | Tür 'all' über Ebenen, Glas, Stimmgabel | E1 dunkel 6×8 (Tür, Zeitschloss 8 s, Stimmgabel), E2 HELL 5×5 (Zeitschloss 12 s, Glas auf dem Weg hin, Transporter zurück vor die Tür) |
+| w5-06 „Mühlstein" | Rollstein | 7×9, Stein 1 durch einen versiegelten Kanal auf die Platte (Tür auf der Spine), Stein 2 die Spine hinab ins Loch |
+| w5-07 „Dämmerung" | alles + Schläfer | hell – dunkel – hell; Schläfer bewacht den Gang zum Gem (Weckradius reicht bis zur Spine), Sanduhren, fünf Gems, Jukebox auf der letzten Ebene: die Kampagne endet mit Musik |
+
+**Karten vor Elementen.** Wand-Varianten (Spiegel, Dämmstoff) und Türen
+brauchen EXISTIERENDE bzw. OFFENE Kanten – ohne Karte ist das Raterei. Ablauf:
+Level mit leeren Listen anlegen, `tests/mazeprint.test.ts` drucken
+(gespiegelt, wie der Loader sieht), Kanten rückrechnen, eintragen, Tests.
+Zwei Funde dabei: Die Mühlstein-Tür lag zuerst auf einer geschlossenen Kante
+(Loader: „Kante ist im Maze nicht offen") und seitlich neben dem Ziel – jetzt
+auf der Spine mit versiegelter Nachbarkante. Und der Steinkanal hatte einen
+Seiteneingang: Von dort schiebt man den Stein zurück in die Startecke, wo er
+für immer liegt – der Zustands-Beweis blieb trotzdem grün, weil Stein 2
+theoretisch ebenfalls auf die Platte kann und das Loch im Modell passierbar
+ist. Der Kanal ist jetzt zu ([0,2] Wand, [1,2] neu angebunden): Was der
+Beweis „lösbar" nennt, muss auch spielbar bleiben.
+
+**Tests.** campaign.test: 36 Level in fünf Welten, Budget 3/4/4/3/4, zwei
+Ebenen-Sprünge im Timer-Beweis (Uhrwerk, Zwei Uhren), fünf Automaten
+(w5-07 dazu), Pflicht-Türen, Par-Band, Gems-oder-Gefahr, alle Beweise
+inklusive `boulder`. mirror.test: Ecken weiter verteilt. i18n: `world.w5`
+und vierzehn `lv.w5-*`-Einträge ×4. E2E: Läufe 4 und 5 zählen 36 Level in
+5 Welten.
+
 ## M47 „Der Stein" ✓ (Phase 4 von 3.0.0) – Rollstein: zweiter Körper, zellweise, mit Zustands-Beweis
 
 Das größte Paket des Umbaus und das einzige mit echtem Risiko – deshalb

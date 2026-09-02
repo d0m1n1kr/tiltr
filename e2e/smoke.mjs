@@ -434,13 +434,13 @@ if (want("4")) {
     await page.waitForTimeout(200);
     const items = page.locator(".level-item");
     check(
-      `Kampagnen-Liste zeigt 29 Level (${await items.count()})`,
-      (await items.count()) === 29,
+      `Kampagnen-Liste zeigt 36 Level (${await items.count()})`,
+      (await items.count()) === 36,
     );
     const lockedCount = await page.locator(".level-item.locked").count();
     check(
-      `nur Level 1 ist freigeschaltet (${29 - lockedCount} offen)`,
-      lockedCount === 28,
+      `nur Level 1 ist freigeschaltet (${36 - lockedCount} offen)`,
+      lockedCount === 35,
     );
 
     await items.first().click();
@@ -475,8 +475,8 @@ if (want("4")) {
     await page.waitForTimeout(200);
     const lockedAfter = await page.locator(".level-item.locked").count();
     check(
-      `Level 2 nach Sieg freigeschaltet (${29 - lockedAfter} offen)`,
-      lockedAfter === 27,
+      `Level 2 nach Sieg freigeschaltet (${36 - lockedAfter} offen)`,
+      lockedAfter === 34,
     );
     const firstMeta = (
       await page.locator(".level-item .level-meta").first().textContent()
@@ -523,8 +523,8 @@ if (want("5")) {
     const items = await page.locator(".level-item").count();
     const headers = await page.locator(".world-header").count();
     check(
-      `Kampagne: 29 Level in 4 Welten (${items}/${headers})`,
-      items === 29 && headers === 4,
+      `Kampagne: 36 Level in 5 Welten (${items}/${headers})`,
+      items === 36 && headers === 5,
     );
     const locked = await page.locator(".level-item.locked").count();
     check("?unlock schaltet alles frei", locked === 0);

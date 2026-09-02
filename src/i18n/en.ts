@@ -481,6 +481,7 @@ export const en: Dict = {
   'world.w2': 'World 2 – Between the Floors',
   'world.w3': 'World 3 – The Clockwork',
   'world.w4': 'World 4 – The Silence',
+  'world.w5': 'World 5 – Mirage',
 
   'lv.tut-1.name': 'Roll & Listen',
   'lv.tut-1.intro':
@@ -594,6 +595,27 @@ export const en: Dict = {
   'lv.w4-06.name': 'The Ear',
   'lv.w4-06.intro':
     'The Ear: three floors down into the fog core, where everything sounds like cotton wool and two listeners wait. At the very bottom, in the middle of the fog, the goal pulses – an echo crystal at the core’s edge gives you the ping back clearly once more. Move like a whisper. Arrive without a single ping and you truly earn the blind star.',
+  'lv.w5-01.name': 'Clearing',
+  'lv.w5-01.intro':
+    'For the first time in the campaign: light. You see the maze, the guard, the hole. But seeing doesn’t replace hearing – the guard walks whether you watch or not. Listen to its hum before you trust your eyes.',
+  'lv.w5-02.name': 'Hall of Mirrors',
+  'lv.w5-02.intro':
+    'Every second wall here is polished metal: your ping reports it twice as far away as it stands. You hear six walls, and there are three. Remember where the bump came from – not where the echo was.',
+  'lv.w5-03.name': 'Deaf Ear',
+  'lv.w5-03.intro':
+    'Insulated walls surround the goal: its sonar is dead from almost every direction. Up front, a hall makes every wall sound twice as far. Only the echo crystal at the entrance gives your ping back clearly – find it first.',
+  'lv.w5-04.name': 'Decoy Call',
+  'lv.w5-04.intro':
+    'Two listeners, two bells. Roll over a bell and both run to it – for four seconds the path is yours. Distract instead of avoid; and behind the insulated walls they hear your rolling only faintly.',
+  'lv.w5-05.name': 'Two Clocks',
+  'lv.w5-05.intro':
+    'The door before the goal needs everything at once: the tuning fork – a key that hums instead of jingling –, the timed switch up here and the timed switch down on the bright floor. Down there, glass holds only once. Wind both clocks, then run.',
+  'lv.w5-06.name': 'Millstone',
+  'lv.w5-06.intro':
+    'Two stones you shove ahead of you – with momentum, one cell at a time. One belongs on the pressure plate that holds the door before the goal. The other in the hole that blocks your way. Hear the grinding, hear the thud: the stone tells you where it stands.',
+  'lv.w5-07.name': 'Dusk',
+  'lv.w5-07.intro':
+    'Three floors: bright, dark, bright. In the middle a guard sleeps – your ping would wake it, right where you’d need it. Hourglasses grant time, five gems lie off the path, and at the very bottom a jukebox plays. The campaign ends with music. Move like a whisper.',
 
   'lv.coop-01.name': 'Airlock',
   'lv.coop-01.intro':

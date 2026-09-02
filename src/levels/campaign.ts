@@ -1066,6 +1066,269 @@ const defs4: unknown[] = [
   },
 ];
 
+// Welt 5 „Trugbild" (M48): Das Ohr wird getäuscht, das Auge hilft – und
+// trügt auch. Helle Ebenen zeigen das Labyrinth, Echo-Spiegel und
+// Schallschutz machen den Ping unzuverlässig, Kristalle sind die verlässlichen
+// Anker. Jedes bisher ungenutzte oder neue Element hat hier sein Lehr-Level;
+// gebaut wie Welt 1: ein Element pro Level, dann Kombination, dann Finale.
+const defs5: unknown[] = [
+  {
+    id: 'w5-01',
+    name: 'Lichtung',
+    intro:
+      'Zum ersten Mal in der Kampagne: Licht. Du siehst das Labyrinth, die Wache, das Loch. Aber Sehen ersetzt nicht Hören – der Wächter läuft, ob du hinschaust oder nicht. Hör auf sein Brummen, bevor du dich auf deine Augen verlässt.',
+    parTimeS: 70,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [5, 7],
+        maze: { seed: 510, carve: [...down(0, 0, 6), ...right(6, 0, 4), ...right(3, 0, 4)] },
+        elements: [
+          { type: 'guard', patrol: [[2, 3], [4, 3]], speed: 80 },
+          { type: 'hole', cell: [4, 1], breathing: { offset: 1 } },
+          { type: 'gem', cell: [2, 1] },
+          { type: 'checkpoint', cell: [0, 6] },
+        ],
+        start: [0, 0],
+        goal: [4, 6],
+        bright: true,
+      },
+    ],
+  },
+  {
+    id: 'w5-02',
+    name: 'Spiegelsaal',
+    intro:
+      'Jede zweite Wand hier ist aus poliertem Metall: Dein Ping meldet sie doppelt so weit, als sie steht. Du hörst sechs Wände, und es gibt drei. Präg dir ein, wo der Rempler kam – nicht, wo das Echo war.',
+    parTimeS: 90,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 7],
+        maze: {
+          seed: 520,
+          carve: [...down(0, 0, 6), ...right(6, 0, 5)],
+          // Fünf bestehende Wände spiegeln – entlang der Spine-Spalte und über der
+          // unteren Zeile: Der Ping meldet sie doppelt so weit.
+          mirrors: [
+            [[0, 5], 'e'],
+            [[0, 2], 'e'],
+            [[3, 5], 's'],
+            [[5, 5], 's'],
+            [[1, 3], 'e'],
+          ],
+        },
+        elements: [
+          { type: 'hole', cell: [3, 3], breathing: { offset: 1 } },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'gem', cell: [2, 5] },
+          { type: 'checkpoint', cell: [0, 6] },
+        ],
+        start: [0, 0],
+        goal: [5, 6],
+      },
+    ],
+  },
+  {
+    id: 'w5-03',
+    name: 'Taubes Ohr',
+    intro:
+      'Um das Ziel stehen Wände aus Dämmstoff: Sein Sonar ist tot, aus fast jeder Richtung. Vorn hallt ein Saal, der jede Wand doppelt so weit klingen lässt. Nur der Echo-Kristall am Eingang gibt dir den Ping klar zurück – finde ihn zuerst.',
+    parTimeS: 100,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 8],
+        maze: {
+          seed: 530,
+          carve: [...down(0, 0, 7), ...right(7, 0, 5)],
+          // Die Zielkammer bekommt ihren zweiten Eingang zugemauert (Nachbar
+          // bleibt über [5,5] angebunden) – und Dämmstoff rundum.
+          add: [[[5, 6], 's']],
+          absorb: [
+            [[5, 6], 's'],
+            [[3, 6], 's'],
+            [[2, 6], 'e'],
+          ],
+        },
+        elements: [
+          { type: 'reverbZone', cell: [0, 3] },
+          { type: 'reverbZone', cell: [0, 4] },
+          { type: 'echoCrystal', cell: [1, 7] },
+          { type: 'hourglass', cell: [3, 2] },
+          { type: 'gem', cell: [5, 1] },
+          { type: 'checkpoint', cell: [0, 7] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+    ],
+  },
+  {
+    id: 'w5-04',
+    name: 'Lockruf',
+    intro:
+      'Zwei Horcher, zwei Glocken. Überrollst du eine Glocke, laufen beide zu ihr – vier Sekunden lang gehört der Weg dir. Ablenken statt Vermeiden; und hinter den Dämmwänden hören sie dein Rollen nur leise.',
+    parTimeS: 130,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 9],
+        maze: {
+          seed: 540,
+          carve: [...right(0, 0, 6), ...down(6, 0, 8)],
+          // Deckung: Dämmwände zwischen Spine und den beiden Horcher-Posten.
+          absorb: [
+            [[5, 2], 'e'],
+            [[3, 4], 'e'],
+          ],
+        },
+        elements: [
+          { type: 'listener', cell: [3, 4], speed: 95 },
+          { type: 'listener', cell: [5, 2], speed: 90 },
+          { type: 'bell', cell: [1, 3] },
+          { type: 'bell', cell: [4, 6] },
+          { type: 'hole', cell: [2, 7], breathing: { offset: 2 } },
+          { type: 'gem', cell: [0, 5] },
+          { type: 'gem', cell: [3, 8] },
+          { type: 'checkpoint', cell: [6, 0] },
+          { type: 'checkpoint', cell: [6, 5] },
+        ],
+        start: [0, 0],
+        goal: [6, 8],
+      },
+    ],
+  },
+  {
+    id: 'w5-05',
+    name: 'Zwei Uhren',
+    intro:
+      'Die Tür vor dem Ziel braucht alles auf einmal: die Stimmgabel – ein Schlüssel, der tönt statt klimpert –, das Zeitschloss oben und das Zeitschloss unten in der hellen Ebene. Unten trägt Glas nur einmal. Zieh beide Uhren auf, dann lauf.',
+    parTimeS: 170,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 8],
+        maze: { seed: 550, carve: [...down(0, 0, 7), ...right(7, 0, 5)] },
+        elements: [
+          { type: 'door', id: 'uhren', edge: [[4, 7], 'e'], require: 'all' },
+          { type: 'timedSwitch', cell: [3, 7], opens: 'uhren', durationS: 8 },
+          { type: 'key', cell: [2, 3], opens: 'uhren', voice: 'fork' },
+          { type: 'transporter', cell: [0, 4], target: { floor: 1, cell: [0, 0] } },
+          { type: 'hole', cell: [4, 2], breathing: { offset: 1 } },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'checkpoint', cell: [0, 7] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+      {
+        // Die helle Uhr: man SIEHT das Glas – und es trägt trotzdem nur einmal.
+        size: [5, 5],
+        maze: { seed: 551, carve: [...right(0, 0, 4), ...down(4, 0, 4)] },
+        elements: [
+          { type: 'timedSwitch', cell: [4, 4], opens: 'uhren', durationS: 12 },
+          { type: 'transporter', cell: [4, 2], target: { floor: 0, cell: [1, 7] } },
+          { type: 'glass', cell: [2, 0] },
+          { type: 'glass', cell: [3, 0] },
+          { type: 'gem', cell: [0, 4] },
+        ],
+        start: [0, 0],
+        goal: null,
+        bright: true,
+      },
+    ],
+  },
+  {
+    id: 'w5-06',
+    name: 'Mühlstein',
+    intro:
+      'Zwei Steine, die du vor dir herschiebst – mit Schwung, eine Zelle weit. Einer gehört auf die Druckplatte, die die Tür vor dem Ziel hält. Der andere in das Loch, das dir den Weg versperrt. Hör das Mahlen, hör den Schlag: Der Stein sagt dir, wo er steht.',
+    parTimeS: 160,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 9],
+        maze: {
+          seed: 560,
+          // [1,2] hängt nach dem Zumauern an [1,3] statt am Steinkanal.
+          carve: [...right(0, 0, 6), ...down(6, 0, 8), ...down(0, 0, 4), [[1, 2], 's']],
+          // Sackgasse unter dem Start: der Steinkanal endet auf der Platte und
+          // hat KEINEN Seiteneingang ([0,2] zu) – sonst schiebt man den Stein
+          // von der Seite zurück in die Startecke, wo er für immer liegt.
+          // Zielkammer [6,8] hat nur den Eingang von oben (Tür auf der Spine).
+          add: [[[0, 4], 's'], [[5, 8], 'e'], [[0, 2], 'e']],
+        },
+        elements: [
+          { type: 'boulder', cell: [0, 1] },
+          { type: 'plate', cell: [0, 4], opens: 'muehle' },
+          { type: 'door', id: 'muehle', edge: [[6, 7], 's'] },
+          { type: 'boulder', cell: [6, 3] },
+          { type: 'hole', cell: [6, 5] },
+          { type: 'gem', cell: [3, 4] },
+          { type: 'checkpoint', cell: [6, 0] },
+          { type: 'checkpoint', cell: [6, 7] },
+        ],
+        start: [0, 0],
+        goal: [6, 8],
+      },
+    ],
+  },
+  {
+    id: 'w5-07',
+    name: 'Dämmerung',
+    intro:
+      'Drei Ebenen: hell, dunkel, hell. In der Mitte schläft ein Wächter – dein Ping würde ihn wecken, genau dort, wo du ihn bräuchtest. Sanduhren schenken Zeit, fünf Gems liegen abseits, und ganz unten spielt ein Automat. Die Kampagne endet mit Musik. Beweg dich wie ein Flüstern.',
+    parTimeS: 280,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 7],
+        maze: { seed: 570, carve: [...right(0, 0, 5), ...down(5, 0, 6)] },
+        elements: [
+          { type: 'hole', cell: [2, 3], breathing: { offset: 0 } },
+          { type: 'gem', cell: [0, 5] },
+          { type: 'hourglass', cell: [3, 3] },
+          { type: 'checkpoint', cell: [5, 3] },
+          { type: 'transporter', cell: [5, 6], target: { floor: 1, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+        bright: true,
+      },
+      {
+        // Die dunkle Mitte: der Schläfer bewacht den Gang zum Gem.
+        size: [6, 6],
+        maze: { seed: 571, carve: [...right(0, 0, 5), ...down(5, 0, 5), ...right(3, 1, 5)] },
+        elements: [
+          { type: 'guard', patrol: [[1, 3], [4, 3]], speed: 90, sleeper: { wakeRadius: 260, awakeS: 6 } },
+          { type: 'gem', cell: [4, 3] },
+          { type: 'gem', cell: [0, 5] },
+          { type: 'checkpoint', cell: [5, 2] },
+          { type: 'transporter', cell: [5, 5], target: { floor: 2, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        size: [6, 7],
+        maze: { seed: 572, carve: [...down(0, 0, 6), ...right(6, 0, 5)] },
+        elements: [
+          { type: 'hole', cell: [3, 2], breathing: { offset: 2 } },
+          { type: 'gem', cell: [4, 3] },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'hourglass', cell: [2, 4] },
+          { type: 'checkpoint', cell: [0, 6] },
+          { type: 'jukebox', cell: [1, 2], playlist: ['tiltr'] },
+        ],
+        start: [0, 0],
+        goal: [5, 6],
+        bright: true,
+      },
+    ],
+  },
+];
+
 // Spiegelachsen pro Level, damit Start/Ziel nicht immer oben links/unten
 // rechts liegen. Achse passend zum Intro-Text gewählt: 'x' erhält oben/unten,
 // 'y' erhält links/rechts ("im oberen Gang" bleibt bei 'x' oben). w1-01
@@ -1101,6 +1364,14 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'w4-04': 'y',
   'w4-05': 'x',
   'w4-06': 'xy',
+  // Welt 5: Intros ohne Richtungsbezug – Achsen frei für die Ecken-Streuung.
+  'w5-01': 'x',
+  'w5-02': 'y',
+  'w5-03': 'xy',
+  'w5-04': 'x',
+  'w5-05': 'y',
+  'w5-06': 'xy',
+  'w5-07': 'x',
 };
 
 const build = (d: unknown): LevelDef => {
@@ -1114,6 +1385,7 @@ export const WORLDS: Array<{ name: string; levels: LevelDef[] }> = [
   { name: 'Welt 2 – Zwischen den Ebenen', levels: defs2.map(build) },
   { name: 'Welt 3 – Das Räderwerk', levels: defs3.map(build) },
   { name: 'Welt 4 – Die Stille', levels: defs4.map(build) },
+  { name: 'Welt 5 – Trugbild', levels: defs5.map(build) },
 ];
 
 export const CAMPAIGN_LEVELS: LevelDef[] = WORLDS.flatMap((w) => w.levels);

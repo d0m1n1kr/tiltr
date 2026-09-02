@@ -27,16 +27,23 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
   (`#daily=DATUM&t=ZEIT`) fordern Freunde heraus, deine Zeit zu schlagen –
   auch für vergangene Tage.
-- **🌍 Kampagne** – vier handgebaute Welten (28 Level): Wächter, Schlüssel
+- **🌍 Kampagne** – fünf handgebaute Welten (36 Level): Wächter, Schlüssel
   und Türen, Gems, atmende Löcher, Wind, brüchige Wände, mehrstöckige
   Karten mit Transportern und Multi-Screen-Weiten, über die die Kamera
   scrollt. Welt 3 „Das Räderwerk" dreht sich ums Timing: Schiebewände,
   Zeitschloss-Schalter und Einbahn-Strömungen. Welt 4 „Die Stille" ist die
   Schleich-Welt: Horcher, die nur jagen, solange du rollst, Nebel, der
-  jeden Klang dämpft, und Eis, über das du gleitest. Bis zu drei Sterne
-  pro Level (geschafft, Par-Zeit, alle Gems), dazu ein optionaler
-  Blind-Stern 🌑 fürs Durchkommen ohne einen einzigen Echo-Ping – und die
-  eigene Bestzeit rollt bei späteren Versuchen als blasser Geist-Schein mit.
+  jeden Klang dämpft, und Eis, über das du gleitest. Welt 5 „Trugbild"
+  dreht die Sinne um: helle Ebenen, die man sieht, Echo-Spiegel, die Wände
+  doppelt so weit melden, Schallschutzwände, Lockglocken, die Horcher
+  ablenken, ein Hallraum, eine Stimmgabel als Schlüssel, den man über die
+  Tonhöhe findet, Rollsteine, die man auf Druckplatten schiebt, und ein
+  Schläfer, den dein Ping wecken würde. Bis zu drei Sterne pro Level
+  (geschafft, Par-Zeit – mit Sanduhren verlängerbar – und alle Gems), dazu
+  ein optionaler Blind-Stern 🌑 fürs Durchkommen ohne einen einzigen
+  Echo-Ping – und die eigene Bestzeit rollt bei späteren Versuchen als
+  blasser Geist-Schein mit. Das Tutorial beginnt im Licht: Der erste Raum
+  ist hell, der zweite derselbe Raum im Dunkeln.
 - **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
   ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über
   eine feste Liste von 8 etablierten Nostr-Relays, kein eigener Server).

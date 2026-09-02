@@ -481,6 +481,7 @@ export const es: Dict = {
   'world.w2': 'Mundo 2 – Entre los pisos',
   'world.w3': 'Mundo 3 – El Engranaje',
   'world.w4': 'Mundo 4 – El Silencio',
+  'world.w5': 'Mundo 5 – Espejismo',
 
   'lv.tut-1.name': 'Rodar y escuchar',
   'lv.tut-1.intro':
@@ -594,6 +595,27 @@ export const es: Dict = {
   'lv.w4-06.name': 'El Oído',
   'lv.w4-06.intro':
     'El Oído: tres plantas hacia el núcleo de niebla, donde todo suena a algodón y dos escuchas acechan. Al fondo, en medio de la niebla, pulsa la meta; un cristal de eco al borde del núcleo te devuelve el ping una vez más, claro. Muévete como un susurro. Llegar sin un solo ping es merecer la estrella ciega.',
+  'lv.w5-01.name': 'Claro',
+  'lv.w5-01.intro':
+    'Por primera vez en la campaña: luz. Ves el laberinto, el guardián, el agujero. Pero ver no sustituye oír: el guardián camina mires o no. Escucha su zumbido antes de confiar en tus ojos.',
+  'lv.w5-02.name': 'Sala de espejos',
+  'lv.w5-02.intro':
+    'Uno de cada dos muros aquí es de metal pulido: tu ping lo sitúa al doble de distancia de donde está. Oyes seis muros y hay tres. Recuerda de dónde vino el golpe, no dónde estuvo el eco.',
+  'lv.w5-03.name': 'Oído sordo',
+  'lv.w5-03.intro':
+    'Muros aislantes rodean la meta: su sonar está muerto desde casi cualquier dirección. Delante, una sala hace sonar cada muro al doble de distancia. Solo el cristal de eco en la entrada te devuelve el ping con claridad: encuéntralo primero.',
+  'lv.w5-04.name': 'Señuelo',
+  'lv.w5-04.intro':
+    'Dos escuchas, dos campanas. Pasa sobre una campana y ambos corren hacia ella: durante cuatro segundos el camino es tuyo. Distraer en lugar de evitar; y tras los muros aislantes oyen tu rodar solo débilmente.',
+  'lv.w5-05.name': 'Dos relojes',
+  'lv.w5-05.intro':
+    'La puerta ante la meta lo necesita todo a la vez: el diapasón, una llave que suena en vez de tintinear, el temporizador de arriba y el temporizador de abajo, en la planta iluminada. Abajo el cristal aguanta solo una vez. Da cuerda a ambos relojes y corre.',
+  'lv.w5-06.name': 'Piedra de molino',
+  'lv.w5-06.intro':
+    'Dos piedras que empujas ante ti, con impulso, una celda a la vez. Una va sobre la placa de presión que mantiene la puerta ante la meta. La otra, al agujero que te cierra el paso. Oye el roce, oye el golpe: la piedra te dice dónde está.',
+  'lv.w5-07.name': 'Crepúsculo',
+  'lv.w5-07.intro':
+    'Tres plantas: clara, oscura, clara. En medio duerme un guardián: tu ping lo despertaría justo donde lo necesitarías. Los relojes de arena regalan tiempo, cinco gemas quedan apartadas y al fondo suena una máquina de discos. La campaña termina con música. Muévete como un susurro.',
 
   'lv.coop-01.name': 'La esclusa',
   'lv.coop-01.intro':

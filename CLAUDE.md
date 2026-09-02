@@ -236,6 +236,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Par-Band 1,2–2,6 s je ZELLE (nicht nach dem Rückgrat schätzen), Ping-Budget
   je Welt konstant (3/4/4/3). Horcher hören abgeschirmt (`shielded` in
   `updateListeners`, ABSORB_GAIN) – Deckung ist eine Schleich-Mechanik.
+- WELT 5 „Trugbild" (M48, `defs5` in campaign.ts): sieben Level aus den
+  vorher ungenutzten Bausteinen (helle Ebene, Echo-Spiegel, Schallschutz,
+  Kristall, Glocke, Hallraum, Stimmgabel, Glas, Tür 'all' über Ebenen,
+  Rollstein, Schläfer). Wand-Varianten und Türen brauchen existierende bzw.
+  offene Kanten: erst Karte drucken (mazeprint), dann Kanten eintragen. Ein
+  grüner `boulder`-Beweis heißt nicht spielbar: Seiteneingänge in Steinkanäle
+  zumauern (Mühlstein). Kampagne: 36 Level, fünf Welten, Debug-Import
+  `builtin-w5` automatisch über WORLDS.
 - `src/levels/puzzle.ts` – TÜR-RÄTSEL für die Generatoren (M42):
   `planDoorPuzzle` setzt EINE Tür auf den Pflichtweg einer Ebene, alle Öffner
   (Schlüssel, optional Zeitschloss ≤ 6 Zellen davor, 8 s) in den

@@ -7,12 +7,13 @@ import { buildFloorCells, cellKey, coopReachable, reachable, validateLevel } fro
 import { switchDoorSteps, timerSeconds } from '../src/levels/validate';
 
 describe('Kampagne', () => {
-  it('Welt 1 hat 10, Welt 2–3 je 6, Welt 4 sieben Level (Kristallgang, M44); IDs eindeutig, Intro + Par überall', () => {
+  it('Welt 1 hat 10, Welt 2–3 je 6, Welt 4 sieben (Kristallgang, M44), Welt 5 sieben (Trugbild, M48); IDs eindeutig, Intro + Par überall', () => {
     expect(WORLDS[0]!.levels).toHaveLength(10);
     expect(WORLDS[1]!.levels).toHaveLength(6);
     expect(WORLDS[2]!.levels).toHaveLength(6);
     expect(WORLDS[3]!.levels).toHaveLength(7);
-    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(29);
+    expect(WORLDS[4]!.levels).toHaveLength(7);
+    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(36);
     for (const l of CAMPAIGN_LEVELS) {
       expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
       expect(l.parTimeS, l.id).toBeGreaterThan(0);
@@ -31,8 +32,8 @@ describe('Kampagne', () => {
     }
   });
 
-  it('Ping-Budget ist je Welt konstant (M43): 3 / 4 / 4 / 3 – Knappheit ist der Schwierigkeits-Dial, nicht die Levelgröße', () => {
-    const want = [3, 4, 4, 3];
+  it('Ping-Budget ist je Welt konstant (M43): 3 / 4 / 4 / 3 / 4 – Knappheit ist der Schwierigkeits-Dial, nicht die Levelgröße', () => {
+    const want = [3, 4, 4, 3, 4];
     WORLDS.forEach((w, i) => {
       for (const l of w.levels) expect(l.pingBudget, l.id).toBe(want[i]);
     });
@@ -78,8 +79,8 @@ describe('Kampagne', () => {
         }
       });
     }
-    // Der Maschinenraum (w3-05): Schalter unten, Tür oben – EIN Sprung.
-    expect(crossFloor).toBe(1);
+    // Maschinenraum (w3-05) und Zwei Uhren (w5-05): Schalter unten, Tür oben – je EIN Sprung.
+    expect(crossFloor).toBe(2);
   });
 
   it('Welt 2 steigt monoton in der Par (M44: Zwillingstore auf Platz 2, Kathedrale als Finale)', () => {
@@ -214,7 +215,7 @@ describe('Kampagne', () => {
     }
   });
 
-  it('M27: die vier Level mit Jukebox sind vollständig bewiesen', () => {
+  it('M27/M48: die fünf Level mit Jukebox sind vollständig bewiesen', () => {
     // Ein Musikautomat ist eine WAND: Er nimmt seine Zelle für immer. In
     // handgebauten, austarierten Leveln ist das kein Detail – deshalb läuft
     // hier der GANZE Prüfbericht über jedes Kampagnen-Level, nicht nur der
@@ -223,7 +224,7 @@ describe('Kampagne', () => {
     const withBox = CAMPAIGN_LEVELS.filter((l) =>
       l.floors.some((f) => f.elements.some((e) => e.type === 'jukebox')),
     );
-    expect(withBox.map((l) => l.id)).toEqual(['w2-06', 'w2-05', 'w3-05', 'w3-06']);
+    expect(withBox.map((l) => l.id)).toEqual(['w2-06', 'w2-05', 'w3-05', 'w3-06', 'w5-07']);
     for (const lvl of CAMPAIGN_LEVELS) {
       for (const floor of lvl.floors) {
         expect(floor.elements.filter((e) => e.type === 'jukebox').length, lvl.id).toBeLessThanOrEqual(1);

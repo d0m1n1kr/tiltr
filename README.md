@@ -26,16 +26,22 @@ automatically via GitHub Actions (tests → build → pages).
   the daily score, streaks 🔥 reward playing daily. Share links
   (`#daily=DATE&t=TIME`) challenge friends to beat your time — for past
   days too.
-- **🌍 Campaign** — four hand-built worlds (28 levels): guards, keys and
+- **🌍 Campaign** — five hand-built worlds (36 levels): guards, keys and
   doors, gems, breathing holes, wind, brittle walls, multi-floor maps
   connected by transporters, and multi-screen expanses the camera scrolls
   across. World 3 "The Clockwork" is all about timing: sliding walls,
   time-lock switches and one-way currents. World 4 "The Silence" is the
   stealth world: listeners that hunt you only while you roll, fog that
-  muffles every sound, and sheet ice you glide across. Up to three stars
-  per level (finish, par time, all gems), plus an optional blind star 🌑
-  for finishing without a single echo ping — and your best run rolls along
-  as a faint ghost halo on later attempts.
+  muffles every sound, and sheet ice you glide across. World 5 "Mirage"
+  turns the senses around: bright floors you can see, echo mirrors that
+  report walls twice as far away, sound-deadening walls, decoy bells that
+  lure listeners, a hall with long reverb, a tuning-fork key you locate by
+  pitch, boulders you shove onto pressure plates, and a sleeping guard your
+  ping would wake. Up to three stars per level (finish, par time — extendable
+  with hourglasses — and all gems), plus an optional blind star 🌑 for
+  finishing without a single echo ping — and your best run rolls along as a
+  faint ghost halo on later attempts. The tutorial starts in the light: the
+  first room is lit, the second is the same room in the dark.
 - **👥 Multiplayer** — two players, peer-to-peer over WebRTC
   ([trystero](https://github.com/dmotz/trystero); the handshake runs over a
   fixed list of 8 established Nostr relays, no server of our own). Join via

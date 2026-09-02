@@ -481,6 +481,7 @@ export const fr: Dict = {
   'world.w2': 'Monde 2 – Entre les étages',
   'world.w3': 'Monde 3 – Les Rouages',
   'world.w4': 'Monde 4 – Le Silence',
+  'world.w5': 'Monde 5 – Mirage',
 
   'lv.tut-1.name': 'Rouler & écouter',
   'lv.tut-1.intro':
@@ -594,6 +595,27 @@ export const fr: Dict = {
   'lv.w4-06.name': 'L’Oreille',
   'lv.w4-06.intro':
     'L’Oreille : trois étages vers le cœur du brouillard, où tout sonne comme du coton et où deux écouteurs guettent. Tout en bas, au milieu du brouillard, l’arrivée pulse – un cristal d’écho au bord du cœur te renvoie le ping une fois encore, clair. Bouge comme un murmure. Arriver sans un seul ping, c’est mériter l’étoile aveugle.',
+  'lv.w5-01.name': 'Clairière',
+  'lv.w5-01.intro':
+    'Pour la première fois dans la campagne : de la lumière. Tu vois le labyrinthe, le gardien, le trou. Mais voir ne remplace pas entendre – le gardien marche, que tu regardes ou non. Écoute son bourdonnement avant de te fier à tes yeux.',
+  'lv.w5-02.name': 'Salle des miroirs',
+  'lv.w5-02.intro':
+    'Un mur sur deux ici est en métal poli : ton ping le signale deux fois plus loin qu’il ne se dresse. Tu entends six murs, et il y en a trois. Retiens d’où venait le choc – pas d’où venait l’écho.',
+  'lv.w5-03.name': 'Oreille sourde',
+  'lv.w5-03.intro':
+    'Des murs isolants entourent l’arrivée : son sonar est mort, de presque toutes les directions. Devant, une salle fait résonner chaque mur deux fois plus loin. Seul le cristal d’écho à l’entrée te renvoie le ping clairement – trouve-le d’abord.',
+  'lv.w5-04.name': 'Appel-leurre',
+  'lv.w5-04.intro':
+    'Deux écouteurs, deux cloches. Roule sur une cloche et tous deux y courent – pendant quatre secondes, le chemin est à toi. Détourner plutôt qu’éviter ; et derrière les murs isolants, ils n’entendent ton roulement que faiblement.',
+  'lv.w5-05.name': 'Deux horloges',
+  'lv.w5-05.intro':
+    'La porte devant l’arrivée exige tout à la fois : le diapason – une clé qui résonne au lieu de tinter –, la minuterie en haut et la minuterie en bas, sur l’étage éclairé. En bas, le verre ne tient qu’une fois. Remonte les deux horloges, puis cours.',
+  'lv.w5-06.name': 'Meule',
+  'lv.w5-06.intro':
+    'Deux pierres que tu pousses devant toi – avec de l’élan, une case à la fois. L’une va sur la plaque de pression qui maintient la porte devant l’arrivée. L’autre dans le trou qui te barre la route. Écoute le raclement, écoute le choc : la pierre te dit où elle est.',
+  'lv.w5-07.name': 'Crépuscule',
+  'lv.w5-07.intro':
+    'Trois étages : clair, sombre, clair. Au milieu dort un gardien – ton ping le réveillerait, juste là où tu en aurais besoin. Des sabliers offrent du temps, cinq gemmes sont à l’écart, et tout en bas joue un juke-box. La campagne s’achève en musique. Bouge comme un murmure.',
 
   'lv.coop-01.name': 'Le sas',
   'lv.coop-01.intro':
