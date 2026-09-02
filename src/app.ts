@@ -429,7 +429,10 @@ function refreshCampaignList(): void {
         world.levels,
         __APP_VERSION__,
       );
-      imp.textContent = t('camp.imported', { title: b.title });
+      // Kurze Rückmeldung (v3.0.2): Die Weltzeile ist eine Flex-Zeile neben dem
+      // Titel – der lange Satz mit dem Bundle-Titel brach sie auf dem Phone.
+      void b;
+      imp.textContent = t('camp.imported');
       setTimeout(() => (imp.textContent = t('camp.toWorkshop')), 2500);
       workshopPanel.refresh();
       refreshMenu();

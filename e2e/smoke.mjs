@@ -3815,7 +3815,14 @@ if (want("21")) {
         if (st.jb?.index !== before) break;
       }
       await page.keyboard.up("ArrowDown");
-      const after = await page.evaluate(() => window.__tiltrJukebox);
+      // Der neue Titel ist erst einen Frame später eingeplant (bis dahin hat
+      // der Automat kein bpm, index/title sind null) – auf ihn warten, nicht
+      // sofort lesen. Die alten 200 ms Puffer hatten die Lücke nur zugedeckt.
+      const after =
+        (await until(async () => {
+          const j = await page.evaluate(() => window.__tiltrJukebox);
+          return j && j.index !== null && j.index !== before && j.title ? j : null;
+        }, { timeout: 1500 })) ?? (await page.evaluate(() => window.__tiltrJukebox));
       // Der Status trägt den neuen Titel – auf ihn warten, nicht auf 200 ms.
       const flash =
         (await until(async () => {
@@ -4851,6 +4858,25 @@ if (want("27")) {
       /Backup vom .*1 Level.*1 Geister/.test(statusSum),
     );
     check(`Knopf ist bewaffnet ("${loadText}")`, loadText.includes("⚠"));
+    // v3.0.2: Der bewaffnete Chip steht neben „Sichern" in einer Flex-Zeile –
+    // auf dem Phone muss er umbrechen dürfen, statt aus dem Menü zu laufen.
+    const vpBefore = page.viewportSize();
+    await page.setViewportSize({ width: 400, height: 800 });
+    const bkRow = await page.evaluate(() => {
+      const row = document.getElementById("backupRow");
+      const menu = document.getElementById("overlay");
+      return {
+        overflow: row.scrollWidth - row.clientWidth,
+        menuOverflow: menu ? menu.scrollWidth - menu.clientWidth : 0,
+        right: row.getBoundingClientRect().right,
+        vw: innerWidth,
+      };
+    });
+    await page.setViewportSize(vpBefore);
+    check(
+      `Bewaffneter Backup-Knopf sprengt das Menü nicht (Zeile ${bkRow.overflow}px Überlauf, Menü ${bkRow.menuOverflow}px, rechte Kante ${bkRow.right.toFixed(0)} von ${bkRow.vw})`,
+      bkRow.overflow <= 0 && bkRow.menuOverflow <= 0 && bkRow.right <= bkRow.vw,
+    );
 
     // Zweiter Tap: ersetzen, Reload abwarten.
     await Promise.all([
@@ -5147,8 +5173,27 @@ if (want("28")) {
     await page.click("#campaignBtn");
     const importBtn = page.locator("#campaignList .camp-import").first();
     const visibleNow = await importBtn.isVisible();
+    await page.setViewportSize({ width: 400, height: 800 }); // Phone – dort brach die Weltzeile
     await importBtn.click();
     await page.waitForTimeout(300);
+    const worldRow = await page.evaluate(() => {
+      const h = document.querySelector("#campaignList .world-header");
+      const list = document.getElementById("campaignList");
+      // Sichtbarer Überlauf: rechteste Kante eines Kinds gegen die Liste
+      // (scrollWidth zählt auch unsichtbare Pseudo-Ausdehnungen mit).
+      const right = list.getBoundingClientRect().right;
+      const maxRight = Math.max(...[...list.querySelectorAll("*")].map((el) => el.getBoundingClientRect().right));
+      return {
+        text: h.querySelector(".camp-import").textContent,
+        height: h.getBoundingClientRect().height,
+        overflow: Math.round(maxRight - right),
+      };
+    });
+    await page.setViewportSize({ width: 1024, height: 768 });
+    check(
+      `Import-Rückmeldung bleibt in der Weltzeile („${worldRow.text}", Zeile ${worldRow.height.toFixed(0)}px, Überlauf ${worldRow.overflow}px)`,
+      worldRow.text.startsWith("✓") && worldRow.height < 80 && worldRow.overflow <= 0,
+    );
     const builtin = await page.evaluate(() => {
       const b = JSON.parse(
         localStorage.getItem("tiltr.workshop.v2"),

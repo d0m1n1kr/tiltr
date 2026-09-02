@@ -77,7 +77,9 @@ export function setupWorkshopPanel(opts: {
     const sub = b.querySelector<HTMLElement>('.mode-sub');
     const target = sub ?? b;
     const prev = target.textContent;
-    target.textContent = `⚠ ${t('ws.discardConfirm')}`;
+    // Modus-Karte: volle Zeile, voller Satz. Nackter Knopf (✏️ Bearbeiten in
+    // der Kartenzeile): kurze Frage – der Satz sprengte die Aktionszeile.
+    target.textContent = sub ? `⚠ ${t('ws.discardConfirm')}` : t('ws.discardShort');
     sub?.classList.add('warn');
     setTimeout(() => {
       b.dataset.armed = '';

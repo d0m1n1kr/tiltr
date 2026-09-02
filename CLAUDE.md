@@ -169,7 +169,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   stehen. In der Bundle-Leiste bekommt die Zeile `.confirming`: die übrigen
   Aktionen weichen, die kurze Frage („2 Level löschen?") ersetzt sie, statt
   die Zeile auf dem Phone zu sprengen (E2E Lauf 28 misst Überlauf und
-  Zeilenhöhe bei 400 px).
+  Zeilenhöhe bei 400 px). REGEL FÜR RÜCKMELDUNGEN IM KNOPF (v3.0.2): Ein Knopf
+  in einer Flex-Zeile neben anderem Inhalt bekommt nur KURZE Wechseltexte
+  („✓ In der Werkstatt", „⚠ Entwurf verwerfen?"); der volle Satz gehört in
+  eine eigene Zeile (Status, Modus-Karte). Chip-Zeilen im Menü (`#controlsRow`,
+  `#backupRow`) brechen um. Listen-Grids brauchen `minmax(0, 1fr)`: ein
+  `auto`-Track wächst auf die min-content-Breite des breitesten Kinds und
+  dehnt damit ALLE Karten. E2E misst den SICHTBAREN Überlauf (rechteste
+  Kind-Kante gegen den Container) bei 400 px – Läufe 27 und 28.
   ⚑ TEST AB HIER: Das Werkzeug setzt einen Teststart (Ebene + Zelle,
   `testStart`, Tap auf dieselbe Zelle hebt auf) – die Vorschau setzt die Kugel
   DORT ab und wechselt auf die Ebene (`startCustom(def, true, from)` →

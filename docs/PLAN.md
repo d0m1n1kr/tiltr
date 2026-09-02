@@ -612,6 +612,29 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M51 „Kein Knopf sprengt die Zeile" ✓ (v3.0.2) – vier Rückmeldungen in Flex-Zeilen
+
+Nach dem Bundle-Löschknopf (M50) die Frage: Gibt es noch mehr solche Stellen?
+Inventur aller Knöpfe, die vorübergehend einen längeren Text tragen: Debug-
+Import „In Werkstatt importieren" (Weltzeile der Kampagne), Backup
+„Wiederherstellen" (Chip-Zeile im Menü), ✏️ Bearbeiten mit Draft
+(Aktionszeile der Level-Karte), Duell-Teilen („Link kopiert", Ergebnis-Karte –
+volle Breite, unproblematisch). Die E2E-Zusicherungen kamen ZUERST und waren
+mit 3.0.1 rot: Weltzeile 72 px hoch und 130 px Überlauf, Menü 5 px Überlauf.
+
+**Drei Ursachen, drei Fixes.** (1) Die Rückmeldung „„Welt 1 – …" liegt jetzt in
+der Werkstatt." ist zu lang für eine Flex-Zeile neben dem Welttitel → kurz
+(„✓ In der Werkstatt"), Knopf `nowrap` und schrumpfbar. (2) `#campaignList`
+war ein Grid mit implizitem `auto`-Track: der wächst auf die min-content-Breite
+des breitesten Kinds – der Debug-Knopf dehnte ALLE Level-Karten auf 486 px →
+`grid-template-columns: minmax(0, 1fr)` (auch Galerie). (3) Die 5 px im Menü
+kamen nicht vom Backup-Chip, sondern vom dritten Steuerungs-Chip „💡 Tutorial
+hell" aus M43: `#controlsRow` und `#backupRow` dürfen jetzt umbrechen. Dazu
+die kurze Draft-Frage „⚠ Entwurf verwerfen?" auf nackten Knöpfen (der volle
+Satz bleibt der Modus-Karte). Gemessen wird der SICHTBARE Überlauf (rechteste
+Kind-Kante gegen den Container) – `scrollWidth` zählt 8 px unsichtbare
+Pseudo-Ausdehnung mit und hätte grundlos rot gehalten.
+
 ## M50 „Ruhe im Test" ✓ (v3.0.1) – Bundle-Löschen ohne Layoutbruch, E2E ohne Last-Flakes
 
 **Bundle löschen.** Der Zwei-Tap-Knopf in der Bundle-Leiste zeigte als Frage
