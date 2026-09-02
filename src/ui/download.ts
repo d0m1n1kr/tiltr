@@ -2,13 +2,19 @@
 // unzuverlässig, der Teilen-Dialog mit Datei aber der native Weg („In Dateien
 // sichern", AirDrop, Mail). Deshalb: Web Share mit Datei, wenn der Browser das
 // kann – sonst der klassische Download. Rückgabe sagt, welcher Weg es war.
+//
+// MIME ist IMMER text/plain, auch für .json: Mit application/json nahm Signal
+// auf iOS die Datei nicht an und schickte nur den Titel – beim Empfänger kam
+// der Dateiname als Nachricht an (v2.11.1). Unsere Importe lesen den Inhalt,
+// nie den Typ; die Endung bleibt fürs Auge.
+
+export const SHARE_MIME = "text/plain";
 
 export async function saveTextFile(
   name: string,
   text: string,
-  mime = "text/plain",
 ): Promise<"share" | "download"> {
-  const file = new File([text], name, { type: mime });
+  const file = new File([text], name, { type: SHARE_MIME });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (
     typeof nav.canShare === "function" &&

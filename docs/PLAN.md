@@ -666,6 +666,16 @@ einen überlangen Titel samt Beschreibung, schaltet auf 390 px und verlangt:
 kein horizontaler Scroll, Leiste und Knöpfe innerhalb des Viewports, Select
 schmaler als 260 px – rot gesehen ohne die Regeln.
 
+**2.11.2 – Teilen-Nachtrag:** Bundle per Signal verschickt, beim Empfänger
+kam nur der DATEINAME an. Web Share lief mit `application/json`; iOS reicht
+die Datei an Signal offenbar nicht weiter und teilt dann nur den Titel.
+`saveTextFile` teilt jetzt IMMER als `text/plain` (`SHARE_MIME`), auch für
+`.json` – unsere Importe lesen den Inhalt, nie den Typ; das Backup lief so
+von Anfang an. Der Datei-Import nimmt zusätzlich `.txt`/`text/plain` an.
+E2E (Lauf 28) stubbt `navigator.share`, klickt Export und verlangt genau
+eine Datei mit `text/plain` und `.json`-Namen – rot gesehen mit
+`application/json`. Was ich nicht prüfen kann: Signal selbst.
+
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
 **Der Wunsch:** Was in der Werkstatt bearbeitet wird, soll ein Level-BUNDLE

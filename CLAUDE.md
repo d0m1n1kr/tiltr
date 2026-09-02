@@ -34,9 +34,9 @@ ihm fehlten STILL – 207 ✓ statt 247, exit 0 an keiner Stelle rot. Der
 Dispatcher meldet zusätzlich jeden zugeteilten Lauf, der nie sein `# Lauf X`
 druckte (`NICHT gelaufen`), und setzt exit ≠ 0. Ein Lauf, der allein grün ist
 und unter 4 Arbeitern rot, ist ein LAST-Flake (Lauf 9 „Coop" mit 34 s Sleep,
-Lauf 21 „Jukebox-Rempler" mit festen Wartezeiten – je etwa einer von zehn
-Volläufen): Sleeps durch Zustands-Warten ersetzen, nicht die Arbeiterzahl
-senken.
+Lauf 21 „Jukebox-Rempler" mit festen Wartezeiten, Lauf 17 „Hörtest" mit
+Antwort-Klicks auf Zeit – je etwa einer von zehn Volläufen): Sleeps durch
+Zustands-Warten ersetzen, nicht die Arbeiterzahl senken.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem
@@ -292,6 +292,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   ist `--bg-deep`; E2E-Lauf 26 prüft Tag ↔ Bildgröße ↔ Token. Zweiter Teil des
   Weißblitzes: WebKits Leinwand vor dem ersten Paint – `color-scheme: dark`
   (Meta + :root). Neues Gerät ⇒ ein Eintrag in DEVICES.
+- `src/ui/download.ts` – `saveTextFile(name, text)`: Web Share mit DATEI, wenn
+  möglich, sonst Download. MIME ist IMMER `text/plain` (`SHARE_MIME`), auch
+  für `.json`: Mit `application/json` schickte iOS an Signal nur den
+  Dateinamen. Importe lesen den Inhalt, nie den Typ.
 - `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
   Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
   Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und

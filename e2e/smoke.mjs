@@ -5062,6 +5062,37 @@ if (want("28")) {
         /v2/.test(metaAfter ?? ""),
     );
 
+    // (8b) Teilen als DATEI: navigator.share gestubbt – der Export muss genau
+    // eine Datei mit text/plain (nicht application/json) und .json-Namen
+    // übergeben. Mit application/json kam per Signal nur der Dateiname an.
+    await page.evaluate(() => {
+      window.__shared = null;
+      navigator.canShare = () => true;
+      navigator.share = (d) => {
+        window.__shared = {
+          n: d.files?.length ?? 0,
+          type: d.files?.[0]?.type,
+          name: d.files?.[0]?.name,
+          title: d.title,
+        };
+        return Promise.resolve();
+      };
+    });
+    await page.click("#wsBundleExport");
+    await page.waitForTimeout(200);
+    const shared = await page.evaluate(() => {
+      const s = window.__shared;
+      delete navigator.share;
+      delete navigator.canShare;
+      return s;
+    });
+    check(
+      `Bundle-Export teilt als Datei (${shared?.n} Datei, ${shared?.type}, ${shared?.name})`,
+      shared?.n === 1 &&
+        shared?.type === "text/plain" &&
+        /^tiltr-bundle-turnier-v3\.json$/.test(shared?.name ?? ""),
+    );
+
     // (9) Re-Import: gleiche Version → Nachfrage (Zwei-Tap), dann ersetzt;
     //     höhere Version mit neuem Titel → ersetzt sofort.
     await openImport();

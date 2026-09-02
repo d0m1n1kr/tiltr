@@ -193,7 +193,7 @@ export function setupWorkshopPanel(opts: {
     const text = bundles.exportFile(cur.id);
     if (!text) return;
     const b = bundles.get(cur.id)!;
-    void saveTextFile(`tiltr-bundle-${slug(b.title || b.id)}-v${b.version}.json`, text, 'application/json');
+    void saveTextFile(`tiltr-bundle-${slug(b.title || b.id)}-v${b.version}.json`, text);
     render();
   });
   $('wsBundleDelete').addEventListener('click', (ev) => {
@@ -267,7 +267,7 @@ export function setupWorkshopPanel(opts: {
     });
     iconBtn('⇩', t('ed.export'), () => {
       const name = `tiltr-level-${slug(String(level.def.name ?? level.id))}.json`;
-      void saveTextFile(name, exportPayload(level.def), 'application/json');
+      void saveTextFile(name, exportPayload(level.def));
     });
     // Löschen bleibt Zwei-Tap: der zweite Tap innerhalb von 3 s löscht.
     const del = iconBtn('🗑', t('ed.delete'), (b) => {
