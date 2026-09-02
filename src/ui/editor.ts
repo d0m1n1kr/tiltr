@@ -257,6 +257,9 @@ const PLACEABLE = [
   'listener',
   'anchor',
   'hourglass',
+  'bell',
+  'reverbZone',
+  'roamingHole',
   'transporter',
   'jukebox',
 ] as const;
@@ -571,6 +574,7 @@ export function setupEditor(opts: {
     for (const h of w.holes) if (h.breathing) h.openness = breathAt(h.breathing, animT).openness;
     for (const wall of w.walls) if (wall.slide) wall.slide.openness = breathAt(wall.slide.cycle, animT).openness;
     w.advanceGuards(dt);
+    w.advanceHoles(dt);
   }
 
   function setPlaying(on: boolean): void {
@@ -1086,7 +1090,8 @@ export function setupEditor(opts: {
       } as RawEl);
       selected = origin.floor === activeFloor ? floor().elements.length - 1 : -1;
       flash('');
-    } else if (placeType === 'guard') {
+    } else if (placeType === 'guard' || placeType === 'roamingHole') {
+      // Zwei Taps = Patrouille (Wächter und Wanderloch, M46).
       if (target.kind !== 'cell') return;
       if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
       if (!pendingGuard) {
@@ -1101,7 +1106,8 @@ export function setupEditor(opts: {
         pendingGuard = null;
         return flash(t('ed.guardBad'), true);
       }
-      els.push({ type: 'guard', patrol: [[ax, ay], [bx, by]], speed: 85 });
+      if (placeType === 'roamingHole') els.push({ type: 'roamingHole', patrol: [[ax, ay], [bx, by]], speed: 55 });
+      else els.push({ type: 'guard', patrol: [[ax, ay], [bx, by]], speed: 85 });
       pendingGuard = null;
       selected = els.length - 1;
       flash('');
@@ -1497,6 +1503,11 @@ export function setupEditor(opts: {
         propsEl.append(field(t('ed.f.dir'), selectInput(String(el.dir ?? 'e'), DIR_OPTIONS, (v) => (el.dir = v))));
       }
       if (el.type === 'guard' || el.type === 'listener') num(t('ed.f.speed'), 'speed', 40, 200, 5);
+      if (el.type === 'roamingHole') num(t('ed.f.speed'), 'speed', 20, 150, 5);
+      if (el.type === 'bell') {
+        if (el.ringS === undefined) el.ringS = 4;
+        num(t('ed.f.ringS'), 'ringS', 1, 12, 0.5);
+      }
       if (el.type === 'guard') {
         // Schläfer (M45): Variante des Wächters – schläft, bis ein Ping ihn weckt.
         const sleeper = el.sleeper as { wakeRadius?: number; awakeS?: number } | undefined;

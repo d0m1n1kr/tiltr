@@ -169,6 +169,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   STIMMGABEL `key.voice: 'fork'` (`core/fork.ts` `forkTone`: Schwebung aus
   Neigungswinkel, UNGEPANNT – Ortung über Tonhöhe). Neue Merkmale melden sich
   im Aufleuchten über `levelFeatures` (sleeper, fork, wallMirror).
+- ELEMENTE M46 (Phase 3): LOCKGLOCKE `bell` (Kanten-Trigger `updateBells`,
+  `consumeRings()` für den Klang; klingende Glocke = Ziel ALLER Horcher in
+  `updateListeners`); HALLRAUM `reverbZone` (Feedback-Delay-Send am Master,
+  `setReverb`, `World.inReverb()`); WANDERLOCH `roamingHole` (liegt in
+  `world.holes` mit `roam`, `advanceHoles` wie `advanceGuards` – auch in der
+  Editor-Vorschau; Modell passierbar wie atmendes Loch, Patrouille im
+  Kampagnen-Test achsenparallel). Editor: Wanderloch nutzt den Zwei-Tap-
+  Fluss des Wächters (`pendingGuard`).
 - `src/core/occlusion.ts` – SCHALLSCHUTZWAND (`maze.absorb`, Wand mit
   `absorb`, Palette `absorb` Filz-Khaki): Der Echo-Ping deckt sie auf, aber
   sie antwortet NICHT; Klangquellen, deren Strahl vom Ball eine solche Wand

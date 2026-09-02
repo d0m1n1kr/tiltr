@@ -355,7 +355,21 @@ export class Renderer {
       const gWind = zoneGain('windZone'),
         gCur = zoneGain('current'),
         gFog = zoneGain('fogZone'),
-        gIce = zoneGain('ice');
+        gIce = zoneGain('ice'),
+        gRev = zoneGain('reverbZone');
+      // Hallraum (M46): luftige Fläche mit Nachhall-Bögen.
+      if (gRev > 0)
+        for (const z of world.reverbZones) {
+          ctx.fillStyle = `rgba(${WORLD.reverb}, ${0.1 * gRev})`;
+          ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
+          ctx.strokeStyle = `rgba(${WORLD.reverb}, ${0.45 * gRev})`;
+          ctx.lineWidth = 1.5 * this.dpr;
+          for (const rr of [0.18, 0.3, 0.42]) {
+            ctx.beginPath();
+            ctx.arc(tx(z.x + z.w * 0.3), ty(z.y + z.h / 2), z.h * s * rr, -Math.PI / 2, Math.PI / 2);
+            ctx.stroke();
+          }
+        }
       if (gWind > 0) for (const z of world.windZones) drawZone(z, WORLD.wind, gWind);
       if (gCur > 0) for (const z of world.currents) drawZone(z, WORLD.current, gCur);
       // Nebel: weicher Schleier; Eis: kalte Fläche mit Schlieren.
@@ -449,8 +463,16 @@ export class Renderer {
       if (debug || revealAll) alpha = 0.8 * gain;
       else if (hole.litFrom && now < hole.litFrom) alpha = 0;
       else if (hole.litUntil && hole.litUntil > now) alpha = Math.min(1, (hole.litUntil - now) / 1500);
-      alpha = Math.max(alpha, spotAlpha('hole', 0.8));
+      alpha = Math.max(alpha, spotAlpha(hole.roam ? 'roamingHole' : 'hole', 0.8));
       if (alpha <= 0.01) continue;
+      // Wanderloch (M46): im Debug/Reveal die Strecke wie beim Wächter.
+      if (hole.roam && (debug || revealAll)) {
+        ctx.strokeStyle = `rgba(${WORLD.holeRim}, ${0.3 * gain})`;
+        ctx.lineWidth = 2 * this.dpr;
+        ctx.beginPath();
+        hole.roam.waypoints.forEach((p, i) => (i ? ctx.lineTo(tx(p.x), ty(p.y)) : ctx.moveTo(tx(p.x), ty(p.y))));
+        ctx.stroke();
+      }
       const r = hole.r * s * (0.25 + 0.75 * (hole.openness ?? 1));
       ctx.fillStyle = WORLD.holeFill;
       ctx.beginPath();
@@ -580,6 +602,35 @@ export class Renderer {
         ctx.fillRect(-s2 / 2, -s2 / 2, s2, s2);
       }
       ctx.restore();
+    }
+
+    // Lockglocke (M46): Messing-Glocke; klingend mit Ringen.
+    for (const bl of world.bells) {
+      const ringing = bl.ringLeft > 0;
+      const alpha = Math.max(revealAlpha(bl, 0.95, 'bell'), ringing ? 0.9 : 0);
+      if (alpha <= 0.01) continue;
+      const cx = tx(bl.x),
+        cy = ty(bl.y),
+        r = bl.r * s;
+      ctx.fillStyle = `rgba(${WORLD.bell}, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.45, cy - r);
+      ctx.lineTo(cx + r * 0.45, cy - r);
+      ctx.lineTo(cx + r * 0.9, cy + r * 0.6);
+      ctx.lineTo(cx - r * 0.9, cy + r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy + r * 0.85, r * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      if (ringing) {
+        const k = 1 - bl.ringLeft / bl.ringS;
+        ctx.strokeStyle = `rgba(${WORLD.bell}, ${(1 - k) * 0.6})`;
+        ctx.lineWidth = 2 * this.dpr;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * (1.3 + k * 3), 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Sanduhr (M45): zwei Dreiecke in Sandfarbe.

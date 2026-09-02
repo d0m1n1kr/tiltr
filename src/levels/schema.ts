@@ -156,6 +156,32 @@ export const fogZoneDef = z.object({
   type: z.literal('fogZone'),
 });
 
+/** Hallraum (M46): Zone wie Nebel, aber mit Nachhall statt Dämpfung. */
+export const reverbZoneDef = z.object({
+  ...base,
+  type: z.literal('reverbZone'),
+});
+
+/** Lockglocke (M46): Überrollen schlägt sie an, Horcher laufen zum Klang. */
+export const bellDef = z.object({
+  ...base,
+  type: z.literal('bell'),
+  r: z.number().positive().default(24),
+  /** Sekunden, die sie nachklingt – und die Horcher ablenkt */
+  ringS: z.number().positive().default(4),
+});
+
+/** Wanderloch (M46): ein offenes Loch auf Patrouille – Wächter und Loch in
+ *  einem. Modell: passierbar wie ein atmendes Loch (man wartet, bis es
+ *  vorbei ist); Patrouille achsenparallel durch offene Zellen wie beim Wächter. */
+export const roamingHoleDef = z.object({
+  type: z.literal('roamingHole'),
+  patrol: z.array(cellCoord).min(2),
+  /** px/s – langsamer als ein Wächter, ein Loch wandert */
+  speed: z.number().positive().default(55),
+  r: z.number().positive().default(20.9),
+});
+
 export const iceDef = z.object({
   ...base,
   type: z.literal('ice'),
@@ -258,6 +284,9 @@ export const elementDef = z.discriminatedUnion('type', [
   glassDef,
   jukeboxDef,
   hourglassDef,
+  reverbZoneDef,
+  bellDef,
+  roamingHoleDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -279,6 +308,9 @@ export type EchoCrystalDef = z.infer<typeof echoCrystalDef>;
 export type AnchorDef = z.infer<typeof anchorDef>;
 export type GlassDef = z.infer<typeof glassDef>;
 export type HourglassDef = z.infer<typeof hourglassDef>;
+export type ReverbZoneDef = z.infer<typeof reverbZoneDef>;
+export type BellDef = z.infer<typeof bellDef>;
+export type RoamingHoleDef = z.infer<typeof roamingHoleDef>;
 export type JukeboxDef = z.infer<typeof jukeboxDef>;
 export type TuneDef = z.infer<typeof tuneSchema>;
 export type PlaylistEntry = z.infer<typeof playlistEntry>;

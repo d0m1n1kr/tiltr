@@ -61,8 +61,34 @@ export interface Hole {
   openness?: number;
   /** fehlt = Loch ist dauerhaft offen */
   breathing?: Breathing;
+  /** Wanderloch (M46): läuft seine Wegpunkte im Ping-Pong ab wie ein Wächter –
+   *  das Grollen zieht durch den Raum. Fehlt = das Loch steht. */
+  roam?: { waypoints: Array<{ x: number; y: number }>; target: number; dir: 1 | -1; speed: number };
   litFrom?: number;
   litUntil?: number;
+}
+
+/** Lockglocke (M46): Überrollen schlägt sie an (`ringLeft` Sekunden); solange
+ *  sie klingt, laufen die Horcher zu IHR statt zum Ball. `inside` merkt sich,
+ *  ob der Ball gerade auf ihr steht (Kanten-Trigger). */
+export interface Bell {
+  x: number;
+  y: number;
+  r: number;
+  ringS: number;
+  ringLeft: number;
+  inside: boolean;
+  litFrom?: number;
+  litUntil?: number;
+}
+
+/** Hallraum (M46): Zone mit langem Nachhall auf dem Ping-Bus – nicht leiser
+ *  wie Nebel, sondern LÄNGER: Wände weit hörbar, Richtung verschmiert. */
+export interface ReverbZone {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface WindZone {

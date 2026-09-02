@@ -612,6 +612,46 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M46 „Glocke, Halle, Wanderer" ✓ (Phase 3 von 3.0.0) – Lockglocke, Hallraum, Wanderloch
+
+Drei Elemente, die etwas BEWEGEN: die Horcher (Glocke), den Klang (Halle),
+das Loch (Wanderer). Danach der Einbau in bestehende Level.
+
+**Lockglocke** (`bell`): Überrollen schlägt sie an (Kanten-Trigger in
+`updateBells`, `consumeRings()` liefert die neu angeschlagenen für den Klang).
+Solange eine Glocke klingt (`ringLeft`), ist SIE das Ziel der Horcher –
+`updateListeners` läuft zur nächsten klingenden Glocke statt zum Ball. Die
+erste aktive Schleich-Mechanik: Ablenken statt Vermeiden. Klang: vier nicht-
+harmonische Partialtöne (Metall) mit breitbandigem Klöppel-Anschlag, 4 s,
+gepannt. Palette Messing.
+
+**Hallraum** (`reverbZone`, Zone wie Nebel): Ein Feedback-Delay am Master
+(0,17 s, Rückkopplung 0,62, Tiefpass 3,2 kHz – kein Convolver, keine
+Impulsantwort-Datei in der PWA), Send normal zu, in der Zone offen
+(`setReverb`). Nicht leiser, sondern LÄNGER: Wände weit hörbar, Richtung
+verschmiert. `World.inReverb()` ist die eine Frage. Kein Physik-Einfluss,
+frei im Beweis.
+
+**Wanderloch** (`roamingHole`, `patrol` + `speed`): ein offenes Loch, das
+seine Wegpunkte im Ping-Pong abläuft (`advanceHoles`, dt-basiert wie die
+Wächter, auch in der Editor-Play-Vorschau). Es liegt in `world.holes` mit
+`roam` – Sturz, Sog, Grollen und Ping-Antwort sind gratis, und das Grollen
+ZIEHT durch den Raum. Modell: passierbar wie ein atmendes Loch (Löcher sind im
+Erreichbarkeits-Modell nie Riegel); Patrouille achsenparallel durch offene
+Zellen (Kampagnen-Test erweitert). Editor: derselbe Zwei-Tap-Fluss wie beim
+Wächter.
+
+**Einbau.** Kathedrale: vier Hallraum-Zellen im Kirchenschiff (Spalte 0 auf
+dem Weg zum Schacht) – der Raum erzählt seine Größe. „Atemnot": das mittlere
+Loch wandert (Patrouille [0,5]–[0,6]). Sanduhren in „Die Weite" (2),
+„Taktstraße" (2), „Das Ohr" (je eine auf Ebene 1 und 3) – die faire Antwort
+auf „drei Sterne = zwei Läufe".
+
+**Tests.** `bell` (Kanten-Trigger, Horcher folgt der Glocke, verklungen wieder
+dem Ball), `roamingHole` (Ping-Pong, Sturz, Spiegelung, Beweis grün),
+`reverbZone` (Loader, inReverb, Badges); E2E Lauf 30 prüft die drei im
+importierten Level und dass das Loch wandert (Sabotage rot gesehen).
+
 ## M45 „Vier kleine Stimmen" ✓ (Phase 2 von 3.0.0) – Sanduhr, Schläfer, Echo-Spiegel, Stimmgabel
 
 Vier Elemente nach dem Bauplan (Schema → Modell → Loader/Physik → Audio →

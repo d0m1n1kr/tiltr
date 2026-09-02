@@ -235,13 +235,13 @@ describe('Kampagne', () => {
     }
   });
 
-  it('Wächter-Patrouillen verlaufen achsenparallel durch offene Gänge', () => {
+  it('Wächter- und Wanderloch-Patrouillen verlaufen achsenparallel durch offene Gänge', () => {
     for (const def of CAMPAIGN_LEVELS) {
       def.floors.forEach((floor, fl) => {
         const cells = buildFloorCells(floor, { brittleOpen: false, doorsOpen: false }, def.mirror);
         const cols = floor.size[0];
         for (const el of floor.elements) {
-          if (el.type !== 'guard') continue;
+          if (el.type !== 'guard' && el.type !== 'roamingHole') continue;
           for (let i = 1; i < el.patrol.length; i++) {
             const [ax, ay] = el.patrol[i - 1]!;
             const [bx, by] = el.patrol[i]!;

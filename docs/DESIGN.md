@@ -92,6 +92,9 @@ die Zielfarbe),
 Echo-Spiegel Silber (`200, 215, 235` – kühler und heller als Wand-Blau, ein
 Trugbild aus poliertem Metall; M45), Sanduhr Sand (`232, 196, 140` – Zeit,
 nicht Wert: das Gem ist eisblau, der Schlüssel Gold; M45),
+Lockglocke Messing (`214, 170, 84` – wärmer und dunkler als Schlüssel-Gold,
+ein Instrument; M46), Hallraum Blaugrau (`150, 195, 220` – luftiger als
+Nebel: Raum, der trägt statt schluckt; M46),
 Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
 Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
 Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das

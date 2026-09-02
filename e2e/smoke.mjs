@@ -5443,6 +5443,10 @@ if (want("30")) {
             { type: "key", cell: [3, 0], opens: "tor", voice: "fork" },
             { type: "door", id: "tor", edge: [[3, 1], "s"] },
             { type: "guard", patrol: [[1, 2], [2, 2]], speed: 90, sleeper: { wakeRadius: 600, awakeS: 5 } },
+            // M46: Lockglocke, Hallraum, Wanderloch
+            { type: "bell", cell: [1, 1] },
+            { type: "reverbZone", cell: [0, 1] },
+            { type: "roamingHole", patrol: [[2, 1], [3, 1]], speed: 60 },
           ],
           start: [0, 0],
           goal: [3, 2],
@@ -5462,6 +5466,13 @@ if (want("30")) {
     check(
       `Spielschleife kennt alle vier (Sanduhr ${w?.hourglasses}, Spiegel ${w?.mirrors}, Stimmgabel ${w?.forks}, Schläfer ${w?.sleepers}, davon schlafend ${w?.asleep})`,
       w?.hourglasses === 1 && w?.mirrors === 1 && w?.forks === 1 && w?.sleepers === 1 && w?.asleep === 1,
+    );
+    // M46: Glocke, Hallraum, Wanderloch – und das Loch WANDERT.
+    await page.waitForTimeout(700);
+    const w3 = await page.evaluate(() => window.__tiltrWorld);
+    check(
+      `Glocke ${w3?.bells}, Hallraum ${w3?.reverbZones}, Wanderloch ${w3?.roaming} – es wandert (x ${w?.roamX?.toFixed(0)} → ${w3?.roamX?.toFixed(0)})`,
+      w3?.bells === 1 && w3?.reverbZones === 1 && w3?.roaming === 1 && Math.abs((w3?.roamX ?? 0) - (w?.roamX ?? 0)) > 20,
     );
     await page.keyboard.press("Space"); // Echo-Ping
     await page.waitForTimeout(300);

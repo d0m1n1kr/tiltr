@@ -10,6 +10,8 @@ import type {
   FogZone,
   GlassPlate,
   Hourglass,
+  Bell,
+  ReverbZone,
   Goal,
   Guard,
   Hole,
@@ -52,6 +54,8 @@ export class World {
   ice: IcePatch[] = [];
   crystals: Collectible[] = [];
   hourglasses: Hourglass[] = [];
+  bells: Bell[] = [];
+  reverbZones: ReverbZone[] = [];
   anchors: Anchor[] = [];
   glass: GlassPlate[] = [];
   keys: Key[] = [];
@@ -127,6 +131,8 @@ export class World {
       }
 
       this.advanceGuards(h);
+      this.advanceHoles(h);
+      this.updateBells(h);
       this.updateListeners(h);
 
       // Sog-Anker: Anziehung wächst zum Zentrum hin, bleibt aber immer unter
@@ -260,7 +266,27 @@ export class World {
   // Deterministisch: hängt nur von Ballzustand und dt ab.
   private updateListeners(dt: number): void {
     const b = this.ball;
+    // Lockglocke (M46): Solange eine Glocke klingt, ist SIE das Ziel – die
+    // Horcher laufen zum Klang, nicht zum Ball. Ablenken statt Vermeiden.
+    const ringing = this.bells.filter((bl) => bl.ringLeft > 0);
     for (const l of this.listeners) {
+      if (ringing.length > 0) {
+        let best = ringing[0]!;
+        let bd = Infinity;
+        for (const bl of ringing) {
+          const d = Math.hypot(bl.x - l.x, bl.y - l.y);
+          if (d < bd) {
+            bd = d;
+            best = bl;
+          }
+        }
+        if (bd > 1e-6) {
+          const step = Math.min(bd, l.speed * dt);
+          l.x += ((best.x - l.x) / bd) * step;
+          l.y += ((best.y - l.y) / bd) * step;
+        }
+        continue;
+      }
       // Deckung (M43): Liegt eine Schallschutzwand zwischen Ball und Horcher,
       // kommt das Rollen nur gedämpft an – dieselbe Regel wie für jede andere
       // Klangquelle (occlusion.ts), nur in Gegenrichtung. Hinter der Wand darf
@@ -278,6 +304,61 @@ export class World {
       l.x += (dx / d) * step;
       l.y += (dy / d) * step;
     }
+  }
+
+  /** Wanderlöcher (M46) laufen ihre Wegpunkte im Ping-Pong ab – wie Wächter,
+   *  deterministisch, ohne Ball. Öffentlich für die Editor-Vorschau. */
+  advanceHoles(dt: number): void {
+    for (const hole of this.holes) {
+      const r = hole.roam;
+      if (!r || r.waypoints.length < 2) continue;
+      let remaining = r.speed * dt;
+      while (remaining > 0) {
+        const t = r.waypoints[r.target]!;
+        const dx = t.x - hole.x,
+          dy = t.y - hole.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= remaining) {
+          hole.x = t.x;
+          hole.y = t.y;
+          remaining -= d;
+          if (r.target + r.dir < 0 || r.target + r.dir >= r.waypoints.length) r.dir = -r.dir as 1 | -1;
+          r.target += r.dir;
+        } else {
+          hole.x += (dx / d) * remaining;
+          hole.y += (dy / d) * remaining;
+          remaining = 0;
+        }
+      }
+    }
+  }
+
+  /** Lockglocken (M46): Nachklang herunterzählen, Überrollen als Kanten-Trigger
+   *  anschlagen. Liefert die in diesem Schritt NEU angeschlagenen Glocken. */
+  private rungNow: Bell[] = [];
+  private updateBells(dt: number): void {
+    const b = this.ball;
+    for (const bl of this.bells) {
+      if (bl.ringLeft > 0) bl.ringLeft = Math.max(0, bl.ringLeft - dt);
+      const on = Math.hypot(bl.x - b.x, bl.y - b.y) < bl.r + b.r * 0.5;
+      if (on && !bl.inside) {
+        bl.ringLeft = bl.ringS;
+        this.rungNow.push(bl);
+      }
+      bl.inside = on;
+    }
+  }
+  /** Seit dem letzten Aufruf angeschlagene Glocken (für den Klang). */
+  consumeRings(): Bell[] {
+    const r = this.rungNow;
+    this.rungNow = [];
+    return r;
+  }
+
+  /** Liegt der Ballmittelpunkt gerade in einem Hallraum? */
+  inReverb(): boolean {
+    const b = this.ball;
+    return this.reverbZones.some((z) => b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h);
   }
 
   /** Schläfer wecken (M45): Ein Echo-Ping bei (x,y) weckt jeden Schläfer in

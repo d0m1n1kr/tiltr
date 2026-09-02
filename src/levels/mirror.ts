@@ -40,6 +40,8 @@ function mirrorFloor(floor: FloorDef, axis: MirrorAxis, sizes: ReadonlyArray<rea
     switch (el.type) {
       case 'guard':
         return { ...el, patrol: el.patrol.map(mc) };
+      case 'roamingHole':
+        return { ...el, patrol: el.patrol.map(mc) };
       case 'door':
         return { ...el, edge: me(el.edge as Edge) };
       case 'slidingWall':

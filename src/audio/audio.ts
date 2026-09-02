@@ -70,6 +70,8 @@ export class GameAudio {
   /** Schläfer (M45): tiefes, langsames Schnarchen statt Brummen */
   private snoreGain!: GainNode;
   private snorePanner!: PannerNode;
+  /** Hallraum (M46): Send vom Master in ein Feedback-Delay – lange Fahnen */
+  private reverbSend!: GainNode;
   /** Stimmgabel (M45): zwei Sinus, UNGEPANNT – Ortung über die Schwebung */
   private forkGain!: GainNode;
   private forkA!: OscillatorNode;
@@ -124,6 +126,21 @@ export class GameAudio {
     this.fogFilter.type = 'lowpass';
     this.fogFilter.frequency.value = 18000;
     this.master.connect(this.fogFilter).connect(this.ctx.destination);
+    // Hallraum (M46): Feedback-Delay statt Convolver – keine Impulsantwort-
+    // Datei in der PWA. Der Send ist normal zu; in der Zone geht er auf.
+    // Der Nachhall läuft durch den Nebelfilter wie alles andere.
+    this.reverbSend = this.ctx.createGain();
+    this.reverbSend.gain.value = 0;
+    const delay = this.ctx.createDelay(1);
+    delay.delayTime.value = 0.17;
+    const feedback = this.ctx.createGain();
+    feedback.gain.value = 0.62;
+    const damp = this.ctx.createBiquadFilter();
+    damp.type = 'lowpass';
+    damp.frequency.value = 3200;
+    this.master.connect(this.reverbSend).connect(delay);
+    delay.connect(damp).connect(feedback).connect(delay);
+    delay.connect(this.fogFilter);
 
     // Rollgeräusch: bräunliches Rauschen -> Tiefpass -> Gain (ungepannt, das ist "ich")
     const roll = this.ctx.createBufferSource();
@@ -723,6 +740,51 @@ export class GameAudio {
     const t = this.ctx.currentTime;
     this.guardGain.gain.setTargetAtTime(Math.min(0.5, closeness01 ** 1.5 * 0.55), t, 0.1);
     if (closeness01 > 0) this.place(this.guardPanner, dx, dy);
+  }
+
+  /** Hallraum (M46): 0 = trocken, 1 = voller Nachhall. */
+  setReverb(level01: number): void {
+    if (!this.ctx) return;
+    this.reverbSend.gain.setTargetAtTime(Math.min(0.7, level01 * 0.7), this.ctx.currentTime, 0.2);
+  }
+
+  /** Lockglocke (M46): heller Glockenschlag mit Obertönen, 4 s Nachklang,
+   *  gepannt aus Richtung der Glocke – die Horcher hören ihn auch. */
+  bellRing(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const out = this.spatialOut(dx, dy);
+    // Glocken-Partialtöne (nicht harmonisch – das macht den Metallklang).
+    [
+      [1046, 0.5, 4.0],
+      [2093, 0.25, 2.6],
+      [2793, 0.18, 1.8],
+      [4186, 0.1, 1.1],
+    ].forEach(([f, g, dur]) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f!;
+      const gain = this.ctx!.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(g!, t + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur!);
+      osc.connect(gain).connect(out);
+      osc.start(t);
+      osc.stop(t + dur! + 0.05);
+    });
+    // Breitbandiger Anschlag (Klöppel), damit das Ohr die Richtung fasst.
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('white');
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 2600;
+    bp.Q.value = 1.2;
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.35, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    src.connect(bp).connect(ng).connect(out);
+    src.start(t);
+    src.stop(t + 0.08);
   }
 
   /** Schläfer (M45): Schnarchen aus seiner Richtung, closeness01 wie beim Wächter. */

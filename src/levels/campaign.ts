@@ -236,7 +236,9 @@ const defs: unknown[] = [
         maze: { seed: 99, carve: [...down(0, 0, 9), ...right(9, 0, 6)] },
         elements: [
           { type: 'hole', cell: [0, 2], breathing: { offset: 0 } },
-          { type: 'hole', cell: [0, 5], breathing: { offset: 2 } },
+          // M46: Das mittlere Loch WANDERT – Wächter und Loch in einem; man
+          // hört das Grollen kommen und wartet, bis es vorbei ist.
+          { type: 'roamingHole', patrol: [[0, 5], [0, 6]], speed: 50 },
           { type: 'hole', cell: [0, 7], breathing: { offset: 4 } },
           { type: 'hole', cell: [2, 9], breathing: { offset: 1 } },
           { type: 'hole', cell: [4, 9], breathing: { offset: 3 } },
@@ -487,6 +489,10 @@ const defs2: unknown[] = [
           // Rückwege sicher.
           { type: 'transporter', cell: [3, 4], target: { floor: 1, cell: [0, 0] } },
           { type: 'transporter', cell: [10, 9], target: { floor: 1, cell: [3, 3] } },
+          // M46: Sanduhren – Zeit holen statt Gems holen; die faire Antwort
+          // auf „drei Sterne = zwei Läufe" im großen Feld.
+          { type: 'hourglass', cell: [8, 3] },
+          { type: 'hourglass', cell: [2, 12] },
         ],
         start: [0, 0],
         goal: [12, 0],
@@ -531,6 +537,11 @@ const defs2: unknown[] = [
           // M27: In der Kathedrale spielt eine Jukebox – Orgel und Hymne,
           // in einer Nische abseits des Wegs (validate.ts beweist es).
           { type: 'jukebox', cell: [1, 5], playlist: ['toccata', 'thaxted'] },
+          // M46: Das Kirchenschiff HALLT – der Raum erzählt seine Größe.
+          { type: 'reverbZone', cell: [0, 2] },
+          { type: 'reverbZone', cell: [0, 3] },
+          { type: 'reverbZone', cell: [0, 5] },
+          { type: 'reverbZone', cell: [0, 6] },
         ],
         start: [0, 0],
         goal: [6, 8],
@@ -781,6 +792,8 @@ const defs3: unknown[] = [
           // ist eine stationäre Strömung (erstes Vorkommen in der Kampagne).
           { type: 'anchor', cell: [3, 13] },
           { type: 'anchor', cell: [8, 13] },
+          { type: 'hourglass', cell: [6, 3] },
+          { type: 'hourglass', cell: [10, 11] },
           { type: 'hole', cell: [2, 5], breathing: { offset: 0 } },
           { type: 'hole', cell: [7, 3], breathing: { offset: 2 } },
           { type: 'hole', cell: [11, 9], breathing: { offset: 4 } },
@@ -1000,6 +1013,7 @@ const defs4: unknown[] = [
           { type: 'fogZone', cell: [3, 0] },
           { type: 'hole', cell: [4, 4], breathing: { offset: 1 } },
           { type: 'gem', cell: [0, 7] },
+          { type: 'hourglass', cell: [3, 5] },
           { type: 'transporter', cell: [6, 0], target: { floor: 1, cell: [0, 0] } },
         ],
         start: [0, 0],
@@ -1043,6 +1057,7 @@ const defs4: unknown[] = [
           { type: 'gem', cell: [6, 0] },
           // M44: Echo-Kristall am Nebelrand – das Ziel im Kern ist sonst nur Watte.
           { type: 'echoCrystal', cell: [3, 1] },
+          { type: 'hourglass', cell: [5, 5] },
         ],
         start: [0, 0],
         goal: [3, 3],

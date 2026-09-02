@@ -48,6 +48,12 @@ export const WORLD = {
   /** Sanduhr (M45): warmer Sand – Zeit, nicht Wert (das Gem ist eisblau, der
    *  Schlüssel Gold). */
   hourglass: '232, 196, 140',
+  /** Lockglocke (M46): Messing – wärmer und dunkler als Schlüssel-Gold, ein
+   *  Instrument, kein Schlüssel. */
+  bell: '214, 170, 84',
+  /** Hallraum (M46): helles Blaugrau, luftiger als Nebel (der ist entsättigt
+   *  und schwer) – Raum, der trägt statt schluckt. */
+  reverb: '150, 195, 220',
   // Glasboden nutzt bewusst das Brüchig-Bernstein (WORLD.brittle):
   // gleiche Bedeutung "brüchig, Vorsicht" – nur als Boden statt Wand.
 } as const;

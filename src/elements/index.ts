@@ -20,6 +20,9 @@ import './anchor';
 import './glass';
 import './jukebox';
 import './hourglass';
+import './bell';
+import './reverbZone';
+import './roamingHole';
 
 export { buildElements, galleryEntries, registerElement } from './registry';
 export type { BuildContext, ElementModule, GalleryEntry } from './registry';

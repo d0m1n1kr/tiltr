@@ -550,6 +550,7 @@ function showMenu(): void {
   audio.setListener(0, 0, 0, 0);
   audio.setIce(0);
   audio.setFog(0);
+  audio.setReverb(0);
   audio.setAnchor(0, 0, 0);
   audio.setHeading(0);
   audio.stopMusic();
@@ -1439,6 +1440,8 @@ function firePing(now: number): void {
   for (const key of world.keys) if (!key.collected) reveal(key, key.voice === 'fork' ? 880 : 1650);
   // Sanduhr (M45): feines Rieseln als Doppel-Blip.
   for (const hg of world.hourglasses) if (!hg.collected) reveal(hg, 1480, true);
+  // Lockglocke (M46): kurzer Glockenblip.
+  for (const bl of world.bells) reveal(bl, 2400);
   for (const gem of world.gems) if (!gem.collected) reveal(gem, 2093, true);
   for (const g of world.guards) reveal(g, 240);
   // Schläfer (M45): der Ping weckt, wer in Hörweite schläft – mit Zischen.
@@ -2025,6 +2028,7 @@ function mpCheckResult(): void {
   audio.setListener(0, 0, 0, 0);
   audio.setIce(0);
   audio.setFog(0);
+  audio.setReverb(0);
   audio.setAnchor(0, 0, 0);
   audio.stopMusic();
   const mine = mp.localElapsed ?? 0;
@@ -2141,6 +2145,12 @@ function frame(now: number): void {
       audio.setHeading(r.heading);
     }
     const hits = disconnected ? [] : world.step(dt, tilt);
+    // Lockglocke (M46): angeschlagen – Glockenschlag aus ihrer Richtung.
+    for (const bl of world.consumeRings()) {
+      audio.bellRing(bl.x - world.ball.x, bl.y - world.ball.y);
+      haptics.checkpoint();
+      flash(t('st.bell'));
+    }
 
     for (const hit of hits) {
       const wall = hit.wall;
@@ -2256,6 +2266,8 @@ function frame(now: number): void {
     const b0 = world.ball;
     const inFog = world.fogZones.some((z) => b0.x > z.x && b0.x < z.x + z.w && b0.y > z.y && b0.y < z.y + z.h);
     audio.setFog(inFog ? 1 : 0);
+    // Hallraum (M46): Nachhall an, solange der Ball in der Zone ist.
+    audio.setReverb(world.inReverb() ? 1 : 0);
 
     // Eis: kristallines Sirren, solange der Ball darauf gleitet.
     audio.setIce(world.onIce() ? Math.min(1, world.ball.speed / 500) : 0);
@@ -2558,6 +2570,7 @@ function frame(now: number): void {
       audio.setListener(0, 0, 0, 0);
       audio.setIce(0);
       audio.setFog(0);
+      audio.setReverb(0);
       audio.setAnchor(0, 0, 0);
       celebrate();
       statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
@@ -2626,6 +2639,12 @@ function frame(now: number): void {
     glass: world.glass.length,
     hourglasses: world.hourglasses.length,
     bonusS,
+    bells: world.bells.length,
+    ringing: world.bells.filter((b) => b.ringLeft > 0).length,
+    reverbZones: world.reverbZones.length,
+    inReverb: world.inReverb(),
+    roaming: world.holes.filter((h) => h.roam).length,
+    roamX: world.holes.find((h) => h.roam)?.x ?? null,
     sleepers: world.guards.filter((g) => g.sleeper).length,
     asleep: world.guards.filter((g) => World.asleep(g)).length,
     mirrors: world.walls.filter((w) => w.mirror).length,
