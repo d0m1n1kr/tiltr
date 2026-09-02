@@ -18,6 +18,7 @@ import { parseLevel } from '../levels/schema';
 import { validateLevel, isShareable, buildFloorCells, type CheckResult } from '../levels/validate';
 import { encodeLevel, SHARE_WARN_BYTES } from '../levels/shareCodec';
 import { galleryEntries } from '../elements';
+import { extraEntries } from './gallery';
 import { MUSIC, compiledById } from '../music';
 import { compileTune, type CompiledTune, type Tune } from '../audio/chiptune';
 import { previewTune } from '../audio/musicPreview';
@@ -25,7 +26,7 @@ import { clearDraft, exportPayload, saveDraft, workshop } from '../workshop';
 import { t, applyI18n, type Dict } from '../i18n';
 
 type Dir = 'n' | 'e' | 's' | 'w';
-type Edge = [[number, number], Dir];
+export type Edge = [[number, number], Dir];
 
 /* Rohe Def-Ausschnitte – bewusst locker typisiert (Quelle der Wahrheit ist
    das zod-Schema; der Editor mutiert Rohdaten und lässt parseLevel richten). */
@@ -38,7 +39,7 @@ interface RawEl {
 }
 interface RawFloor {
   size: [number, number];
-  maze: { seed: number; carve: Edge[]; add: Edge[]; brittle: Edge[]; [k: string]: unknown };
+  maze: { seed: number; carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[]; [k: string]: unknown };
   elements: RawEl[];
   start: [number, number];
   goal: [number, number] | null;
@@ -90,6 +91,76 @@ export function pickTarget(
 }
 
 const edgeKey = (e: Edge) => `${e[0][0]},${e[0][1]},${e[1]}`;
+const edgeIn = (list: Edge[], e: Edge) => list.some((x) => edgeKey(x) === edgeKey(e));
+const edgeDrop = (list: Edge[], e: Edge) => {
+  const i = list.findIndex((x) => edgeKey(x) === edgeKey(e));
+  if (i !== -1) list.splice(i, 1);
+};
+
+export type EdgeState = 'open' | 'wall' | 'brittle' | 'absorb';
+export type WallVariant = 'solid' | 'brittle' | 'absorb';
+export type MazeEdits = { carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[] };
+
+/** Sichtbarer Zustand einer Kante: Variante, wenn gelistet; sonst offen/Wand
+ *  nach dem AKTUELLEN Maze (Seed + Edits). */
+export function edgeState(maze: MazeEdits, e: Edge, open: boolean): EdgeState {
+  if (edgeIn(maze.absorb, e)) return 'absorb';
+  if (edgeIn(maze.brittle, e)) return 'brittle';
+  return open ? 'open' : 'wall';
+}
+
+/** Wand-Werkzeug: Wand oder keine Wand – nach SICHTBAREM Zustand. `open` =
+ *  Kante ist im aktuellen Maze offen, `seedOpen` = im nackten Seed. Die
+ *  Listen werden so gesetzt, dass der Zielzustand herauskommt, egal was der
+ *  Seed an dieser Kante gewürfelt hat; eine entfernte Wand nimmt ihre
+ *  Variante (brüchig/Schallschutz) mit. Früher lief hier ein Vierer-Zyklus
+ *  über die LISTEN (Seed → carve → add → brüchig), der je nach Seed einen
+ *  unsichtbaren Tap hatte – und die Variante gehört nicht in ein Werkzeug,
+ *  sondern in die Eigenschaften der ausgewählten Wand (setEdgeVariant).
+ *  Exportiert für Tests. Liefert den neuen Zustand. */
+export function toggleEdge(maze: MazeEdits, e: Edge, open: boolean, seedOpen: boolean): EdgeState {
+  edgeDrop(maze.carve, e);
+  edgeDrop(maze.add, e);
+  edgeDrop(maze.brittle, e);
+  edgeDrop(maze.absorb, e);
+  if (open) {
+    if (seedOpen) maze.add.push(e);
+    return 'wall';
+  }
+  if (!seedOpen) maze.carve.push(e);
+  return 'open';
+}
+
+/** Variante einer BESTEHENDEN Wand setzen: massiv, brüchig oder Schallschutz –
+ *  genau eine Liste führt die Kante, die anderen nicht. Auf eine offene Kante
+ *  angewandt ist das ein Fehler des Aufrufers (der Loader verlangt die Wand);
+ *  der Editor bietet die Auswahl nur für Wände an. */
+export function setEdgeVariant(maze: MazeEdits, e: Edge, v: WallVariant): void {
+  edgeDrop(maze.brittle, e);
+  edgeDrop(maze.absorb, e);
+  if (v === 'brittle') maze.brittle.push(e);
+  if (v === 'absorb') maze.absorb.push(e);
+}
+
+/** Landeplätze auf Ebene `floorIndex`: jede Transporter-Zielzelle, die auf
+ *  dieser Ebene liegt – mit der Ebene, VON der man kommt. Rein, exportiert für
+ *  Tests; der Editor zeichnet genau diese Liste. Ein Landeplatz ist KEIN
+ *  Element: Die Zelle bleibt frei bebaubar und ein Tap darauf wählt nicht den
+ *  Transporter (der steht ggf. auf einer anderen Ebene). */
+export function landingsOn(
+  level: RawLevel,
+  floorIndex: number,
+): Array<{ cell: [number, number]; from: number; index: number }> {
+  const out: Array<{ cell: [number, number]; from: number; index: number }> = [];
+  level.floors.forEach((f, from) => {
+    f.elements.forEach((el, index) => {
+      if (el.type !== 'transporter') return;
+      const tg = el.target as { floor: number; cell: [number, number] } | undefined;
+      if (tg && tg.floor === floorIndex) out.push({ cell: tg.cell, from, index });
+    });
+  });
+  return out;
+}
 
 /** Zellen, die ein Element belegt – inklusive der Wächter-Wegpunkte, denn
  *  auf einer Patrouille wacht die Kugel nicht sicher auf. Kanten-Elemente
@@ -206,10 +277,11 @@ export function setupEditor(opts: {
   const drawerHandle = $('edDrawerHandle');
 
   // Galerie-Miniatur eines Element-Typs (Palette, Auswahl-Kopf, Drawer-Griff).
-  const galleryDraws = new Map(galleryEntries().map((e) => [e.type, e.draw]));
+  const allEntries = [...galleryEntries(), ...extraEntries()];
+  const galleryDraws = new Map(allEntries.map((e) => [e.type, e.draw]));
   // Klang-Signaturen aus derselben Registry: Was die Galerie anspielt, spielt
   // auch das Eigenschaften-Panel – ein Element hat EINEN Klang.
-  const galleryDemos = new Map(galleryEntries().map((e) => [e.type, e.demoSound]));
+  const galleryDemos = new Map(allEntries.map((e) => [e.type, e.demoSound]));
   const miniCanvas = (type: string): HTMLCanvasElement => {
     const cv = document.createElement('canvas');
     cv.width = 66;
@@ -235,6 +307,10 @@ export function setupEditor(opts: {
       const name = document.createElement('span');
       name.textContent = t(`el.${el.type}.title` as keyof Dict);
       drawerHandle.append(miniCanvas(el.type), name);
+    } else if (selEdge) {
+      const name = document.createElement('span');
+      name.textContent = t('ed.wall');
+      drawerHandle.append(miniCanvas('wallEcho'), name);
     } else {
       const label = document.createElement('span');
       label.textContent = t('ed.props');
@@ -268,6 +344,9 @@ export function setupEditor(opts: {
   let placeType: string = 'hole';
   let activeFloor = 0;
   let selected = -1; // Index in floor.elements (der AKTIVEN Ebene)
+  /** Ausgewählte WANDKANTE (Auswählen-Werkzeug auf eine Wand ohne Element):
+   *  Eigenschaften = Variante. Schließt `selected` aus und umgekehrt. */
+  let selEdge: Edge | null = null;
   let pendingGuard: [number, number] | null = null;
   /** Transporter-Platzierung: Pad gesetzt, Ziel-Tap steht aus (Ebenenwechsel erlaubt). */
   let pendingTransporter: { floor: number; cell: [number, number] } | null = null;
@@ -294,10 +373,11 @@ export function setupEditor(opts: {
     if (!draft) return;
     draft.floors ??= [];
     for (const f of draft.floors) {
-      f.maze ??= { seed: 1, carve: [], add: [], brittle: [] };
+      f.maze ??= { seed: 1, carve: [], add: [], brittle: [], absorb: [] };
       f.maze.carve ??= [];
       f.maze.add ??= [];
       f.maze.brittle ??= [];
+      f.maze.absorb ??= [];
       f.elements ??= [];
       // Wie bei maze.add: Ein rohes Def darf Felder auslassen, der Editor
       // greift aber direkt darauf zu. EINMAL auffüllen statt an jeder
@@ -312,17 +392,16 @@ export function setupEditor(opts: {
 
   /* --- Rohdaten-Helfer ----------------------------------------------------- */
 
-  const inList = (list: Edge[], e: Edge) => list.some((x) => edgeKey(x) === edgeKey(e));
-  const dropFromList = (list: Edge[], e: Edge) => {
-    const i = list.findIndex((x) => edgeKey(x) === edgeKey(e));
-    if (i !== -1) list.splice(i, 1);
-  };
+  const inList = edgeIn;
+  const dropFromList = edgeDrop;
 
-  // Ist die Kante im aktuellen Maze (Seed + Edits) offen?
-  const edgeOpen = (e: Edge): boolean => {
+  // Ist die Kante im aktuellen Maze (Seed + Edits) offen? `seedOnly` fragt den
+  // nackten Seed – das Wand-Werkzeug braucht beides (toggleEdge).
+  const edgeOpen = (e: Edge, seedOnly = false): boolean => {
     try {
       const def = parseLevel(draft);
-      const f = def.floors[activeFloor]!;
+      const f0 = def.floors[activeFloor]!;
+      const f = seedOnly ? { ...f0, maze: { ...f0.maze, carve: [], add: [] } } : f0;
       const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
       const c = cells[e[0][1] * f.size[0] + e[0][0]]!;
       return e[1] === 'e' ? !c.e : !c.s;
@@ -556,6 +635,13 @@ export function setupEditor(opts: {
       activeFloor,
       carve: floor().maze.carve.length,
       add: floor().maze.add.length,
+      brittle: floor().maze.brittle.length,
+      absorb: floor().maze.absorb.length,
+      // Sichtbarer Kantenzustand (E2E: Wand an/aus, Variante über Eigenschaften).
+      edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
+      selEdge,
+      // Landeplätze dieser Ebene – genau das, was der Overlay-Ring zeigt.
+      landings: landingsOn(draft, activeFloor),
       selected,
       loadError,
       // Teilbar = alle Pflicht-Badges grün (E2E; die UI sagt es über
@@ -686,11 +772,33 @@ export function setupEditor(opts: {
         overlay.lineTo(tx((tg.cell[0] + 0.5) * CELL), ty((tg.cell[1] + 0.5) * CELL));
         overlay.stroke();
         overlay.setLineDash([]);
-        if (hot) overlay.strokeRect(tx(tg.cell[0] * CELL), ty(tg.cell[1] * CELL), CELL * s, CELL * s);
       } else {
         overlay.font = `600 ${11 * dpr}px system-ui, sans-serif`;
         overlay.textAlign = 'center';
         overlay.fillText(`→E${tg.floor + 1}`, tx((el.cell[0] + 0.5) * CELL), ty(el.cell[1] * CELL) - 4 * dpr);
+      }
+    }
+
+    // Landeplätze: Wo kommt man auf DIESER Ebene an – und von wo? Gestrichelter
+    // Ring in Portal-Farbe, „←E<n>" wenn der Transporter auf einer anderen
+    // Ebene steht. Reine Ansicht: kein Element, die Zelle bleibt bebaubar.
+    for (const ld of draft ? landingsOn(draft, activeFloor) : []) {
+      const hot = ld.from === activeFloor && floor().elements[ld.index] === selEl;
+      const cx = tx((ld.cell[0] + 0.5) * CELL);
+      const cy = ty((ld.cell[1] + 0.5) * CELL);
+      overlay.strokeStyle = `rgba(${WORLD.portal}, ${hot ? 0.95 : 0.6})`;
+      overlay.fillStyle = `rgba(${WORLD.portal}, 0.9)`;
+      overlay.lineWidth = (hot ? 2 : 1.5) * dpr;
+      overlay.setLineDash([3 * dpr, 3 * dpr]);
+      overlay.beginPath();
+      overlay.arc(cx, cy, 0.3 * CELL * s, 0, Math.PI * 2);
+      overlay.stroke();
+      overlay.setLineDash([]);
+      if (hot) overlay.strokeRect(tx(ld.cell[0] * CELL), ty(ld.cell[1] * CELL), CELL * s, CELL * s);
+      if (ld.from !== activeFloor) {
+        overlay.font = `600 ${11 * dpr}px system-ui, sans-serif`;
+        overlay.textAlign = 'center';
+        overlay.fillText(`←E${ld.from + 1}`, cx, ty(ld.cell[1] * CELL) - 4 * dpr);
       }
     }
 
@@ -714,6 +822,17 @@ export function setupEditor(opts: {
         overlay.strokeRect(tx(src.cell[0] * CELL), ty(src.cell[1] * CELL), CELL * s, CELL * s);
         overlay.setLineDash([]);
       }
+    }
+
+    // Auswahl: Wandkante (Variante in den Eigenschaften)
+    if (selEdge && !floor().elements[selected]) {
+      const [[x, y], dir] = selEdge;
+      const vertical = dir === 'e';
+      const ex = vertical ? (x + 1) * CELL : x * CELL;
+      const ey = vertical ? y * CELL : (y + 1) * CELL;
+      overlay.strokeStyle = `rgba(${WORLD.ballGlow}, 0.9)`;
+      overlay.lineWidth = 2 * dpr;
+      overlay.strokeRect(tx(ex - 8), ty(ey - 8), (vertical ? 16 : CELL + 16) * s, (vertical ? CELL + 16 : 16) * s);
     }
 
     // Auswahl
@@ -783,7 +902,7 @@ export function setupEditor(opts: {
 
     if (tool === 'wall') {
       if (target.kind !== 'edge') return flash(t('ed.edgeHint'));
-      cycleWall(target.edge);
+      toggleWall(target.edge);
     } else if (tool === 'erase') {
       eraseAt(target);
     } else if (tool === 'start' || tool === 'goal') {
@@ -809,8 +928,11 @@ export function setupEditor(opts: {
       }
     } else {
       selected = elementAt(target);
+      // Keine Element-Kante, aber eine WAND: die Wand selbst wählen – ihre
+      // Variante (massiv/brüchig/Schallschutz) wohnt in den Eigenschaften.
+      selEdge = selected === -1 && target.kind === 'edge' && !edgeOpen(target.edge!) ? target.edge! : null;
       renderProps();
-      if (selected !== -1) openDrawer();
+      if (selected !== -1 || selEdge) openDrawer();
     }
     rebuild();
   }
@@ -865,20 +987,10 @@ export function setupEditor(opts: {
     return true;
   }
 
-  // Kante zyklisch: Seed-Zustand -> offen (carve) -> zu (add) -> brüchig -> Seed.
-  function cycleWall(e: Edge): void {
-    const m = floor().maze;
-    if (inList(m.brittle, e)) {
-      dropFromList(m.brittle, e);
-      dropFromList(m.add, e);
-    } else if (inList(m.add, e)) {
-      m.brittle.push(e);
-    } else if (inList(m.carve, e)) {
-      dropFromList(m.carve, e);
-      m.add.push(e);
-    } else {
-      m.carve.push(e);
-    }
+  // Wand-Werkzeug: Wand oder keine Wand, nach sichtbarem Zustand.
+  function toggleWall(e: Edge): void {
+    toggleEdge(floor().maze, e, edgeOpen(e), edgeOpen(e, true));
+    if (selEdge && edgeKey(selEdge) === edgeKey(e)) selEdge = null;
   }
 
   function eraseAt(target: { kind: string; cell?: [number, number]; edge?: Edge }): void {
@@ -895,6 +1007,8 @@ export function setupEditor(opts: {
       dropFromList(m.carve, target.edge!);
       dropFromList(m.add, target.edge!);
       dropFromList(m.brittle, target.edge!);
+      dropFromList(m.absorb, target.edge!);
+      if (selEdge && edgeKey(selEdge) === edgeKey(target.edge!)) selEdge = null;
     }
   }
 
@@ -907,6 +1021,7 @@ export function setupEditor(opts: {
       if (!edgeOpen(e)) {
         dropFromList(floor().maze.add, e);
         dropFromList(floor().maze.brittle, e);
+        dropFromList(floor().maze.absorb, e);
         if (!inList(floor().maze.carve, e)) floor().maze.carve.push(e);
       }
       els.push(placeType === 'door' ? { type: 'door', id: nextDoorId(), edge: e } : { type: 'slidingWall', edge: e });
@@ -1252,6 +1367,46 @@ export function setupEditor(opts: {
 
     updateDrawerHandle(); // Phone-Griff spiegelt die Auswahl (Icon + Name)
 
+    // Ausgewählte WAND: Kopf + Variante (massiv / brüchig / Schallschutz).
+    if (selEdge && !f.elements[selected]) {
+      if (edgeOpen(selEdge)) {
+        selEdge = null; // inzwischen aufgeschnitten – nichts mehr zu wählen
+      } else {
+        const e = selEdge;
+        const head = document.createElement('div');
+        head.className = 'ed-selhead';
+        const label = document.createElement('span');
+        label.className = 'ed-group-label';
+        label.textContent = `${t('ed.selected')}: ${t('ed.wall')} · ${t('ed.scope.element')}`;
+        head.append(miniCanvas('wallEcho'), label);
+        const state = edgeState(f.maze, e, false);
+        const demo = galleryDemos.get(state === 'absorb' ? 'wallAbsorb' : 'wallEcho');
+        if (demo) {
+          const listen = document.createElement('button');
+          listen.className = 'btn btn-soft ed-listen';
+          listen.textContent = t('common.listen');
+          listen.addEventListener('click', () => void opts.audio.start().then(() => demo(opts.audio)));
+          head.append(listen);
+        }
+        propsEl.append(head);
+        const sel = selectInput(state === 'brittle' || state === 'absorb' ? state : 'solid', [
+          ['solid', t('ed.v.solid')],
+          ['brittle', t('ed.v.brittle')],
+          ['absorb', t('ed.v.absorb')],
+        ], (v) => {
+          setEdgeVariant(f.maze, e, v as WallVariant);
+          rebuild();
+          renderProps();
+        });
+        sel.id = 'edWallVariant';
+        propsEl.append(field(t('ed.f.variant'), sel));
+        const hint = document.createElement('p');
+        hint.className = 'menu-meta';
+        hint.textContent = t('ed.wallHint');
+        propsEl.append(hint);
+      }
+    }
+
     // Ausgewähltes Element: Kopf mit Galerie-Miniatur zur Identifikation
     const el = f.elements[selected];
     if (el) {
@@ -1373,6 +1528,7 @@ export function setupEditor(opts: {
       del.addEventListener('click', () => {
         const [removed] = f.elements.splice(selected, 1);
         selected = -1;
+        selEdge = null;
         if (removed?.type === 'door') cleanupAfterDoorDelete(String(removed.id));
         renderProps();
         rebuild();
@@ -1431,9 +1587,11 @@ export function setupEditor(opts: {
     f.maze.carve = f.maze.carve.filter(edgeInside);
     f.maze.add = f.maze.add.filter(edgeInside);
     f.maze.brittle = f.maze.brittle.filter(edgeInside);
+    f.maze.absorb = f.maze.absorb.filter(edgeInside);
     f.start = [Math.min(f.start[0], cols - 1), Math.min(f.start[1], rows - 1)];
     if (f.goal) f.goal = [Math.min(f.goal[0], cols - 1), Math.min(f.goal[1], rows - 1)];
     selected = -1;
+    selEdge = null;
     fitView();
     renderProps();
   }
@@ -1516,6 +1674,7 @@ export function setupEditor(opts: {
   function switchFloor(index: number): void {
     activeFloor = index;
     selected = -1;
+    selEdge = null;
     pendingGuard = null;
     // Mit dem Start-Werkzeug in der Hand auf eine tiefere Ebene wechseln:
     // Dort gibt es keinen Start zu setzen – zurück aufs Auswählen.
@@ -1547,7 +1706,7 @@ export function setupEditor(opts: {
         const cur = floor();
         draft!.floors.push({
           size: [...cur.size] as [number, number],
-          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [] },
+          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [], absorb: [] },
           elements: [],
           start: [0, 0],
           goal: null,
@@ -1683,6 +1842,7 @@ export function setupEditor(opts: {
       normalizeDraft();
       activeFloor = 0;
       selected = -1;
+      selEdge = null;
       pendingGuard = null;
       pendingTransporter = null;
       pendingLink = null;

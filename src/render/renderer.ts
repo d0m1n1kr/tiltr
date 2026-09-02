@@ -277,7 +277,9 @@ export class Renderer {
             ? WORLD.door
             : w.hp !== undefined || w.cracked
               ? WORLD.brittle
-              : WORLD.wall;
+              : w.absorb
+                ? WORLD.absorb
+                : WORLD.wall;
       addRect(w, wallAlpha(w), color);
     }
     for (const d of world.debris) {

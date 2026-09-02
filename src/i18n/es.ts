@@ -351,6 +351,14 @@ export const es: Dict = {
   'el.plate.title': 'Placa de presión y puerta del compañero',
   'el.plate.desc':
     'Coop: mientras tu compañero mantiene la placa, tu puerta se abre; si la suelta, se cierra de nuevo. Misma firma dorada que la puerta que abre. Solo en multijugador.',
+  'el.wallAbsorb.title': 'Muro insonorizante',
+  'el.wallAbsorb.desc': 'Muro de material absorbente (caqui): el ping de eco NO vuelve de él, y lo que hay detrás – guardias, portales, la baliza de la meta, música – se oye débil y apagado. Chocar contra él suena blando.',
+  'ed.wall': 'Muro',
+  'ed.f.variant': 'Variante',
+  'ed.v.solid': 'macizo',
+  'ed.v.brittle': 'frágil (3 golpes)',
+  'ed.v.absorb': 'insonorizante',
+  'ed.wallHint': 'Herramienta muro: un toque en una arista pone o quita el muro. Variante (frágil, insonorizante) vía Seleccionar → propiedades.',
   'el.wallEcho.title': 'Muro y eco',
   'el.wallEcho.desc':
     'Los muros son invisibles; al tocarlos brillan un instante y suenan como un golpe sordo desde su dirección. Los muros frágiles (ámbar) crujen y se derrumban tras 3 golpes fuertes.',

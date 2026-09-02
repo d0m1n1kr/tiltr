@@ -355,6 +355,14 @@ export const de = {
   'el.plate.title': 'Druckplatte & Partnertür',
   'el.plate.desc':
     'Coop: Solange dein Partner die Platte hält, gleitet deine Tür auf – lässt er los, schließt sie wieder. Gleiche goldene Ping-Signatur wie die Tür, die sie öffnet. Nur im Multiplayer.',
+  'el.wallAbsorb.title': 'Schallschutzwand',
+  'el.wallAbsorb.desc': 'Wand aus Dämmstoff (khaki): Der Echo-Ping kommt von ihr NICHT zurück, und was hinter ihr liegt – Wächter, Portal, Ziel-Beacon, Musik – hört man nur leise und dumpf. Anrempeln klingt weich.',
+  'ed.wall': 'Wand',
+  'ed.f.variant': 'Variante',
+  'ed.v.solid': 'massiv',
+  'ed.v.brittle': 'brüchig (3 Treffer)',
+  'ed.v.absorb': 'Schallschutz',
+  'ed.wallHint': 'Wand-Werkzeug: Tap auf eine Kante setzt oder entfernt die Wand. Variante (brüchig, Schallschutz) über Auswählen → Eigenschaften.',
   'el.wallEcho.title': 'Wand & Echo',
   'el.wallEcho.desc':
     'Wände sind unsichtbar; Berührung macht sie kurz sichtbar und klingt als dumpfer Thump aus ihrer Richtung. Brüchige Wände (bernstein) knirschen und stürzen nach 3 harten Treffern ein.',

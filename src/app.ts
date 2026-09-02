@@ -2,6 +2,7 @@ import './ui/theme.css';
 import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup, summarizeBackup, type BackupPayload } from './backup';
 import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
+import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
 import type { Ball, World } from './core/physics';
@@ -1093,7 +1094,7 @@ function updateJukeboxes(nowMs: number): void {
   const closeness = Math.max(0, 1 - nearestD / MUSIC_HEAR) * nearest.volume;
   const tune = tuneOf(nearest.playlist[nearest.index]);
   const playing = state === 'playing' && audio.running && tune !== null && closeness > 0.02;
-  audio.setMusic(playing ? closeness : 0, nearest.x - b.x, nearest.y - b.y);
+  audio.setMusic(playing ? closeness * shield(nearest.x - b.x, nearest.y - b.y) : 0, nearest.x - b.x, nearest.y - b.y);
   if (!playing || !tune) {
     nearest.bpm = undefined;
     return;
@@ -1141,6 +1142,16 @@ function skipJukebox(j: Jukebox, hard01: number, nowMs: number, auto = false): v
   if (next) flash(`♫ ${next.title}`);
 }
 
+/** Abschirmung einer Klangquelle im Versatz (dx,dy) vom Ball: 1 = frei,
+ *  ABSORB_GAIN = eine Schallschutzwand steht dazwischen (core/occlusion.ts).
+ *  Stetige Quellen skalieren ihre Nähe damit, der Beacon nimmt den
+ *  „muffled"-Zweig, der Schlüssel klingt entsprechend weiter weg. */
+function shield(dx: number, dy: number): number {
+  if (!world) return 1;
+  const b = world.ball;
+  return shielded(world.walls, b.x, b.y, b.x + dx, b.y + dy) ? ABSORB_GAIN : 1;
+}
+
 // Echo-Ping: Umgebung im Radius aufdecken (als Wellenfront) und die
 // Reflexionen verzögert & räumlich zurückkommen lassen.
 function firePing(now: number): void {
@@ -1158,6 +1169,9 @@ function firePing(now: number): void {
     if (dist > PING_RANGE) continue;
     w.litFrom = now + (dist / PING_SPEED) * 1000;
     w.litUntil = w.litFrom + 1000;
+    // Schallschutzwand: die Wellenfront deckt sie auf (Licht), aber sie
+    // antwortet NICHT – ein stilles Stück Richtung ist ihr Signal.
+    if (w.absorb) continue;
     // Schiebewände antworten tiefer, steinerner als normale Wände; der
     // Jukebox-Kasten hohl-hölzern dazwischen (er IST ein Möbel).
     reflections.push({
@@ -1854,7 +1868,7 @@ function frame(now: number): void {
       wall.litUntil = now + 1200; // Echo: berührte Wand kurz sichtbar machen
       const intensity = Math.min(1, hit.impact / 500);
       if (intensity <= 0.06) continue;
-      audio.hit(intensity, hit.nx, hit.ny);
+      audio.hit(intensity, hit.nx, hit.ny, wall.absorb === true);
       haptics.hit(intensity);
       // Jukebox angerempelt: nächster Titel. Ein Streifschuss zählt nicht –
       // sonst schaltet ein an der Kante entlangrollender Ball durch.
@@ -1884,7 +1898,7 @@ function frame(now: number): void {
     const gdx = loaded!.goalPos.x - world.ball.x;
     const gdy = loaded!.goalPos.y - world.ball.y;
     const gdist = Math.hypot(gdx, gdy);
-    audio.beacon(gdx, gdy, Math.min(1, gdist / maxDist), activeFloor !== loaded!.goalFloor);
+    audio.beacon(gdx, gdy, Math.min(1, gdist / maxDist), activeFloor !== loaded!.goalFloor || shield(gdx, gdy) < 1);
 
     // Gefahr = Nähe des bedrohlichsten OFFENEN Lochs: steuert Grollen
     // (Atmen = An- und Abschwellen mit dem Öffnungsgrad), Warnvibration
@@ -1900,7 +1914,11 @@ function frame(now: number): void {
       }
     }
     if (dangerHole) {
-      audio.setHoleRumble(danger, dangerHole.x - world.ball.x, dangerHole.y - world.ball.y);
+      audio.setHoleRumble(
+        danger * shield(dangerHole.x - world.ball.x, dangerHole.y - world.ball.y),
+        dangerHole.x - world.ball.x,
+        dangerHole.y - world.ball.y,
+      );
     } else {
       audio.setHoleRumble(0, 0, 0);
     }
@@ -1915,7 +1933,7 @@ function frame(now: number): void {
         nearGuard = { dx: g.x - world.ball.x, dy: g.y - world.ball.y };
       }
     }
-    if (nearGuard) audio.setGuard(guardDanger, nearGuard.dx, nearGuard.dy);
+    if (nearGuard) audio.setGuard(guardDanger * shield(nearGuard.dx, nearGuard.dy), nearGuard.dx, nearGuard.dy);
     else audio.setGuard(0, 0, 0);
 
     // Horcher: Schnüffeln schwillt mit der EIGENEN Rollgeschwindigkeit an –
@@ -1931,7 +1949,8 @@ function frame(now: number): void {
         nearListener = { dx: l.x - world.ball.x, dy: l.y - world.ball.y };
       }
     }
-    if (nearListener) audio.setListener(listenerClose, activity, nearListener.dx, nearListener.dy);
+    if (nearListener)
+      audio.setListener(listenerClose * shield(nearListener.dx, nearListener.dy), activity, nearListener.dx, nearListener.dy);
     else audio.setListener(0, 0, 0, 0);
     const listenerDanger = listenerClose * (0.25 + 0.75 * activity);
 
@@ -1971,7 +1990,8 @@ function frame(now: number): void {
         }
         flash(t('st.door'));
       } else if (kd < KEY_HEAR) {
-        audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR));
+        // Hinter einer Schallschutzwand klingt der Schlüssel wie weit weg.
+        audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR / shield(kdx, kdy)));
       }
     }
 
@@ -2034,7 +2054,7 @@ function frame(now: number): void {
         nearAnchor = { dx: a.x - world.ball.x, dy: a.y - world.ball.y };
       }
     }
-    if (nearAnchor) audio.setAnchor(anchorClose, nearAnchor.dx, nearAnchor.dy);
+    if (nearAnchor) audio.setAnchor(anchorClose * shield(nearAnchor.dx, nearAnchor.dy), nearAnchor.dx, nearAnchor.dy);
     else audio.setAnchor(0, 0, 0);
 
     // Windzonen: hörbar in der Nähe, spürbar (Kraft) mittendrin
@@ -2044,7 +2064,7 @@ function frame(now: number): void {
       if (!bestZone || p.dist < bestZone.dist) bestZone = p;
     }
     if (bestZone) {
-      audio.setWind(Math.max(0, 1 - bestZone.dist / WIND_HEAR), bestZone.dx, bestZone.dy);
+      audio.setWind(Math.max(0, 1 - bestZone.dist / WIND_HEAR) * shield(bestZone.dx, bestZone.dy), bestZone.dx, bestZone.dy);
     }
 
     // Strömungen: pulsierendes Rauschen in Hörweite (Richtung wie beim Wind).
@@ -2054,7 +2074,11 @@ function frame(now: number): void {
       if (!bestCurrent || p.dist < bestCurrent.dist) bestCurrent = p;
     }
     if (bestCurrent) {
-      audio.setCurrent(Math.max(0, 1 - bestCurrent.dist / CURRENT_HEAR), bestCurrent.dx, bestCurrent.dy);
+      audio.setCurrent(
+        Math.max(0, 1 - bestCurrent.dist / CURRENT_HEAR) * shield(bestCurrent.dx, bestCurrent.dy),
+        bestCurrent.dx,
+        bestCurrent.dy,
+      );
     }
 
     // Zeitschloss-Schalter: Betreten spannt das Uhrwerk (Draufbleiben frischt
@@ -2134,7 +2158,7 @@ function frame(now: number): void {
         nearPortal = { dx: t.x - world.ball.x, dy: t.y - world.ball.y };
       }
     }
-    if (nearPortal) audio.setPortal(portalCloseness, nearPortal.dx, nearPortal.dy);
+    if (nearPortal) audio.setPortal(portalCloseness * shield(nearPortal.dx, nearPortal.dy), nearPortal.dx, nearPortal.dy);
     else audio.setPortal(0, 0, 0);
 
     if (!warpReady && !world.transporters.some((t) => Math.hypot(t.x - world!.ball.x, t.y - world!.ball.y) < t.r + world!.ball.r + 10)) {

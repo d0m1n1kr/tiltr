@@ -6,6 +6,7 @@ import { CELL, WALL_T, BALL_R } from '../core/constants';
 import { generateMaze, mazeToWalls, mirrorCells, setWall, type Cell } from '../core/maze';
 import { Ball, World } from '../core/physics';
 import { mulberry32 } from '../core/rng';
+import type { Wall } from '../core/types';
 import { buildElements } from '../elements';
 import { cellCenter } from '../elements/registry';
 import { parseLevel, type LevelDef } from './schema';
@@ -104,24 +105,29 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
     const cells = floorCells(floor, def.mirror);
     const walls = mazeToWalls(cells, cols, rows, CELL, WALL_T);
 
-    // Gezielt brüchige Wandkanten – die Wand muss existieren.
+    // Gezielt markierte Wandkanten (brüchig, Schallschutz) – die Wand muss
+    // existieren; EIN Sucher für beide Listen.
     const ht = WALL_T / 2;
-    for (const [[x, y], dir] of floor.maze.brittle) {
-      const border =
-        (dir === 'w' && x === 0) ||
-        (dir === 'e' && x === cols - 1) ||
-        (dir === 'n' && y === 0) ||
-        (dir === 's' && y === rows - 1);
-      if (border) throw new Error(`Level ${def.id}: Außenwand (${x},${y},${dir}) darf nicht brüchig sein`);
-      const ex = dir === 'e' ? (x + 1) * CELL - ht : x * CELL - ht;
-      const ey = dir === 's' ? (y + 1) * CELL - ht : y * CELL - ht;
-      const vertical = dir === 'e' || dir === 'w';
-      const wall = walls.find(
-        (w) => Math.abs(w.x - ex) < 0.5 && Math.abs(w.y - ey) < 0.5 && (w.w === WALL_T) === vertical,
-      );
-      if (!wall) throw new Error(`Level ${def.id}: brüchige Wandkante (${x},${y},${dir}) existiert nicht`);
-      wall.hp = floor.maze.brittleHits;
-    }
+    const edgeWall = (list: typeof floor.maze.brittle, what: string, mark: (w: Wall) => void): void => {
+      for (const [[x, y], dir] of list) {
+        const border =
+          (dir === 'w' && x === 0) ||
+          (dir === 'e' && x === cols - 1) ||
+          (dir === 'n' && y === 0) ||
+          (dir === 's' && y === rows - 1);
+        if (border) throw new Error(`Level ${def.id}: Außenwand (${x},${y},${dir}) darf nicht ${what} sein`);
+        const ex = dir === 'e' ? (x + 1) * CELL - ht : x * CELL - ht;
+        const ey = dir === 's' ? (y + 1) * CELL - ht : y * CELL - ht;
+        const vertical = dir === 'e' || dir === 'w';
+        const wall = walls.find(
+          (w) => Math.abs(w.x - ex) < 0.5 && Math.abs(w.y - ey) < 0.5 && (w.w === WALL_T) === vertical,
+        );
+        if (!wall) throw new Error(`Level ${def.id}: ${what}e Wandkante (${x},${y},${dir}) existiert nicht`);
+        mark(wall);
+      }
+    };
+    edgeWall(floor.maze.brittle, 'brüchig', (w) => (w.hp = floor.maze.brittleHits));
+    edgeWall(floor.maze.absorb, 'schallschützend', (w) => (w.absorb = true));
 
     // Innenwände zufällig als brüchig markieren (Außenrand nie). Der Wurf
     // hängt an der WANDPOSITION, nicht an der Listenreihenfolge: Sonst

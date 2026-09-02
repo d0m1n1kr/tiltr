@@ -13,6 +13,9 @@ export interface Wall {
   /** Rest-Treffer einer brüchigen Wand; undefined = massiv */
   hp?: number;
   cracked?: boolean;
+  /** Schallschutzwand: verschluckt den Echo-Ping, schirmt Klang dahinter ab
+   *  (core/occlusion.ts), Rempler klingt gedämpft. */
+  absorb?: boolean;
   /** Verschlossene Tür. Schlüssel entfernen sie dauerhaft; Coop-Türen
    *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird. */
   door?: { id: string; open?: boolean };

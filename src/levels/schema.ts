@@ -268,6 +268,9 @@ export const floorSchema = z.object({
     add: z.array(wallEdge).default([]),
     /** Gezielt brüchige Wandkanten (müssen existieren) */
     brittle: z.array(wallEdge).default([]),
+    /** Schallschutzwände: Wandkanten, die den Ping verschlucken und Klang
+     *  dahinter abschirmen. Wie `brittle` muss die Wand existieren. */
+    absorb: z.array(wallEdge).default([]),
     /** Anteil zufällig brüchiger Innenwände (0 = keine) */
     brittleChance: z.number().min(0).max(1).default(0),
     /** Treffer bis zum Einsturz */

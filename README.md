@@ -129,7 +129,7 @@ On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
 |---|---|
 | Tilt control | `DeviceOrientationEvent`, calibration countdown after the start tap, axis remap by screen orientation, keyboard fallback |
 | Spatial audio | HRTF `PannerNode`: every directional sound is positional (headphones!) |
-| Walls | echo: touched walls flash briefly; brittle walls (amber) crunch and collapse after 3 hits |
+| Walls | echo: touched walls flash briefly; brittle walls (amber) crunch and collapse after 3 hits; sound-proof walls (khaki) swallow the ping and muffle everything behind them |
 | Holes | breathe (open/close in offset cycles); open = pull + dark rumble + heartbeat, closed = harmless |
 | Wind zones | constant push, audible as gusts from the zone's direction |
 | Checkpoints | on the solution path (BFS); respawn point, +1 echo ping |

@@ -106,6 +106,30 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   beförderten Start wie das gerettete Ziel per `freeCellFor()` in eine freie
   Zelle (Wächter-Wegpunkte gelten als belegt). Sonst wacht die Kugel nach dem
   Löschen von Ebene 1 in einem Loch auf.
+  WAND-WERKZEUG ist ein SCHALTER nach SICHTBAREM Zustand (`toggleEdge`, rein):
+  Wand oder keine Wand, die Listen carve/add werden so gesetzt, dass es
+  stimmt – egal, was der Seed an der Kante gewürfelt hat (der alte Zyklus
+  über die Listen hatte je nach Seed einen unsichtbaren Tap). Die VARIANTE
+  einer Wand (massiv / brüchig / Schallschutz) ist eine EIGENSCHAFT:
+  Auswählen auf eine Wandkante ohne Element wählt die Wand (`selEdge`), das
+  Feld `#edWallVariant` schreibt über `setEdgeVariant` in GENAU EINE der
+  Listen `maze.brittle`/`maze.absorb`. Beide verlangen im Loader eine
+  EXISTIERENDE Wand – der Editor bietet die Auswahl deshalb nur für Wände an,
+  und Entfernen/Radieren nimmt die Variante mit. LANDEPLÄTZE (`landingsOn`,
+  rein): Jede Transporter-Zielzelle auf der sichtbaren Ebene bekommt einen
+  gestrichelten Ring in Portal-Farbe plus „←E<n>" von einer anderen Ebene. Ein
+  Landeplatz ist KEIN Element: `elementAt`/`cellFree` kennen ihn nicht, die
+  Zelle bleibt bebaubar. `__tiltrEd.landings`, `.edgeState(e)`, `.selEdge`
+  legen das für E2E offen.
+- `src/core/occlusion.ts` – SCHALLSCHUTZWAND (`maze.absorb`, Wand mit
+  `absorb`, Palette `absorb` Filz-Khaki): Der Echo-Ping deckt sie auf, aber
+  sie antwortet NICHT; Klangquellen, deren Strahl vom Ball eine solche Wand
+  kreuzt (`shielded`, Slab-Test gegen die Wand-Rechtecke), sind abgeschirmt –
+  app.ts skaliert die Nähe stetiger Quellen mit `ABSORB_GAIN`, der Beacon
+  nimmt `muffled`, der Rempler ist `audio.hit(…, soft)`. Ein Strahl, keine
+  Akustik: keine Beugung, kein Filter auf den Stetigkeits-Quellen. Für die
+  Lösbarkeit ist sie eine normale Wand. Galerie: Extra-Eintrag `wallAbsorb`
+  (wie `wallEcho`), `extraEntries` exportiert für den Editor-Kopf.
   IMPORT NIMMT JSON UND TEILEN-LINK: Ein geteilter Link (`#level=`, auch
   `#duel=`) öffnet immer den BROWSER, nie die installierte PWA – deshalb
   akzeptiert das Import-Feld den Link (oder das nackte Token) eingefügt, plus

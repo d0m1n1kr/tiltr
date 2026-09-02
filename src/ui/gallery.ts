@@ -9,7 +9,9 @@ import { t, onLangChange, type Dict } from '../i18n';
 type TypedEntry = GalleryEntry & { type: string };
 
 // Mechaniken, die keine Level-Elemente sind, aber zur Klangsprache gehören.
-function extraEntries(): TypedEntry[] {
+// Exportiert: Der Editor zeigt Wand & Echo bzw. Schallschutzwand im Kopf der
+// Wand-Eigenschaften mit derselben Miniatur und demselben Klang.
+export function extraEntries(): TypedEntry[] {
   return [
     {
       type: 'wallEcho',
@@ -26,6 +28,32 @@ function extraEntries(): TypedEntry[] {
         audio.hit(0.7, -1, 0);
         setTimeout(() => audio.crackle(1, 0), 500);
         setTimeout(() => audio.crumble(1, 0), 1100);
+      },
+    },
+    {
+      type: 'wallAbsorb',
+      title: 'Schallschutzwand',
+      description:
+        'Wand aus Dämmstoff (khaki): Der Echo-Ping kommt von ihr NICHT zurück, und was hinter ihr liegt – Wächter, Portal, Ziel-Beacon, Musik – hört man nur leise und dumpf. Anrempeln klingt weich.',
+      draw(ctx, w, h) {
+        ctx.fillStyle = `rgba(${WORLD.absorb}, 0.95)`;
+        ctx.fillRect(w * 0.47, h * 0.18, 6, h * 0.64);
+        // Wellen von links laufen an, rechts bleibt es still.
+        ctx.strokeStyle = `rgba(${WORLD.ping}, 0.7)`;
+        for (const r of [0.12, 0.2, 0.28]) {
+          ctx.beginPath();
+          ctx.arc(w * 0.2, h / 2, h * r, -Math.PI / 2, Math.PI / 2);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = `rgba(${WORLD.ping}, 0.18)`;
+        ctx.beginPath();
+        ctx.arc(w * 0.75, h / 2, h * 0.14, 0, Math.PI * 2);
+        ctx.stroke();
+      },
+      demoSound(audio) {
+        // Weicher Rempler, dann der Ziel-Beacon wie durch die Wand.
+        audio.hit(0.7, -1, 0, true);
+        setTimeout(() => audio.beacon(1, -0.3, 0.3, true), 450);
       },
     },
     {

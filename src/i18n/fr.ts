@@ -351,6 +351,14 @@ export const fr: Dict = {
   'el.plate.title': 'Plaque de pression & porte du partenaire',
   'el.plate.desc':
     'Coop : tant que ton partenaire tient la plaque, ta porte reste ouverte – s’il la lâche, elle se referme. Même signature dorée que la porte qu’elle ouvre. Uniquement en multijoueur.',
+  'el.wallAbsorb.title': 'Mur insonorisant',
+  'el.wallAbsorb.desc': 'Mur en matériau absorbant (kaki) : le ping d’écho n’en revient PAS, et ce qui se trouve derrière – gardiens, portails, balise du but, musique – s’entend faible et sourd. Le heurter sonne mou.',
+  'ed.wall': 'Mur',
+  'ed.f.variant': 'Variante',
+  'ed.v.solid': 'massif',
+  'ed.v.brittle': 'fragile (3 coups)',
+  'ed.v.absorb': 'insonorisant',
+  'ed.wallHint': 'Outil mur : un tap sur une arête pose ou retire le mur. Variante (fragile, insonorisant) via Sélectionner → propriétés.',
   'el.wallEcho.title': 'Mur & écho',
   'el.wallEcho.desc':
     'Les murs sont invisibles ; les toucher les fait briller un instant et sonne comme un coup sourd venant de leur direction. Les murs friables (ambre) craquent et s’effondrent après 3 chocs violents.',

@@ -858,19 +858,21 @@ export class GameAudio {
   }
 
   // Wand-Treffer: dumpfer Thump aus Richtung der Wand (Normale zeigt vom Ball weg).
-  hit(intensity01: number, nx: number, ny: number): void {
+  /** Wand-Rempler aus Richtung der Normale. `soft` = Schallschutzwand: tiefer,
+   *  leiser und kürzer – ein Stoß in Dämmstoff statt gegen Stein. */
+  hit(intensity01: number, nx: number, ny: number, soft = false): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(160 + intensity01 * 120, t);
-    osc.frequency.exponentialRampToValueAtTime(55, t + 0.09);
+    osc.frequency.setValueAtTime((soft ? 110 : 160) + intensity01 * (soft ? 50 : 120), t);
+    osc.frequency.exponentialRampToValueAtTime(soft ? 45 : 55, t + (soft ? 0.06 : 0.09));
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(Math.min(1, 0.15 + intensity01 * 0.9), t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    gain.gain.setValueAtTime(Math.min(1, 0.15 + intensity01 * 0.9) * (soft ? 0.45 : 1), t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + (soft ? 0.08 : 0.12));
     osc.connect(gain).connect(this.spatialOut(-nx, -ny));
     osc.start(t);
-    osc.stop(t + 0.14);
+    osc.stop(t + (soft ? 0.1 : 0.14));
   }
 
   // Ziel-Beacon wie ein Sonar: näher = schneller, lauter, höher.

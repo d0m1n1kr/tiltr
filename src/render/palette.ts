@@ -39,6 +39,9 @@ export const WORLD = {
   /** Jukebox: warmes Magenta-Rosa – nahe der Portal-Familie (auch sie ist
    *  „Technik in der Wand"), aber wärmer: ein Möbelstück, keine Gefahr. */
   jukebox: '236, 118, 178',
+  /** Schallschutzwand: mattes Filz-Khaki – Dämmstoff, kein Signal. Absichtlich
+   *  stumpf zwischen Wand-Blau und Brüchig-Bernstein: Sie nimmt Klang weg. */
+  absorb: '160, 165, 120',
   // Glasboden nutzt bewusst das Brüchig-Bernstein (WORLD.brittle):
   // gleiche Bedeutung "brüchig, Vorsicht" – nur als Boden statt Wand.
 } as const;

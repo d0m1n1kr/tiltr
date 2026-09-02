@@ -351,6 +351,14 @@ export const en: Dict = {
   'el.plate.title': 'Pressure plate & partner door',
   'el.plate.desc':
     'Co-op: while your partner holds the plate, your door slides open – release it and it closes again. Same golden ping signature as the door it opens. Multiplayer only.',
+  'el.wallAbsorb.title': 'Sound-proof wall',
+  'el.wallAbsorb.desc': 'A wall of damping material (khaki): the echo ping does NOT come back from it, and whatever lies behind it – guards, portals, the goal beacon, music – sounds faint and dull. Bumping into it feels soft.',
+  'ed.wall': 'Wall',
+  'ed.f.variant': 'Variant',
+  'ed.v.solid': 'solid',
+  'ed.v.brittle': 'brittle (3 hits)',
+  'ed.v.absorb': 'sound-proof',
+  'ed.wallHint': 'Wall tool: tap an edge to add or remove the wall. Variant (brittle, sound-proof) via Select → properties.',
   'el.wallEcho.title': 'Wall & echo',
   'el.wallEcho.desc':
     'Walls are invisible; touching one makes it flash briefly and sound as a dull thump from its direction. Brittle walls (amber) crunch and collapse after 3 hard hits.',

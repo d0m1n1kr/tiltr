@@ -133,7 +133,7 @@ Leertaste für den Ping.
 |---|---|
 | Neigungssteuerung | `DeviceOrientationEvent`, Kalibrier-Countdown nach Start-Tap, Achsen-Remap nach Screen-Orientierung, Tastatur-Fallback |
 | Spatial Audio | HRTF-`PannerNode`: alle Richtungsklänge räumlich (Kopfhörer!) |
-| Wände | Echo: berührte Wände leuchten kurz auf; brüchige Wände (bernstein) knirschen und stürzen nach 3 Treffern ein |
+| Wände | Echo: berührte Wände leuchten kurz auf; brüchige Wände (bernstein) knirschen und stürzen nach 3 Treffern ein; Schallschutzwände (khaki) verschlucken den Ping und dämpfen alles dahinter |
 | Löcher | atmen (öffnen/schließen zyklisch, versetzt); offen = Sog + dunkles Grollen + Herzschlag, zu = harmlos |
 | Windzonen | konstante Windkraft, hörbar als Böen-Rauschen aus Richtung der Zone |
 | Checkpoints | auf dem Lösungsweg (BFS); Respawn-Punkt, +1 Echo-Ping |

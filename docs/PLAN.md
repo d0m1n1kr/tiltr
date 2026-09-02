@@ -612,6 +612,59 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M38 „Wand an, Wand aus" ✓ (v2.8.0) – Wand-Schalter, Wand-Variante, Schallschutzwand
+
+**Drei Editor-Wünsche, eine Wurzel.** Erst hieß es „der Zyklus soll immer
+leer → Wand → brüchig → leer sein", dann: „doch anders – Wand oder keine Wand,
+und brüchig als EINSTELLUNG der Wand. Dazu eine Schallschutzwand." Die Wurzel:
+Das Wand-Werkzeug lief über die LISTEN (Seed → carve → add → brüchig → Seed),
+und der Seed entscheidet pro Kante, wo dieser Kreis anfängt. Auf einer offenen
+Seed-Kante war der erste Tap unsichtbar (carve auf schon offen), auf einer
+Seed-Wand der zweite (add auf schon Wand). „Manchmal passiert nichts."
+
+**Der Weg.** `toggleEdge` (rein, exportiert) liest den SICHTBAREN Zustand und
+setzt die Listen so, dass das Gegenteil herauskommt: Wand braucht add nur bei
+offenem Seed, offen braucht carve nur bei Seed-Wand; eine entfernte Wand nimmt
+ihre Variante mit. Die Variante ist eine EIGENSCHAFT: Auswählen-Werkzeug auf
+eine Wandkante ohne Element wählt die Wand (`selEdge`, Rahmen wie bei einer
+Tür), die Eigenschaften zeigen Kopf (Miniatur „Wand & Echo", Hören) und ein
+Feld „Variante": massiv / brüchig / Schallschutz (`setEdgeVariant`, genau eine
+Liste führt die Kante). Die Zwischenfassung mit Dreier-Zyklus war komplett
+grün (250 ✓) und ist nie gepusht worden – ein Werkzeug, das drei Zustände
+durchklickt, war die falsche Antwort auf die richtige Beobachtung.
+
+**Schallschutzwand** – neue Wand-Variante, `maze.absorb` neben `brittle`
+(Schema, Spiegelung, Loader mit EINEM Kanten-Sucher für beide Listen, Wand
+mit `absorb`, Palette Filz-Khaki). Drei Wirkungen, alle im Klang: (1) Der
+Echo-Ping deckt sie auf (Licht), aber sie ANTWORTET NICHT – ein stilles Stück
+Richtung ist ihr Signal. (2) Was hinter ihr liegt, ist abgeschirmt:
+`core/occlusion.ts` prüft pro Frame den Strahl vom Ball zur Quelle gegen die
+absorbierenden Wand-Rechtecke (Slab-Test); Wächter, Horcher, Portal, Anker,
+Wind, Strömung, Loch-Grollen und Musik skalieren ihre Nähe mit `ABSORB_GAIN`
+(0,35), der Ziel-Beacon nimmt seinen „muffled"-Zweig, der Schlüssel klingt
+entsprechend weiter weg. (3) Anrempeln ist weich (`audio.hit(…, soft)`:
+tiefer, leiser, kürzer). Ehrlich zur Grenze: Das ist ein Strahl, keine
+Akustik – keine Beugung um die Kante, kein Filter auf den Stetigkeits-Quellen
+(nur leiser); der Filter wohnt beim Beacon. Für die Lösbarkeit ist sie eine
+Wand wie jede andere, `buildFloorCells` kennt sie nicht. Galerie-Eintrag
+„Schallschutzwand" (Extra-Eintrag wie „Wand & Echo", i18n ×4) mit weichem
+Rempler und gedämpftem Beacon als Klang-Demo; `extraEntries` ist jetzt
+exportiert, damit der Editor dieselbe Miniatur und denselben Klang zeigt.
+
+**Landeplätze** (aus der Zwischenfassung übernommen): Das Transporter-Ziel
+war nur zu sehen, wenn der Transporter auf derselben Ebene stand. `landingsOn`
+sammelt die Zielzellen ALLER Ebenen, die auf der sichtbaren liegen; der Editor
+zeichnet einen gestrichelten Ring in Portal-Farbe und „←E1", wenn man von
+woanders kommt. Bewusst KEIN Element: Die Zelle bleibt bebaubar, ein Tap
+darauf wählt nicht den Transporter.
+
+Units: 9 (toggle/Variante/Landeplätze), 10 (Slab-Test, shielded, Loader
+`absorb`, Spiegelung). E2E Lauf 14: Schalter zweimal (zurück am Anfang),
+Auswahl wählt die Wand, Variante brüchig → Schallschutz mit genau einer
+Liste und ohne Ladefehler, Entfernen nimmt Variante und Auswahl mit;
+Landeplatz und bebaubare Zielzelle. Lauf 12 prüft nach einem Tap „genau ein
+Eintrag in carve ODER add, keine Variante".
+
 ## M37 „Alles in einer Datei" ✓ (v2.7.0) – Backup & Restore
 
 **Die Meldung:** „Wenn die PWA neu installiert wird, ist mein Fortschritt und

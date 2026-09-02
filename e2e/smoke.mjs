@@ -2050,10 +2050,12 @@ if (want("12")) {
     const edits = await page.evaluate(() => ({
       carve: window.__tiltrEd.carve,
       add: window.__tiltrEd.add,
+      brittle: window.__tiltrEd.brittle,
+      absorb: window.__tiltrEd.absorb,
     }));
     check(
-      `Phone: Wand-Tap neben der Linie trifft die nächste Kante (carve=${edits.carve})`,
-      edits.carve === 1 && edits.add === 0,
+      `Phone: Wand-Tap neben der Linie trifft die nächste Kante und schaltet nur Wand an/aus (carve=${edits.carve} add=${edits.add} brittle=${edits.brittle} absorb=${edits.absorb})`,
+      edits.carve + edits.add === 1 && edits.brittle + edits.absorb === 0,
     );
     await page.close();
   } catch (e) {
@@ -2334,6 +2336,99 @@ if (want("14")) {
       pad?.target?.floor === 1 &&
         pad?.target?.cell?.[0] === 2 &&
         pad?.target?.cell?.[1] === 5,
+    );
+
+    // Landeplatz: Auf E2 zeigt der Hook (und der Ring) die Ankunft aus E1 …
+    const landings = await page.evaluate(() => window.__tiltrEd.landings);
+    check(
+      `Landeplatz auf E2 sichtbar, Herkunft E1 (${JSON.stringify(landings)})`,
+      landings.length === 1 &&
+        landings[0].from === 0 &&
+        landings[0].cell[0] === 2 &&
+        landings[0].cell[1] === 5,
+    );
+    // … und die Zelle bleibt bebaubar: Ein Loch landet GENAU dort, statt dass
+    // der Tap ins Leere geht oder den Transporter wählt.
+    const e2Before = (await els(1)).length;
+    await page.locator(".ed-tile", { hasText: /^Loch$/ }).click();
+    await tap(2, 5);
+    const e2Els = await els(1);
+    const onLanding = e2Els.find(
+      (e) => e.type === "hole" && e.cell?.[0] === 2 && e.cell?.[1] === 5,
+    );
+    const selType = await page.evaluate(
+      () =>
+        window.__tiltrEd.def.floors[1].elements[window.__tiltrEd.selected]
+          ?.type,
+    );
+    check(
+      `Landeplatz-Zelle bleibt bebaubar (E2: ${e2Before} → ${e2Els.length}, Loch auf (2,5): ${!!onLanding}, Auswahl: ${selType})`,
+      e2Els.length === e2Before + 1 && !!onLanding && selType !== "transporter",
+    );
+
+    // Wand-Werkzeug ist ein SCHALTER nach sichtbarem Zustand: Ostkante von
+    // (0,0) auf E2 – zwei Taps, zwei Wechsel, zurück am Anfang, egal was der
+    // Seed dort gewürfelt hat.
+    await page.locator(".ed-tile", { hasText: "▤" }).click();
+    const edge = [[0, 0], "e"];
+    const st = async () =>
+      page.evaluate((e) => window.__tiltrEd.edgeState(e), edge);
+    const seq = [await st()];
+    for (let i = 0; i < 2; i++) {
+      await tap(0, 0, "e");
+      seq.push(await st());
+    }
+    check(
+      `Wand-Werkzeug schaltet Wand an/aus (${seq.join(" → ")})`,
+      seq[0] !== seq[1] &&
+        seq[1] !== seq[2] &&
+        seq[2] === seq[0] &&
+        seq.every((x) => x === "open" || x === "wall"),
+    );
+    // Sicher eine Wand herstellen, dann AUSWÄHLEN: Die Variante wohnt in den
+    // Eigenschaften (massiv / brüchig / Schallschutz), nicht im Werkzeug.
+    if ((await st()) === "open") await tap(0, 0, "e");
+    await page.locator(".ed-tile", { hasText: "☝" }).first().click();
+    await tap(0, 0, "e");
+    const selEdge = await page.evaluate(() => window.__tiltrEd.selEdge);
+    const variantSel = page.locator("#edWallVariant");
+    check(
+      `Auswählen auf eine Wand wählt die WAND (selEdge=${JSON.stringify(selEdge)}, Variante-Feld: ${await variantSel.count()})`,
+      selEdge?.[1] === "e" &&
+        selEdge?.[0]?.[0] === 0 &&
+        selEdge?.[0]?.[1] === 0 &&
+        (await variantSel.count()) === 1,
+    );
+    await variantSel.selectOption("brittle");
+    await page.waitForTimeout(200);
+    const asBrittle = await st();
+    await variantSel.selectOption("absorb");
+    await page.waitForTimeout(200);
+    const asAbsorb = await st();
+    const lists = await page.evaluate(() => ({
+      brittle: window.__tiltrEd.brittle,
+      absorb: window.__tiltrEd.absorb,
+      loadError: window.__tiltrEd.loadError,
+    }));
+    check(
+      `Variante wechselt brüchig → Schallschutz, genau eine Liste (${asBrittle} → ${asAbsorb}; brittle=${lists.brittle} absorb=${lists.absorb}, loadError=${lists.loadError})`,
+      asBrittle === "brittle" &&
+        asAbsorb === "absorb" &&
+        lists.brittle === 0 &&
+        lists.absorb === 1 &&
+        !lists.loadError,
+    );
+    // Wand-Werkzeug auf die Schallschutzwand: weg ist weg – samt Variante.
+    await page.locator(".ed-tile", { hasText: "▤" }).click();
+    await tap(0, 0, "e");
+    const gone = await page.evaluate(() => ({
+      state: window.__tiltrEd.edgeState([[0, 0], "e"]),
+      absorb: window.__tiltrEd.absorb,
+      selEdge: window.__tiltrEd.selEdge,
+    }));
+    check(
+      `Wand entfernen nimmt die Variante mit und hebt die Auswahl auf (${gone.state}, absorb=${gone.absorb}, selEdge=${gone.selEdge})`,
+      gone.state === "open" && gone.absorb === 0 && gone.selEdge === null,
     );
 
     await page.close();
