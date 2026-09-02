@@ -357,7 +357,6 @@ export type CheckKey =
   | 'openers'
   | 'timer'
   | 'softlock'
-  | 'hazards'
   | 'guards'
   | 'jukebox'
   | 'items';
@@ -506,32 +505,11 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
   }
   push('softlock', softlockOk, softlockDetail);
-
-  // GLAS abseits des Pflichtwegs: Ziel + Checkpoints bleiben mit gesperrten
-  // Glaszellen erreichbar (brüchige Wände sind brechbar und zählen als offen –
-  // w1-07 & Co. führen bewusst hindurch).
-  //
-  // Der SOG-ANKER gehört hier ausdrücklich NICHT dazu, auch wenn er zur
-  // Gefahren-Familie zählt: Sein Sog bleibt per Schema-Invariante unter der
-  // Neigungs-Beschleunigung (force ≤ 2400 vs. accel 2600) – man kommt immer
-  // wieder heraus. Ihn als Wand zu modellieren machte ein beweisbar lösbares
-  // Level unteilbar (`isShareable` verlangt dieses Badge) und widersprach
-  // `goal`/`softlock`, die dasselbe Level grün stempelten. Ein Anker im Gang
-  // ist ein Hindernis, kein Riegel. Dass Anker abseits der Pflichtwege
-  // liegen, bleibt eine Regel für UNSERE Generatoren – die prüfen sie über
-  // `anchorsBlocked` in tests/levels.test.ts und tests/daily.test.ts.
-  const safe = reachable(def, { brittleOpen: true, doorsOpen: true, glassBlocked: true });
-  let hazardsOk = safe.has(goalKey);
-  let hazardsDetail = hazardsOk ? undefined : 'Ziel';
-  def.floors.forEach((floor, fl) => {
-    for (const el of floor.elements) {
-      if ((el.type === 'checkpoint' || el.type === 'transporter') && !safe.has(cellKey(fl, el.cell))) {
-        hazardsOk = false;
-        hazardsDetail = `${el.type} E${fl + 1} (${el.cell})`;
-      }
-    }
-  });
-  push('hazards', hazardsOk, hazardsDetail);
+  // Kein „Glas abseits"-Badge mehr (M39): Glas hält EINE Überfahrt aus und
+  // wird dann zum Loch – an dessen Rand kommt man mit Gefühl vorbei. Ein
+  // Pflichtweg über Glas ist also Schwierigkeit, kein Riegel. Das Flag
+  // `glassBlocked` bleibt (wie `anchorsBlocked`) eine QUALITÄTS-Regel unserer
+  // Generatoren (tests/levels.test.ts, tests/daily.test.ts), kein Beweis.
 
   // Wächter sind keine Riegel (Beweis siehe guardsProof).
   const guards = guardsProof(def);

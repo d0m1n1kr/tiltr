@@ -53,20 +53,18 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   in `src/levels/schema.ts`. Neue Elemente brauchen alle drei plus eine
   Weltfarbe in `src/render/palette.ts`.
 - `src/levels/validate.ts` – die Lösbarkeits-Beweise (Erreichbarkeit,
-  Öffner-Fixpunkt, Softlock, Timer, hazardsBlocked, links, guards): EINE Quelle der
+  Öffner-Fixpunkt, Softlock, Timer, links, guards, jukebox): EINE Quelle der
   Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
   Live-Badges des Editors. Modell-Änderungen nur hier.
-  Das `hazards`-Badge heißt „GLAS abseits" und prüft nur Glas: Es hält EINE
-  Überfahrt aus (knacken, dann brechen), ein Pflichtweg zweimal darüber tötet –
-  also bleibt Glas Abkürzung oder Köder. Der SOG-ANKER gehört ausdrücklich
-  NICHT hinein, obwohl er zur Gefahren-Familie zählt: `force ≤ 2400` liegt per
-  Schema-Invariante unter `accel 2600`, man kommt immer wieder heraus. Ihn als
-  Wand zu modellieren machte ein beweisbar lösbares Level UNTEILBAR
-  (`isShareable` verlangt das Badge). Dass Anker abseits der Pflichtwege
-  liegen, ist eine Regel für UNSERE Generatoren – geprüft über
-  `anchorsBlocked` in tests/levels.test.ts und tests/daily.test.ts. Die Flags
-  `glassBlocked`/`anchorsBlocked` sind deshalb GETRENNT: Jede Aufrufstelle
-  sagt, was sie meint.
+  Es gibt KEIN „Glas abseits"-Badge mehr (M39): Glas hält EINE Überfahrt aus
+  und wird dann zum Loch – an dessen Rand kommt man mit Gefühl vorbei, ein
+  Pflichtweg über Glas ist Schwierigkeit, kein Riegel. Auch der SOG-ANKER ist
+  keiner: `force ≤ 2400` liegt per Schema-Invariante unter `accel 2600`. Die
+  Flags `glassBlocked`/`anchorsBlocked` in `reachable` bleiben – als
+  QUALITÄTS-Regel unserer Generatoren (tests/levels.test.ts, tests/daily.test.ts),
+  nicht als Beweis; jede Aufrufstelle sagt, was sie meint. Ein Badge, das ein
+  spielbares Level unteilbar macht (`isShareable` verlangt alle Badges), ist
+  falsch – das war zweimal die Lektion (M32 Anker, M39 Glas).
   Der `openers`-Check fragt PRO TÜR, nicht pro Schlüssel: Ist mindestens EIN
   Öffner erreichbar, wenn GENAU DIESE Tür nie aufgeht
   (`coopReachable(def, {tür})`)? Alle anderen Türen öffnen dabei normal – sonst
@@ -121,6 +119,11 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Landeplatz ist KEIN Element: `elementAt`/`cellFree` kennen ihn nicht, die
   Zelle bleibt bebaubar. `__tiltrEd.landings`, `.edgeState(e)`, `.selEdge`
   legen das für E2E offen.
+  ⚑ TEST AB HIER: Das Werkzeug setzt einen Teststart (Ebene + Zelle,
+  `testStart`, Tap auf dieselbe Zelle hebt auf) – die Vorschau setzt die Kugel
+  DORT ab und wechselt auf die Ebene (`startCustom(def, true, from)` →
+  `launch`), Respawn ebenfalls dort. Kein Teil der Def: nicht gespeichert,
+  nicht geteilt, lebt nur im Editor (überlebt aber den ✏️-Rücksprung).
 - `src/core/occlusion.ts` – SCHALLSCHUTZWAND (`maze.absorb`, Wand mit
   `absorb`, Palette `absorb` Filz-Khaki): Der Echo-Ping deckt sie auf, aber
   sie antwortet NICHT; Klangquellen, deren Strahl vom Ball eine solche Wand

@@ -223,7 +223,15 @@ export function removeFloor(level: RawLevel, index: number): void {
   if (hadGoal) f0.goal = freeCellFor(f0, [f0.size[0] - 1, f0.size[1] - 1], [f0.start]);
 }
 
-type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal';
+type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal' | 'test';
+
+/** Startpunkt für den TESTLAUF (⚑): Ebene + Zelle, an der die Vorschau die
+ *  Kugel absetzt – statt am Level-Start. Kein Teil der Def (wird nicht
+ *  gespeichert, nicht geteilt), lebt nur im Editor. */
+export interface TestStart {
+  floor: number;
+  cell: [number, number];
+}
 
 /** Palette: alles außer Druckplatte (MP-only ohne Singleplayer-Semantik). */
 const PLACEABLE = [
@@ -256,7 +264,7 @@ export interface EditorApi {
 }
 
 export function setupEditor(opts: {
-  onTest: (def: RawLevel) => void;
+  onTest: (def: RawLevel, from: TestStart | null) => void;
   onSaved: () => void;
   /** Für die Ton-Vorschau im Eigenschaften-Panel (dieselbe Klang-Signatur,
    *  die die Galerie anspielt – eine Quelle: die Element-Registry). */
@@ -347,6 +355,8 @@ export function setupEditor(opts: {
   /** Ausgewählte WANDKANTE (Auswählen-Werkzeug auf eine Wand ohne Element):
    *  Eigenschaften = Variante. Schließt `selected` aus und umgekehrt. */
   let selEdge: Edge | null = null;
+  /** ⚑ Teststart der Vorschau (null = am Level-Start). */
+  let testStart: TestStart | null = null;
   let pendingGuard: [number, number] | null = null;
   /** Transporter-Platzierung: Pad gesetzt, Ziel-Tap steht aus (Ebenenwechsel erlaubt). */
   let pendingTransporter: { floor: number; cell: [number, number] } | null = null;
@@ -640,6 +650,7 @@ export function setupEditor(opts: {
       // Sichtbarer Kantenzustand (E2E: Wand an/aus, Variante über Eigenschaften).
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
       selEdge,
+      testStart,
       // Landeplätze dieser Ebene – genau das, was der Overlay-Ring zeigt.
       landings: landingsOn(draft, activeFloor),
       selected,
@@ -824,6 +835,20 @@ export function setupEditor(opts: {
       }
     }
 
+    // ⚑ Teststart: hier setzt die Vorschau die Kugel ab (nur auf seiner Ebene)
+    if (testStart && testStart.floor === activeFloor) {
+      const [cx, cy] = testStart.cell;
+      overlay.strokeStyle = `rgba(${WORLD.ballGlow}, 0.8)`;
+      overlay.lineWidth = 1.5 * dpr;
+      overlay.setLineDash([4 * dpr, 4 * dpr]);
+      overlay.strokeRect(tx(cx * CELL), ty(cy * CELL), CELL * s, CELL * s);
+      overlay.setLineDash([]);
+      overlay.fillStyle = `rgba(${WORLD.ballGlow}, 0.95)`;
+      overlay.font = `600 ${16 * dpr}px system-ui, sans-serif`;
+      overlay.textAlign = 'center';
+      overlay.fillText('⚑', tx((cx + 0.5) * CELL), ty((cy + 0.5) * CELL) + 6 * dpr);
+    }
+
     // Auswahl: Wandkante (Variante in den Eigenschaften)
     if (selEdge && !floor().elements[selected]) {
       const [[x, y], dir] = selEdge;
@@ -905,6 +930,13 @@ export function setupEditor(opts: {
       toggleWall(target.edge);
     } else if (tool === 'erase') {
       eraseAt(target);
+    } else if (tool === 'test') {
+      // ⚑ Teststart: Tap setzt, Tap auf dieselbe Zelle hebt auf. Jede Ebene.
+      if (target.kind !== 'cell') return;
+      const same =
+        testStart && testStart.floor === activeFloor && testStart.cell[0] === target.cell[0] && testStart.cell[1] === target.cell[1];
+      testStart = same ? null : { floor: activeFloor, cell: target.cell };
+      flash(testStart ? t('ed.testSet', { floor: activeFloor + 1, x: target.cell[0], y: target.cell[1] }) : t('ed.testCleared'));
     } else if (tool === 'start' || tool === 'goal') {
       if (target.kind !== 'cell') return;
       if (tool === 'start') {
@@ -1133,6 +1165,7 @@ export function setupEditor(opts: {
       ['erase', '⌫', t('ed.tool.erase')],
       ['start', '●', t('ed.tool.start')],
       ['goal', '◎', t('ed.tool.goal')],
+      ['test', '⚑', t('ed.tool.test')],
     ];
     for (const [tl, ico, lbl] of tools) {
       const b = document.createElement('button');
@@ -1805,7 +1838,9 @@ export function setupEditor(opts: {
     if (!draft || loadError) return;
     setPlaying(false); // der Testlauf hat seine eigene Zeit
     draft.name = nameInput.value.trim() || t('ed.untitled');
-    opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel);
+    // ⚑ nur, wenn die Ebene noch existiert (Ebenen können gelöscht sein).
+    const from = testStart && testStart.floor < draft.floors.length ? testStart : null;
+    opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel, from);
   });
 
   window.addEventListener('resize', () => {

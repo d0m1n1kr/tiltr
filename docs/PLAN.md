@@ -612,6 +612,49 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M39 „Glas ist Schwierigkeit" ✓ (v2.9.0) – Badge weg, Test ab hier
+
+**Die Meldung:** „Glasboden im kritischen Pfad ist doch nicht schlimm. Der
+wird danach ja durch ein Loch ersetzt, da kommt man mit Feingefühl am Rand
+auch entlang." Das kippt die Begründung des „Glas abseits"-Badges (M32 hatte
+den Anker herausgenommen und Glas bewusst drin gelassen: „ein Pflichtweg
+zweimal darüber tötet"). Wenn der Rand des Lochs begehbar ist, ist der
+zweite Weg nicht tot, nur schwer – und Schwierigkeit ist kein Beweisgegenstand.
+Also ist das Badge WEG: `hazards` verlässt `CheckKey`, `validateLevel` und die
+vier Wörterbücher. Ein Badge, das ein spielbares Level unteilbar macht, war
+zum zweiten Mal die falsche Strenge. Die Flags `glassBlocked`/`anchorsBlocked`
+bleiben als Qualitätsregel der Generatoren (dort gehört „Gefahr abseits des
+Rückgrats" hin – der Zufall hat kein Feingefühl). tests/hazards.test.ts prüft
+jetzt: kein `hazards`-Badge, Glas und Anker im Korridor teilbar, Flags wirken.
+
+**Test ab hier (⚑).** „Im Vorschau-Modus wäre gut, wenn man an einer anderen
+Position beginnen könnte – wenn man z. B. eine kritische Passage testen will."
+Neues Werkzeug ⚑: Tap auf eine Zelle setzt den Teststart (jede Ebene), Tap auf
+dieselbe Zelle hebt ihn auf; gestrichelter Rahmen plus Flagge im Overlay.
+`#edTest` reicht ihn an `startCustom(def, true, from)`, `launch` wechselt nach
+`activateFloor(0)` auf die gewünschte Ebene und setzt die EINE, geteilte Kugel
+in die Zellmitte (v = 0), Respawn ebenfalls dort. Bewusst KEIN Teil der Def:
+nicht gespeichert, nicht geteilt, nur Editor-Zustand – aber er überlebt den
+✏️-Rücksprung, denn der Editor bleibt derselbe. Gelöschte Ebene: die Flagge
+fällt still zurück auf den Level-Start (`floor < floors.length`).
+E2E Lauf 14: Flagge auf E2 (1,3) → Vorschau: HUD sagt „⬍ E2", Ball bei
+(150, 350) → ✏️ → Flagge noch da, Tap hebt auf.
+
+**Nebenbefund: der rote Deploy von 2.8.0.** Lokal 396 grün, in der CI fiel
+`tests/workshop.test.ts` („speichert, listet … neueste zuerst"): erwartet
+`['Beta', 'Alpha']`, bekommen `['Beta']`. Kein Fehler im Editor-Code –
+`newCustomId()` bestand aus der Millisekunde plus ZWEI Zufallszeichen (1296
+Werte). Der CI-Läufer speicherte beide Level in EINER Millisekunde, die
+Zufallszeichen fielen gleich (1:1296), der Upsert schluckte Alpha. Dazu eine
+zweite Falle im selben Test: `list()` sortierte nach `updatedAt`, und bei
+gleichem Zeitstempel war die Reihenfolge undefiniert. Beides behoben: eine
+laufende Nummer je Sitzung in der ID (eindeutig auch bei eingefrorener Uhr,
+500 IDs in einer Millisekunde bleiben 500) und ein Tie-Break nach
+Einfügereihenfolge. Die zwei Units frieren `Date.now` ein, statt auf einen
+schnellen Rechner zu hoffen. Lektion: Ein Test, der lokal 20-mal grün war, ist
+nicht deterministisch, wenn er von der Uhr abhängt – 2.8.0 ist deshalb NIE
+live gegangen, 2.9.0 trägt beides.
+
 ## M38 „Wand an, Wand aus" ✓ (v2.8.0) – Wand-Schalter, Wand-Variante, Schallschutzwand
 
 **Drei Editor-Wünsche, eine Wurzel.** Erst hieß es „der Zyklus soll immer

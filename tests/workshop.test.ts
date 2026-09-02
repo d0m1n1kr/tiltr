@@ -1,7 +1,7 @@
 // Werkstatt-Store: CRUD-Roundtrip über einen localStorage-Stub. Der Store
 // ist ein Modul-Singleton – der Stub muss VOR dem Import stehen.
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const backing = new Map<string, string>();
 let workshop: typeof import('../src/workshop').workshop;
@@ -21,6 +21,32 @@ beforeAll(async () => {
   };
   ({ workshop, blankLevel, newCustomId, importLevel, exportPayload, saveDraft, loadDraft, clearDraft } =
     await import('../src/workshop'));
+});
+
+describe('IDs und Reihenfolge in derselben Millisekunde (CI-Flake v2.8.0)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('newCustomId ist auch bei eingefrorener Uhr eindeutig', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const ids = new Set(Array.from({ length: 500 }, () => newCustomId()));
+    expect(ids.size).toBe(500);
+  });
+
+  it('zwei Speichervorgänge in derselben Millisekunde: beide da, der spätere zuerst', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const fixed = new Date(1_700_000_000_000);
+    vi.spyOn(globalThis, 'Date').mockImplementation(((...args: unknown[]) =>
+      args.length ? new (Date as unknown as new (...a: unknown[]) => Date)(...args) : fixed) as never);
+    const a = blankLevel('Same-A');
+    const b = blankLevel('Same-B');
+    expect(a.id).not.toBe(b.id);
+    workshop.save(a);
+    workshop.save(b);
+    const names = workshop.list().map((l) => l.def.name);
+    expect(names.indexOf('Same-B')).toBeLessThan(names.indexOf('Same-A'));
+    workshop.remove(String(a.id));
+    workshop.remove(String(b.id));
+  });
 });
 
 describe('Werkstatt-Store', () => {

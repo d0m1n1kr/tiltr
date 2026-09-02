@@ -2431,6 +2431,42 @@ if (want("14")) {
       gone.state === "open" && gone.absorb === 0 && gone.selEdge === null,
     );
 
+    // ⚑ Test ab hier: Startpunkt der Vorschau auf E2 bei (1,3) setzen, Vorschau
+    // starten – die Kugel steht dort (Mitte der Zelle), die HUD-Ebene sagt E2.
+    // Zurück im Editor ist die Flagge noch da; Tap auf dieselbe Zelle hebt auf.
+    await page.locator(".ed-tile", { hasText: "⚑" }).click();
+    await tap(1, 3);
+    const flag = await page.evaluate(() => window.__tiltrEd.testStart);
+    check(
+      `⚑ Teststart gesetzt (${JSON.stringify(flag)})`,
+      flag?.floor === 1 && flag?.cell?.[0] === 1 && flag?.cell?.[1] === 3,
+    );
+    await page.click("#edTest");
+    await page.waitForTimeout(3600); // Kalibrier-Countdown (wie Lauf 12)
+    const started = await page.evaluate(() => ({
+      ball: window.__tiltrBall,
+      floor: document.getElementById("floor")?.textContent?.trim(),
+      hud: !document.getElementById("hud")?.classList.contains("hidden"),
+      loadError: window.__tiltrEd?.loadError,
+      status: document.getElementById("edStatus")?.textContent,
+    }));
+    check(
+      `Vorschau startet an der Flagge auf E2 (Ball ${JSON.stringify(started.ball)}, Ebene "${started.floor}", loadError=${started.loadError}, status=${started.status})`,
+      started.hud &&
+        started.floor === "⬍ E2" &&
+        Math.abs((started.ball?.x ?? 0) - 150) < 30 &&
+        Math.abs((started.ball?.y ?? 0) - 350) < 30,
+    );
+    await page.click("#editBtn");
+    await page.waitForTimeout(400);
+    await page.locator(".ed-tile", { hasText: "⚑" }).click();
+    await tap(1, 3);
+    const flagAfter = await page.evaluate(() => window.__tiltrEd.testStart);
+    check(
+      `⚑ überlebt die Vorschau und lässt sich per Tap auf dieselbe Zelle aufheben (${JSON.stringify(flagAfter)})`,
+      flagAfter === null,
+    );
+
     await page.close();
   } catch (e) {
     check(

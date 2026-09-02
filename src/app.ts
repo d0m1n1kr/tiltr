@@ -30,7 +30,7 @@ import { profile } from './profile';
 import { setupUpdates } from './ui/update';
 import { setupGallery } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
-import { setupEditor, type RawLevel } from './ui/editor';
+import { setupEditor, type RawLevel, type TestStart } from './ui/editor';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
@@ -198,6 +198,8 @@ let ghostRecorder: GhostRecorder | null = null;
 // Werkstatt: aktuelles Custom-Level + ob der Lauf aus dem Editor kam (✏️)
 let customDef: LevelDef | null = null;
 let customFromEditor = false;
+/** ⚑ Editor-Vorschau ab einer anderen Stelle (Ebene + Zelle) statt am Start. */
+let customFrom: TestStart | null = null;
 
 // Seed aus der URL (?seed=…) macht Läufe reproduzierbar (Tests, später Daily).
 function nextSeed(): number {
@@ -462,13 +464,14 @@ quickBtn.addEventListener('click', () => void startMode({ kind: 'quick' }));
 /* --- Werkstatt: Bibliothek + Editor + Preview ------------------------------ */
 
 // Rohe Def spielen: parseLevel validiert; fromEditor blendet den ✏️-Knopf ein.
-function startCustom(raw: RawLevel, fromEditor: boolean): void {
+function startCustom(raw: RawLevel, fromEditor: boolean, from: TestStart | null = null): void {
   try {
     customDef = parseLevel(raw);
   } catch {
     return; // Bibliothek zeigt kaputte Level mit ⚠, der Editor blockt Testen
   }
   customFromEditor = fromEditor;
+  customFrom = fromEditor ? from : null;
   $('editor').classList.add('hidden');
   $('workshop').classList.add('hidden');
   void startMode({ kind: 'custom' });
@@ -527,7 +530,7 @@ function challengeAction(def: LevelDef, seconds: number, label: string): InterAc
 
 const editorApi = setupEditor({
   audio,
-  onTest: (def) => startCustom(def, true),
+  onTest: (def, from) => startCustom(def, true, from),
   onSaved: () => {
     workshopPanel.refresh();
     refreshMenu();
@@ -771,7 +774,20 @@ function launch(def: LevelDef): void {
   falls = 0;
   warpReady = true;
   activateFloor(0);
-  respawnPoint = { floor: 0, x: loaded.world.ball.x, y: loaded.world.ball.y };
+  // ⚑ Editor-Vorschau ab gewählter Stelle: Ebene wechseln und die (EINE,
+  // geteilte) Kugel dort absetzen – so testet man eine kritische Passage,
+  // ohne jedes Mal vom Start zu rollen. Der Respawn liegt ebenfalls dort.
+  const editorPreviewFrom = mode?.kind === 'custom' && customFromEditor ? customFrom : null;
+  if (editorPreviewFrom && editorPreviewFrom.floor < loaded.floors.length) {
+    activateFloor(editorPreviewFrom.floor);
+    const ball = loaded.floors[editorPreviewFrom.floor]!.world.ball;
+    ball.x = (editorPreviewFrom.cell[0] + 0.5) * CELL;
+    ball.y = (editorPreviewFrom.cell[1] + 0.5) * CELL;
+    ball.vx = 0;
+    ball.vy = 0;
+    renderer.follow(ball.x, ball.y, true);
+  }
+  respawnPoint = { floor: activeFloor, x: loaded.world.ball.x, y: loaded.world.ball.y };
   t0 = performance.now();
   state = 'playing';
   revealUntil = 0;

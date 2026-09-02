@@ -1,18 +1,18 @@
-// „Glas abseits": WAS gehört in dieses Badge und was nicht.
+// Glas und Anker: WAS ist ein Riegel, was nur Schwierigkeit?
 //
-// Der Sog-Anker gehört zur Gefahren-FAMILIE, aber nicht in diesen Beweis:
-// Sein Sog bleibt per Schema-Invariante unter der Neigungs-Beschleunigung
-// (anchorDef.force ≤ 2400 vs. World.accel 2600) – „ein Anker ist zäh, nie
-// eine Falle". Ihn als Wand zu modellieren machte ein beweisbar lösbares
-// Level UNTEILBAR (isShareable verlangt dieses Badge) und widersprach `goal`
-// und `softlock`, die dasselbe Level grün stempelten.
+// Es gab ein Badge „Glas abseits" (hazards). Es ist weg (M39): Glas hält EINE
+// Überfahrt aus und wird dann zum Loch – an dessen Rand kommt man mit Gefühl
+// vorbei. Ein Pflichtweg über Glas ist Schwierigkeit, kein Riegel; ein Badge,
+// das ein spielbares Level unteilbar macht, ist falsch. Der Sog-Anker war nie
+// ein Riegel: Sein Sog bleibt per Schema-Invariante unter der Neigungs-
+// Beschleunigung (anchorDef.force ≤ 2400 vs. World.accel 2600).
 //
-// Glas bleibt gesperrt, und zwar mit Grund: Es hält EINE Überfahrt aus (erst
-// knacken, dann brechen) – ein Pflichtweg, der zweimal darüber muss, tötet.
-// Das prüft dieses Modell nicht, also bleibt Glas ganz draußen.
+// Die Flags `glassBlocked`/`anchorsBlocked` bleiben – als QUALITÄTS-Regel
+// unserer Generatoren (tests/levels.test.ts, tests/daily.test.ts), nicht als
+// Beweis.
 
 import { describe, expect, it } from 'vitest';
-import { reachable, validateLevel } from '../src/levels/validate';
+import { isShareable, reachable, validateLevel } from '../src/levels/validate';
 import { parseLevel } from '../src/levels/schema';
 import { anchorDef } from '../src/levels/schema';
 import { World } from '../src/core/physics';
@@ -31,49 +31,36 @@ const corridor = (el: unknown) => ({
     elements: [el], start: [0, 0], goal: [4, 0],
   }],
 });
-const check = (def: unknown, key: string) => validateLevel(def).find((c) => c.key === key)!;
+const check = (def: unknown, key: string) => validateLevel(def).find((c) => c.key === key);
 
-describe('hazards („Glas abseits")', () => {
+describe('Glas und Anker im Pflichtweg', () => {
   it('der Sog kann die Neigung nie überbieten – das ist die Invariante dahinter', () => {
     const maxForce = anchorDef.shape.force.parse(undefined) as number;
-    // Der Schema-Default UND die Obergrenze liegen unter der Beschleunigung.
     expect(maxForce).toBeLessThan(new World([], { x: 0, y: 0, r: 1, vx: 0, vy: 0 } as never, null).accel);
     expect(() => anchorDef.parse({ type: 'anchor', cell: [0, 0], force: 2600 })).toThrow();
   });
 
-  it('Anker im Korridor: grün (war rot und blockierte das Teilen)', () => {
-    const def = corridor({ type: 'anchor', cell: [2, 0] });
-    expect(check(def, 'hazards').ok, check(def, 'hazards').detail).toBe(true);
-    // Die drei Checks sind sich jetzt einig – der Widerspruch war der Bug.
-    expect(check(def, 'goal').ok).toBe(true);
-    expect(check(def, 'softlock').ok).toBe(true);
+  it('es gibt kein hazards-Badge mehr', () => {
+    expect(check(corridor({ type: 'glass', cell: [2, 0] }), 'hazards')).toBeUndefined();
   });
 
-  it('Glas im Korridor: bleibt rot (eine Überfahrt hält es, zwei nicht)', () => {
-    const def = corridor({ type: 'glass', cell: [2, 0] });
-    expect(check(def, 'hazards').ok).toBe(false);
+  it('Glas im Korridor: teilbar – goal und softlock grün, nichts blockiert', () => {
+    const checks = validateLevel(corridor({ type: 'glass', cell: [2, 0] }));
+    expect(checks.find((c) => c.key === 'goal')?.ok).toBe(true);
+    expect(checks.find((c) => c.key === 'softlock')?.ok).toBe(true);
+    expect(isShareable(checks)).toBe(true);
   });
 
-  it('Glas in einer Nische: grün – Abkürzung oder Köder, nicht Pflichtweg', () => {
-    const def = corridor({ type: 'glass', cell: [2, 0] });
-    // (2,1) öffnen und das Glas dorthin verlegen: es liegt jetzt abseits.
-    const f = (def.floors as Array<Record<string, unknown>>)[0]!;
-    const maze = f.maze as { carve: unknown[]; add: unknown[] };
-    maze.carve.push([[2, 0], 's']);
-    maze.add = maze.add.filter((e) => {
-      if (!Array.isArray(e)) return true;
-      const cell = e[0] as number[];
-      return !(cell[0] === 2 && e[1] === 's');
-    });
-    f.elements = [{ type: 'glass', cell: [2, 1] }];
-    expect(check(def, 'hazards').ok, check(def, 'hazards').detail).toBe(true);
+  it('Anker im Korridor: teilbar', () => {
+    expect(isShareable(validateLevel(corridor({ type: 'anchor', cell: [2, 0] })))).toBe(true);
   });
 
-  it('die Flags sind getrennt: anchorsBlocked sperrt weiter (Generator-Regel)', () => {
-    const def = parseLevel(corridor({ type: 'anchor', cell: [2, 0] }));
-    const withAnchors = reachable(def, { brittleOpen: true, doorsOpen: true, anchorsBlocked: true });
-    const without = reachable(def, { brittleOpen: true, doorsOpen: true });
-    expect(withAnchors.has(cellKey(0, [4, 0]))).toBe(false);
-    expect(without.has(cellKey(0, [4, 0]))).toBe(true);
+  it('die Flags bleiben getrennt und wirken (Generator-Regel, kein Beweis)', () => {
+    const anchor = parseLevel(corridor({ type: 'anchor', cell: [2, 0] }));
+    expect(reachable(anchor, { brittleOpen: true, doorsOpen: true, anchorsBlocked: true }).has(cellKey(0, [4, 0]))).toBe(false);
+    expect(reachable(anchor, { brittleOpen: true, doorsOpen: true }).has(cellKey(0, [4, 0]))).toBe(true);
+    const glass = parseLevel(corridor({ type: 'glass', cell: [2, 0] }));
+    expect(reachable(glass, { brittleOpen: true, doorsOpen: true, glassBlocked: true }).has(cellKey(0, [4, 0]))).toBe(false);
+    expect(reachable(glass, { brittleOpen: true, doorsOpen: true }).has(cellKey(0, [4, 0]))).toBe(true);
   });
 });

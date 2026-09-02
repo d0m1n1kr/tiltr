@@ -48,14 +48,27 @@ function save(): boolean {
   }
 }
 
+/** Laufende Nummer je Sitzung: Zwei IDs in derselben Millisekunde müssen sich
+ *  unterscheiden – zwei Zufallszeichen allein taten das nur mit 1295:1296, und
+ *  auf einem schnellen CI-Läufer speicherte ein Test zwei Level in EINER
+ *  Millisekunde: Kollision, Upsert, ein Level weg (v2.8.0, roter Deploy). */
+let idSeq = 0;
+
 export function newCustomId(): string {
-  return `custom-${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36).padStart(2, '0')}`;
+  idSeq = (idSeq + 1) % 1296;
+  const seq = idSeq.toString(36).padStart(2, '0');
+  const rnd = Math.floor(Math.random() * 1296).toString(36).padStart(2, '0');
+  return `custom-${Date.now().toString(36)}${seq}${rnd}`;
 }
 
 export const workshop = {
-  /** Neueste zuerst. */
+  /** Neueste zuerst; bei gleichem Zeitstempel (dieselbe Millisekunde) gewinnt
+   *  der später gespeicherte – sonst wäre die Reihenfolge Zufall. */
   list(): CustomLevel[] {
-    return [...data.levels].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+    return data.levels
+      .map((l, i) => ({ l, i }))
+      .sort((a, b) => (a.l.updatedAt === b.l.updatedAt ? b.i - a.i : a.l.updatedAt < b.l.updatedAt ? 1 : -1))
+      .map((x) => x.l);
   },
 
   get(id: string): CustomLevel | null {
@@ -223,7 +236,7 @@ export function blankLevel(name: string): Record<string, unknown> {
     floors: [
       {
         size: [6, 8],
-        maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [] },
+        maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [], absorb: [] },
         elements: [],
         start: [0, 0],
         goal: [5, 7],
