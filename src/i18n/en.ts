@@ -474,7 +474,7 @@ export const en: Dict = {
 
   'lv.w1-01.name': 'Setting Out',
   'lv.w1-01.intro':
-    'Welcome to the dark. Follow the goal’s ping – the left wall leads you down, then it’s off to the right.',
+    'Welcome to the dark. Follow the goal’s ping – the left wall leads you down, then it’s right along the bottom. And top right, off the path, something sparkles.',
   'lv.w1-02.name': 'Hollow Way',
   'lv.w1-02.intro': 'The way down breathes: two holes open and close. Listen to the rumble – and wait for the silence.',
   'lv.w1-03.name': 'First Watch',
@@ -515,10 +515,10 @@ export const en: Dict = {
     'Two portals on one floor, one sealed goal. Jump – and learn where you land. The rising double chime of your ping gives the gates away.',
   'lv.w2-05.name': 'Cathedral',
   'lv.w2-05.intro':
-    'Three floors down lies the key to the crypt. Break through what crunches, defy wind and guard – and climb back to the light with the key.',
+    'Two keys to the crypt: one on the mezzanine, one three floors down. Up here light falls through the windows – below, you only hear. Break through what creaks, defy wind and guard, and climb back with both.',
   'lv.w2-06.name': 'The Expanse',
   'lv.w2-06.intro':
-    'The expanse: bigger than your screen. Follow the edge through the dark – checkpoints secure the long journey, and off the path something sparkles.',
+    'The Expanse: bigger than your screen. Follow the edge through the dark – checkpoints secure the long journey, gems sparkle off the path, and beneath the field two shafts cut straight across: shortcuts for those who listen.',
 
   'lv.w3-01.name': 'Sense of Rhythm',
   'lv.w3-01.intro':
@@ -531,32 +531,35 @@ export const en: Dict = {
     'A rushing sound that pulses: currents. They push harder than you can tilt – one-way streets. Whatever lies behind a current stays behind you. Collect first, then jump.',
   'lv.w3-04.name': 'Lock Works',
   'lv.w3-04.intro':
-    'First the beat, then the clock: two sliding walls want to be passed in rhythm, then a time lock opens the sluice before the goal – for eight beats. Can you do both in one go?',
+    'First the beat, then the key, then the clock: two sliding walls want to be passed in rhythm, behind them the key jingles – and the lock before the goal needs it AND the timed switch, which holds for only eight beats.',
   'lv.w3-05.name': 'Clockwork',
   'lv.w3-05.intro':
-    'The whole clockwork meshes together: sliding walls pace the descent, a current sweeps you to the switch, and the time lock holds the goal chamber open for just six beats. A guard makes its rounds.',
+    'The whole clockwork meshes: sliding walls time your descent, a current sweeps you to the shaft into the engine room – the timed switch ticks down there, and the goal chamber above stays open for just six beats. A guard makes its rounds.',
   'lv.w3-06.name': 'Rhythm Road',
   'lv.w3-06.intro':
     'The clockwork finale, wider than your screen: currents sweep you from lock to lock, sliding walls set the beat, and at the very end the time lock ticks before the goal chamber. Hear the rhythm – and dance along.',
 
   'lv.w4-01.name': 'Listening Post',
   'lv.w4-01.intro':
-    'Something is sniffing. The listener hears your rolling – even through walls – and hunts you while you move. Stand still and it loses your trail and withdraws. Roll in stages.',
+    'Something is sniffing. The listener hears you roll – even through walls – and hunts you as long as you move. Stand still and it loses your trail and retreats. Roll in stages. And whoever arrives without a single ping earns the blind star 🌑.',
   'lv.w4-02.name': 'Fog Bank',
   'lv.w4-02.intro':
-    'In the fog everything sounds like it is wrapped in cotton – even the goal sonar. Memorize your course before you dive in, and trust your instincts until your ears clear again.',
+    'In the fog everything sounds like cotton wool – even the goal’s sonar. And at the fog’s edge stand walls of insulation: the ping hits them, but they don’t answer, and whatever lies behind sounds muffled. Memorise the course before you dive in.',
   'lv.w4-03.name': 'Sheet Ice',
   'lv.w4-03.intro':
     'Mirror-smooth ice: once you get rolling, you keep gliding – braking turns sluggish, steering mushy. Listen to the whirring beneath you and plan your momentum before you take it.',
+  'lv.w4-03k.name': 'Crystal Passage',
+  'lv.w4-03k.intro':
+    'Three echo crystals line the way: each throws your ping back as a bright chime – and grants you a new one. A listener lurks at the edge. Roll quietly, ping wisely.',
   'lv.w4-04.name': 'Silent Running',
   'lv.w4-04.intro':
-    'Silent running: a listener roams the grounds, and fog banks swallow your bearings. Move in short bursts – and listen in the pauses for where the sniffing sits.',
+    'Stealth run: a listener roams its territory, and fog banks swallow your bearings. The insulated walls beside its post are cover – behind them it hears your rolling only faintly. Move in short bursts, and listen in the pauses for where the sniffing stands.',
   'lv.w4-05.name': 'Hunt on Ice',
   'lv.w4-05.intro':
     'The hunt on sheet ice: on ice you glide – and the listener hears every glide. If you skid, you cannot stand still. Take momentum with care and brake before it strikes.',
   'lv.w4-06.name': 'The Ear',
   'lv.w4-06.intro':
-    'The Ear: three floors down into the fog core, where everything sounds like cotton and two listeners are listening. At the very bottom, deep in the fog, the goal pulses. Move like a whisper.',
+    'The Ear: three floors down into the fog core, where everything sounds like cotton wool and two listeners wait. At the very bottom, in the middle of the fog, the goal pulses – an echo crystal at the core’s edge gives you the ping back clearly once more. Move like a whisper. Arrive without a single ping and you truly earn the blind star.',
 
   'lv.coop-01.name': 'Airlock',
   'lv.coop-01.intro':

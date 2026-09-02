@@ -34,14 +34,16 @@ const defs: unknown[] = [
     id: 'w1-01',
     name: 'Aufbruch',
     intro:
-      'Willkommen in der Dunkelheit. Folge dem Ping des Ziels – die linke Wand führt dich hinab, unten geht es nach rechts.',
-    parTimeS: 40,
+      'Willkommen in der Dunkelheit. Folge dem Ping des Ziels – die linke Wand führt dich hinab, unten geht es nach rechts. Und oben rechts funkelt etwas abseits des Wegs.',
+    parTimeS: 45,
     pingBudget: 3,
     floors: [
       {
         size: [5, 6],
         maze: { seed: 21, carve: [...down(0, 0, 5), ...right(5, 0, 4)] },
-        elements: [],
+        // M44: ein Gem im Umweg über die obere Zeile – der dritte Stern ist
+        // eine Leistung, kein Geschenk (vorher: keine Gefahr, „sturzfrei" gratis).
+        elements: [{ type: 'gem', cell: [3, 1] }],
         start: [0, 0],
         goal: [4, 5],
       },
@@ -98,10 +100,20 @@ const defs: unknown[] = [
     floors: [
       {
         size: [6, 7],
-        maze: { seed: 44, carve: [...down(0, 0, 6), ...right(6, 0, 5)] },
+        maze: {
+          seed: 44,
+          carve: [...down(0, 0, 6), ...right(6, 0, 5)],
+          // M44: Das Seed-Maze bot einen Umweg um die Tür (über [5,5]→[5,6]) –
+          // „Schlüsseldienst" ging ohne Schlüssel. Zugemauert; der Test
+          // „Schlüssel-Türen sind Pflicht" hält es fest.
+          add: [[[5, 5], 's']],
+        },
         elements: [
           { type: 'door', id: 'tor', edge: [[3, 6], 'e'] },
           { type: 'key', cell: [3, 3], opens: 'tor' },
+          // M44: Loch in der Sackgasse neben dem Schlüsselgang – Sturzgefahr,
+          // damit „sturzfrei" etwas bedeutet.
+          { type: 'hole', cell: [2, 3] },
           { type: 'checkpoint', cell: [0, 6] },
         ],
         start: [0, 0],
@@ -137,21 +149,23 @@ const defs: unknown[] = [
     id: 'w1-06',
     name: 'Zugluft',
     intro: 'Im oberen Gang steht dir der Wind entgegen. Halte dagegen – und lass dich nicht in das Loch dahinter treiben.',
-    parTimeS: 80,
+    parTimeS: 85,
     pingBudget: 3,
     floors: [
       {
-        size: [6, 8],
-        maze: { seed: 66, carve: [...right(0, 0, 5), ...down(5, 0, 7)] },
+        // M44: 5×10 statt 6×8 – ein langer Schacht statt des dritten 6×8-Felds
+        // in Folge; Wind wirkt in einem Korridor stärker.
+        size: [5, 10],
+        maze: { seed: 66, carve: [...right(0, 0, 4), ...down(4, 0, 9)] },
         elements: [
           { type: 'windZone', cell: [2, 0], dir: 'w' },
           { type: 'windZone', cell: [3, 0], dir: 'w' },
-          { type: 'hole', cell: [5, 4], breathing: { offset: 1 } },
-          { type: 'gem', cell: [1, 3] },
-          { type: 'checkpoint', cell: [5, 0] },
+          { type: 'hole', cell: [4, 5], breathing: { offset: 1 } },
+          { type: 'gem', cell: [1, 4] },
+          { type: 'checkpoint', cell: [4, 0] },
         ],
         start: [0, 0],
-        goal: [5, 7],
+        goal: [4, 9],
       },
     ],
   },
@@ -231,6 +245,9 @@ const defs: unknown[] = [
           { type: 'checkpoint', cell: [0, 9] },
           { type: 'gem', cell: [3, 3] },
           { type: 'gem', cell: [6, 0] },
+          // M44: Glasboden als Einmal-Brücke auf dem Nebenweg zum oberen Gem –
+          // trägt hin, knackt, und der Rückweg kostet Gefühl (erstes Glas der Kampagne).
+          { type: 'glass', cell: [2, 1] },
         ],
         start: [0, 0],
         goal: [6, 9],
@@ -307,6 +324,34 @@ const defs2: unknown[] = [
         ],
         start: [4, 0],
         goal: null,
+      },
+    ],
+  },
+  {
+    id: 'w2-04',
+    name: 'Zwillingstore',
+    intro:
+      'Zwei Portale auf einer Ebene, ein versiegeltes Ziel. Spring – und lerne, wo du landest. Der aufsteigende Doppelklang deines Pings verrät die Tore.',
+    parTimeS: 90,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 8],
+        maze: {
+          seed: 230,
+          carve: [...right(0, 0, 3), ...right(7, 0, 3), [[5, 6], 's']],
+          add: [[[5, 5], 's'], [[4, 6], 'e'], [[4, 7], 'e']],
+        },
+        elements: [
+          { type: 'transporter', cell: [3, 0], target: { floor: 0, cell: [0, 7] } },
+          { type: 'transporter', cell: [3, 7], target: { floor: 0, cell: [5, 6] } },
+          { type: 'hole', cell: [1, 7], breathing: { offset: 0.5 } },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'gem', cell: [0, 4] },
+          { type: 'checkpoint', cell: [0, 7] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
       },
     ],
   },
@@ -394,102 +439,11 @@ const defs2: unknown[] = [
     ],
   },
   {
-    id: 'w2-04',
-    name: 'Zwillingstore',
-    intro:
-      'Zwei Portale auf einer Ebene, ein versiegeltes Ziel. Spring – und lerne, wo du landest. Der aufsteigende Doppelklang deines Pings verrät die Tore.',
-    parTimeS: 90,
-    pingBudget: 4,
-    floors: [
-      {
-        size: [6, 8],
-        maze: {
-          seed: 230,
-          carve: [...right(0, 0, 3), ...right(7, 0, 3), [[5, 6], 's']],
-          add: [[[5, 5], 's'], [[4, 6], 'e'], [[4, 7], 'e']],
-        },
-        elements: [
-          { type: 'transporter', cell: [3, 0], target: { floor: 0, cell: [0, 7] } },
-          { type: 'transporter', cell: [3, 7], target: { floor: 0, cell: [5, 6] } },
-          { type: 'hole', cell: [1, 7], breathing: { offset: 0.5 } },
-          { type: 'gem', cell: [5, 0] },
-          { type: 'gem', cell: [0, 4] },
-          { type: 'checkpoint', cell: [0, 7] },
-        ],
-        start: [0, 0],
-        goal: [5, 7],
-      },
-    ],
-  },
-  {
-    id: 'w2-05',
-    name: 'Kathedrale',
-    intro:
-      'Drei Ebenen tief liegt der Schlüssel zur Krypta. Brich durch, was knirscht, trotze Wind und Wache – und steig mit dem Schlüssel zurück ans Licht.',
-    parTimeS: 220,
-    pingBudget: 4,
-    floors: [
-      {
-        size: [7, 9],
-        maze: {
-          seed: 240,
-          carve: [...down(0, 0, 8), ...right(8, 0, 6), ...right(0, 0, 5)],
-          // Zielkammer {[5,8],[6,8]} versiegeln – die Krypta-Tür ist der einzige Eingang
-          add: [[[5, 7], 's'], [[6, 7], 's']],
-        },
-        elements: [
-          { type: 'guard', patrol: [[1, 0], [4, 0]], speed: 95 },
-          { type: 'door', id: 'krypta', edge: [[4, 8], 'e'] },
-          { type: 'transporter', cell: [0, 4], target: { floor: 1, cell: [0, 0] } },
-          { type: 'gem', cell: [5, 0] },
-          { type: 'checkpoint', cell: [0, 8] },
-          // M27: In der Kathedrale spielt eine Jukebox – Orgel und Hymne,
-          // in einer Nische abseits des Wegs (validate.ts beweist es).
-          { type: 'jukebox', cell: [1, 5], playlist: ['toccata', 'thaxted'] },
-        ],
-        start: [0, 0],
-        goal: [6, 8],
-      },
-      {
-        size: [6, 6],
-        maze: { seed: 241, carve: [...right(0, 0, 5), ...down(5, 0, 5)] },
-        elements: [
-          { type: 'windZone', cell: [2, 0], dir: 'w' },
-          { type: 'windZone', cell: [3, 0], dir: 'w' },
-          { type: 'hole', cell: [5, 2], breathing: { offset: 1 } },
-          { type: 'gem', cell: [0, 5] },
-          { type: 'transporter', cell: [5, 5], target: { floor: 2, cell: [0, 0] } },
-        ],
-        start: [0, 0],
-        goal: null,
-      },
-      {
-        size: [5, 5],
-        maze: {
-          seed: 242,
-          carve: [...down(0, 0, 4), ...right(4, 0, 4), ...down(4, 0, 4)],
-          add: [[[0, 2], 's']],
-          brittle: [[[0, 2], 's']],
-          brittleHits: 2,
-        },
-        elements: [
-          { type: 'guard', patrol: [[1, 4], [3, 4]], speed: 75 },
-          { type: 'key', cell: [4, 4], opens: 'krypta' },
-          { type: 'hole', cell: [4, 2], breathing: { offset: 2 } },
-          { type: 'checkpoint', cell: [0, 4] },
-          { type: 'transporter', cell: [4, 0], target: { floor: 0, cell: [1, 8] } },
-        ],
-        start: [0, 0],
-        goal: null,
-      },
-    ],
-  },
-  {
     id: 'w2-06',
     name: 'Die Weite',
     intro:
-      'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, und abseits des Weges funkelt es.',
-    parTimeS: 260,
+      'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, abseits des Weges funkelt es, und unter dem Feld führen zwei Schächte quer hindurch: Abkürzungen für die, die hinhören.',
+    parTimeS: 255,
     pingBudget: 4,
     floors: [
       {
@@ -527,9 +481,95 @@ const defs2: unknown[] = [
           // M27: In der Weite ist ein Musikautomat vor allem ein WAHRZEICHEN –
           // mitten im Feld, hörbar ortbar, gleich weit von Start und Ziel.
           { type: 'jukebox', cell: [6, 5], playlist: ['thaxted', 'nachtmusik'] },
+          // M44: Zwei Schächte in die Unterwelt – Abkürzungen quer durchs Feld.
+          // Damit trägt das Level das Welt-Thema (vorher: kein Transporter in
+          // „Zwischen den Ebenen"). Landeplatz = Respawn (M43) macht die
+          // Rückwege sicher.
+          { type: 'transporter', cell: [3, 4], target: { floor: 1, cell: [0, 0] } },
+          { type: 'transporter', cell: [10, 9], target: { floor: 1, cell: [3, 3] } },
         ],
         start: [0, 0],
         goal: [12, 0],
+      },
+      {
+        // Die Unterwelt: ein kurzer Gang, zwei Ausgänge in andere Ecken des Feldes.
+        size: [4, 4],
+        maze: { seed: 261, carve: [...right(0, 0, 3), ...down(3, 0, 3)] },
+        elements: [
+          { type: 'transporter', cell: [1, 0], target: { floor: 0, cell: [9, 10] } },
+          { type: 'transporter', cell: [3, 2], target: { floor: 0, cell: [4, 5] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+    ],
+  },
+  {
+    id: 'w2-05',
+    name: 'Kathedrale',
+    intro:
+      'Zwei Schlüssel zur Krypta: einer im Zwischengeschoss, einer drei Ebenen tief. Oben fällt Licht durch die Fenster – unten hörst du nur noch. Brich durch, was knirscht, trotze Wind und Wache, und steig mit beiden zurück.',
+    parTimeS: 270,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 9],
+        maze: {
+          seed: 240,
+          carve: [...down(0, 0, 8), ...right(8, 0, 6), ...right(0, 0, 5)],
+          // Zielkammer {[5,8],[6,8]} versiegeln – die Krypta-Tür ist der einzige Eingang
+          add: [[[5, 7], 's'], [[6, 7], 's']],
+        },
+        elements: [
+          { type: 'guard', patrol: [[1, 0], [4, 0]], speed: 95 },
+          // M44: Die Krypta braucht BEIDE Schlüssel (require 'all') – der eine
+          // im Zwischengeschoss, der andere drei Ebenen tief.
+          { type: 'door', id: 'krypta', edge: [[4, 8], 'e'], require: 'all' },
+          { type: 'transporter', cell: [0, 4], target: { floor: 1, cell: [0, 0] } },
+          { type: 'gem', cell: [5, 0] },
+          { type: 'checkpoint', cell: [0, 8] },
+          // M27: In der Kathedrale spielt eine Jukebox – Orgel und Hymne,
+          // in einer Nische abseits des Wegs (validate.ts beweist es).
+          { type: 'jukebox', cell: [1, 5], playlist: ['toccata', 'thaxted'] },
+        ],
+        start: [0, 0],
+        goal: [6, 8],
+        // M44: Das Kirchenschiff ist HELL („Fenster") – Atempause vor dem
+        // Abstieg; unten hört man nur noch.
+        bright: true,
+      },
+      {
+        size: [6, 6],
+        maze: { seed: 241, carve: [...right(0, 0, 5), ...down(5, 0, 5)] },
+        elements: [
+          { type: 'windZone', cell: [2, 0], dir: 'w' },
+          { type: 'windZone', cell: [3, 0], dir: 'w' },
+          { type: 'hole', cell: [5, 2], breathing: { offset: 1 } },
+          { type: 'gem', cell: [0, 5] },
+          { type: 'key', cell: [2, 3], opens: 'krypta' },
+          { type: 'transporter', cell: [5, 5], target: { floor: 2, cell: [0, 0] } },
+        ],
+        start: [0, 0],
+        goal: null,
+      },
+      {
+        size: [5, 5],
+        maze: {
+          seed: 242,
+          carve: [...down(0, 0, 4), ...right(4, 0, 4), ...down(4, 0, 4)],
+          add: [[[0, 2], 's']],
+          brittle: [[[0, 2], 's']],
+          brittleHits: 2,
+        },
+        elements: [
+          { type: 'guard', patrol: [[1, 4], [3, 4]], speed: 75 },
+          { type: 'key', cell: [4, 4], opens: 'krypta' },
+          { type: 'hole', cell: [4, 2], breathing: { offset: 2 } },
+          { type: 'checkpoint', cell: [0, 4] },
+          { type: 'transporter', cell: [4, 0], target: { floor: 0, cell: [1, 8] } },
+        ],
+        start: [0, 0],
+        goal: null,
       },
     ],
   },
@@ -616,17 +656,26 @@ const defs3: unknown[] = [
     id: 'w3-04',
     name: 'Schleusenwerk',
     intro:
-      'Erst der Takt, dann die Uhr: Zwei Schiebewände wollen im Rhythmus passiert werden, danach öffnet ein Zeitschloss die Schleuse vor dem Ziel – für acht Takte. Schaffst du beides in einem Zug?',
+      'Erst der Takt, dann der Schlüssel, dann die Uhr: Zwei Schiebewände wollen im Rhythmus passiert werden, dahinter klimpert der Schlüssel – und die Schleuse vor dem Ziel braucht ihn UND das Zeitschloss, das nur acht Takte lang offen hält.',
     parTimeS: 105,
     pingBudget: 4,
     floors: [
       {
         size: [7, 9],
-        maze: { seed: 340, carve: [...right(0, 0, 6), ...down(6, 0, 8)] },
+        maze: {
+          seed: 340,
+          carve: [...right(0, 0, 6), ...down(6, 0, 8)],
+          // M44: Zielkammer [6,8] versiegeln – die Schleuse war über die
+          // unterste Zeile umgehbar, das Rätsel damit freiwillig.
+          add: [[[5, 8], 'e']],
+        },
         elements: [
           { type: 'slidingWall', edge: [[1, 0], 'e'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 0 } },
           { type: 'slidingWall', edge: [[3, 0], 'e'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 2.7 } },
-          { type: 'door', id: 'schleuse', edge: [[6, 7], 's'] },
+          // M44: Die Schleuse braucht Schlüssel UND Zeitschloss (require 'all') –
+          // das Rhythmus-Rätsel der Welt: erst der Takt, dann der Schlüssel, dann der Sprint.
+          { type: 'door', id: 'schleuse', edge: [[6, 7], 's'], require: 'all' },
+          { type: 'key', cell: [2, 4], opens: 'schleuse' },
           { type: 'timedSwitch', cell: [6, 2], opens: 'schleuse', durationS: 8 },
           { type: 'checkpoint', cell: [6, 0] },
           { type: 'checkpoint', cell: [6, 5] },
@@ -644,8 +693,8 @@ const defs3: unknown[] = [
     id: 'w3-05',
     name: 'Uhrwerk',
     intro:
-      'Das ganze Räderwerk greift ineinander: Schiebewände takten den Abstieg, eine Strömung reißt dich zum Schalter, und das Zeitschloss hält die Zielkammer nur sechs Takte offen. Eine Wache dreht ihre Runden.',
-    parTimeS: 140,
+      'Das ganze Räderwerk greift ineinander: Schiebewände takten den Abstieg, eine Strömung reißt dich zum Schacht in den Maschinenraum – dort tickt das Zeitschloss, und die Zielkammer oben bleibt nur sechs Takte offen. Eine Wache dreht ihre Runden.',
+    parTimeS: 150,
     pingBudget: 4,
     floors: [
       {
@@ -660,7 +709,10 @@ const defs3: unknown[] = [
           { type: 'slidingWall', edge: [[0, 3], 's'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 0 } },
           { type: 'slidingWall', edge: [[0, 6], 's'], cycle: { open: 3.2, closed: 2.4, ramp: 0.5, offset: 2.8 } },
           { type: 'door', id: 'kammer', edge: [[5, 9], 'e'] },
-          { type: 'timedSwitch', cell: [3, 9], opens: 'kammer', durationS: 6 },
+          // M44: Der Schalter liegt UNTEN im Maschinenraum – der Schacht steht,
+          // wo vorher der Schalter war; der 6-s-Sprint führt durch den Transporter
+          // zurück nach oben (timer-Beweis mit einem Sprung).
+          { type: 'transporter', cell: [3, 9], target: { floor: 1, cell: [0, 0] } },
           { type: 'current', cell: [1, 9], dir: 'e' },
           { type: 'guard', patrol: [[2, 0], [5, 0]], speed: 85 },
           // M27: Ein Musikautomat im Uhrwerk – mechanischer geht Musik nicht.
@@ -674,6 +726,17 @@ const defs3: unknown[] = [
         ],
         start: [0, 0],
         goal: [6, 9],
+      },
+      {
+        // Der Maschinenraum: Zeitschloss unten, Rückweg durch den Schacht nach oben.
+        size: [4, 5],
+        maze: { seed: 351, carve: [...down(0, 0, 4), ...right(4, 0, 3)] },
+        elements: [
+          { type: 'timedSwitch', cell: [3, 4], opens: 'kammer', durationS: 6 },
+          { type: 'transporter', cell: [3, 2], target: { floor: 0, cell: [4, 9] } },
+        ],
+        start: [0, 0],
+        goal: null,
       },
     ],
   },
@@ -713,6 +776,11 @@ const defs3: unknown[] = [
           { type: 'checkpoint', cell: [0, 7] },
           { type: 'checkpoint', cell: [5, 14] },
           { type: 'checkpoint', cell: [11, 14] },
+          { type: 'checkpoint', cell: [12, 7] },
+          // M44: Sog-Anker in den Nischen neben der Taktstraße – ein Kraftfeld
+          // ist eine stationäre Strömung (erstes Vorkommen in der Kampagne).
+          { type: 'anchor', cell: [3, 13] },
+          { type: 'anchor', cell: [8, 13] },
           { type: 'hole', cell: [2, 5], breathing: { offset: 0 } },
           { type: 'hole', cell: [7, 3], breathing: { offset: 2 } },
           { type: 'hole', cell: [11, 9], breathing: { offset: 4 } },
@@ -742,7 +810,7 @@ const defs4: unknown[] = [
     id: 'w4-01',
     name: 'Horchposten',
     intro:
-      'Da schnüffelt etwas. Der Horcher hört dein Rollen – sogar durch Wände – und jagt dich, solange du dich bewegst. Stehst du still, verliert er die Spur und zieht sich zurück. Roll in Etappen.',
+      'Da schnüffelt etwas. Der Horcher hört dein Rollen – sogar durch Wände – und jagt dich, solange du dich bewegst. Stehst du still, verliert er die Spur und zieht sich zurück. Roll in Etappen. Und wer ganz ohne Ping ankommt, trägt den Blind-Stern 🌑.',
     parTimeS: 75,
     pingBudget: 3,
     floors: [
@@ -763,13 +831,22 @@ const defs4: unknown[] = [
     id: 'w4-02',
     name: 'Nebelbank',
     intro:
-      'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Präg dir den Kurs ein, bevor du eintauchst, und trau deinem Gefühl, bis die Ohren wieder aufklaren.',
+      'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Und am Nebelrand stehen Wände aus Dämmstoff: Der Ping trifft sie, aber sie antworten nicht, und was dahinter liegt, hörst du nur dumpf. Präg dir den Kurs ein, bevor du eintauchst.',
     parTimeS: 75,
     pingBudget: 3,
     floors: [
       {
         size: [6, 7],
-        maze: { seed: 420, carve: [...down(0, 0, 6), ...right(6, 0, 5)] },
+        maze: {
+          seed: 420,
+          carve: [...down(0, 0, 6), ...right(6, 0, 5)],
+          // M44: Schallschutzwände am Nebelrand – Zone und Wand dämpfen
+          // beide, hier lernt man den Unterschied (erstes Vorkommen).
+          absorb: [
+            [[1, 3], 'e'],
+            [[3, 5], 's'],
+          ],
+        },
         elements: [
           { type: 'fogZone', cell: [0, 3] },
           { type: 'fogZone', cell: [1, 3] },
@@ -814,16 +891,52 @@ const defs4: unknown[] = [
     ],
   },
   {
+    // M44: Kristallgang – der Echo-Kristall hatte kein Kampagnen-Level, obwohl
+    // die Generatoren ihn längst setzen. Hier lernt man ihn, bevor „Das Ohr"
+    // ihn am Nebelkern braucht.
+    id: 'w4-03k',
+    name: 'Kristallgang',
+    intro:
+      'Drei Echo-Kristalle säumen den Weg: Jeder wirft deinen Ping als helles Klirren zurück – und schenkt dir einen neuen. Ein Horcher lauert am Rand. Roll leise, ping klug.',
+    parTimeS: 85,
+    pingBudget: 3,
+    floors: [
+      {
+        size: [6, 8],
+        maze: { seed: 435, carve: [...down(0, 0, 7), ...right(7, 0, 5)] },
+        elements: [
+          { type: 'echoCrystal', cell: [0, 2] },
+          { type: 'echoCrystal', cell: [0, 5] },
+          { type: 'echoCrystal', cell: [3, 7] },
+          { type: 'listener', cell: [4, 3], speed: 85 },
+          { type: 'checkpoint', cell: [0, 7] },
+          { type: 'gem', cell: [5, 1] },
+        ],
+        start: [0, 0],
+        goal: [5, 7],
+      },
+    ],
+  },
+  {
     id: 'w4-04',
     name: 'Schleichfahrt',
     intro:
-      'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Beweg dich in kurzen Stößen – und lausche in den Pausen, wo das Schnüffeln steht.',
+      'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Die Dämmwände neben seinem Posten sind Deckung – dahinter hört er dein Rollen nur leise. Beweg dich in kurzen Stößen, und lausche in den Pausen, wo das Schnüffeln steht.',
     parTimeS: 120,
     pingBudget: 3,
     floors: [
       {
         size: [7, 9],
-        maze: { seed: 440, carve: [...right(0, 0, 6), ...down(6, 0, 8)] },
+        maze: {
+          seed: 440,
+          carve: [...right(0, 0, 6), ...down(6, 0, 8)],
+          // M44: Deckung – der Horcher hört durch Schallschutz gedämpft
+          // (physics.updateListeners, ABSORB_GAIN).
+          absorb: [
+            [[4, 4], 'e'],
+            [[5, 4], 's'],
+          ],
+        },
         elements: [
           { type: 'listener', cell: [3, 4], speed: 95 },
           { type: 'fogZone', cell: [6, 3] },
@@ -875,7 +988,7 @@ const defs4: unknown[] = [
     id: 'w4-06',
     name: 'Das Ohr',
     intro:
-      'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel. Beweg dich wie ein Flüstern.',
+      'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel – ein Echo-Kristall am Rand des Kerns gibt dir den Ping noch einmal klar zurück. Beweg dich wie ein Flüstern. Wer hier ohne einen einzigen Ping ankommt, trägt den Blind-Stern zu Recht.',
     parTimeS: 240,
     pingBudget: 3,
     floors: [
@@ -902,6 +1015,9 @@ const defs4: unknown[] = [
           { type: 'ice', cell: [2, 3] },
           { type: 'ice', cell: [3, 3] },
           { type: 'gem', cell: [0, 5] },
+          // M44: Checkpoint hinter dem Horcher-Revier – ein Fang auf Ebene 2 ist
+          // ein Rückschlag, keine Wiederholung von Ebene 1.
+          { type: 'checkpoint', cell: [5, 2] },
           { type: 'transporter', cell: [5, 5], target: { floor: 2, cell: [0, 0] } },
         ],
         start: [0, 0],
@@ -925,6 +1041,8 @@ const defs4: unknown[] = [
           { type: 'listener', cell: [5, 1], speed: 90 },
           { type: 'checkpoint', cell: [0, 6] },
           { type: 'gem', cell: [6, 0] },
+          // M44: Echo-Kristall am Nebelrand – das Ziel im Kern ist sonst nur Watte.
+          { type: 'echoCrystal', cell: [3, 1] },
         ],
         start: [0, 0],
         goal: [3, 3],
@@ -964,6 +1082,7 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'w4-01': 'y',
   'w4-02': 'x',
   'w4-03': 'xy',
+  'w4-03k': 'y',
   'w4-04': 'y',
   'w4-05': 'x',
   'w4-06': 'xy',

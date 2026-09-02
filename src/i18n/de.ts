@@ -478,7 +478,7 @@ export const de = {
 
   'lv.w1-01.name': 'Aufbruch',
   'lv.w1-01.intro':
-    'Willkommen in der Dunkelheit. Folge dem Ping des Ziels – die linke Wand führt dich hinab, unten geht es nach rechts.',
+    'Willkommen in der Dunkelheit. Folge dem Ping des Ziels – die linke Wand führt dich hinab, unten geht es nach rechts. Und oben rechts funkelt etwas abseits des Wegs.',
   'lv.w1-02.name': 'Hohlweg',
   'lv.w1-02.intro': 'Der Weg hinab atmet: Zwei Löcher öffnen und schließen sich. Lausche dem Grollen – und warte auf die Stille.',
   'lv.w1-03.name': 'Erste Wache',
@@ -519,10 +519,10 @@ export const de = {
     'Zwei Portale auf einer Ebene, ein versiegeltes Ziel. Spring – und lerne, wo du landest. Der aufsteigende Doppelklang deines Pings verrät die Tore.',
   'lv.w2-05.name': 'Kathedrale',
   'lv.w2-05.intro':
-    'Drei Ebenen tief liegt der Schlüssel zur Krypta. Brich durch, was knirscht, trotze Wind und Wache – und steig mit dem Schlüssel zurück ans Licht.',
+    'Zwei Schlüssel zur Krypta: einer im Zwischengeschoss, einer drei Ebenen tief. Oben fällt Licht durch die Fenster – unten hörst du nur noch. Brich durch, was knirscht, trotze Wind und Wache, und steig mit beiden zurück.',
   'lv.w2-06.name': 'Die Weite',
   'lv.w2-06.intro':
-    'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, und abseits des Weges funkelt es.',
+    'Die Weite: größer als dein Bildschirm. Folge dem Rand durch die Dunkelheit – Checkpoints sichern die lange Reise, abseits des Weges funkelt es, und unter dem Feld führen zwei Schächte quer hindurch: Abkürzungen für die, die hinhören.',
 
   'lv.w3-01.name': 'Taktgefühl',
   'lv.w3-01.intro':
@@ -535,32 +535,35 @@ export const de = {
     'Ein Rauschen, das pulst: Strömungen. Sie schieben stärker, als du neigen kannst – Einbahnstraßen. Was hinter einer Strömung liegt, bleibt hinter dir. Sammle zuerst, spring dann.',
   'lv.w3-04.name': 'Schleusenwerk',
   'lv.w3-04.intro':
-    'Erst der Takt, dann die Uhr: Zwei Schiebewände wollen im Rhythmus passiert werden, danach öffnet ein Zeitschloss die Schleuse vor dem Ziel – für acht Takte. Schaffst du beides in einem Zug?',
+    'Erst der Takt, dann der Schlüssel, dann die Uhr: Zwei Schiebewände wollen im Rhythmus passiert werden, dahinter klimpert der Schlüssel – und die Schleuse vor dem Ziel braucht ihn UND das Zeitschloss, das nur acht Takte lang offen hält.',
   'lv.w3-05.name': 'Uhrwerk',
   'lv.w3-05.intro':
-    'Das ganze Räderwerk greift ineinander: Schiebewände takten den Abstieg, eine Strömung reißt dich zum Schalter, und das Zeitschloss hält die Zielkammer nur sechs Takte offen. Eine Wache dreht ihre Runden.',
+    'Das ganze Räderwerk greift ineinander: Schiebewände takten den Abstieg, eine Strömung reißt dich zum Schacht in den Maschinenraum – dort tickt das Zeitschloss, und die Zielkammer oben bleibt nur sechs Takte offen. Eine Wache dreht ihre Runden.',
   'lv.w3-06.name': 'Taktstraße',
   'lv.w3-06.intro':
     'Das Finale des Räderwerks, weiter als dein Bildschirm: Strömungen reißen dich von Schleuse zu Schleuse, Schiebewände geben den Takt vor, und ganz am Ende tickt das Zeitschloss vor der Zielkammer. Hör den Rhythmus – und tanz mit.',
 
   'lv.w4-01.name': 'Horchposten',
   'lv.w4-01.intro':
-    'Da schnüffelt etwas. Der Horcher hört dein Rollen – sogar durch Wände – und jagt dich, solange du dich bewegst. Stehst du still, verliert er die Spur und zieht sich zurück. Roll in Etappen.',
+    'Da schnüffelt etwas. Der Horcher hört dein Rollen – sogar durch Wände – und jagt dich, solange du dich bewegst. Stehst du still, verliert er die Spur und zieht sich zurück. Roll in Etappen. Und wer ganz ohne Ping ankommt, trägt den Blind-Stern 🌑.',
   'lv.w4-02.name': 'Nebelbank',
   'lv.w4-02.intro':
-    'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Präg dir den Kurs ein, bevor du eintauchst, und trau deinem Gefühl, bis die Ohren wieder aufklaren.',
+    'Im Nebel klingt alles wie durch Watte – sogar der Sonar des Ziels. Und am Nebelrand stehen Wände aus Dämmstoff: Der Ping trifft sie, aber sie antworten nicht, und was dahinter liegt, hörst du nur dumpf. Präg dir den Kurs ein, bevor du eintauchst.',
   'lv.w4-03.name': 'Spiegeleis',
   'lv.w4-03.intro':
     'Spiegelglattes Eis: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Hör auf das Sirren unter dir und plane den Schwung, bevor du ihn nimmst.',
+  'lv.w4-03k.name': 'Kristallgang',
+  'lv.w4-03k.intro':
+    'Drei Echo-Kristalle säumen den Weg: Jeder wirft deinen Ping als helles Klirren zurück – und schenkt dir einen neuen. Ein Horcher lauert am Rand. Roll leise, ping klug.',
   'lv.w4-04.name': 'Schleichfahrt',
   'lv.w4-04.intro':
-    'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Beweg dich in kurzen Stößen – und lausche in den Pausen, wo das Schnüffeln steht.',
+    'Schleichfahrt: Ein Horcher streift durchs Revier, und Nebelbänke schlucken deine Orientierung. Die Dämmwände neben seinem Posten sind Deckung – dahinter hört er dein Rollen nur leise. Beweg dich in kurzen Stößen, und lausche in den Pausen, wo das Schnüffeln steht.',
   'lv.w4-05.name': 'Glatteisjagd',
   'lv.w4-05.intro':
     'Die Jagd auf Glatteis: Auf dem Eis gleitest du – und der Horcher hört jedes Gleiten. Wer schlittert, kann nicht stillstehen. Nimm Schwung mit Bedacht und bremse, bevor er zubeißt.',
   'lv.w4-06.name': 'Das Ohr',
   'lv.w4-06.intro':
-    'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel. Beweg dich wie ein Flüstern.',
+    'Das Ohr: drei Ebenen hinab in den Nebelkern, wo alles wie durch Watte klingt und zwei Horcher lauschen. Ganz unten, mitten im Nebel, pulst das Ziel – ein Echo-Kristall am Rand des Kerns gibt dir den Ping noch einmal klar zurück. Beweg dich wie ein Flüstern. Wer hier ohne einen einzigen Ping ankommt, trägt den Blind-Stern zu Recht.',
 
   'lv.coop-01.name': 'Schleuse',
   'lv.coop-01.intro':

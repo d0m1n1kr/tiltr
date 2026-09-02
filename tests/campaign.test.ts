@@ -3,15 +3,16 @@ import { CAMPAIGN_LEVELS, WORLDS } from '../src/levels/campaign';
 import { loadLevel } from '../src/levels/loader';
 import { setWall } from '../src/core/maze';
 import type { DoorDef } from '../src/levels/schema';
-import { buildFloorCells, cellKey, coopReachable, directedDistances, reachable, validateLevel } from './helpers';
+import { buildFloorCells, cellKey, coopReachable, reachable, validateLevel } from './helpers';
+import { switchDoorSteps, timerSeconds } from '../src/levels/validate';
 
 describe('Kampagne', () => {
-  it('Welt 1 hat 10, Welt 2–4 haben je 6 Level; IDs eindeutig, Intro + Par überall', () => {
+  it('Welt 1 hat 10, Welt 2–3 je 6, Welt 4 sieben Level (Kristallgang, M44); IDs eindeutig, Intro + Par überall', () => {
     expect(WORLDS[0]!.levels).toHaveLength(10);
     expect(WORLDS[1]!.levels).toHaveLength(6);
     expect(WORLDS[2]!.levels).toHaveLength(6);
-    expect(WORLDS[3]!.levels).toHaveLength(6);
-    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(28);
+    expect(WORLDS[3]!.levels).toHaveLength(7);
+    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(29);
     for (const l of CAMPAIGN_LEVELS) {
       expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
       expect(l.parTimeS, l.id).toBeGreaterThan(0);
@@ -56,30 +57,56 @@ describe('Kampagne', () => {
     }
   });
 
-  it('Zeitschloss-Beweis: Strecke Schalter→Tür ist im Timer machbar (2,5× Sicherheitsfaktor)', () => {
-    const MAX_SPEED = 900; // World.maxSpeed in px/s, Zelle = 100 px
-    const NEIGHBOR = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] } as const;
+  it('Zeitschloss-Beweis: Strecke Schalter→Tür ist im Timer machbar (2,5× Sicherheitsfaktor, ein Transporter-Sprung erlaubt)', () => {
+    let crossFloor = 0;
     for (const def of CAMPAIGN_LEVELS) {
-      def.floors.forEach((floor) => {
+      def.floors.forEach((floor, swFl) => {
         for (const el of floor.elements) {
           if (el.type !== 'timedSwitch') continue;
-          const doors = floor.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens);
-          expect(doors.length, `${def.id}: Zeitschloss ohne Tür auf derselben Ebene`).toBeGreaterThan(0);
-          const dist = directedDistances(def, floor, el.cell);
-          for (const door of doors) {
-            const [[dx, dy], ddir] = door.edge;
-            const [ox, oy] = NEIGHBOR[ddir];
-            // Näherer der beiden Zellen an der Türkante + 1 Schritt hindurch.
-            const steps = Math.min(
-              dist.get(`${dx},${dy}`) ?? Infinity,
-              dist.get(`${dx + ox},${dy + oy}`) ?? Infinity,
-            );
+          const doors = def.floors.flatMap((f, fl) =>
+            f.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens).map((door) => ({ door, fl })),
+          );
+          expect(doors.length, `${def.id}: Zeitschloss ohne Tür`).toBeGreaterThan(0);
+          for (const { door, fl } of doors) {
+            const { steps, hops } = switchDoorSteps(def, swFl, el.cell, door, fl);
+            if (hops > 0) crossFloor++;
             expect(steps, `${def.id}: Tür ${door.id} vom Schalter unerreichbar`).toBeLessThan(Infinity);
-            const minSeconds = ((steps + 1) * 100) / MAX_SPEED;
-            expect(minSeconds * 2.5, `${def.id}: Timer ${el.durationS}s zu knapp für ${steps + 1} Zellen`).toBeLessThanOrEqual(el.durationS);
+            expect(timerSeconds(steps, hops), `${def.id}: Timer ${el.durationS}s zu knapp für ${steps + 1} Zellen + ${hops} Sprung`).toBeLessThanOrEqual(
+              el.durationS,
+            );
           }
         }
       });
+    }
+    // Der Maschinenraum (w3-05): Schalter unten, Tür oben – EIN Sprung.
+    expect(crossFloor).toBe(1);
+  });
+
+  it('Welt 2 steigt monoton in der Par (M44: Zwillingstore auf Platz 2, Kathedrale als Finale)', () => {
+    const pars = WORLDS[1]!.levels.map((l) => l.parTimeS!);
+    for (let i = 1; i < pars.length; i++) expect(pars[i]!, WORLDS[1]!.levels[i]!.id).toBeGreaterThan(pars[i - 1]!);
+    expect(WORLDS[1]!.levels.map((l) => l.id)).toEqual(['w2-01', 'w2-04', 'w2-02', 'w2-03', 'w2-06', 'w2-05']);
+  });
+
+  it('Sterne ehrlich (M44): jedes Level hat Gems oder eine Sturzgefahr – „sturzfrei" ist nie geschenkt', () => {
+    for (const def of CAMPAIGN_LEVELS) {
+      const els = def.floors.flatMap((f) => f.elements);
+      const gems = els.some((e) => e.type === 'gem');
+      const hazard = els.some((e) => e.type === 'hole' || e.type === 'guard' || e.type === 'listener' || e.type === 'glass');
+      expect(gems || hazard, `${def.id}: weder Gems noch Sturzgefahr`).toBe(true);
+    }
+  });
+
+  it('Schlüssel-Türen sind PFLICHT: ohne Öffner bleibt das Ziel unerreichbar (w1-04, w1-08, w2-02, w2-05, w3-04)', () => {
+    // w1-04 hatte einen Umweg um die Tür: (2,0)→(2,1)→(1,1)→(0,1)→(0,0) im
+    // gespiegelten Feld – „Schlüsseldienst" ging ohne Schlüssel. M44 mauert ihn zu.
+    // w1-10 „Schlussstein" fehlt ABSICHTLICH: Dort führen zwei Wege ans Ziel
+    // („wähle weise") – die Tür ist die Abkürzung, der Ring der lange Weg.
+    for (const id of ['w1-04', 'w1-08', 'w2-02', 'w2-05', 'w3-04']) {
+      const def = CAMPAIGN_LEVELS.find((l) => l.id === id)!;
+      const goalFl = def.floors.findIndex((f) => f.goal);
+      const closed = reachable(def, { brittleOpen: true, doorsOpen: false });
+      expect(closed.has(cellKey(goalFl, def.floors[goalFl]!.goal!)), `${id}: Ziel ohne Tür erreichbar`).toBe(false);
     }
   });
 
@@ -133,6 +160,9 @@ describe('Kampagne', () => {
     // Schlüssel dort erreichbar ist (Fixpunkt).
     for (const def of CAMPAIGN_LEVELS) {
       if (def.floors.length === 1) continue; // einstöckige Level (auch Multi-Screen) sind hier nicht gemeint
+      // Ziel auf Ebene 1 (Die Weite mit Unterwelt, Uhrwerk mit Maschinenraum):
+      // die tiefe Ebene ist Abkürzung bzw. Schalterraum, kein Pflichtweg zum Ziel.
+      if (def.floors[0]!.goal) continue;
       const floor0 = def.floors[0]!;
       const [cols, rows] = floor0.size;
       const openDoors = new Set<string>();
@@ -193,7 +223,7 @@ describe('Kampagne', () => {
     const withBox = CAMPAIGN_LEVELS.filter((l) =>
       l.floors.some((f) => f.elements.some((e) => e.type === 'jukebox')),
     );
-    expect(withBox.map((l) => l.id)).toEqual(['w2-05', 'w2-06', 'w3-05', 'w3-06']);
+    expect(withBox.map((l) => l.id)).toEqual(['w2-06', 'w2-05', 'w3-05', 'w3-06']);
     for (const lvl of CAMPAIGN_LEVELS) {
       for (const floor of lvl.floors) {
         expect(floor.elements.filter((e) => e.type === 'jukebox').length, lvl.id).toBeLessThanOrEqual(1);

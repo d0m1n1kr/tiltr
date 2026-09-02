@@ -24,9 +24,13 @@ describe('Erst-Vorkommen (M43)', () => {
     expect(first.get('guard')).toBe('w1-03');
     expect(first.get('door')).toBe('w1-04');
     expect(first.get('key')).toBe('w1-04');
-    expect(first.get('gem')).toBe('w1-05');
+    expect(first.get('gem')).toBe('w1-01'); // M44: das Gem im Umweg von „Aufbruch"
+    expect(first.get('glass')).toBe('w1-09');
+    expect(first.get('anchor')).toBe('w3-06');
+    expect(first.get('echoCrystal')).toBe('w4-03k');
+    expect(first.get('wallAbsorb')).toBe('w4-02');
     expect(first.get('transporter')).toBe('w2-01');
-    expect(first.get('jukebox')).toBe('w2-05');
+    expect(first.get('jukebox')).toBe('w2-06'); // M44: Die Weite steht vor der Kathedrale
     expect(first.get('slidingWall')).toBe('w3-01');
     expect(first.get('timedSwitch')).toBe('w3-02');
     expect(first.get('current')).toBe('w3-03');
@@ -38,8 +42,9 @@ describe('Erst-Vorkommen (M43)', () => {
   it('newFeaturesIn nennt nur, was GENAU dieses Level neu bringt', () => {
     expect(newFeaturesIn(TEACH, 'w1-03')).toEqual(['guard']);
     expect(newFeaturesIn(TEACH, 'w1-04').sort()).toEqual(['door', 'key']);
-    // w1-05 hat Löcher und Checkpoint – beides alt; neu ist nur das Gem.
-    expect(newFeaturesIn(TEACH, 'w1-05')).toEqual(['gem']);
+    expect(newFeaturesIn(TEACH, 'w1-01')).toEqual(['gem']);
+    // w1-05 hat Löcher, Checkpoint und Gems – alles schon gelehrt.
+    expect(newFeaturesIn(TEACH, 'w1-05')).toEqual([]);
     expect(newFeaturesIn(TEACH, 'w1-10')).toEqual([]);
     expect(newFeaturesIn(TEACH, 'gibt-es-nicht')).toEqual([]);
   });

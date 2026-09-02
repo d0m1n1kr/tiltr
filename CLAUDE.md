@@ -182,6 +182,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   bewegte Elemente laufen – reine Ansicht ohne Ball und Physik (Zyklen über
   core/breathing.ts, Patrouillen über `world.advanceGuards`), stumm und
   pausierbar. `window.__tiltrEd.motion` legt offen, was gezeichnet wird.
+- `tests/mazeprint.test.ts` – KARTEN-DRUCKER für den Levelbau (M44):
+  `PRINT_IDS=w1-04,w3-04 npx vitest run tests/mazeprint.test.ts` druckt die
+  Level als ASCII, GESPIEGELT wie der Loader sie sieht (rohe Def-Koordinaten
+  = Spiegelung rückwärts). Ohne Karte sind Loch-, Wand- und Anker-Plätze
+  Raterei – zwei Türen der Kampagne waren jahrelang umgehbar, bis der Test
+  „Schlüssel-Türen sind Pflicht" (tests/campaign) hinsah. `switchDoorSteps`/
+  `timerSeconds` (validate.ts) sind die EINE Timer-Rechnung für Badge und
+  Test – über höchstens einen Transporter-Sprung (Maschinenraum w3-05).
 - `src/levels/` – Levelformat (zod), Loader, Tutorial-/Kampagnen-Level,
   Quick-Generator. Jedes neue Level braucht einen Lösbarkeits-Test
   (siehe tests/campaign.test.ts – inkl. Tür-Semantik: Schlüssel vor der
@@ -307,7 +315,7 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   sind Rückgrat plus die Wege zu Gems, Kristallen, Transportern und
   Wächter-Patrouillen, und die Zelle muss vom Start aus erreichbar sein
   (`floodMaze` in core/maze.ts). In der Kampagne stehen vier von Hand
-  gesetzte Automaten (w2-05, w2-06, w3-05, w3-06) – nie im Tutorial, nie in
+  gesetzte Automaten (w2-06, w2-05, w3-05, w3-06 – in Spielreihenfolge, M44) – nie im Tutorial, nie in
   Welt 1 und nie in Welt 4 „Die Stille". `window.__tiltrMusic` legt den Bus als GETTER offen (wie
   `__tiltrWake`) – der Frame-Haken `__tiltrJukebox` friert im Menü ein, weil
   die Schleife dort früh aussteigt, und „ist es wirklich still?" muss gerade

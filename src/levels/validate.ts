@@ -384,6 +384,44 @@ export interface CheckResult {
 
 const MAX_SPEED = 900; // World.maxSpeed; Zelle = 100 px
 const NEIGHBOR = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] } as const;
+/** Warp-Pause eines Transporters (app.ts startWarp: 700 ms) – kostet Timer-Zeit. */
+const WARP_S = 0.7;
+
+/** Zellen-Schritte vom Zeitschalter zur Tür (Ideallinie im offenen,
+ *  gerichteten Modell): auf derselben Ebene direkt, sonst über GENAU EINEN
+ *  Transporter auf die Ebene der Tür – der Maschinenraum (M44): Schalter
+ *  unten, Tür oben, der Sprint führt durch den Schacht. Infinity = kein Weg. */
+export function switchDoorSteps(
+  def: LevelDef,
+  swFl: number,
+  sw: readonly [number, number],
+  door: DoorDef,
+  doorFl: number,
+): { steps: number; hops: number } {
+  const toDoor = (floor: FloorDef, from: readonly [number, number]): number => {
+    const dist = directedDistances(def, floor, from);
+    const [[dx, dy], ddir] = door.edge;
+    const [ox, oy] = NEIGHBOR[ddir];
+    return Math.min(dist.get(`${dx},${dy}`) ?? Infinity, dist.get(`${dx + ox},${dy + oy}`) ?? Infinity);
+  };
+  const swFloor = def.floors[swFl]!;
+  if (swFl === doorFl) return { steps: toDoor(swFloor, sw), hops: 0 };
+  const distSw = directedDistances(def, swFloor, sw);
+  let best = Infinity;
+  for (const el of swFloor.elements) {
+    if (el.type !== 'transporter' || el.target.floor !== doorFl) continue;
+    const d1 = distSw.get(`${el.cell[0]},${el.cell[1]}`) ?? Infinity;
+    if (d1 === Infinity) continue;
+    best = Math.min(best, d1 + toDoor(def.floors[doorFl]!, el.target.cell));
+  }
+  return { steps: best, hops: 1 };
+}
+
+/** Mindestzeit für `steps` Zellen plus den Schritt durch die Tür, mit dem
+ *  2,5×-Sicherheitsfaktor auf die Ideallinie und der Warp-Pause je Sprung. */
+export function timerSeconds(steps: number, hops: number): number {
+  return (((steps + 1) * 100) / MAX_SPEED) * 2.5 + hops * WARP_S;
+}
 
 /**
  * Kompletter Prüfbericht eines (rohen) Levels. 'load' false ⇒ die übrigen
@@ -488,21 +526,20 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // Zeitschloss-Timer reicht (2,5×-Sicherheitsfaktor auf die Ideallinie).
   let timerOk = true;
   let timerDetail: string | undefined;
-  def.floors.forEach((floor) => {
+  def.floors.forEach((floor, swFl) => {
     for (const el of floor.elements) {
       if (el.type !== 'timedSwitch') continue;
-      const doors = floor.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens);
+      const doors = def.floors.flatMap((f, fl) =>
+        f.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens).map((door) => ({ door, fl })),
+      );
       if (!doors.length) {
         timerOk = false;
-        timerDetail = `${el.opens}: Tür fehlt auf der Ebene`;
+        timerDetail = `${el.opens}: Tür fehlt`;
         continue;
       }
-      const dist = directedDistances(def, floor, el.cell);
-      for (const door of doors) {
-        const [[dx, dy], ddir] = door.edge;
-        const [ox, oy] = NEIGHBOR[ddir];
-        const steps = Math.min(dist.get(`${dx},${dy}`) ?? Infinity, dist.get(`${dx + ox},${dy + oy}`) ?? Infinity);
-        if (steps === Infinity || (((steps + 1) * 100) / MAX_SPEED) * 2.5 > el.durationS) {
+      for (const { door, fl } of doors) {
+        const { steps, hops } = switchDoorSteps(def, swFl, el.cell, door, fl);
+        if (steps === Infinity || timerSeconds(steps, hops) > el.durationS) {
           timerOk = false;
           timerDetail = `${el.opens}: ${el.durationS}s`;
         }

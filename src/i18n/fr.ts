@@ -474,7 +474,7 @@ export const fr: Dict = {
 
   'lv.w1-01.name': 'Le départ',
   'lv.w1-01.intro':
-    'Bienvenue dans l’obscurité. Suis le ping de l’arrivée – le mur de gauche te mène vers le bas, puis c’est à droite.',
+    'Bienvenue dans le noir. Suis le ping de l’arrivée : le mur de gauche te mène vers le bas, puis c’est à droite le long du bord. Et en haut à droite, hors du chemin, quelque chose scintille.',
   'lv.w1-02.name': 'Chemin creux',
   'lv.w1-02.intro': 'La descente respire : deux trous s’ouvrent et se ferment. Écoute le grondement – et attends le silence.',
   'lv.w1-03.name': 'Première garde',
@@ -515,10 +515,10 @@ export const fr: Dict = {
     'Deux portails sur un étage, une arrivée scellée. Saute – et apprends où tu atterris. Le double son montant de ton ping trahit les portes.',
   'lv.w2-05.name': 'Cathédrale',
   'lv.w2-05.intro':
-    'Trois étages plus bas repose la clé de la crypte. Brise ce qui craque, défie le vent et la garde – et remonte à la lumière avec la clé.',
+    'Deux clés pour la crypte : l’une à l’entresol, l’autre trois étages plus bas. En haut, la lumière tombe par les fenêtres ; en bas, tu n’as plus que l’oreille. Brise ce qui craque, défie le vent et le gardien, et remonte avec les deux.',
   'lv.w2-06.name': 'L’Immensité',
   'lv.w2-06.intro':
-    'L’immensité : plus grand que ton écran. Longe le bord à travers l’obscurité – les checkpoints sécurisent le long voyage, et à l’écart du chemin, ça scintille.',
+    'L’Étendue : plus grande que ton écran. Suis le bord dans l’obscurité – les points de contrôle sécurisent le long voyage, des gemmes scintillent à l’écart, et sous le terrain deux puits le traversent : des raccourcis pour ceux qui écoutent.',
 
   'lv.w3-01.name': 'Sens du rythme',
   'lv.w3-01.intro':
@@ -531,32 +531,35 @@ export const fr: Dict = {
     'Un souffle qui pulse : des courants. Ils poussent plus fort que ton inclinaison – des sens uniques. Ce qui reste derrière un courant reste derrière toi. Ramasse d’abord, saute ensuite.',
   'lv.w3-04.name': 'Jeu d’écluses',
   'lv.w3-04.intro':
-    'D’abord la cadence, puis l’horloge : deux murs coulissants se franchissent en rythme, puis une minuterie ouvre l’écluse devant l’arrivée – pour huit temps. Sauras-tu enchaîner les deux ?',
+    'D’abord le rythme, puis la clé, puis l’horloge : deux murs coulissants veulent être passés en cadence, derrière eux tinte la clé – et l’écluse devant l’arrivée exige la clé ET la minuterie, qui ne tient ouvert que huit temps.',
   'lv.w3-05.name': 'Mécanisme',
   'lv.w3-05.intro':
-    'Tous les rouages s’engrènent : les murs coulissants cadencent la descente, un courant t’emporte vers l’interrupteur, et la minuterie ne tient la chambre d’arrivée ouverte que six temps. Une sentinelle fait sa ronde.',
+    'Tout le mécanisme s’engrène : des murs coulissants rythment la descente, un courant t’emporte vers le puits de la salle des machines – la minuterie y tourne, et la chambre d’arrivée, en haut, ne reste ouverte que six temps. Un gardien fait sa ronde.',
   'lv.w3-06.name': 'La route cadencée',
   'lv.w3-06.intro':
     'Le finale des Rouages, plus vaste que ton écran : des courants t’emportent d’écluse en écluse, des murs coulissants battent la mesure, et tout au bout la minuterie égrène le temps devant la chambre d’arrivée. Écoute le rythme – et danse avec.',
 
   'lv.w4-01.name': 'Poste d’écoute',
   'lv.w4-01.intro':
-    'Quelque chose renifle. Le guetteur entend ton roulement – même à travers les murs – et te traque tant que tu bouges. Immobile, tu lui fais perdre ta trace et il se retire. Avance par étapes.',
+    'Quelque chose renifle. L’écouteur entend ta bille rouler – même à travers les murs – et te traque tant que tu bouges. Immobile, tu lui échappes et il se retire. Avance par étapes. Et qui arrive sans un seul ping gagne l’étoile aveugle 🌑.',
   'lv.w4-02.name': 'Banc de brume',
   'lv.w4-02.intro':
-    'Dans la brume, tout sonne comme à travers de la ouate – même le sonar de l’arrivée. Mémorise ton cap avant d’y plonger, et fie-toi à ton instinct jusqu’à ce que tes oreilles s’éclaircissent.',
+    'Dans le brouillard, tout sonne comme à travers du coton – même le sonar de l’arrivée. Et au bord du brouillard se dressent des murs isolants : le ping les touche, mais ils ne répondent pas, et ce qui est derrière sonne étouffé. Mémorise le parcours avant de plonger.',
   'lv.w4-03.name': 'Miroir de glace',
   'lv.w4-03.intro':
     'Une glace lisse comme un miroir : une fois lancé, tu continues de glisser – freiner devient laborieux, diriger devient flou. Écoute le sifflement sous toi et prépare ton élan avant de le prendre.',
+  'lv.w4-03k.name': 'Galerie de cristal',
+  'lv.w4-03k.intro':
+    'Trois cristaux d’écho bordent le chemin : chacun renvoie ton ping en un tintement clair – et t’en offre un nouveau. Un écouteur guette au bord. Roule doucement, pingue avec malice.',
   'lv.w4-04.name': 'Marche furtive',
   'lv.w4-04.intro':
-    'Marche furtive : un guetteur rôde dans le secteur et des bancs de brume avalent tes repères. Avance par à-coups – et dans les pauses, écoute où se tient le reniflement.',
+    'Filature : un écouteur rôde dans son territoire, et des bancs de brouillard avalent tes repères. Les murs isolants près de son poste sont une couverture – derrière eux, il n’entend ton roulement que faiblement. Avance par courtes poussées et écoute, dans les pauses, où se tient le renifleur.',
   'lv.w4-05.name': 'Chasse sur glace',
   'lv.w4-05.intro':
     'La chasse sur glace : sur la glace tu glisses – et le guetteur entend chaque glissade. Qui dérape ne peut pas s’arrêter. Prends ton élan avec prudence et freine avant qu’il ne morde.',
   'lv.w4-06.name': 'L’Oreille',
   'lv.w4-06.intro':
-    'L’Oreille : trois étages plus bas, au cœur de la brume, tout sonne comme de la ouate et deux guetteurs écoutent. Tout en bas, en pleine brume, l’arrivée pulse. Déplace-toi comme un murmure.',
+    'L’Oreille : trois étages vers le cœur du brouillard, où tout sonne comme du coton et où deux écouteurs guettent. Tout en bas, au milieu du brouillard, l’arrivée pulse – un cristal d’écho au bord du cœur te renvoie le ping une fois encore, clair. Bouge comme un murmure. Arriver sans un seul ping, c’est mériter l’étoile aveugle.',
 
   'lv.coop-01.name': 'Le sas',
   'lv.coop-01.intro':

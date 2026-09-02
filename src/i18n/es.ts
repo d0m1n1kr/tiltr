@@ -474,7 +474,7 @@ export const es: Dict = {
 
   'lv.w1-01.name': 'La partida',
   'lv.w1-01.intro':
-    'Bienvenido a la oscuridad. Sigue el ping de la meta: el muro izquierdo te lleva hacia abajo y luego se sigue a la derecha.',
+    'Bienvenido a la oscuridad. Sigue el ping de la meta: el muro izquierdo te lleva hacia abajo y luego es a la derecha por el borde. Y arriba a la derecha, fuera del camino, algo brilla.',
   'lv.w1-02.name': 'Camino hondo',
   'lv.w1-02.intro': 'La bajada respira: dos agujeros se abren y se cierran. Escucha el retumbo y espera al silencio.',
   'lv.w1-03.name': 'Primera guardia',
@@ -515,10 +515,10 @@ export const es: Dict = {
     'Dos portales en un piso, una meta sellada. Salta y aprende dónde aterrizas. El doble tono ascendente de tu ping delata los portales.',
   'lv.w2-05.name': 'Catedral',
   'lv.w2-05.intro':
-    'Tres pisos abajo yace la llave de la cripta. Rompe lo que cruje, desafía al viento y a la guardia, y sube de vuelta a la luz con la llave.',
+    'Dos llaves para la cripta: una en el entresuelo, otra tres plantas más abajo. Arriba entra luz por las ventanas; abajo solo te queda el oído. Rompe lo que cruje, resiste al viento y al guardián, y vuelve a subir con ambas.',
   'lv.w2-06.name': 'La Inmensidad',
   'lv.w2-06.intro':
-    'La inmensidad: más grande que tu pantalla. Sigue el borde a través de la oscuridad; los checkpoints aseguran el largo viaje, y fuera del camino algo brilla.',
+    'La Amplitud: más grande que tu pantalla. Sigue el borde en la oscuridad: los puntos de control aseguran el largo viaje, fuera del camino brillan gemas, y bajo el campo dos pozos lo atraviesan: atajos para quien escucha.',
 
   'lv.w3-01.name': 'Sentido del ritmo',
   'lv.w3-01.intro':
@@ -531,32 +531,35 @@ export const es: Dict = {
     'Un rumor que pulsa: corrientes. Empujan más fuerte de lo que puedes inclinar – sentidos únicos. Lo que queda tras una corriente, queda atrás. Primero recoge, después salta.',
   'lv.w3-04.name': 'Juego de esclusas',
   'lv.w3-04.intro':
-    'Primero el compás, luego el reloj: dos muros corredizos se cruzan al ritmo, y después una cerradura de tiempo abre la esclusa ante la meta – durante ocho compases. ¿Puedes con ambos de una tirada?',
+    'Primero el ritmo, luego la llave, luego el reloj: dos muros deslizantes quieren pasarse a compás, detrás tintinea la llave, y la esclusa ante la meta la necesita Y el temporizador, que solo la mantiene abierta ocho compases.',
   'lv.w3-05.name': 'Mecanismo',
   'lv.w3-05.intro':
-    'Todo el engranaje encaja: los muros corredizos marcan el descenso, una corriente te arrastra al interruptor y la cerradura de tiempo solo mantiene la cámara de la meta abierta seis compases. Un guardián hace su ronda.',
+    'Todo el mecanismo engrana: los muros deslizantes marcan el descenso, una corriente te arrastra al pozo de la sala de máquinas, donde corre el temporizador, y la cámara de la meta arriba solo queda abierta seis compases. Un guardián hace su ronda.',
   'lv.w3-06.name': 'La calle del compás',
   'lv.w3-06.intro':
     'El final del Engranaje, más ancho que tu pantalla: las corrientes te arrastran de esclusa en esclusa, los muros corredizos marcan el compás y, al final, la cerradura de tiempo hace tictac ante la cámara de la meta. Oye el ritmo – y baila con él.',
 
   'lv.w4-01.name': 'Puesto de escucha',
   'lv.w4-01.intro':
-    'Algo olfatea. El escucha oye tu rodar – incluso a través de los muros – y te caza mientras te mueves. Si te quedas quieto, pierde tu rastro y se retira. Rueda por etapas.',
+    'Algo husmea. El escucha oye rodar tu bola, incluso a través de los muros, y te persigue mientras te mueves. Si te quedas quieto, pierde el rastro y se retira. Avanza por etapas. Y quien llega sin un solo ping gana la estrella ciega 🌑.',
   'lv.w4-02.name': 'Banco de niebla',
   'lv.w4-02.intro':
-    'En la niebla todo suena como a través de algodón – incluso el sonar de la meta. Memoriza el rumbo antes de sumergirte y confía en tu instinto hasta que los oídos se despejen.',
+    'En la niebla todo suena como a través de algodón, incluso el sonar de la meta. Y al borde de la niebla hay muros aislantes: el ping los toca, pero no responden, y lo que hay detrás suena amortiguado. Memoriza el rumbo antes de sumergirte.',
   'lv.w4-03.name': 'Hielo de espejo',
   'lv.w4-03.intro':
     'Hielo liso como un espejo: una vez en marcha, sigues deslizándote – frenar se vuelve pesado, girar impreciso. Escucha el zumbido bajo la bola y planea el impulso antes de tomarlo.',
+  'lv.w4-03k.name': 'Pasaje de cristal',
+  'lv.w4-03k.intro':
+    'Tres cristales de eco bordean el camino: cada uno devuelve tu ping como un tintineo claro y te regala uno nuevo. Un escucha acecha en el borde. Rueda en silencio, haz ping con cabeza.',
   'lv.w4-04.name': 'Marcha sigilosa',
   'lv.w4-04.intro':
-    'Marcha sigilosa: un escucha ronda el terreno y los bancos de niebla se tragan tu orientación. Muévete a impulsos cortos – y en las pausas escucha dónde está el olfateo.',
+    'Marcha sigilosa: un escucha ronda su territorio y los bancos de niebla se tragan tu orientación. Los muros aislantes junto a su puesto son cobertura: detrás, oye tu rodar solo débilmente. Muévete en impulsos cortos y escucha, en las pausas, dónde está el husmeo.',
   'lv.w4-05.name': 'Caza sobre hielo',
   'lv.w4-05.intro':
     'La caza sobre hielo: en el hielo te deslizas – y el escucha oye cada deslizamiento. Quien patina no puede quedarse quieto. Toma impulso con cuidado y frena antes de que muerda.',
   'lv.w4-06.name': 'El Oído',
   'lv.w4-06.intro':
-    'El Oído: tres pisos abajo, en el núcleo de niebla, todo suena como algodón y dos escuchas acechan. Al fondo, en plena niebla, pulsa la meta. Muévete como un susurro.',
+    'El Oído: tres plantas hacia el núcleo de niebla, donde todo suena a algodón y dos escuchas acechan. Al fondo, en medio de la niebla, pulsa la meta; un cristal de eco al borde del núcleo te devuelve el ping una vez más, claro. Muévete como un susurro. Llegar sin un solo ping es merecer la estrella ciega.',
 
   'lv.coop-01.name': 'La esclusa',
   'lv.coop-01.intro':

@@ -612,6 +612,64 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M44 „Vier Welten, ein Ohr" ✓ (Phase 1 von 3.0.0) – Welten 1–4 nach dem Review
+
+Alle Level-Umbauten aus dem Kampagnen-Review, mit vorhandenen Elementen.
+Level-IDs bleiben stabil (Fortschritt hängt an der ID des Vorgängers) – auch
+beim Umsortieren und Einfügen.
+
+**Zwei Türen waren freiwillig.** Der neue Test „Schlüssel-Türen sind PFLICHT"
+(Ziel ohne Öffner unerreichbar) fand beim ersten Lauf, dass „Schlüsseldienst"
+(w1-04) über eine Nische neben dem Ziel OHNE Schlüssel ging und die Schleuse
+in „Schleusenwerk" (w3-04) über die unterste Zeile umgehbar war. Beide
+Zielkammern sind jetzt versiegelt (`maze.add`). Der Test hat `tests/
+mazeprint.test.ts` als Werkzeug bekommen: druckt Level als ASCII-Karte,
+gespiegelt wie der Loader sie sieht – ohne Karte sind Loch-, Wand- und
+Anker-Plätze Raterei. „Schlussstein" (w1-10) fehlt im Test absichtlich: zwei
+Wege ans Ziel sind dort das Design („wähle weise").
+
+**Welt 1.** „Aufbruch" bekommt ein Gem im Umweg über die obere Zeile,
+„Schlüsseldienst" ein Loch in der Sackgasse neben dem Schlüsselgang – der Test
+„Gems oder Sturzgefahr" hält fest, dass der dritte Stern nie geschenkt ist.
+„Zugluft" ist 5×10 statt des dritten 6×8 in Folge (Par 85). „Atemnot" trägt
+das erste Glas der Kampagne: eine Einmal-Brücke auf dem Nebenweg zum oberen
+Gem.
+
+**Welt 2.** Neue Reihenfolge Unterführung → Zwillingstore → Doppelter Boden →
+Fahrstuhl → Die Weite → Kathedrale (Par 75/90/100/110/255/270, Test
+„monoton"). „Die Weite" hat eine Unterwelt: eine 4×4-Ebene mit zwei Schächten,
+die Rand-Regionen des großen Feldes verbinden – damit trägt das Level das
+Welt-Thema, und dank Landeplatz = Respawn (M43) sind die Rückwege sicher. Die
+„Kathedrale" ist das Finale: Krypta-Tür mit `require: 'all'`, ein Schlüssel im
+Zwischengeschoss, einer drei Ebenen tief; das Kirchenschiff ist HELL
+(„Fenster") – die erste helle Ebene der Kampagne, als Atempause vor dem
+Abstieg. Der Test „Multi-Ebenen ohne Transporter unlösbar" lässt Level mit
+Ziel auf Ebene 1 aus (Unterwelt und Maschinenraum sind kein Pflichtweg).
+
+**Welt 3.** „Schleusenwerk": Schleuse braucht Schlüssel UND Zeitschloss
+(`'all'`) – erst der Takt, dann der Schlüssel hinter den Schiebewänden, dann
+der Sprint. „Uhrwerk" hat einen Maschinenraum: der 6-s-Schalter liegt unten,
+die Tür oben, der Schacht steht, wo der Schalter war. Dafür rechnet der
+`timer`-Beweis jetzt über GENAU EINEN Transporter (`switchDoorSteps`,
+`timerSeconds` in validate.ts: Weg zum Schacht + Landeweg + 0,7 s Warp-Pause,
+weiter 2,5×-Faktor) – dieselbe Funktion in Badge und Test; der Test zählt den
+einen Sprung. „Taktstraße": zwei Sog-Anker in den Nischen neben der Straße
+(erstes Vorkommen), vierter Checkpoint, Par 240.
+
+**Welt 4.** „Nebelbank" und „Schleichfahrt" tragen Schallschutzwände – am
+Nebelrand zum Vergleich der Dämpfungen, neben dem Horcher-Posten als DECKUNG
+(M43). Neu: „Kristallgang" (`w4-03k`, 6×8, drei Echo-Kristalle am Weg, ein
+Horcher am Rand, Spiegel 'y') zwischen Spiegeleis und Schleichfahrt – der
+Kristall hatte kein Kampagnen-Level, obwohl die Generatoren ihn längst setzen.
+Welt 4 hat sieben Level, die Kampagne 29. „Das Ohr": Checkpoint auf Ebene 2
+hinter dem Horcher-Revier, Echo-Kristall am Nebelrand; Intro nennt den
+Blind-Stern (wie „Horchposten").
+
+**Tests.** 441 Units grün: Par-Band, Budgets, monotone W2, Gems-oder-Gefahr,
+Pflicht-Türen, Timer mit Sprung, Erst-Vorkommen (Gem jetzt in w1-01, Glas
+w1-09, Anker w3-06, Kristall w4-03k, Schallschutz w4-02, Jukebox w2-06); i18n
+×4 für neun geänderte Intros und das neue Level. E2E: Lauf 5 zählt 29 Level.
+
 ## M43 „Spielregeln" ✓ (Phase 0 von 3.0.0) – Landeplatz = Respawn, Tutorial mit Licht, Aufleuchten
 
 Erste Phase des Kampagnen-Umbaus „Trugbild" (Review-Artefakt + Plan, sieben
