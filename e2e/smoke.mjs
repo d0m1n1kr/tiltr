@@ -1741,6 +1741,35 @@ if (want("12")) {
         actions.icons === 4 &&
         actions.tips === 4,
     );
+    // M40/2.10.1: Bundle-Select im Dark-Design (kein nativer weißer iOS-Select),
+    // ▲▼ kompakt im Kartenkopf statt als eigene Zeile.
+    const bundleUi = await page.evaluate(() => {
+      const sel = document.getElementById("wsBundleSelect");
+      const cs = getComputedStyle(sel);
+      const name = document.querySelector("#workshopList .ws-name");
+      const order = document.querySelector("#workshopList .ws-order .ws-icon");
+      return {
+        bg: cs.backgroundColor,
+        appearance: cs.appearance || cs.webkitAppearance,
+        h: sel.getBoundingClientRect().height,
+        dy:
+          name && order
+            ? Math.abs(
+                name.getBoundingClientRect().top -
+                  order.getBoundingClientRect().top,
+              )
+            : 999,
+        orderW: order ? order.getBoundingClientRect().width : 0,
+      };
+    });
+    check(
+      `Phone: Bundle-Select im Panel-Design (${bundleUi.bg}, appearance ${bundleUi.appearance}, ${Math.round(bundleUi.h)}px), ▲▼ auf der Namenszeile (Δ ${Math.round(bundleUi.dy)}px, ${Math.round(bundleUi.orderW)}px breit)`,
+      bundleUi.bg !== "rgb(255, 255, 255)" &&
+        bundleUi.appearance === "none" &&
+        bundleUi.h >= 40 &&
+        bundleUi.dy < 24 &&
+        bundleUi.orderW < 120,
+    );
     if (
       (await page.locator("#workshop").getAttribute("class")).includes("hidden")
     )

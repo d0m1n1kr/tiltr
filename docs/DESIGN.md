@@ -59,6 +59,16 @@ benutzt **Tokens und Komponenten-Klassen, keine Magic Values**:
 niemals dekorativ. Neue Bedeutung ⇒ neue Farbe (Token ergänzen, hier
 dokumentieren, in der Element-Galerie zeigen).
 
+### Formularfelder in Panels
+
+`<select>`, `<input>` und `<textarea>` in Werkstatt und Editor tragen EINE
+Formularsprache (`.ed-field …`, `#wsBundleSelect`, `.ws-target select`,
+`#wsBundleForm …`): `--bg-panel`, `--border-strong`, `--text`, `--radius-m`,
+`--touch-min`. Selects bekommen `appearance: none` und einen eigenen
+Chevron als Data-URI – der native iOS-Select ist weiß und bricht das
+Dark-Design (Screenshot 2.10.0). Sortierknöpfe ▲▼ (`.ws-order`) sind keine
+Aktionszeile: kompakt rechts im Kartenkopf, sie dehnen sich nie zur Zeile.
+
 ### Weltfarben (Canvas, `src/render/palette.ts`)
 
 RGB-Tripel als String (`'110, 168, 255'`), weil das Rendering eigene

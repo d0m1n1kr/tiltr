@@ -530,7 +530,27 @@
     #edPlay.active { color: var(--accent); border-color: rgba(75, 224, 200, 0.45); }
     #wsImportBox { display: grid; gap: var(--space-2); padding: var(--space-3); }
     .ws-target { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-small); opacity: 0.85; }
-    .ws-target select, #wsBundleSelect { flex: 1 1 auto; min-width: 0; min-height: var(--touch-min); }
+    /* Selects und Bundle-Felder tragen die Formularsprache des Editors
+       (.ed-field): Panel-Grund, starke Kante, eigener Chevron statt der
+       nativen (auf iOS weißen) Auswahlbox. */
+    .ws-target select, #wsBundleSelect, #wsBundleForm input, #wsBundleForm textarea {
+      flex: 1 1 auto; min-width: 0; min-height: var(--touch-min);
+      background: var(--bg-panel); border: var(--border-strong); color: var(--text);
+      border-radius: var(--radius-m); padding: var(--space-1) var(--space-3);
+      font: 500 var(--fs-body-s) var(--font);
+    }
+    .ws-target select, #wsBundleSelect {
+      appearance: none; -webkit-appearance: none;
+      padding-right: calc(var(--space-3) + 18px);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23cfd8ea' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right var(--space-3) center;
+    }
+    #wsBundleForm textarea { min-height: 56px; resize: vertical; }
+    /* Kopf einer Level-Karte: Name/Meta links, ▲▼ kompakt rechts – die
+       Sortierknöpfe sind KEINE Aktionszeile und dehnen sich nie zur Zeile. */
+    .ws-top { display: flex; align-items: flex-start; gap: var(--space-2); }
+    .ws-top .ws-head { flex: 1 1 auto; min-width: 0; }
+    .ws-order .ws-icon { flex: 0 0 auto; min-width: var(--touch-min); padding: 0 var(--space-2); }
     #wsBundleBar { display: grid; gap: var(--space-2); padding: var(--space-3) 14px; }
     .ws-bundle-row { display: flex; align-items: center; gap: var(--space-2); }
     .ws-bundle-row .btn { min-width: var(--touch-min); padding: 0 var(--space-2); }

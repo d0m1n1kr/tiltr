@@ -33,8 +33,10 @@ von `page.click`) riss vorher den ganzen Arbeiter mit, und die Läufe hinter
 ihm fehlten STILL – 207 ✓ statt 247, exit 0 an keiner Stelle rot. Der
 Dispatcher meldet zusätzlich jeden zugeteilten Lauf, der nie sein `# Lauf X`
 druckte (`NICHT gelaufen`), und setzt exit ≠ 0. Ein Lauf, der allein grün ist
-und unter 4 Arbeitern rot, ist ein LAST-Flake (Lauf 9 „Coop" mit 34 s Sleep):
-Sleeps durch Zustands-Warten ersetzen, nicht die Arbeiterzahl senken.
+und unter 4 Arbeitern rot, ist ein LAST-Flake (Lauf 9 „Coop" mit 34 s Sleep,
+Lauf 21 „Jukebox-Rempler" mit festen Wartezeiten – je etwa einer von zehn
+Volläufen): Sleeps durch Zustands-Warten ersetzen, nicht die Arbeiterzahl
+senken.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem

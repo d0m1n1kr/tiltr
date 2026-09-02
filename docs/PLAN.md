@@ -685,6 +685,17 @@ importBuiltin, Einzel-Import, Draft). E2E Lauf 28: Migration → neues Bundle
 🔒, Debug-Knopf versteckt) → 5× Version → Welt 1 importiert → Export (…-v2.json)
 → Re-Import gleich/neuer → Löschen → Editor speichert ins aktuelle Bundle.
 
+**2.10.1 – Design-Nachtrag (Screenshot vom iPhone):** Der native `<select>`
+des Bundle-Umschalters kam weiß mit schwarzer Schrift – iOS zeichnet ihn
+selbst, die Panel-Tokens greifen nicht. Jetzt `appearance: none`, Panel-
+Grund, starke Kante, eigener Chevron (Data-URI), dieselbe Sprache für das
+Ziel-Bundle-Select und die Titel-/Beschreibungsfelder. Zweiter Befund im
+selben Bild: ▲▼ dehnten sich auf dem Phone zur eigenen Zeile, weil die
+Container-Query der Aktionszeile alle `.ws-icon` streckt – die Sortierknöpfe
+stehen jetzt kompakt rechts im Kartenkopf (`.ws-top`), außerhalb dieser
+Regel. E2E (Lauf 12, Phone) prüft beides: Select-Grund ist nicht weiß und
+hat `appearance: none`, ▲▼ liegen auf der Zeile des Namens.
+
 ## M39 „Glas ist Schwierigkeit" ✓ (v2.9.0) – Badge weg, Test ab hier
 
 **Die Meldung:** „Glasboden im kritischen Pfad ist doch nicht schlimm. Der
