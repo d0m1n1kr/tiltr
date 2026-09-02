@@ -82,6 +82,7 @@ const KNOWN_RUNS = [
   "28",
   "29",
   "30",
+  "31",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -5486,6 +5487,78 @@ if (want("30")) {
   } catch (e) {
     check(
       `Lauf 30 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 31: Der Rollstein (M47). Ein zweiter Körper: Der Ball schiebt ihn
+// zellweise vor sich her, auf die Druckplatte – die er dann hält, und die
+// Tür vor dem Ziel geht auf. Sokoban im Dunkeln, hier als Korridor.
+if (want("31")) {
+  try {
+    const page = await browser.newPage({
+      viewport: { width: 400, height: 800 },
+      locale: "de-DE",
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?nosplash`);
+    const def = {
+      id: "custom-m47",
+      name: "Rollstein",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [5, 2],
+          maze: {
+            seed: 3,
+            carve: [[[0, 0], "e"], [[1, 0], "e"], [[2, 0], "e"], [[3, 0], "e"], [[3, 0], "s"]],
+            add: [[[0, 0], "s"], [[1, 0], "s"], [[2, 0], "s"], [[4, 0], "s"]],
+          },
+          elements: [
+            { type: "boulder", cell: [1, 0] },
+            // Platte am Korridor-ENDE: der Stein kann nicht über sie hinaus
+            // (im Parallel-Lauf schob der Ball ihn sonst bis (4,0) weiter).
+            { type: "plate", cell: [4, 0], opens: "tor" },
+            { type: "door", id: "tor", edge: [[3, 0], "s"] },
+          ],
+          start: [0, 0],
+          goal: [3, 1],
+        },
+      ],
+    };
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await page.waitForTimeout(400);
+    const status = (await page.textContent("#wsImportStatus")).trim();
+    check(`Rollstein-Level importiert ("${status}")`, status.includes("✓"));
+    await page.locator("#workshopList .ws-item .btn-primary").last().click();
+    await page.waitForTimeout(3600); // Kalibrier-Countdown
+    const w0 = await page.evaluate(() => window.__tiltrWorld);
+    check(
+      `Stein steht in (1,0), Platte frei (${JSON.stringify(w0?.boulderCells)}, plateHeld ${w0?.plateHeld})`,
+      w0?.boulders === 1 && w0?.boulderCells?.[0] === "1,0" && w0?.plateHeld === 0,
+    );
+    // Mit Schwung nach rechts: der Stein rollt zellweise bis auf die Platte.
+    await page.keyboard.down("ArrowRight");
+    let w1 = null;
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(150);
+      w1 = await page.evaluate(() => window.__tiltrWorld);
+      if (w1?.plateHeld === 1) break;
+    }
+    await page.keyboard.up("ArrowRight");
+    const st = (await page.textContent("#status")).trim();
+    check(
+      `Der Stein wandert auf die Platte und hält sie (${JSON.stringify(w1?.boulderCells)}, plateHeld ${w1?.plateHeld}, "${st}")`,
+      w1?.boulderCells?.[0] === "4,0" && w1?.plateHeld === 1,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 31 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

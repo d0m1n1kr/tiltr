@@ -12,6 +12,7 @@ import type {
   Hourglass,
   Bell,
   ReverbZone,
+  Boulder,
   Goal,
   Guard,
   Hole,
@@ -56,6 +57,13 @@ export class World {
   hourglasses: Hourglass[] = [];
   bells: Bell[] = [];
   reverbZones: ReverbZone[] = [];
+  boulders: Boulder[] = [];
+  /** Rollstein (M47): ab dieser Aufprallgeschwindigkeit (px/s) rollt er */
+  pushSpeed = 170;
+  /** Dauer eines Zellen-Rollens in Sekunden */
+  boulderRollS = 0.35;
+  /** Steine, die in diesem Schritt losgerollt / angekommen / versunken sind (Klang) */
+  boulderEvents: Array<{ kind: 'roll' | 'stop' | 'sink' | 'plate'; x: number; y: number }> = [];
   anchors: Anchor[] = [];
   glass: GlassPlate[] = [];
   keys: Key[] = [];
@@ -130,6 +138,7 @@ export class World {
         if (hit) hits.push(hit);
       }
 
+      this.updateBoulders(h);
       this.advanceGuards(h);
       this.advanceHoles(h);
       this.updateBells(h);
@@ -304,6 +313,104 @@ export class World {
       l.x += (dx / d) * step;
       l.y += (dy / d) * step;
     }
+  }
+
+  /** Rollstein als Kollisions-Rechteck (Kasten um die gezeichnete Mitte). */
+  static boulderRect(b: Boulder): Wall {
+    return { x: b.x - b.size / 2, y: b.y - b.size / 2, w: b.size, h: b.size };
+  }
+
+  /** Ist die Zelle für einen Stein frei? Keine Wand im Zielkasten (offene
+   *  Türen ausgenommen; Schiebewände zählen IMMER als Wand), kein anderer
+   *  Stein, kein Transporter, keine Glocke. Konservativ – wie der Beweis. */
+  boulderCellFree(cx: number, cy: number, cell: number, except: Boulder): boolean {
+    const size = except.size;
+    // Geprüft wird der ÜBERSTRICHENE Bereich von der jetzigen Mitte bis zur
+    // Zielzelle – die Wand zwischen zwei Zellen liegt auf der Kante, nicht im
+    // Zielkasten (der hat 14 px Luft zum Rand).
+    const tx = (cx + 0.5) * cell,
+      ty = (cy + 0.5) * cell;
+    const x0 = Math.min(except.x, tx) - size / 2,
+      y0 = Math.min(except.y, ty) - size / 2;
+    const rect = { x: x0, y: y0, w: Math.max(except.x, tx) + size / 2 - x0, h: Math.max(except.y, ty) + size / 2 - y0 };
+    const overlaps = (r: { x: number; y: number; w: number; h: number }) =>
+      rect.x < r.x + r.w && rect.x + rect.w > r.x && rect.y < r.y + r.h && rect.y + rect.h > r.y;
+    for (const w of this.walls) {
+      if (w.door?.open && !w.slide) continue;
+      if (overlaps(w)) return false;
+    }
+    for (const o of this.boulders) {
+      if (o === except || o.sunk) continue;
+      const oc = o.move ? [Math.floor(o.move.toX / cell), Math.floor(o.move.toY / cell)] : o.cell;
+      if (oc[0] === cx && oc[1] === cy) return false;
+    }
+    for (const t of this.transporters) if (Math.floor(t.x / cell) === cx && Math.floor(t.y / cell) === cy) return false;
+    for (const bl of this.bells) if (Math.floor(bl.x / cell) === cx && Math.floor(bl.y / cell) === cy) return false;
+    return true;
+  }
+
+  /** Rollsteine (M47): Kollision mit dem Ball, Anstoß, Rollen, Ankunft.
+   *  Zellgröße ist implizit: `size` ist 0,72 Zellen, also Zelle = size/0.72. */
+  private updateBoulders(dt: number): void {
+    const b = this.ball;
+    for (const st of this.boulders) {
+      if (st.sunk) continue;
+      const cell = st.size / 0.72;
+      if (st.move) {
+        st.move.t = Math.min(1, st.move.t + dt / this.boulderRollS);
+        const k = st.move.t;
+        st.x = st.move.fromX + (st.move.toX - st.move.fromX) * k;
+        st.y = st.move.fromY + (st.move.toY - st.move.fromY) * k;
+        if (k >= 1) {
+          const dir = st.move.dir;
+          st.move = null;
+          st.cell = [Math.floor(st.x / cell), Math.floor(st.y / cell)];
+          // Loch füllen: ein stehendes, offenes Loch unter der Mitte.
+          const hi = this.holes.findIndex((h) => !h.roam && !h.breathing && Math.hypot(h.x - st.x, h.y - st.y) < cell * 0.4);
+          if (hi >= 0) {
+            this.holes.splice(hi, 1);
+            st.sunk = true;
+            this.boulderEvents.push({ kind: 'sink', x: st.x, y: st.y });
+            continue;
+          }
+          // Eis: weiterrollen, solange die nächste Zelle frei ist.
+          const onIce = this.ice.some((z) => st.x > z.x && st.x < z.x + z.w && st.y > z.y && st.y < z.y + z.h);
+          if (onIce && this.boulderCellFree(st.cell[0] + dir[0], st.cell[1] + dir[1], cell, st)) {
+            this.startBoulderMove(st, dir, cell);
+            continue;
+          }
+          this.boulderEvents.push({ kind: 'stop', x: st.x, y: st.y });
+        }
+      }
+      // Platten: der Stein hält, was unter ihm liegt (auch während er ankommt).
+      for (const pl of this.plates) {
+        const on = !st.move && Math.hypot(pl.x - st.x, pl.y - st.y) < cell * 0.4;
+        if (on && !pl.boulder) this.boulderEvents.push({ kind: 'plate', x: st.x, y: st.y });
+        if (on) pl.boulder = true;
+        else if (pl.boulder && this.boulders.every((o) => o.sunk || o.move || Math.hypot(pl.x - o.x, pl.y - o.y) >= cell * 0.4)) pl.boulder = false;
+      }
+      // Kollision Ball ↔ Stein: fester Kasten; ein kräftiger Stoß rollt ihn an.
+      const hit = this.collideCircleRect(b, World.boulderRect(st));
+      if (!hit || st.move) continue;
+      if (hit.impact < this.pushSpeed) continue;
+      // Stoßrichtung = entgegen der Kollisionsnormalen, auf die Achse gerundet.
+      const dir: [number, number] = Math.abs(hit.nx) > Math.abs(hit.ny) ? [hit.nx > 0 ? -1 : 1, 0] : [0, hit.ny > 0 ? -1 : 1];
+      if (this.boulderCellFree(st.cell[0] + dir[0], st.cell[1] + dir[1], cell, st)) this.startBoulderMove(st, dir, cell);
+    }
+  }
+
+  private startBoulderMove(st: Boulder, dir: [number, number], cell: number): void {
+    const toX = (st.cell[0] + dir[0] + 0.5) * cell;
+    const toY = (st.cell[1] + dir[1] + 0.5) * cell;
+    st.move = { fromX: st.x, fromY: st.y, toX, toY, t: 0, dir };
+    this.boulderEvents.push({ kind: 'roll', x: st.x, y: st.y });
+  }
+
+  /** Stein-Ereignisse seit dem letzten Aufruf (für den Klang). */
+  consumeBoulderEvents(): Array<{ kind: 'roll' | 'stop' | 'sink' | 'plate'; x: number; y: number }> {
+    const e = this.boulderEvents;
+    this.boulderEvents = [];
+    return e;
   }
 
   /** Wanderlöcher (M46) laufen ihre Wegpunkte im Ping-Pong ab – wie Wächter,

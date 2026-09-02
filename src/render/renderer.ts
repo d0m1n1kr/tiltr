@@ -604,6 +604,28 @@ export class Renderer {
       ctx.restore();
     }
 
+    // Rollstein (M47): gerundeter Kasten in Steingrau – ein Körper, der sich
+    // schieben lässt; versunkene Steine sind weg.
+    for (const st of world.boulders) {
+      if (st.sunk) continue;
+      const alpha = Math.max(revealAlpha(st, 0.9, 'boulder'), st.move ? 0.6 : 0);
+      if (alpha <= 0.01) continue;
+      const half = (st.size * s) / 2;
+      const x = tx(st.x) - half,
+        y = ty(st.y) - half,
+        w2 = half * 2,
+        r = half * 0.4;
+      ctx.fillStyle = `rgba(${WORLD.boulder}, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w2, y, x + w2, y + w2, r);
+      ctx.arcTo(x + w2, y + w2, x, y + w2, r);
+      ctx.arcTo(x, y + w2, x, y, r);
+      ctx.arcTo(x, y, x + w2, y, r);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     // Lockglocke (M46): Messing-Glocke; klingend mit Ringen.
     for (const bl of world.bells) {
       const ringing = bl.ringLeft > 0;

@@ -177,6 +177,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Editor-Vorschau; Modell passierbar wie atmendes Loch, Patrouille im
   Kampagnen-Test achsenparallel). Editor: Wanderloch nutzt den Zwei-Tap-
   Fluss des Wächters (`pendingGuard`).
+- ROLLSTEIN M47 (Phase 4): zweiter Körper, ZELLWEISE. Physik in
+  `World.updateBoulders` (Stoß ≥ `pushSpeed` rollt genau eine Zelle, wenn
+  `boulderCellFree`; Loch füllen, Eis weiterrollen, Platte halten via
+  `plate.boulder` – `updateDoors` zählt `held || boulder`). Beweis in
+  `levels/boulders.ts` (`boulderProof`): BFS über (Ebene, Ballzelle,
+  Steinzellen, gefüllte Löcher) + Rückwärtssuche für Softlock; Badge
+  `boulder` ist Pflicht fürs Teilen. Abgrenzung bewusst: kein Stein-Stein,
+  kein Transporter, keine Schiebewand-Zelle – hält beide Seiten klein. Neue
+  Regeln IMMER in Physik UND Beweis eintragen (zwei Stellen, eine Wahrheit).
 - `src/core/occlusion.ts` – SCHALLSCHUTZWAND (`maze.absorb`, Wand mit
   `absorb`, Palette `absorb` Filz-Khaki): Der Echo-Ping deckt sie auf, aber
   sie antwortet NICHT; Klangquellen, deren Strahl vom Ball eine solche Wand

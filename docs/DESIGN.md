@@ -95,6 +95,8 @@ nicht Wert: das Gem ist eisblau, der Schlüssel Gold; M45),
 Lockglocke Messing (`214, 170, 84` – wärmer und dunkler als Schlüssel-Gold,
 ein Instrument; M46), Hallraum Blaugrau (`150, 195, 220` – luftiger als
 Nebel: Raum, der trägt statt schluckt; M46),
+Rollstein Steingrau (`176, 168, 156` – ein Körper, kein Signal; heller als
+Wand-Blau, matter als die Schiebewand; M47),
 Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
 Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
 Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das

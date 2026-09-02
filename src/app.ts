@@ -1442,6 +1442,8 @@ function firePing(now: number): void {
   for (const hg of world.hourglasses) if (!hg.collected) reveal(hg, 1480, true);
   // Lockglocke (M46): kurzer Glockenblip.
   for (const bl of world.bells) reveal(bl, 2400);
+  // Rollstein (M47): antwortet steinern-tief, wie eine Wand mit Gewicht.
+  for (const st of world.boulders) if (!st.sunk) reveal(st, 420);
   for (const gem of world.gems) if (!gem.collected) reveal(gem, 2093, true);
   for (const g of world.guards) reveal(g, 240);
   // Schläfer (M45): der Ping weckt, wer in Hörweite schläft – mit Zischen.
@@ -1968,7 +1970,8 @@ function updateDoors(now: number): Set<string> {
   for (const fl of loaded.floors) {
     for (const k of fl.world.keys) add(k.opens, { kind: 'key', satisfied: k.collected });
     for (const s of fl.world.switches) add(s.opens, { kind: 'timedSwitch', satisfied: s.openUntil !== null && s.openUntil > now });
-    for (const p of fl.world.plates) add(p.opens, { kind: 'plate', satisfied: p.held });
+    // Platte gehalten: von einem Spieler (MP) oder von einem Rollstein (M47).
+    for (const p of fl.world.plates) add(p.opens, { kind: 'plate', satisfied: p.held || p.boulder === true });
   }
   for (const fl of loaded.floors) {
     for (let i = fl.world.walls.length - 1; i >= 0; i--) {
@@ -2145,6 +2148,22 @@ function frame(now: number): void {
       audio.setHeading(r.heading);
     }
     const hits = disconnected ? [] : world.step(dt, tilt);
+    // Rollstein (M47): Mahlen, Schlag, Versinken, Platte – aus seiner Richtung.
+    for (const ev of world.consumeBoulderEvents()) {
+      const dx = ev.x - world.ball.x,
+        dy = ev.y - world.ball.y;
+      if (ev.kind === 'roll') audio.boulderRoll(dx, dy);
+      else if (ev.kind === 'stop') audio.boulderStop(dx, dy);
+      else if (ev.kind === 'sink') {
+        audio.boulderSink(dx, dy);
+        flash(t('st.boulderSink'));
+      } else {
+        audio.plate(true);
+        flash(t('st.boulderPlate'));
+        updateDoors(now);
+      }
+      if (ev.kind !== 'plate') haptics.hit(0.6);
+    }
     // Lockglocke (M46): angeschlagen – Glockenschlag aus ihrer Richtung.
     for (const bl of world.consumeRings()) {
       audio.bellRing(bl.x - world.ball.x, bl.y - world.ball.y);
@@ -2644,6 +2663,10 @@ function frame(now: number): void {
     reverbZones: world.reverbZones.length,
     inReverb: world.inReverb(),
     roaming: world.holes.filter((h) => h.roam).length,
+    boulders: world.boulders.filter((s) => !s.sunk).length,
+    boulderCells: world.boulders.filter((s) => !s.sunk).map((s) => `${s.cell[0]},${s.cell[1]}`),
+    sunk: world.boulders.filter((s) => s.sunk).length,
+    plateHeld: world.plates.filter((p) => p.boulder).length,
     roamX: world.holes.find((h) => h.roam)?.x ?? null,
     sleepers: world.guards.filter((g) => g.sleeper).length,
     asleep: world.guards.filter((g) => World.asleep(g)).length,

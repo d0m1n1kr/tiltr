@@ -612,6 +612,54 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M47 „Der Stein" ✓ (Phase 4 von 3.0.0) – Rollstein: zweiter Körper, zellweise, mit Zustands-Beweis
+
+Das größte Paket des Umbaus und das einzige mit echtem Risiko – deshalb
+zuletzt vor Welt 5, und mit den drei Abgrenzungen aus dem Plan: kein
+Stein-Stein-Schieben, kein Stein durch Transporter, kein Stein auf
+Schiebewand-Zellen. Sie halten Physik UND Beweis klein.
+
+**Physik** (`World.updateBoulders`): Der Stein ist ein Kasten von 0,72 Zellen
+(`elements/boulder.ts` `BOULDER_SIZE`; die Physik rechnet die Zellgröße daraus
+zurück, weil `World` das Raster nicht kennt). Der Ball kollidiert mit ihm wie
+mit einer Wand (`collideCircleRect`). Trifft er mit mindestens `pushSpeed`
+(170 px/s) auf, rollt der Stein GENAU eine Zelle in Stoßrichtung (Normale auf
+die Achse gerundet) – wenn die Zielzelle frei ist: keine Wand im Zielkasten
+(offene Türen ausgenommen, Schiebewände immer Wand), kein anderer Stein,
+kein Transporter, keine Glocke (`boulderCellFree`). Das Rollen dauert 350 ms
+(`move`), der Kasten fährt interpoliert mit. Ankunft: ein stehendes, nicht
+atmendes Loch unter der Mitte wird GEFÜLLT (Loch und Stein verschwinden,
+`sunk`); auf Eis rollt er in derselben Richtung weiter, solange frei; sonst
+Schlag. Eine Druckplatte unter einem ruhenden Stein bekommt `plate.boulder`
+– `updateDoors` zählt sie als gehalten (`held || boulder`), womit die Platte
+zum Einzelspieler-Öffner wird, `doorState` unverändert. Ereignisse (roll,
+stop, sink, plate) sammelt `consumeBoulderEvents()` für den Klang: Mahlen
+(braunes Rauschen, Tiefpass 420→260 Hz), Schlag (Sinus 140→55 Hz), Versinken
+(Dreieck 220→40 Hz plus Rauschfahne), Platte (`audio.plate`).
+
+**Beweis** (`levels/boulders.ts` `boulderProof`, Badge `boulder`): Ein Stein
+ist ein zweiter Körper, also braucht das Modell ZUSTAND – (Ebene, Ballzelle,
+Steinzellen, gefüllte Löcher). BFS über den Zustandsraum mit denselben Regeln
+wie die Physik, nur ohne Zeit: der Ball betritt keine Steinzelle; steht er
+neben einem Stein und ist die Zelle dahinter frei, rollt der Stein (auf Eis
+weiter, ins Loch hinein und weg). Türen sind offen wie im offenen Modell –
+AUSSER Türen, deren Öffner ausschließlich Druckplatten sind: die öffnen per
+`doorState` (any/all), wenn Steine auf den Platten liegen. Schlüssel und
+Zeitschlösser prüfen die anderen Badges; hier zählt nur, was der Stein
+bewegt. Zwei Fragen: Ziel erreichbar? Und: gibt es einen erreichbaren
+Zustand, aus dem kein Ziel-Zustand mehr erreichbar ist (Softlock – der Stein
+in der Sackgasse hinter der Platte)? Die zweite beantwortet eine
+Rückwärtssuche über den aufgezeichneten Zustandsgraphen. Kappe bei 60 000
+Zuständen („Zustandsraum zu groß" = rot). Ohne Stein trivial grün; das Badge
+ist Pflicht fürs Teilen (`isShareable`: alles außer `items`).
+
+**Tests** (`tests/boulder.test.ts`): Physik – sanfter Stoß rollt nicht,
+kräftiger genau eine Zelle, Wand stoppt, Loch füllt, Platte hält und die Tür
+öffnet über `doorState`. Beweis – trivial ohne Stein, Ziel hinter Platten-Tür
+erreichbar, Stein-in-Sackgasse ist Softlock (rot mit Zelle im Detail), Stein
+im Loch. E2E Lauf 31: importierter Korridor, der Ball schiebt den Stein bis
+auf die Platte, `plateHeld` wird 1 (Sabotage: `pushSpeed` unerreichbar → rot).
+
 ## M46 „Glocke, Halle, Wanderer" ✓ (Phase 3 von 3.0.0) – Lockglocke, Hallraum, Wanderloch
 
 Drei Elemente, die etwas BEWEGEN: die Horcher (Glocke), den Klang (Halle),

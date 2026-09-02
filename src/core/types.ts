@@ -165,6 +165,8 @@ export interface Plate {
   opens: string;
   /** wird gerade von einem Spieler gehalten (lokal ODER remote) */
   held: boolean;
+  /** Rollstein (M47) liegt auf der Platte – hält sie dauerhaft, auch allein. */
+  boulder?: boolean;
   litFrom?: number;
   litUntil?: number;
 }
@@ -227,6 +229,24 @@ export interface IcePatch {
 
 /** Sog-Anker: zieht den Ball im Radius an – Kraft bleibt unter der
  *  Neigungs-Beschleunigung, man kommt immer (mühsam) wieder heraus. */
+/** Rollstein (M47): zweiter Körper, ZELLWEISE. Der Ball schiebt ihn um genau
+ *  eine Zelle, wenn er ihn schnell genug an einer Kante trifft und die
+ *  Zielzelle frei ist. Auf einer Druckplatte hält er sie, in ein Loch
+ *  gestoßen füllt er es (beide verschwinden). `move` ist der laufende
+ *  Rollvorgang (350 ms), `cell` die logische Zelle, `x/y` die gezeichnete Mitte. */
+export interface Boulder {
+  x: number;
+  y: number;
+  /** Kantenlänge des Kastens (Welteinheiten) */
+  size: number;
+  cell: [number, number];
+  move: { fromX: number; fromY: number; toX: number; toY: number; t: number; dir: [number, number] } | null;
+  /** im Loch versunken – wird nicht mehr gezeichnet, kollidiert nicht */
+  sunk: boolean;
+  litFrom?: number;
+  litUntil?: number;
+}
+
 /** Sanduhr (M45): Sammler, der die Par um `bonusS` verlängert. */
 export interface Hourglass extends Collectible {
   bonusS: number;

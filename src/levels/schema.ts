@@ -171,6 +171,14 @@ export const bellDef = z.object({
   ringS: z.number().positive().default(4),
 });
 
+/** Rollstein (M47): zweiter Körper, zellweise schiebbar. Auf einer Druck-
+ *  platte hält er sie (Einzelspieler-Öffner), in ein Loch gestoßen füllt er
+ *  es. Kein Stein-Stein-Schieben, kein Transporter, keine Schiebewand-Zelle. */
+export const boulderDef = z.object({
+  ...base,
+  type: z.literal('boulder'),
+});
+
 /** Wanderloch (M46): ein offenes Loch auf Patrouille – Wächter und Loch in
  *  einem. Modell: passierbar wie ein atmendes Loch (man wartet, bis es
  *  vorbei ist); Patrouille achsenparallel durch offene Zellen wie beim Wächter. */
@@ -287,6 +295,7 @@ export const elementDef = z.discriminatedUnion('type', [
   reverbZoneDef,
   bellDef,
   roamingHoleDef,
+  boulderDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -311,6 +320,7 @@ export type HourglassDef = z.infer<typeof hourglassDef>;
 export type ReverbZoneDef = z.infer<typeof reverbZoneDef>;
 export type BellDef = z.infer<typeof bellDef>;
 export type RoamingHoleDef = z.infer<typeof roamingHoleDef>;
+export type BoulderDef = z.infer<typeof boulderDef>;
 export type JukeboxDef = z.infer<typeof jukeboxDef>;
 export type TuneDef = z.infer<typeof tuneSchema>;
 export type PlaylistEntry = z.infer<typeof playlistEntry>;

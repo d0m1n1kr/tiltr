@@ -742,6 +742,68 @@ export class GameAudio {
     if (closeness01 > 0) this.place(this.guardPanner, dx, dy);
   }
 
+  /** Rollstein rollt an (M47): schweres Mahlen, 0,35 s, aus seiner Richtung. */
+  boulderRoll(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('brown');
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(420, t);
+    lp.frequency.linearRampToValueAtTime(260, t + 0.35);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.7, t + 0.05);
+    g.gain.setValueAtTime(0.7, t + 0.28);
+    g.gain.linearRampToValueAtTime(0, t + 0.38);
+    src.connect(lp).connect(g).connect(this.spatialOut(dx, dy));
+    src.start(t);
+    src.stop(t + 0.4);
+  }
+
+  /** Rollstein hält an (M47): dumpfer, kurzer Schlag. */
+  boulderStop(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(140, t);
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.6, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.connect(g).connect(this.spatialOut(dx, dy));
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
+  /** Rollstein füllt ein Loch (M47): tiefer Fall, dann Stille statt Grollen. */
+  boulderSink(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.5);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    const out = this.spatialOut(dx, dy);
+    osc.connect(g).connect(out);
+    osc.start(t);
+    osc.stop(t + 0.65);
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('brown');
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0, t + 0.4);
+    ng.gain.linearRampToValueAtTime(0.5, t + 0.45);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    src.connect(ng).connect(out);
+    src.start(t + 0.4);
+    src.stop(t + 0.95);
+  }
+
   /** Hallraum (M46): 0 = trocken, 1 = voller Nachhall. */
   setReverb(level01: number): void {
     if (!this.ctx) return;

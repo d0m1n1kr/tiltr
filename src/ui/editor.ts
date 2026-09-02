@@ -260,6 +260,7 @@ const PLACEABLE = [
   'bell',
   'reverbZone',
   'roamingHole',
+  'boulder',
   'transporter',
   'jukebox',
 ] as const;

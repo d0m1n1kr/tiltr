@@ -54,6 +54,9 @@ export const WORLD = {
   /** Hallraum (M46): helles Blaugrau, luftiger als Nebel (der ist entsättigt
    *  und schwer) – Raum, der trägt statt schluckt. */
   reverb: '150, 195, 220',
+  /** Rollstein (M47): warmes Steingrau – ein Körper, kein Signal; heller als
+   *  Wand-Blau, matter als die Schiebewand. */
+  boulder: '176, 168, 156',
   // Glasboden nutzt bewusst das Brüchig-Bernstein (WORLD.brittle):
   // gleiche Bedeutung "brüchig, Vorsicht" – nur als Boden statt Wand.
 } as const;

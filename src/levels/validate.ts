@@ -15,6 +15,7 @@ import { MUSIC_IDS } from '../music';
 import { mulberry32 } from '../core/rng';
 import { loadLevel } from './loader';
 import { parseLevel, type DoorDef, type FloorDef, type JukeboxDef, type LevelDef } from './schema';
+import { boulderProof } from './boulders';
 
 export interface CellConfig {
   brittleOpen: boolean;
@@ -373,6 +374,7 @@ export type CheckKey =
   | 'softlock'
   | 'guards'
   | 'jukebox'
+  | 'boulder'
   | 'items';
 
 export interface CheckResult {
@@ -639,6 +641,11 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
   }
   push('jukebox', jbOk, jbDetail);
+
+  // Rollstein (M47): Zustands-Beweis – Ziel mit schiebbaren Steinen
+  // erreichbar UND kein erreichbarer Zustand, aus dem es das nicht mehr ist.
+  const bp = boulderProof(def);
+  push('boulder', bp.goal && bp.softlock, bp.detail);
 
   // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.
   let itemsOk = true;
