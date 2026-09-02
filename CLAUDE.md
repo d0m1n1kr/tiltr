@@ -402,4 +402,7 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 
 - Branch: `claude/sensor-ball-game-pwa-f6jg9b` (Default). Jeder Push
   deployt nach Tests automatisch live.
+  Große Releases (3.0.0 „Trugbild", sieben Phasen) laufen auf einem
+  ARBEITS-BRANCH ohne Deploy (`claude/v3-trugbild`), je Phase ein Commit mit
+  grüner Suite, am Ende Fast-Forward auf den Default-Branch.
 - `prototype/` ist der eingefrorene Phase-0-Prototyp (Referenz).

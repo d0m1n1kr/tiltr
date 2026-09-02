@@ -83,6 +83,7 @@ const KNOWN_RUNS = [
   "29",
   "30",
   "31",
+  "32",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -5559,6 +5560,79 @@ if (want("31")) {
   } catch (e) {
     check(
       `Lauf 31 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 32: Editor-Regression 3.0.0. Ein Level mit den neuen Elementen
+// (Rollstein, Platte, Tür) wird importiert, im Editor geöffnet – alle Badges
+// grün, der Stein-Beweis eingeschlossen – und in der Vorschau gespielt.
+if (want("32")) {
+  try {
+    const page = await browser.newPage({
+      viewport: { width: 1024, height: 768 },
+      locale: "de-DE",
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?nosplash`);
+    const def = {
+      id: "custom-m49",
+      name: "Regression",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [5, 2],
+          maze: {
+            seed: 3,
+            carve: [[[0, 0], "e"], [[1, 0], "e"], [[2, 0], "e"], [[3, 0], "e"], [[3, 0], "s"]],
+            add: [[[0, 0], "s"], [[1, 0], "s"], [[2, 0], "s"], [[4, 0], "s"]],
+            mirrors: [[[1, 0], "s"]],
+          },
+          elements: [
+            { type: "boulder", cell: [1, 0] },
+            { type: "plate", cell: [4, 0], opens: "tor" },
+            { type: "door", id: "tor", edge: [[3, 0], "s"] },
+            { type: "hourglass", cell: [2, 0] },
+            { type: "bell", cell: [0, 1] },
+          ],
+          start: [0, 0],
+          goal: [3, 1],
+        },
+      ],
+    };
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await page.waitForTimeout(400);
+    // ✏️ Bearbeiten am zuletzt importierten Level
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await page.waitForTimeout(600);
+    const badges = await page.locator("#edBadges .ed-badge").allTextContents();
+    const fails = await page.locator("#edBadges .ed-badge.fail").count();
+    check(
+      `Editor: alle Badges grün, „Stein lösbar" dabei (${badges.length} Badges, ${fails} rot: ${JSON.stringify(badges.filter((b) => b.startsWith("✗")))})`,
+      fails === 0 && badges.some((b) => /Stein lösbar/.test(b)),
+    );
+    const n = await page.evaluate(() => window.__tiltrEd.elements);
+    check(`Editor kennt die fünf Elemente (${n})`, n === 5);
+    // Vorschau: echte Spielschleife mit dem Stein.
+    await page.click("#edTest");
+    await page.waitForTimeout(3600);
+    const w = await page.evaluate(() => window.__tiltrWorld);
+    check(
+      `Vorschau läuft mit Stein, Sanduhr, Glocke, Spiegel (${w?.boulders}/${w?.hourglasses}/${w?.bells}/${w?.mirrors})`,
+      w?.boulders === 1 && w?.hourglasses === 1 && w?.bells === 1 && w?.mirrors === 1,
+    );
+    await page.click("#editBtn");
+    await page.waitForTimeout(300);
+    const back = !(await page.locator("#editor").getAttribute("class")).includes("hidden");
+    check(`✏️ führt zurück in den Editor (${back})`, back);
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 32 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

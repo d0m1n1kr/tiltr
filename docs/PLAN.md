@@ -612,6 +612,30 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M49 „3.0.0" ✓ (Phase 6) – Release: sieben Phasen, ein Push
+
+Der Kampagnen-Umbau nach dem Review – Spielregeln (M43), Welten 1–4 (M44),
+vier kleine (M45) und drei mittlere Elemente (M46), der Rollstein (M47) und
+Welt 5 (M48) – ging als EIN Release live. Arbeits-Branch `claude/v3-trugbild`
+ohne Deploy, je Phase ein Commit mit grüner Suite, am Ende Fast-Forward auf
+den Default-Branch. Version 3.0.0 (Startscreen, Update-Toast,
+`versionNumber` 30000 für die Bundle-Version der Builtin-Importe).
+
+**Stand.** 36 Kampagnen-Level in fünf Welten, 24 Elemente in der Registry
+plus acht Galerie-Extras (32 Einträge), acht neue Klang-Signaturen. E2E:
+Lauf 29 (Spielregeln), 30 (vier kleine + drei mittlere Elemente), 31
+(Rollstein), 32 (Editor-Regression: Import → Editor, alle Badges grün inkl.
+„Stein lösbar", Vorschau, Rücksprung); Läufe 4/5 zählen 36 Level in
+5 Welten, der Debug-Import kennt `builtin-w5` automatisch über WORLDS.
+
+**Migration.** Keine Level-ID wurde umbenannt oder entfernt; Umsortierung
+(Welt 2) und Einfügungen (w4-03k, Welt 5) hängen an der ID des Vorgängers.
+Sterne, Bestzeiten, Blind-Sterne, `bundleAt` und Geist-Spuren alter Profile
+bleiben gültig; `profile.tutorialBright` ist ein neues Flag mit Default
+false, `plate.boulder` ein Laufzeit-Feld. Werkstatt-Level ohne die neuen
+Listen (`maze.mirrors`) laden über die zod-Defaults; der Editor füllt sie in
+`normalizeDraft` auf.
+
 ## M48 „Trugbild" ✓ (Phase 5 von 3.0.0) – Welt 5: sieben Level aus den ungenutzten Bausteinen
 
 Welt 4 hat dem Spieler das Hören genommen (Nebel). Welt 5 gibt ihm etwas,
