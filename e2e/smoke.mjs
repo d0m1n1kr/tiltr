@@ -79,6 +79,7 @@ const KNOWN_RUNS = [
   "25",
   "26",
   "27",
+  "28",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -1752,7 +1753,7 @@ if (want("12")) {
       `Speichern + Bibliothek ("${savedMsg}" / "${wsName}" / ${count})`,
       savedMsg.includes("Gespeichert") &&
         items === 1 &&
-        wsName === "Mein Level" &&
+        /Mein Level$/.test(wsName) &&
         count === "(1)",
     );
 
@@ -2161,17 +2162,27 @@ if (want("13")) {
     );
     await pageB.click("#interSecondary"); // In die Werkstatt
     await pageB.waitForTimeout(300);
+    // M40: Der Link landet im Import-Feld mit Ziel-Bundle-Auswahl – erst
+    // „Übernehmen" speichert (Import fragt IMMER nach dem Ziel).
     const wsOpen = !(
       await pageB.locator("#workshop").getAttribute("class")
     ).includes("hidden");
+    const prefilled = (await pageB.inputValue("#wsImportText")).includes(
+      "Ebenen-Probe",
+    );
+    const askStatus = (await pageB.textContent("#wsImportStatus")).trim();
+    await pageB.click("#wsImportGo");
+    await pageB.waitForTimeout(300);
     const wsName = (await pageB.textContent(".ws-name")).trim();
     check(
-      `Übernommen: Werkstatt zeigt "${wsName}"`,
-      wsOpen && wsName === "Ebenen-Probe",
+      `Übernommen: Import-Feld vorbelegt ("${askStatus}"), nach Übernehmen zeigt die Werkstatt "${wsName}"`,
+      wsOpen &&
+        prefilled &&
+        /Ziel-Bundle/.test(askStatus) &&
+        /Ebenen-Probe$/.test(wsName),
     );
 
-    // Import per Einfügen (Tablet-Weg ohne Datei).
-    await pageB.click("#wsImportBtn");
+    // Import per Einfügen (Tablet-Weg ohne Datei) – das Feld ist noch offen.
     await pageB.fill(
       "#wsImportText",
       JSON.stringify({
@@ -3875,13 +3886,16 @@ if (want("21b")) {
     await page.waitForTimeout(300);
     // Bearbeiten bestätigt per ZWEI-TAP, wenn noch ein Draft in der Werkstatt
     // liegt (M15) – der erste Tap fragt nur.
-    await page.locator("#workshopList .ws-actions .btn-ghost").first().click(); // ✏️ Bearbeiten
+    // M40: Das Bundle listet in SPIELREIHENFOLGE (älteste zuerst), nicht mehr
+    // neueste zuerst – die Karte also über ihren Namen greifen.
+    const nicheEdit = page
+      .locator("#workshopList .ws-item", { hasText: niche.name })
+      .locator(".ws-actions .btn-ghost")
+      .first();
+    await nicheEdit.click(); // ✏️ Bearbeiten
     await page.waitForTimeout(400);
     if ((await page.inputValue("#edName")) !== niche.name) {
-      await page
-        .locator("#workshopList .ws-actions .btn-ghost")
-        .first()
-        .click();
+      await nicheEdit.click();
       await page.waitForTimeout(600);
     }
     const openName = await page.inputValue("#edName");
@@ -4664,6 +4678,347 @@ if (want("27")) {
 }
 
 check("keine Konsolen-/Seitenfehler", errors.length === 0);
+// --- Lauf 28: Level-Bundles (M40). Migration v1 → v2, neues Bundle mit
+// Titel/Beschreibung, Import ins gewählte Ziel-Bundle, Sortieren, Spielen
+// („weiter bei"), Kampagnen-Screen mit Bundle-Abschnitten und Sperre, Debug-
+// Import einer eingebauten Welt (5× Version), Export mit Versionszähler,
+// Re-Import (gleich → Zwei-Tap, neuer → ersetzt), Löschen, Editor speichert
+// ins aktuelle Bundle. ---
+if (want("28")) {
+  try {
+    const ctx = await browser.newContext({
+      viewport: { width: 1024, height: 768 },
+      locale: "de-DE",
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const lvl = (id, name, seed) => ({
+      id,
+      name,
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 4],
+          maze: { seed },
+          elements: [],
+          start: [0, 0],
+          goal: [3, 3],
+        },
+      ],
+    });
+    // Import-Feld ÖFFNEN (der Knopf toggelt – blind klicken schließt es).
+    const openImport = async () => {
+      const cls = (await page.getAttribute("#wsImportBox", "class")) ?? "";
+      if (cls.includes("hidden")) await page.click("#wsImportBtn");
+    };
+    // (1) Migration: v1-Bestand VOR dem Laden des Stores, dann neu laden.
+    await page.goto(`${BASE}/?nosplash`);
+    await page.evaluate(
+      (v1) => {
+        localStorage.clear();
+        localStorage.setItem("tiltr.workshop.v1", JSON.stringify(v1));
+      },
+      {
+        levels: [
+          {
+            id: "custom-alt1",
+            def: lvl("custom-alt1", "Altes Eins", 11),
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+          },
+          {
+            id: "custom-alt2",
+            def: lvl("custom-alt2", "Altes Zwei", 12),
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        ],
+      },
+    );
+    await page.reload();
+    await page.waitForTimeout(400);
+    await page.click("#workshopBtn");
+    const migrated = await page.evaluate(() => ({
+      options: [...document.querySelectorAll("#wsBundleSelect option")].map(
+        (o) => o.textContent,
+      ),
+      names: [...document.querySelectorAll("#workshopList .ws-name")].map(
+        (n) => n.textContent,
+      ),
+      v2: JSON.parse(localStorage.getItem("tiltr.workshop.v2") || "{}"),
+    }));
+    check(
+      `Migration v1 → v2: ein Bundle „Meine Level" mit den alten Leveln, älteste zuerst (${JSON.stringify(migrated.names)})`,
+      migrated.options.length === 1 &&
+        migrated.options[0].startsWith("Meine Level") &&
+        migrated.names.join("|") === "1. Altes Zwei|2. Altes Eins" &&
+        migrated.v2.bundles?.[0]?.version === 1,
+    );
+
+    // (2) Neues Bundle mit Titel und Beschreibung.
+    await page.click("#wsBundleNew");
+    await page.fill("#wsBundleTitle", "Turnier");
+    await page.dispatchEvent("#wsBundleTitle", "input");
+    await page.fill("#wsBundleDescInput", "Drei Prüfungen");
+    await page.dispatchEvent("#wsBundleDescInput", "change");
+    await page.waitForTimeout(150);
+    const created = await page.evaluate(() => ({
+      selected: document.querySelector("#wsBundleSelect option:checked")
+        ?.textContent,
+      desc: document.getElementById("wsBundleDesc")?.textContent,
+      empty: !document.getElementById("wsEmpty")?.classList.contains("hidden"),
+    }));
+    check(
+      `Neues Bundle wird aktuell, Titel/Beschreibung greifen (${created.selected} / ${created.desc})`,
+      created.selected === "Turnier (0)" &&
+        created.desc === "Drei Prüfungen" &&
+        created.empty,
+    );
+
+    // (3) Import mit Ziel-Bundle: zwei Level ins aktuelle Bundle „Turnier".
+    await openImport();
+    const targetOpts = await page.evaluate(() =>
+      [...document.querySelectorAll("#wsImportTarget option")].map(
+        (o) => o.textContent,
+      ),
+    );
+    for (const [i, name] of [
+      ["custom-t1", "Prüfung A"],
+      ["custom-t2", "Prüfung B"],
+    ]) {
+      await page.fill(
+        "#wsImportText",
+        JSON.stringify(lvl(i, name, 20 + i.length)),
+      );
+      await page.selectOption("#wsImportTarget", { label: "Turnier" });
+      await page.click("#wsImportGo");
+      await page.waitForTimeout(250);
+    }
+    const afterImport = await page.evaluate(() => ({
+      names: [...document.querySelectorAll("#workshopList .ws-name")].map(
+        (n) => n.textContent,
+      ),
+      selected: document.querySelector("#wsBundleSelect option:checked")
+        ?.textContent,
+    }));
+    check(
+      `Import fragt nach dem Ziel-Bundle (${targetOpts.length} Optionen inkl. „Neues Bundle") und legt dort ab (${afterImport.names.join("|")})`,
+      targetOpts.some((o) => o.includes("Neues Bundle")) &&
+        targetOpts.includes("Turnier") &&
+        afterImport.names.join("|") === "1. Prüfung A|2. Prüfung B" &&
+        afterImport.selected === "Turnier (2)",
+    );
+
+    // (4) Sortieren: ▼ am ersten Level tauscht die Reihenfolge.
+    await page
+      .locator("#workshopList .ws-item")
+      .first()
+      .locator(".ws-move")
+      .nth(1)
+      .click();
+    await page.waitForTimeout(150);
+    const reordered = await page.evaluate(() =>
+      [...document.querySelectorAll("#workshopList .ws-name")]
+        .map((n) => n.textContent)
+        .join("|"),
+    );
+    check(
+      `▼ sortiert das Level nach unten (${reordered})`,
+      reordered === "1. Prüfung B|2. Prüfung A",
+    );
+
+    // (5) Bundle spielen: „Weiter bei 1" startet den ersten Level, das Profil merkt sich den Stand.
+    const playLabel = await page.textContent("#wsBundlePlay");
+    await page.click("#wsBundlePlay");
+    await page.waitForTimeout(3600);
+    const playing = await page.evaluate(() => ({
+      hud: !document.getElementById("hud")?.classList.contains("hidden"),
+      ball: !!window.__tiltrBall,
+      pos: JSON.parse(localStorage.getItem("tiltr.profile") || "{}").bundleAt,
+    }));
+    const bundleId = await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("tiltr.workshop.v2")).bundles.find(
+          (b) => b.title === "Turnier",
+        ).id,
+    );
+    check(
+      `Bundle spielen ab „${playLabel}": Spielschleife läuft, Stand im Profil (${JSON.stringify(playing.pos)})`,
+      /Weiter bei 1: Prüfung B/.test(playLabel ?? "") &&
+        playing.hud &&
+        playing.ball &&
+        playing.pos?.[bundleId] === 0,
+    );
+    await page.click("#homeBtn");
+    await page.waitForTimeout(300);
+
+    // (6) Kampagnen-Screen: eigene Bundles als Abschnitte, zweiter Level gesperrt.
+    await page.click("#campaignBtn");
+    const camp = await page.evaluate(() => ({
+      heads: [...document.querySelectorAll("#campaignList .camp-bundle")].map(
+        (h) => h.textContent,
+      ),
+      locked: document.querySelectorAll("#campaignList .bundle-level.locked")
+        .length,
+      open: document.querySelectorAll(
+        "#campaignList .bundle-level:not(.locked)",
+      ).length,
+      importBtns: [
+        ...document.querySelectorAll("#campaignList .camp-import"),
+      ].filter((b) => !b.classList.contains("hidden")).length,
+    }));
+    check(
+      `Kampagnen-Screen listet eigene Bundles (${camp.heads.join(" | ")}), Folge-Level gesperrt (${camp.locked} 🔒, ${camp.open} offen), Debug-Import noch versteckt (${camp.importBtns})`,
+      camp.heads.some((h) => h.startsWith("Turnier")) &&
+        camp.heads.some((h) => h.startsWith("Meine Level")) &&
+        camp.locked === 2 &&
+        camp.open === 2 &&
+        camp.importBtns === 0,
+    );
+    await page.click("#campaignClose");
+
+    // (7) Debug-Modus (5× Version): „In Werkstatt importieren" je Welt.
+    for (let i = 0; i < 5; i++) await page.click("#version");
+    await page.click("#campaignBtn");
+    const importBtn = page.locator("#campaignList .camp-import").first();
+    const visibleNow = await importBtn.isVisible();
+    await importBtn.click();
+    await page.waitForTimeout(300);
+    const builtin = await page.evaluate(() => {
+      const b = JSON.parse(
+        localStorage.getItem("tiltr.workshop.v2"),
+      ).bundles.find((x) => x.id === "builtin-w1");
+      return b
+        ? {
+            levels: b.levels.length,
+            version: b.version,
+            title: b.title,
+            firstId: b.levels[0]?.id,
+            mirror: b.levels[0]?.def.mirror,
+          }
+        : null;
+    });
+    check(
+      `Debug-Import: Welt 1 als Bundle builtin-w1 (${JSON.stringify(builtin)})`,
+      visibleNow &&
+        builtin &&
+        builtin.levels >= 4 &&
+        builtin.version > 20000 &&
+        builtin.firstId === "w1-01",
+    );
+    await page.click("#campaignClose");
+
+    // (8) Export zählt die Version hoch (Datei heißt …-v2.json).
+    await page.click("#workshopBtn");
+    await page.selectOption("#wsBundleSelect", bundleId);
+    await page.waitForTimeout(150);
+    const [dl] = await Promise.all([
+      page.waitForEvent("download"),
+      page.click("#wsBundleExport"),
+    ]);
+    const dlName = dl.suggestedFilename();
+    const dlPath = await dl.path();
+    const fileText = readFileSync(dlPath, "utf8");
+    const exported = JSON.parse(fileText);
+    const metaAfter = await page.textContent("#wsBundleMeta");
+    check(
+      `Bundle-Export: ${dlName}, Format ${exported.format}, v${exported.bundle.version}, ${exported.bundle.levels.length} Level; Leiste zeigt ${metaAfter}`,
+      /^tiltr-bundle-turnier-v2\.json$/.test(dlName) &&
+        exported.format === "tiltr-bundle" &&
+        exported.bundle.version === 2 &&
+        exported.bundle.levels.length === 2 &&
+        /v2/.test(metaAfter ?? ""),
+    );
+
+    // (9) Re-Import: gleiche Version → Nachfrage (Zwei-Tap), dann ersetzt;
+    //     höhere Version mit neuem Titel → ersetzt sofort.
+    await openImport();
+    await page.fill("#wsImportText", fileText);
+    await page.click("#wsImportGo");
+    await page.waitForTimeout(200);
+    const askMsg = (await page.textContent("#wsImportStatus")).trim();
+    const countAsk = await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("tiltr.workshop.v2")).bundles.length,
+    );
+    await page.click("#wsImportGo");
+    await page.waitForTimeout(200);
+    const okMsg = (await page.textContent("#wsImportStatus")).trim();
+    const newer = {
+      ...exported,
+      bundle: { ...exported.bundle, version: 9, title: "Turnier II" },
+    };
+    await page.fill("#wsImportText", JSON.stringify(newer));
+    await page.click("#wsImportGo");
+    await page.waitForTimeout(200);
+    const replaced = await page.evaluate(() => ({
+      count: JSON.parse(localStorage.getItem("tiltr.workshop.v2")).bundles
+        .length,
+      selected: document.querySelector("#wsBundleSelect option:checked")
+        ?.textContent,
+      status: document.getElementById("wsImportStatus")?.textContent,
+    }));
+    check(
+      `Re-Import: gleiche Version fragt („${askMsg.slice(0, 40)}…", Bestand ${countAsk}), zweiter Tap ersetzt („${okMsg.slice(0, 30)}…"), höhere Version ersetzt sofort (${replaced.selected}, ${replaced.count} Bundles)`,
+      /schon da/.test(askMsg) &&
+        /importiert/.test(okMsg) &&
+        replaced.selected === "Turnier II (2)" &&
+        replaced.count === countAsk &&
+        /v9/.test(replaced.status ?? ""),
+    );
+
+    // (10) Bundle löschen (Zwei-Tap): weg aus dem Umschalter.
+    await page.click("#wsBundleDelete");
+    await page.click("#wsBundleDelete");
+    await page.waitForTimeout(200);
+    const afterDelete = await page.evaluate(() =>
+      [...document.querySelectorAll("#wsBundleSelect option")].map(
+        (o) => o.textContent,
+      ),
+    );
+    check(
+      `Bundle löschen per Zwei-Tap (${afterDelete.join(" | ")})`,
+      !afterDelete.some((o) => o.startsWith("Turnier")) &&
+        afterDelete.length === 2,
+    );
+
+    // (11) Editor speichert ins AKTUELLE Bundle.
+    await page.selectOption("#wsBundleSelect", {
+      label: afterDelete.find((o) => o.startsWith("Meine Level")),
+    });
+    await page.waitForTimeout(150);
+    const before = await page.locator("#workshopList .ws-item").count();
+    await page.click("#wsNewBtn");
+    await page.waitForTimeout(400);
+    await page.fill("#edName", "Frisch gebaut");
+    await page.click("#edSave");
+    await page.click("#edClose");
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({
+      n: document.querySelectorAll("#workshopList .ws-item").length,
+      last: [...document.querySelectorAll("#workshopList .ws-name")].at(-1)
+        ?.textContent,
+      selected: document.querySelector("#wsBundleSelect option:checked")
+        ?.textContent,
+    }));
+    check(
+      `Editor speichert ins aktuelle Bundle (${before} → ${after.n}, zuletzt „${after.last}", ${after.selected})`,
+      after.n === before + 1 &&
+        /Frisch gebaut/.test(after.last ?? "") &&
+        after.selected === "Meine Level (3)",
+    );
+
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 28 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
 console.log(
   `# gefahren: ${only ? only.size : KNOWN_RUNS.length} von ${KNOWN_RUNS.length} Läufen`,
 );

@@ -529,6 +529,19 @@
        Kopf, dass sich die Karte gerade von selbst bewegt. */
     #edPlay.active { color: var(--accent); border-color: rgba(75, 224, 200, 0.45); }
     #wsImportBox { display: grid; gap: var(--space-2); padding: var(--space-3); }
+    .ws-target { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-small); opacity: 0.85; }
+    .ws-target select, #wsBundleSelect { flex: 1 1 auto; min-width: 0; min-height: var(--touch-min); }
+    #wsBundleBar { display: grid; gap: var(--space-2); padding: var(--space-3) 14px; }
+    .ws-bundle-row { display: flex; align-items: center; gap: var(--space-2); }
+    .ws-bundle-row .btn { min-width: var(--touch-min); padding: 0 var(--space-2); }
+    #wsBundleForm { display: grid; gap: var(--space-2); }
+    #wsBundleForm.hidden { display: none; }
+    #wsBundleDesc:empty { display: none; }
+    #wsBundleMeta { margin-left: auto; }
+    .ws-order { display: flex; gap: var(--space-1); }
+    .debug-only.hidden { display: none; }
+    .world-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+    .world-header .btn { font-weight: 400; opacity: 1; }
     #wsImportText {
       background: var(--bg-panel); border: var(--border-strong); color: var(--text);
       border-radius: var(--radius-m); padding: var(--space-2);
@@ -878,6 +891,25 @@
       <button id="workshopClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
     </header>
     <div id="workshopContent">
+      <!-- M40: Die Werkstatt zeigt immer EIN Level-Bundle. Umschalter + Bundle-Aktionen. -->
+      <div id="wsBundleBar" class="panel">
+        <div class="ws-bundle-row">
+          <select id="wsBundleSelect" aria-label="Bundle"></select>
+          <button id="wsBundleNew" class="btn btn-ghost" data-i18n-tip="ws.bundle.new">＋</button>
+          <button id="wsBundleEdit" class="btn btn-ghost" data-i18n-tip="ws.bundle.title">✎</button>
+          <button id="wsBundleExport" class="btn btn-ghost" data-i18n-tip="ws.bundle.export">⇩</button>
+          <button id="wsBundleDelete" class="btn btn-ghost ws-danger" data-i18n-tip="ws.bundle.delete">🗑</button>
+        </div>
+        <p id="wsBundleDesc" class="menu-meta"></p>
+        <div id="wsBundleForm" class="hidden">
+          <input id="wsBundleTitle" type="text" maxlength="60" autocomplete="off" spellcheck="false" data-i18n-ph="ws.bundle.title">
+          <textarea id="wsBundleDescInput" rows="2" maxlength="400" data-i18n-ph="ws.bundle.desc" spellcheck="false"></textarea>
+        </div>
+        <div class="ws-actions">
+          <button id="wsBundlePlay" class="btn btn-primary"></button>
+          <span id="wsBundleMeta" class="ws-meta"></span>
+        </div>
+      </div>
       <div id="workshopActions">
         <button id="wsResumeBtn" class="panel mode-item suggest hidden">
           <span class="mode-icon">✏️</span>
@@ -910,6 +942,7 @@
       </div>
       <div id="wsImportBox" class="panel hidden">
         <textarea id="wsImportText" rows="4" data-i18n-ph="ed.importPh" spellcheck="false"></textarea>
+        <label class="ws-target"><span data-i18n="ws.import.target">Ziel-Bundle</span> <select id="wsImportTarget"></select></label>
         <div class="ws-actions">
           <button id="wsImportFile" class="btn btn-ghost" data-i18n="ed.importFile">📄 Datei wählen</button>
           <button id="wsImportPaste" class="btn btn-ghost" data-i18n="ed.importPaste">📋 Einfügen</button>

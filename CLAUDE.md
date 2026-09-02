@@ -82,7 +82,27 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   gequert – nur solange eine Patrouillenzelle für den Wächter frei bleibt.
   Neue Level mit Wächtern brauchen Ausweichbuchten oder Quer-Passagen.
 - `src/workshop.ts` + `src/ui/editor.ts` – Werkstatt: eigene Level in
-  localStorage, Editor editiert rohe Defs (Vorschau = parseLevel →
+  localStorage, seit M40 in LEVEL-BUNDLES (`tiltr.workshop.v2`): ein Bundle =
+  geordnete Level-Reihe mit ID, Version, Titel, Beschreibung – spielbar wie
+  eine Kampagne (Modus `bundle`, Freischaltung über die Bestzeit des
+  Vorgängers, „weiter bei" aus `profile.bundleAt` + `bundleProgress`), als
+  Ganzes exportierbar (`bundles.exportFile` ZÄHLT DIE VERSION HOCH) und
+  importierbar (`parseFile`/`applyFile`: gleiche ID + höhere Version ersetzt
+  ungefragt, gleiche/ältere per Zwei-Tap; Level-IDs bleiben, damit der
+  Fortschritt bleibt; IDs aus einem ANDEREN Bundle werden frisch). Die
+  Werkstatt zeigt immer EIN Bundle (`bundles.current`, reload-fest); der
+  Editor speichert ins Bundle, das das Level schon enthält, sonst ins
+  aktuelle (`workshop.save`). Einzel-Import (JSON/Link) fragt IMMER nach dem
+  Ziel-Bundle (`#wsImportTarget`, auch „Neues Bundle"). v1 (flache Liste)
+  wird beim ersten Laden zu EINEM Bundle „Meine Level" migriert, älteste
+  zuerst; der v1-Schlüssel bleibt liegen. ID-Helfer stehen im Modul VOR
+  `load()` – die Migration ruft sie beim Start, ein `let` weiter unten wäre in
+  der TDZ und der Fehler verschwände still im try/catch. Debug-Modus (5×
+  Version): „⇪ In Werkstatt importieren" je Welt im Kampagnen-Screen
+  (`bundles.importBuiltin`, ID `builtin-w<n>`, App-Version als Bundle-
+  Version) – zum Überarbeiten der eingebauten Kampagne; die Defs sind
+  GESPIEGELT (`mirror`), der Editor rechnet deshalb `buildFloorCells` mit
+  `def.mirror` wie der Loader. Editor editiert rohe Defs (Vorschau = parseLevel →
   loadLevel → Renderer mit debug), Preview läuft in der echten
   Spielschleife (Modus 'custom', ✏️ zurück). Die laufende Bearbeitung
   liegt reload-fest als Draft im Store (saveDraft bei jeder Änderung,

@@ -54,7 +54,9 @@ automatically via GitHub Actions (tests → build → pages).
   your goal keeps glowing softly, and you can keep rolling — in co-op that
   means you can still work the plates for the straggler. Lost connections get a
   10-second reconnect window.
-- **🛠 Workshop** — build your own levels in a touch-first editor
+- **🛠 Workshop** — build your own levels in a touch-first editor; levels live in
+  **level bundles** (title, description, order, ID + version) that play like a
+  campaign with saved progress and export/import as one file
   (three-pane layout on tablets): place elements from the full registry,
   toggle walls, build multi-floor maps with transporters, tweak properties
   — while the test suite's solvability proofs run live as badges (goal

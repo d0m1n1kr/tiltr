@@ -39,7 +39,7 @@ import { fpInitial, fpStep } from './core/fp';
 import { breathAt, breathOpenRemaining } from './core/breathing';
 import { advance, compileTune, notesAt, type CompiledTune } from './audio/chiptune';
 import { compiledById } from './music';
-import { newCustomId, workshop } from './workshop';
+import { bundleProgress, bundles, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
 const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
@@ -129,6 +129,8 @@ type Mode =
   | { kind: 'campaign'; index: number }
   | { kind: 'daily'; date: string; target?: number }
   | { kind: 'custom' }
+  // Level-Bundle aus der Werkstatt (M40): wie eine Kampagne, Fortschritt im Profil.
+  | { kind: 'bundle'; bundleId: string; index: number }
   // Geist-Duell: fremdes Level + fremde Spur + Zielzeit. Schreibt bewusst
   // NICHTS mit (keine Sterne, keine Daily-Wertung, kein eigener Geist) –
   // der Lauf zählt nur gegen den Rivalen.
@@ -356,10 +358,65 @@ function refreshCampaignList(): void {
   WORLDS.forEach((world, wi) => {
     const header = document.createElement('h3');
     header.className = 'world-header';
-    header.textContent = t(`world.w${wi + 1}` as keyof Dict);
+    const title = document.createElement('span');
+    title.textContent = t(`world.w${wi + 1}` as keyof Dict);
+    header.append(title);
+    // Debug (5× Version): Welt als Bundle in die Werkstatt – zum Überarbeiten
+    // der eingebauten Kampagne. Feste ID builtin-w<n>, App-Version als Version.
+    const imp = document.createElement('button');
+    imp.className = 'btn btn-ghost debug-only camp-import' + (debugUnlocked ? '' : ' hidden');
+    imp.textContent = t('camp.toWorkshop');
+    imp.addEventListener('click', () => {
+      const b = bundles.importBuiltin(
+        wi + 1,
+        t(`world.w${wi + 1}` as keyof Dict),
+        t('ws.bundle.builtinDesc', { world: t(`world.w${wi + 1}` as keyof Dict), version: __APP_VERSION__ }),
+        world.levels,
+        __APP_VERSION__,
+      );
+      imp.textContent = t('camp.imported', { title: b.title });
+      setTimeout(() => (imp.textContent = t('camp.toWorkshop')), 2500);
+      workshopPanel.refresh();
+      refreshMenu();
+    });
+    header.append(imp);
     campaignList.append(header);
     world.levels.forEach((def, local) => appendLevelItem(def, flat++, local + 1));
   });
+  // Eigene Bundles: jedes wie eine Welt, Freischaltung folgt der Bestzeit des Vorgängers.
+  const own = bundles.list();
+  if (own.length) {
+    const h = document.createElement('h3');
+    h.className = 'world-header camp-bundles-head';
+    h.textContent = t('camp.bundles');
+    campaignList.append(h);
+  }
+  for (const b of own) {
+    const header = document.createElement('h3');
+    header.className = 'world-header camp-bundle';
+    header.textContent = `${b.title || t('ed.untitled')}${b.levels.length ? '' : ` ${t('camp.bundleEmpty')}`}`;
+    campaignList.append(header);
+    const prog = bundleProgress(b, (id) => profile.bestFor(id));
+    b.levels.forEach((lvl, i) => {
+      const unlocked = UNLOCK_ALL || prog.unlocked(i);
+      const item = document.createElement('button');
+      item.className = 'panel level-item bundle-level' + (unlocked ? '' : ' locked');
+      const name = document.createElement('span');
+      name.textContent = `${i + 1}. ${unlocked ? String(lvl.def.name ?? lvl.id) : '???'}`;
+      const meta = document.createElement('span');
+      meta.className = 'level-meta';
+      const best = profile.bestFor(lvl.id);
+      meta.textContent = unlocked ? (best !== null ? `✓ · ${fmtTime(best)}` : '') : '🔒';
+      item.append(name, meta);
+      if (unlocked) {
+        item.addEventListener('click', () => {
+          campaignPanel.classList.add('hidden');
+          void startMode({ kind: 'bundle', bundleId: b.id, index: i });
+        });
+      }
+      campaignList.append(item);
+    });
+  }
 }
 
 // Flachen Kampagnen-Index in (Welt, lokale Nummer) auflösen.
@@ -449,7 +506,23 @@ function showMenu(): void {
   refreshMenu();
 }
 
+/** Level eines Bundles als LevelDef – null, wenn Bundle/Index fehlen oder
+ *  die rohe Def nicht mehr parst (der Editor zeigt so etwas mit ⚠). */
+function bundleDef(bundleId: string, index: number): LevelDef | null {
+  const raw = bundles.get(bundleId)?.levels[index]?.def;
+  if (!raw) return null;
+  try {
+    return parseLevel(raw);
+  } catch {
+    return null;
+  }
+}
+
 async function startMode(m: Mode): Promise<void> {
+  if (m.kind === 'bundle' && !bundleDef(m.bundleId, m.index)) {
+    showMenu();
+    return;
+  }
   mode = m;
   wake.want();
   overlay.classList.add('hidden');
@@ -539,6 +612,7 @@ const editorApi = setupEditor({
 });
 const workshopPanel = setupWorkshopPanel({
   onPlay: (def) => startCustom(def, false),
+  onPlayBundle: (bundleId, index) => void startMode({ kind: 'bundle', bundleId, index }),
   onEdit: (def) => editorApi.open(def),
   onChanged: refreshMenu,
 });
@@ -676,6 +750,7 @@ $('version').addEventListener('click', () => {
   if (++versionTaps < 5) return;
   debugUnlocked = true;
   debugBtn.classList.remove('hidden');
+  for (const el of document.querySelectorAll('.debug-only')) el.classList.remove('hidden');
   $('version').textContent += ' · 🔧';
   const diag = document.createElement('p');
   diag.id = 'diag';
@@ -702,7 +777,9 @@ function beginLevel(): void {
         ? CAMPAIGN_LEVELS[mode.index]!
         : mode.kind === 'daily'
           ? generateDailyLevel(mode.date)
-          : mode.kind === 'custom'
+          : mode.kind === 'bundle'
+            ? bundleDef(mode.bundleId, mode.index)!
+            : mode.kind === 'custom'
             ? customDef!
             : mode.kind === 'duel'
               ? duelDef!
@@ -719,7 +796,9 @@ function beginLevel(): void {
           ? `${t(`world.w${campaignPos(mode.index).world + 1}` as keyof Dict).split(' – ')[0]} · ${t('common.level')} ${
               campaignPos(mode.index).local + 1
             } · ${lvName(def)}`
-          : lvName(def);
+          : mode.kind === 'bundle'
+            ? `${bundles.get(mode.bundleId)?.title ?? ''} · ${t('common.level')} ${mode.index + 1} · ${lvName(def)}`
+            : lvName(def);
     const targetLine =
       mode.kind === 'daily' && mode.target !== undefined
         ? `\n\n${t('daily.targetLine', { time: fmtTime(mode.target) })}`
@@ -761,6 +840,7 @@ function launch(def: LevelDef): void {
       mode.kind === 'daily' ||
       mode.kind === 'campaign' ||
       mode.kind === 'custom' ||
+      mode.kind === 'bundle' ||
       mode.kind === 'duel');
   // Im Duell IST der Geist der Rivale aus dem Link – nicht die eigene
   // Bestzeit. Aufgezeichnet wird trotzdem: daraus wird die Revanche.
@@ -788,6 +868,8 @@ function launch(def: LevelDef): void {
     renderer.follow(ball.x, ball.y, true);
   }
   respawnPoint = { floor: activeFloor, x: loaded.world.ball.x, y: loaded.world.ball.y };
+  // Bundle: „weiter, wo ich aufgehört habe" – der Stand ist der zuletzt GESTARTETE Level.
+  if (mode?.kind === 'bundle') profile.setBundlePos(mode.bundleId, mode.index);
   t0 = performance.now();
   state = 'playing';
   revealUntil = 0;
@@ -963,6 +1045,28 @@ function onWin(seconds: number): void {
               label: t('common.next'),
               onClick: () => {
                 mode = { kind: 'campaign', index: index + 1 };
+                beginLevel();
+              },
+            }
+          : { label: t('common.toMenu'), onClick: showMenu },
+        secondary: hasNext ? { label: t('common.menu'), onClick: showMenu } : undefined,
+      });
+    }, 1800);
+  } else if (mode.kind === 'bundle') {
+    const { bundleId, index } = mode;
+    const isRecord = profile.submitTime(def.id, seconds);
+    const bundle = bundles.get(bundleId);
+    const hasNext = !!bundle && index + 1 < bundle.levels.length;
+    setTimeout(() => {
+      showInterstitial({
+        title: hasNext ? t('res.winTitle', { time: fmtTime(seconds) }) : `${t('res.bundleDone')} ${fmtTime(seconds)}`,
+        text: isRecord ? t('res.newBestLine') : bundle ? `${bundle.title} · ${index + 1}/${bundle.levels.length}` : '',
+        extra: challengeAction(def, seconds, t('duel.challenge')),
+        primary: hasNext
+          ? {
+              label: t('common.next'),
+              onClick: () => {
+                mode = { kind: 'bundle', bundleId, index: index + 1 };
                 beginLevel();
               },
             }
@@ -1334,13 +1438,9 @@ function offerSharedLevel(token: string): void {
       secondary: {
         label: t('share.keep'),
         onClick: () => {
-          // Fremde/kollidierende IDs bekommen eine frische Werkstatt-ID.
-          if (typeof raw.id !== 'string' || !raw.id.startsWith('custom-') || workshop.get(raw.id)) {
-            raw.id = newCustomId();
-          }
-          workshop.save(raw);
-          refreshMenu();
-          workshopPanel.show();
+          // Ziel-Bundle wählt der Nutzer im Import-Feld (M40) – die Def
+          // steht dort vorbelegt, IDs vergibt importRaw beim Übernehmen.
+          workshopPanel.showImport(JSON.stringify(raw));
         },
       },
     });

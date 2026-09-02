@@ -412,7 +412,8 @@ export function setupEditor(opts: {
       const def = parseLevel(draft);
       const f0 = def.floors[activeFloor]!;
       const f = seedOnly ? { ...f0, maze: { ...f0.maze, carve: [], add: [] } } : f0;
-      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
+      // mirror wie der Loader: importierte Kampagnen-Level sind gespiegelt.
+      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true }, def.mirror);
       const c = cells[e[0][1] * f.size[0] + e[0][0]]!;
       return e[1] === 'e' ? !c.e : !c.s;
     } catch {
@@ -1122,7 +1123,7 @@ export function setupEditor(opts: {
     try {
       const def = parseLevel(draft);
       const f = def.floors[activeFloor]!;
-      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true });
+      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true }, def.mirror);
       const c = cells[cell[1] * f.size[0] + cell[0]]!;
       for (const d of ['e', 's', 'w', 'n'] as const) if (!c[d]) return d;
     } catch {
@@ -1827,7 +1828,8 @@ export function setupEditor(opts: {
   $('edSave').addEventListener('click', () => {
     if (!draft) return;
     draft.name = nameInput.value.trim() || t('ed.untitled');
-    const ok = workshop.save(draft as unknown as Record<string, unknown>);
+    // Ins Bundle, das das Level schon enthält – sonst ins aktuelle (M40).
+    const ok = workshop.save(draft as unknown as Record<string, unknown>, undefined, t('ws.bundle.defaultTitle'));
     // Gesichert ist gesichert: der Reload-Draft ist dann Bibliotheks-Sache.
     if (ok) clearDraft();
     flash(ok ? t('ed.saved') : t('ed.saveFailed'), false);

@@ -612,6 +612,79 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
+
+**Der Wunsch:** Was in der Werkstatt bearbeitet wird, soll ein Level-BUNDLE
+sein – Titel, Beschreibung, sortierbare Level, spielbar Level für Level wie
+die eingebauten Kampagnen, mit gespeichertem Stand („weiter, wo ich
+aufgehört habe"), als Ganzes exportier- und importierbar, mit ID und Version,
+damit ein neuer Import eine alte Kopie ersetzt. Dazu für den Autor: die
+eingebauten Kampagnen im Debug-Modus in die Werkstatt holen, überarbeiten,
+als Datei zurückgeben.
+
+**Modell.** `tiltr.workshop.v2 = { bundles: Bundle[] }`, Bundle = `{ id,
+version, title, description, levels: CustomLevel[] (GEORDNET), createdAt,
+updatedAt }`. Bestehende v1-Level werden beim ersten Laden EIN Bundle „Meine
+Level", älteste zuerst (so wird aus der Bibliothek eine spielbare Reihe); der
+v1-Schlüssel bleibt liegen – ein Backup einer älteren App-Version liest ihn
+noch. Bestzeiten bleiben im Profil an den Level-IDs, dazu `bundleAt[bundleId]`
+= zuletzt GESTARTETER Index. `bundleProgress` (rein) liefert „weiter bei"
+(erster Level ohne Bestzeit, alles geschafft → 0) und die Freischaltung (der
+Vorgänger hat eine Bestzeit); `?unlock` gilt weiter.
+
+**Werkstatt = ein Bundle.** Oben die Bundle-Leiste: Umschalter (`<select>`),
+＋ neues Bundle, ✎ Titel/Beschreibung inline, ⇩ Export, 🗑 Zwei-Tap, ▶ „Weiter
+bei n: Name" mit „done/total geschafft · vN". Darunter die Level in
+Spielreihenfolge, nummeriert, mit ▲▼ zum Sortieren (Drag & Drop ist auf
+Touch unsichtbar und unzuverlässig) und den bekannten Aktionen. Der Editor
+speichert ins Bundle, das das Level schon enthält, sonst ins aktuelle
+(`workshop.save`), und legt „Meine Level" an, wenn es gar keins gibt. Die
+bestehenden Selektoren (`#wsNewBtn`, `#workshopList`, `.ws-item`) blieben
+absichtlich, damit 14 E2E-Läufe ohne Umbau weiterlaufen.
+
+**Import fragt IMMER nach dem Ziel** (Entscheidung des Autors): Das Import-
+Feld hat ein Ziel-Bundle-Select (aktuelles vorbelegt, „＋ Neues Bundle" als
+Option), gilt für Text, 📋 und Datei. Der Teilen-Link aus dem Hash („In die
+Werkstatt") öffnet dasselbe Feld mit vorbelegter Def – ein Tap mehr, aber
+kein stilles Einsortieren. Bundle-DATEIEN (`format: tiltr-bundle`) laufen
+über dasselbe Feld: jedes Level muss parsen (sonst nichts), gleiche ID +
+höhere Version ersetzt sofort, gleiche/ältere Version fragt per Zwei-Tap.
+Level-IDs bleiben (Fortschritt bleibt), nur IDs, die in einem ANDEREN Bundle
+stecken, werden frisch. `exportFile` zählt die Version HOCH und speichert:
+Jede weitergegebene Datei ist eindeutig neuer als ihre Vorgängerin
+(Entscheidung: automatisch statt manuell).
+
+**Spielen.** Modus `bundle` (`{ bundleId, index }`): Intro-Titel „Bundle ·
+Level n · Name", Ergebnis mit „Weiter" bis zum letzten („Bundle geschafft!"),
+Geist und Duell wie bei eigenen Leveln. Erreichbar über ▶ in der Werkstatt
+UND als eigene Abschnitte unter den Welten im Kampagnen-Screen (Entscheidung:
+beides), gesperrte Level mit 🔒.
+
+**Debug-Import der Welten** (Entscheidung: ein Bundle pro Welt): 5× Version
+blendet je Welt „⇪ In Werkstatt importieren" ein; `bundles.importBuiltin`
+legt `builtin-w<n>` mit der App-Version als Bundle-Version an (2.10.0 →
+21000), ein erneuter Import ersetzt die Kopie. Dabei fiel auf: Die Kampagnen-
+Defs sind GESPIEGELT (`mirror`), und der Editor rechnete `buildFloorCells`
+ohne `def.mirror` – ein importiertes Welt-Level hätte im Editor ein anderes
+Labyrinth gezeigt als im Spiel. Beide Stellen (`edgeOpen`, `pickOpenDir`)
+übergeben jetzt den Spiegel wie der Loader. Der Rückweg (Bundle-Datei →
+`campaign.ts`) ist Handarbeit für mich: Datei geben, ich baue sie ein.
+
+**Ein stiller Fehler beim Bauen.** Die Migration lief im Unit-Test zu einem
+LEEREN Store, obwohl v1 gesetzt war: `newBundleId()` griff auf ein `let idSeq`
+zu, das im Modul UNTER `const data = load()` stand – Temporal Dead Zone,
+ReferenceError, verschluckt vom try/catch in `load()`. Die ID-Helfer stehen
+jetzt vor `load()`, mit Kommentar. Lektion: ein try/catch um den Modulstart
+ist richtig (kaputter Storage darf die App nicht töten), aber es frisst auch
+Programmierfehler – der Test war der einzige Zeuge.
+
+28 Units (Migration rein und im Store, CRUD, Reihenfolge, aktuelles Bundle,
+Fortschritt, Export/Version, parseFile/applyFile, fremde Level-IDs,
+importBuiltin, Einzel-Import, Draft). E2E Lauf 28: Migration → neues Bundle
+→ Import mit Ziel → ▼ → Spielen (Profil-Stand) → Kampagnen-Screen (Abschnitte,
+🔒, Debug-Knopf versteckt) → 5× Version → Welt 1 importiert → Export (…-v2.json)
+→ Re-Import gleich/neuer → Löschen → Editor speichert ins aktuelle Bundle.
+
 ## M39 „Glas ist Schwierigkeit" ✓ (v2.9.0) – Badge weg, Test ab hier
 
 **Die Meldung:** „Glasboden im kritischen Pfad ist doch nicht schlimm. Der

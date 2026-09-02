@@ -26,6 +26,9 @@ export interface ProfileData {
   daily: { date: string; first: number | null; best: number | null; attempts: number } | null;
   /** Serie: an aufeinanderfolgenden Tagen die Tages-Challenge beendet */
   streak: { count: number; last: string } | null;
+  /** Level-Bundles (M40): zuletzt gespielter Index je Bundle-ID – „weiter, wo
+   *  ich aufgehört habe". Bestzeiten der Level liegen weiter in `best`. */
+  bundleAt: Record<string, number>;
 }
 
 const DEFAULTS: ProfileData = {
@@ -38,6 +41,7 @@ const DEFAULTS: ProfileData = {
   name: '',
   daily: null,
   streak: null,
+  bundleAt: {},
 };
 
 const data: ProfileData = load();
@@ -57,6 +61,7 @@ function load(): ProfileData {
       name: typeof parsed.name === 'string' ? parsed.name.slice(0, 24) : '',
       daily: parsed.daily && typeof parsed.daily.date === 'string' ? parsed.daily : null,
       streak: parsed.streak && typeof parsed.streak.last === 'string' ? parsed.streak : null,
+      bundleAt: typeof parsed.bundleAt === 'object' && parsed.bundleAt ? parsed.bundleAt : {},
     };
   } catch {
     return { ...DEFAULTS };
@@ -174,6 +179,16 @@ export const profile = {
 
   streakInfo(): { count: number; last: string } | null {
     return data.streak;
+  },
+
+  /** Zuletzt gespielter Level-Index im Bundle (null = nie gespielt). */
+  bundlePos(bundleId: string): number | null {
+    const v = data.bundleAt[bundleId];
+    return typeof v === 'number' && isFinite(v) ? v : null;
+  },
+  setBundlePos(bundleId: string, index: number): void {
+    data.bundleAt[bundleId] = index;
+    save();
   },
 
   bestFor(key: string): number | null {

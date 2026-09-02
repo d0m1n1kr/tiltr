@@ -55,7 +55,9 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   eigene Ziel leuchtet ruhig weiter, und man rollt weiter – im Coop hält man
   so dem Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
   zum Wiederverbinden.
-- **🛠 Werkstatt** – eigene Level im Touch-Editor bauen (auf Tablets als
+- **🛠 Werkstatt** – eigene Level in **Level-Bundles** (Titel, Beschreibung,
+  Reihenfolge, ID + Version), spielbar wie eine Kampagne mit gespeichertem
+  Stand, als Ganzes exportier-/importierbar; Level im Touch-Editor bauen (auf Tablets als
   Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
   schalten, mehrstöckige Karten mit Transportern bauen, Eigenschaften
   feilen – während die Lösbarkeits-Beweise der Testsuite live als Badges

@@ -129,7 +129,14 @@ export function summarizeBackup(p: BackupPayload): {
     }
   };
   return {
-    levels: num(p.data["tiltr.workshop.v1"], (o) => o.levels),
+    // M40: Level liegen in Bundles (v2); v1 nur noch als Fallback alter Backups.
+    levels: p.data["tiltr.workshop.v2"]
+      ? num(p.data["tiltr.workshop.v2"], (o) =>
+          Array.isArray(o.bundles)
+            ? (o.bundles as Array<{ levels?: unknown[] }>).flatMap((x) => (Array.isArray(x.levels) ? x.levels : []))
+            : [],
+        )
+      : num(p.data["tiltr.workshop.v1"], (o) => o.levels),
     best: num(p.data["tiltr.profile"], (o) => o.best),
     ghosts: Object.keys(p.data).filter((k) => k.startsWith("tiltr.ghost."))
       .length,
