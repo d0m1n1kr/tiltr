@@ -651,7 +651,7 @@ const ctlChips = [...document.querySelectorAll<HTMLButtonElement>('#controlsRow 
       const at = new Date().toISOString();
       const payload = collectBackup(localStorage, __APP_VERSION__, at);
       const text = await encodeBackup(payload);
-      const how = await saveTextFile(backupFileName(at), text);
+      const how = await saveTextFile(backupFileName(at), text, 'file');
       status.textContent = t(how === 'share' ? 'bk.shared' : 'bk.saved', { n: Object.keys(payload.data).length, kb: Math.max(1, Math.round(text.length / 1024)) });
     })();
   });

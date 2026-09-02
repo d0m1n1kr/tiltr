@@ -146,4 +146,4 @@ export function summarizeBackup(p: BackupPayload): {
 
 /** Dateiname mit Datum – mehrere Sicherungen sollen nebeneinander liegen können. */
 export const backupFileName = (at: string): string =>
-  `tiltr-backup-${at.slice(0, 10)}.txt`;
+  `tiltr-backup-${at.slice(0, 10)}.tiltr`;

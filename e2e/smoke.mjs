@@ -4711,8 +4711,37 @@ if (want("27")) {
     const statusSave = (await page.textContent("#backupStatus")).trim();
     check(
       `💾 liefert eine Datei "${dl.suggestedFilename()}" (${text.length} Zeichen, Codec ${text[0]})`,
-      /^tiltr-backup-\d{4}-\d{2}-\d{2}\.txt$/.test(dl.suggestedFilename()) &&
+      /^tiltr-backup-\d{4}-\d{2}-\d{2}\.tiltr$/.test(dl.suggestedFilename()) &&
         /^[01][A-Za-z0-9_-]+$/.test(text.trim()),
+    );
+    // 2.11.7: Backup teilt wie die Exporte – nur die Datei, octet-stream, .tiltr.
+    await page.evaluate(() => {
+      window.__shared = null;
+      navigator.canShare = () => true;
+      navigator.share = (d) => {
+        window.__shared = {
+          n: d.files?.length ?? 0,
+          type: d.files?.[0]?.type,
+          name: d.files?.[0]?.name,
+          title: d.title,
+        };
+        return Promise.resolve();
+      };
+    });
+    await page.click("#backupSave");
+    await page.waitForTimeout(300);
+    const bkShared = await page.evaluate(() => {
+      const s = window.__shared;
+      delete navigator.share;
+      delete navigator.canShare;
+      return s;
+    });
+    check(
+      `Backup teilt als Datei ohne Titel-Text (${bkShared?.n} Datei, ${bkShared?.type}, ${bkShared?.name}, title=${bkShared?.title})`,
+      bkShared?.n === 1 &&
+        bkShared?.title === undefined &&
+        bkShared?.type === "application/octet-stream" &&
+        /^tiltr-backup-\d{4}-\d{2}-\d{2}\.tiltr$/.test(bkShared?.name ?? ""),
     );
     check(
       `Statuszeile meldet die Sicherung ("${statusSave}")`,

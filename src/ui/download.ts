@@ -5,8 +5,8 @@
 //
 // Zwei Sorten, gelernt am Signal-Test auf iOS (2.11.1–2.11.3):
 // - 'text' (text/plain, .txt): Signal fügt den INHALT als Nachricht ein –
-//   richtig für nichts, das als Anhang ankommen soll; das Backup bleibt so,
-//   weil „In Dateien sichern" damit funktioniert.
+//   richtig für nichts, das als Anhang ankommen soll. Seit 2.11.7 nutzt es
+//   niemand mehr (auch das Backup ist 'file'); bleibt als Option.
 // - 'file' (application/octet-stream, eigene Endung .tiltr): generischer
 //   Datentyp → Signal & Co. hängen die Datei als Anhang an. application/json
 //   ging gar nicht (iOS reichte nur den Titel weiter = Dateiname als
@@ -24,7 +24,7 @@ export const EXPORT_EXT = ".tiltr";
 export async function saveTextFile(
   name: string,
   text: string,
-  kind: ShareKind = "text",
+  kind: ShareKind = "file",
 ): Promise<"share" | "download"> {
   const file = new File([text], name, { type: SHARE_MIME[kind] });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };

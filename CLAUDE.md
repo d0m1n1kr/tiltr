@@ -294,10 +294,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   (Meta + :root). Neues Gerät ⇒ ein Eintrag in DEVICES.
 - `src/ui/download.ts` – `saveTextFile(name, text, kind)`: Web Share mit
   DATEI, wenn möglich, sonst Download. ZWEI Sorten, am Signal-Test auf iOS
-  gelernt: 'text' (`text/plain`, Backup .txt) fügt Signal als NACHRICHT ein;
-  'file' (`application/octet-stream`, Endung `EXPORT_EXT` = `.tiltr`) kommt
+  gelernt: 'text' (`text/plain`) fügt Signal als NACHRICHT ein (nutzt niemand
+  mehr); 'file' (`application/octet-stream`, Endung `EXPORT_EXT` = `.tiltr`) kommt
   als ANHANG an. `application/json` ging gar nicht (nur der Titel kam an).
-  Level-/Bundle-Exporte sind 'file'; Importe lesen den Inhalt, nie den Typ,
+  Level-/Bundle-Exporte UND das Backup sind 'file'; Importe lesen den Inhalt, nie den Typ,
   und nehmen `.tiltr`/`.json`/`.txt`.
   Geteilt wird NUR die Datei, ohne `title`/`text`: Safari reicht den Titel
   als eigenes Text-Element mit, und Signal nimmt dann den Text statt der Datei.

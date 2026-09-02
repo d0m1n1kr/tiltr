@@ -696,6 +696,8 @@ title). E2E (Lauf 28) verlangt `title === undefined` im Share-Stub.
 2.11.6: Das ⇩-Symbol log – der Weg ist Teilen, nicht Herunterladen. Jetzt 📤
 an allen drei Stellen (Bundle-Leiste, Level-Karte, Editor) und die Tooltips
 sagen „Als Datei teilen".
+2.11.7: Das Backup geht denselben Weg – `tiltr-backup-….tiltr`, octet-stream,
+nur die Datei. Wiederherstellen nimmt `.tiltr` und alte `.txt`-Sicherungen.
 
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
