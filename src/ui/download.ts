@@ -34,7 +34,10 @@ export async function saveTextFile(
     nav.share
   ) {
     try {
-      await nav.share({ files: [file], title: name });
+      // KEIN title/text: Safari übergibt ihn als eigenes Text-Element, und
+      // Signal (iOS) nimmt dann den Text statt der Datei – beim Empfänger
+      // stand nur der Dateiname (2.11.4). Nur die Datei, sonst nichts.
+      await nav.share({ files: [file] });
       return "share";
     } catch {
       /* abgebrochen oder verweigert – dann eben Download */

@@ -299,6 +299,8 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   als ANHANG an. `application/json` ging gar nicht (nur der Titel kam an).
   Level-/Bundle-Exporte sind 'file'; Importe lesen den Inhalt, nie den Typ,
   und nehmen `.tiltr`/`.json`/`.txt`.
+  Geteilt wird NUR die Datei, ohne `title`/`text`: Safari reicht den Titel
+  als eigenes Text-Element mit, und Signal nimmt dann den Text statt der Datei.
 - `src/ui/wakelock.ts` – Bildschirmsperre: Gespielt wird durch NEIGEN, ohne
   Wake Lock dimmt Android mitten im Lauf. `want()` beim Spielstart und im
   Hörtest, `release()` im Menü. Die Sperre geht im HINTERGRUND verloren und

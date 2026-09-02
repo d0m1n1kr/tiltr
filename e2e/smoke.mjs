@@ -5115,8 +5115,9 @@ if (want("28")) {
       return s;
     });
     check(
-      `Bundle-Export teilt als Datei (${shared?.n} Datei, ${shared?.type}, ${shared?.name})`,
+      `Bundle-Export teilt als Datei OHNE Titel-Text (${shared?.n} Datei, ${shared?.type}, ${shared?.name}, title=${shared?.title})`,
       shared?.n === 1 &&
+        shared?.title === undefined &&
         shared?.type === "application/octet-stream" &&
         /^tiltr-bundle-turnier-v3\.tiltr$/.test(shared?.name ?? ""),
     );

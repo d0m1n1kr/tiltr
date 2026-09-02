@@ -687,6 +687,12 @@ sichern" funktioniert damit), 'file' für Level- und Bundle-Exporte. Der
 Import nimmt `.tiltr` zusätzlich zu `.json`/`.txt` – gelesen wird der Inhalt.
 E2E: Share-Stubs verlangen jetzt octet-stream und `.tiltr`. Signal selbst
 bleibt Gerätetest.
+2.11.5, nächster Bericht: Aus „Dateien" heraus nimmt Signal die `.tiltr`
+als Anhang, direkt aus dem Teilen-Dialog kommt weiter nur der Name. Also
+liegt es nicht am Typ, sondern am ZWEITEN Element: Safari reicht `title`
+als eigenen Text mit, und Signals Share-Extension greift den Text statt der
+Datei. `saveTextFile` teilt jetzt NUR die Datei (`share({ files })`, kein
+title). E2E (Lauf 28) verlangt `title === undefined` im Share-Stub.
 
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
