@@ -1,5 +1,5 @@
 // Werkstatt-Bibliothek (M40: Level-BUNDLES). Die Werkstatt zeigt immer EIN
-// Bundle: oben die Bundle-Leiste (Umschalter, ＋, ✎ Titel/Beschreibung, ⇩
+// Bundle: oben die Bundle-Leiste (Umschalter, ＋, ✎ Titel/Beschreibung, 📤
 // Export, 🗑, ▶ „Weiter bei …"), darunter die Level des Bundles in
 // Spielreihenfolge mit ▲▼ zum Sortieren und den bekannten Aktionen (Spielen /
 // Bearbeiten / Duplizieren / Teilen / Export / Löschen als Zwei-Tap).
@@ -265,7 +265,7 @@ export function setupWorkshopPanel(opts: {
         }
       })();
     });
-    iconBtn('⇩', t('ed.export'), () => {
+    iconBtn('📤', t('ed.export'), () => {
       const name = `tiltr-level-${slug(String(level.def.name ?? level.id))}${EXPORT_EXT}`;
       void saveTextFile(name, exportPayload(level.def), 'file');
     });

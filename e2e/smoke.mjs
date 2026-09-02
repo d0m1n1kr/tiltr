@@ -2405,6 +2405,11 @@ if (want("14")) {
       delete navigator.canShare;
       return s;
     });
+    const edGlyph = (await page.textContent("#edExport")).trim();
+    check(
+      `Editor-Export-Knopf trägt das Teilen-Symbol („${edGlyph}")`,
+      edGlyph === "📤",
+    );
     check(
       `Editor-Export teilt als Datei (${edShared?.n} Datei, ${edShared?.type}, ${edShared?.name})`,
       edShared?.n === 1 &&
@@ -5114,6 +5119,11 @@ if (want("28")) {
       delete navigator.canShare;
       return s;
     });
+    const exportGlyph = (await page.textContent("#wsBundleExport")).trim();
+    check(
+      `Export-Knopf trägt das Teilen-Symbol („${exportGlyph}")`,
+      exportGlyph === "📤",
+    );
     check(
       `Bundle-Export teilt als Datei OHNE Titel-Text (${shared?.n} Datei, ${shared?.type}, ${shared?.name}, title=${shared?.title})`,
       shared?.n === 1 &&

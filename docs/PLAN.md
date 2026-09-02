@@ -693,6 +693,9 @@ liegt es nicht am Typ, sondern am ZWEITEN Element: Safari reicht `title`
 als eigenen Text mit, und Signals Share-Extension greift den Text statt der
 Datei. `saveTextFile` teilt jetzt NUR die Datei (`share({ files })`, kein
 title). E2E (Lauf 28) verlangt `title === undefined` im Share-Stub.
+2.11.6: Das ⇩-Symbol log – der Weg ist Teilen, nicht Herunterladen. Jetzt 📤
+an allen drei Stellen (Bundle-Leiste, Level-Karte, Editor) und die Tooltips
+sagen „Als Datei teilen".
 
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
