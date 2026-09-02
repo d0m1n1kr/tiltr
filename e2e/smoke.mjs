@@ -119,7 +119,9 @@ if (want("1")) {
     });
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(String(e)));
-    await page.goto(`${BASE}/?seed=28&nosplash`);
+    // Seed 6: Start (2,0) ist nach rechts UND unten offen – die Tastatur-Checks
+    // rollen dorthin (M42 hat die Zufallsfolge des Generators verändert).
+    await page.goto(`${BASE}/?seed=6&nosplash`);
 
     const version = (await page.textContent("#version")).trim();
     check(
@@ -197,7 +199,7 @@ if (want("2")) {
       locale: "de-DE",
     });
     page.on("pageerror", (e) => errors.push(String(e)));
-    await page.goto(`${BASE}/?seed=28&nosplash`);
+    await page.goto(`${BASE}/?seed=6&nosplash`);
     const fire = (beta, gamma) =>
       page.evaluate(
         ([b, g]) => {

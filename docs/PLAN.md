@@ -612,6 +612,57 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M42 „Rätsel im Licht" ✓ (v2.12.0) – Generatoren: Ebenen, helle Ebenen, Tür-Rätsel
+
+**Die Frage:** Können Zufallsspiel und Tages-Challenge mehrere Ebenen haben,
+helle Ebenen, und die Mehrfach-Öffner-Türen aus M41 – „gerade bei hellen
+Ebenen eine zusätzliche Schwierigkeit"? Stand vorher: Daily 2–3 Ebenen, Quick
+eine; Türen, Schlüssel, Zeitschlösser und helle Ebenen setzte kein Generator.
+
+**Der Planer.** `levels/puzzle.ts` (`planDoorPuzzle`, rein, nur der übergebene
+Rng): EINE Tür auf dem Pflichtweg Ankunft → Ausgang einer Ebene (mittleres
+Drittel), davor die Öffner – Schlüssel und optional ein Zeitschloss, bei mehr
+als einem `require: 'all'`. Warum das BEWEISBAR bleibt: Der Grundriss ist ein
+perfektes Maze, also ein Baum. Die Tür teilt ihn in genau zwei Teile; alle
+Öffner liegen im Ankunfts-Teil (BFS ohne die Türkante), bevorzugt in
+Sackgassen abseits des Rückgrats. Damit sind sie ohne die Tür erreichbar
+(`openers`), die Tür öffnet im Fixpunkt (`goal`), wer durch ist, braucht sie
+nicht mehr (`softlock`), und das Zeitschloss steht höchstens 6 Zellen vor der
+Tür – 8 s reichen mit dem 2,5×-Faktor des `timer`-Beweises bequem. Die Wege
+zu den Öffnern kommen als Pflichtwege zurück, damit Anker, Glas und Automat
+sie nicht verstellen (derselbe Schutz wie für Kristalle und Gems). Der Planer
+läuft VOR den anderen Zutaten: Seine Öffner brauchen freie Zellen.
+
+**Quick.** Presets tragen `floors`, `brightChance`, `puzzle`. Leicht bleibt
+pur (eine Ebene, dunkel, keine Tür). Mittel: eine Ebene, zu 30 % hell, Tür
+mit zwei Schlüsseln. Schwer: ZWEI Ebenen à 8×11 mit Transporter-Kette (statt
+einer 11×15), eine davon hell, dort die Tür mit zwei Schlüsseln plus
+Zeitschloss – alle drei gleichzeitig. Der Generator hat dafür die
+Ebenen-Schleife der Tages-Challenge übernommen (Landepunkte vorab, Ankunft =
+Checkpoint, Zutaten per `deal` verteilt, Automat auf genau einer Ebene). Nie
+sind alle Ebenen hell; das Rätsel liegt auf der ersten hellen, sonst auf der
+letzten Ebene.
+
+**Daily.** Wochentage tragen `bright` und `puzzle`: Montag/Dienstag dunkel
+und ohne Tür (sanfter Einstieg bleibt), Mittwoch/Donnerstag zwei Schlüssel,
+Freitag Schlüssel + Zeitschloss, Samstag/Sonntag zwei Schlüssel + Zeitschloss
+– jeweils auf der einen hellen Ebene. Der Wächter-Beweis am Ende läuft wie
+bisher über das fertige Level, Türen eingeschlossen.
+
+**Tests.** `tests/puzzle.test.ts`: Planer auf einem echten Maze (Tür im
+mittleren Drittel auf offener Kante, Öffner im Ankunfts-Teil, Schalter nahe
+der Tür, 'all' nur bei mehr als einem Öffner, belegte Zellen gemieden, kurzer
+Weg → kein Rätsel); Quick über zwölf Seeds × drei Presets und Daily über 21
+Tage durch den KOMPLETTEN Prüfbericht; Struktur je Preset/Wochentag; „die Tür
+ist Pflicht" (ohne sie bleibt das Ziel unerreichbar). Die alten Quick-Tests
+zählen Zutaten jetzt über alle Ebenen. Alles auf Anhieb grün – der Baum-
+Beweis trägt.
+
+**Ehrlich zur Grenze:** Hell heißt sichtbar, nicht leicht – aber die
+Schwierigkeit eines Rätsels mit drei Öffnern auf einer hellen Ebene ist eine
+Spielgefühl-Frage, die nur das Gerät beantwortet. Die Zahlen (30 %, 8 s, sechs
+Zellen) sind Startwerte.
+
 ## M41 „Alle oder einer" ✓ (v2.11.0) – Türen mit mehreren Öffnern, helle Ebenen
 
 **Zwei Editor-Wünsche.** (1) Mehrere Schlüssel und Zeitschloss-Schalter

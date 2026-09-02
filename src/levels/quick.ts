@@ -6,6 +6,7 @@ import { mulberry32, type Rng } from '../core/rng';
 import { BALL_R } from '../core/constants';
 import type { ElementDef, LevelDef } from './schema';
 import { playlistFrom } from '../music';
+import { planDoorPuzzle } from './puzzle';
 
 export type Preset = 'easy' | 'normal' | 'hard';
 
@@ -27,6 +28,15 @@ export const PRESETS: Record<
     /** M27: Musikautomat – 0 oder 1. Mehr als EINER pro Ebene wäre sinnlos:
      *  Es gibt einen Musik-Bus, es klingt immer nur der nächste. */
     jukeboxes: 0 | 1;
+    /** M42: Ebenen je Level (Transporter-Kette wie die Tages-Challenge) */
+    floors: number;
+    /** M42: Chance je Ebene, HELL zu sein (revealAll) – bei mehreren Ebenen
+     *  bleibt mindestens eine dunkel */
+    brightChance: number;
+    /** M42: Tür-Rätsel auf dem Pflichtweg – Schlüssel (+ Zeitschloss), bei
+     *  mehr als einem Öffner `require: 'all'`; null = keins. Liegt bevorzugt
+     *  auf der hellen Ebene: Sichtbarkeit nimmt die Suche, das Rätsel bleibt. */
+    puzzle: { keys: number; switch: boolean } | null;
   }
 > = {
   easy: {
@@ -42,6 +52,9 @@ export const PRESETS: Record<
     anchors: 0,
     glass: 0,
     jukeboxes: 0,
+    floors: 1,
+    brightChance: 0,
+    puzzle: null,
   },
   normal: {
     label: 'Mittel',
@@ -56,12 +69,16 @@ export const PRESETS: Record<
     anchors: 1,
     glass: 1,
     jukeboxes: 1,
+    floors: 1,
+    brightChance: 0.3,
+    puzzle: { keys: 2, switch: false },
   },
-  // Deutlich größer als der Screen (Multi-Screen): die Kamera folgt dem Ball.
+  // Größer als der Screen (Multi-Screen): die Kamera folgt dem Ball – und seit
+  // M42 ZWEI Ebenen mit Transporter, eine davon hell mit Tür-Rätsel.
   hard: {
     label: 'Schwer',
-    cols: 11,
-    rows: 15,
+    cols: 8,
+    rows: 11,
     holes: 11,
     wind: 4,
     brittleChance: 0.2,
@@ -71,6 +88,9 @@ export const PRESETS: Record<
     anchors: 2,
     glass: 3,
     jukeboxes: 1,
+    floors: 2,
+    brightChance: 0.5,
+    puzzle: { keys: 2, switch: true },
   },
 };
 
@@ -123,107 +143,139 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
   const p = PRESETS[preset];
   const { cols, rows } = p;
   const rng = mulberry32(seed);
-  const mazeSeed = Math.floor(rng() * 0x7fffffff);
   const breathPeriod = p.breath.open + p.breath.closed + 2 * p.breath.ramp;
 
-  // Start & Ziel zufällig (seeded) statt immer oben links -> unten rechts;
-  // Mindestabstand (Manhattan) hält die Strecke lang, Fallback: Ecken.
-  const minDist = Math.max(cols, rows);
-  let start: [number, number] = [0, 0];
-  let goal: [number, number] = [cols - 1, rows - 1];
-  for (let i = 0; i < 80; i++) {
-    const s: [number, number] = [Math.floor(rng() * cols), Math.floor(rng() * rows)];
-    const g: [number, number] = [Math.floor(rng() * cols), Math.floor(rng() * rows)];
-    if (Math.abs(s[0] - g[0]) + Math.abs(s[1] - g[1]) >= minDist) {
-      start = s;
-      goal = g;
-      break;
+  // Zutaten deterministisch auf die Ebenen verteilen (wie die Tages-Challenge).
+  const deal = (total: number): number[] => {
+    const counts = new Array<number>(p.floors).fill(0);
+    for (let i = 0; i < total; i++) counts[Math.floor(rng() * p.floors)]!++;
+    return counts;
+  };
+  const holesPer = deal(p.holes);
+  const windPer = deal(p.wind);
+  const crystalsPer = deal(p.crystals);
+  const anchorsPer = deal(p.anchors);
+  const glassPer = deal(p.glass);
+  const jukeFloor = p.jukeboxes ? Math.floor(rng() * p.floors) : -1;
+  // Helle Ebenen: je Ebene gewürfelt, aber nie ALLE (bei mehreren Ebenen
+  // bleibt die Welt irgendwo dunkel). Das Rätsel liegt auf der ersten hellen,
+  // sonst auf der letzten Ebene.
+  const bright = Array.from({ length: p.floors }, () => rng() < p.brightChance);
+  if (p.floors > 1 && bright.every(Boolean)) bright[0] = false;
+  const puzzleFloor = p.puzzle ? (bright.indexOf(true) !== -1 ? bright.indexOf(true) : p.floors - 1) : -1;
+
+  // Start (E1) und Landepunkte der Transporter-Kette vorab würfeln.
+  const randomCell = (): [number, number] => [Math.floor(rng() * cols), Math.floor(rng() * rows)];
+  const landings: Array<[number, number]> = Array.from({ length: p.floors }, randomCell);
+
+  const floors: LevelDef['floors'] = [];
+  for (let f = 0; f < p.floors; f++) {
+    const mazeSeed = Math.floor(rng() * 0x7fffffff);
+    const cells = generateMaze(cols, rows, mulberry32(mazeSeed));
+    const start = landings[f]!;
+    const isLast = f === p.floors - 1;
+
+    // Ausgang (Ziel bzw. Transporter) zufällig, Mindestabstand (Manhattan)
+    // hält die Strecke lang; Fallback: gegenüberliegende Ecke.
+    const minDist = Math.max(cols, rows);
+    let exit: [number, number] = [cols - 1 - (start[0] > cols / 2 ? cols - 1 : 0), rows - 1 - (start[1] > rows / 2 ? rows - 1 : 0)];
+    for (let i = 0; i < 80; i++) {
+      const g = randomCell();
+      if (Math.abs(start[0] - g[0]) + Math.abs(start[1] - g[1]) >= minDist) {
+        exit = g;
+        break;
+      }
     }
-  }
 
-  // Dasselbe Maze wie im Loader erzeugen, um Checkpoints auf den Lösungsweg zu legen.
-  const cells = generateMaze(cols, rows, mulberry32(mazeSeed));
-  const path = solveMaze(cells, cols, rows, { x: start[0], y: start[1] }, { x: goal[0], y: goal[1] });
-  const cpCells: Array<[number, number]> = [
-    [path[Math.floor(path.length / 3)]!.x, path[Math.floor(path.length / 3)]!.y],
-    [path[Math.floor((2 * path.length) / 3)]!.x, path[Math.floor((2 * path.length) / 3)]!.y],
-  ];
+    // Dasselbe Maze wie im Loader, um Checkpoints auf den Lösungsweg zu legen.
+    const path = solveMaze(cells, cols, rows, { x: start[0], y: start[1] }, { x: exit[0], y: exit[1] });
+    const cpCells: Array<[number, number]> = [
+      [path[Math.floor(path.length / 3)]!.x, path[Math.floor(path.length / 3)]!.y],
+      [path[Math.floor((2 * path.length) / 3)]!.x, path[Math.floor((2 * path.length) / 3)]!.y],
+    ];
 
-  const forbidden = new Set<number>([start[1] * cols + start[0], goal[1] * cols + goal[0]]);
-  for (const [x, y] of cpCells) forbidden.add(y * cols + x);
+    const forbidden = new Set<number>([start[1] * cols + start[0], exit[1] * cols + exit[0]]);
+    for (const [x, y] of cpCells) forbidden.add(y * cols + x);
 
-  const elements: ElementDef[] = cpCells.map((cell) => ({ type: 'checkpoint', cell, r: 30 }));
-  for (const cell of pickCells(p.holes, forbidden, rng, cols, rows)) {
-    elements.push({
-      type: 'hole',
-      cell,
-      r: BALL_R * 0.95,
-      jitter: [(rng() - 0.5) * 16, (rng() - 0.5) * 16],
-      // offset entzerrt die Atem-Zyklen, damit nie alle Löcher synchron sind
-      breathing: { ...p.breath, offset: rng() * breathPeriod },
+    const elements: ElementDef[] = [];
+    if (f > 0) elements.push({ type: 'checkpoint', cell: start, r: 30 }); // Ankunft
+    for (const cell of cpCells) elements.push({ type: 'checkpoint', cell, r: 30 });
+    if (!isLast) elements.push({ type: 'transporter', cell: exit, target: { floor: f + 1, cell: landings[f + 1]! }, r: 32 });
+
+    // Pflichtwege: Lösungsweg + Wege zu Kristallen (+ Öffnern) – im perfekten
+    // Maze eindeutig, die Invariante ist damit testbar.
+    const protectedCells = new Set<number>(path.map((c) => c.y * cols + c.x));
+
+    // M42: Tür-Rätsel VOR den anderen Zutaten – seine Öffner brauchen freie
+    // Zellen, seine Wege werden geschützt.
+    if (f === puzzleFloor && p.puzzle) {
+      const plan = planDoorPuzzle(cells, cols, rows, rng, path, forbidden, p.puzzle, `tor-e${f + 1}`);
+      if (plan) {
+        elements.push(...plan.elements);
+        for (const k of plan.protectedCells) protectedCells.add(k);
+      }
+    }
+
+    for (const cell of pickCells(holesPer[f]!, forbidden, rng, cols, rows)) {
+      elements.push({
+        type: 'hole',
+        cell,
+        r: BALL_R * 0.95,
+        jitter: [(rng() - 0.5) * 16, (rng() - 0.5) * 16],
+        // offset entzerrt die Atem-Zyklen, damit nie alle Löcher synchron sind
+        breathing: { ...p.breath, offset: rng() * breathPeriod },
+      });
+    }
+    const dirs = ['n', 'e', 's', 'w'] as const;
+    for (const cell of pickCells(windPer[f]!, forbidden, rng, cols, rows)) {
+      elements.push({ type: 'windZone', cell, dir: dirs[Math.floor(rng() * 4)]!, force: 1150 });
+    }
+
+    // M11: Echo-Kristalle frei platzieren; Sog-Anker und Glasboden beweisbar
+    // ABSEITS der Pflichtwege.
+    const crystalCells = pickCells(crystalsPer[f]!, forbidden, rng, cols, rows);
+    for (const cell of crystalCells) elements.push({ type: 'echoCrystal', cell, r: 16 });
+    for (const [cx, cy] of crystalCells) {
+      for (const c of solveMaze(cells, cols, rows, { x: start[0], y: start[1] }, { x: cx, y: cy })) {
+        protectedCells.add(c.y * cols + c.x);
+      }
+    }
+    const offPath = (key: number) => !protectedCells.has(key);
+    for (const cell of pickCellsWhere(anchorsPer[f]!, forbidden, rng, cols, rows, offPath)) {
+      elements.push({ type: 'anchor', cell, r: 120, force: 2000 });
+    }
+    for (const cell of pickCellsWhere(glassPer[f]!, forbidden, rng, cols, rows, offPath)) {
+      elements.push({ type: 'glass', cell });
+    }
+    // M27: Der Musikautomat ist eine WAND – er muss noch strenger abseits
+    // liegen als Anker und Glas, denn er nimmt die Zelle für immer. Derselbe
+    // offPath-Filter (Lösungsweg + Wege zu Kristallen und Öffnern) leistet
+    // genau das: Im perfekten Maze schneidet eine Zelle abseits dieser Pfade
+    // nur ihren eigenen Ast ab, und dort steht nichts, was man braucht.
+    // Zusätzlich muss die Zelle vom Start aus erreichbar sein, sonst könnte
+    // man den Automaten nicht anrempeln (`floodMaze`). Nur EINER pro Ebene:
+    // Es gibt einen Musik-Bus, es klingt immer nur der nächste.
+    if (f === jukeFloor) {
+      const open = floodMaze(cells, cols, rows, { x: start[0], y: start[1] });
+      const placeable = (key: number) => offPath(key) && open.has(key);
+      const [cell] = pickCellsWhere(1, forbidden, rng, cols, rows, placeable);
+      if (cell) elements.push({ type: 'jukebox', cell, playlist: playlistFrom(rng), volume: 1, startIndex: 0 });
+    }
+
+    floors.push({
+      size: [cols, rows],
+      maze: { seed: mazeSeed, carve: [], add: [], brittle: [], absorb: [], brittleChance: p.brittleChance, brittleHits: 3 },
+      elements,
+      start,
+      goal: isLast ? exit : null,
+      bright: bright[f]!,
     });
-  }
-  const dirs = ['n', 'e', 's', 'w'] as const;
-  for (const cell of pickCells(p.wind, forbidden, rng, cols, rows)) {
-    elements.push({ type: 'windZone', cell, dir: dirs[Math.floor(rng() * 4)]!, force: 1150 });
-  }
-
-  // M11: Echo-Kristalle frei platzieren; Sog-Anker und Glasboden beweisbar
-  // ABSEITS der Pflichtwege (Lösungsweg + Wege zu den Kristallen) – im
-  // perfekten Maze sind diese Pfade eindeutig, die Invariante ist damit
-  // testbar (tests/levels.test.ts prüft sie über viele Seeds).
-  const crystalCells = pickCells(p.crystals, forbidden, rng, cols, rows);
-  for (const cell of crystalCells) elements.push({ type: 'echoCrystal', cell, r: 16 });
-  const protectedCells = new Set<number>(path.map((c) => c.y * cols + c.x));
-  for (const [cx, cy] of crystalCells) {
-    for (const c of solveMaze(cells, cols, rows, { x: start[0], y: start[1] }, { x: cx, y: cy })) {
-      protectedCells.add(c.y * cols + c.x);
-    }
-  }
-  const offPath = (key: number) => !protectedCells.has(key);
-  for (const cell of pickCellsWhere(p.anchors, forbidden, rng, cols, rows, offPath)) {
-    elements.push({ type: 'anchor', cell, r: 120, force: 2000 });
-  }
-  for (const cell of pickCellsWhere(p.glass, forbidden, rng, cols, rows, offPath)) {
-    elements.push({ type: 'glass', cell });
-  }
-  // M27: Der Musikautomat ist eine WAND – er muss noch strenger abseits
-  // liegen als Anker und Glas, denn er nimmt die Zelle für immer. Derselbe
-  // offPath-Filter (Lösungsweg + Wege zu den Kristallen) leistet genau das:
-  // Im perfekten Maze schneidet eine Zelle abseits dieser Pfade nur ihren
-  // eigenen Ast ab, und dort steht nichts, was man braucht.
-  // Der Automat ist eine WAND und muss noch strenger abseits liegen als
-  // Anker und Glas: Er nimmt die Zelle für immer. Derselbe offPath-Filter
-  // (Lösungsweg + Wege zu den Kristallen) leistet das – im perfekten Maze
-  // schneidet eine Zelle abseits dieser Pfade nur ihren eigenen Ast ab, und
-  // dort steht nichts, was man braucht. Zusätzlich muss die Zelle vom Start
-  // aus erreichbar sein, sonst könnte man den Automaten nicht anrempeln
-  // (deshalb `floodMaze` – ein eingemauerter Automat ist stumme Deko).
-  //
-  // Nur EINER pro Ebene, und das ist keine Sparsamkeit: Es gibt einen
-  // Musik-Bus, es klingt immer nur der nächste Automat. Zwei nebeneinander
-  // wären außerdem eine Fehlerquelle für sich – der erste kann dem zweiten
-  // den Zuweg nehmen (genau das fand die Testsuite in zwei Anläufen).
-  if (p.jukeboxes) {
-    const open = floodMaze(cells, cols, rows, { x: start[0], y: start[1] });
-    const placeable = (key: number) => offPath(key) && open.has(key);
-    const [cell] = pickCellsWhere(1, forbidden, rng, cols, rows, placeable);
-    if (cell) elements.push({ type: 'jukebox', cell, playlist: playlistFrom(rng), volume: 1, startIndex: 0 });
   }
 
   return {
     id: `quick-${preset}-${seed}`,
     name: 'Schnelles Spiel',
     pingBudget: p.pings,
-    floors: [
-      {
-        size: [cols, rows],
-        maze: { seed: mazeSeed, carve: [], add: [], brittle: [], absorb: [], brittleChance: p.brittleChance, brittleHits: 3 },
-        elements,
-        start,
-        goal,
-        bright: false,
-      },
-    ],
+    floors,
   };
 }

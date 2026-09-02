@@ -1,3 +1,4 @@
+import { validateLevel } from '../src/levels/validate';
 import { describe, expect, it } from 'vitest';
 import { TUTORIAL_LEVELS } from '../src/levels/tutorial';
 import { loadLevel } from '../src/levels/loader';
@@ -71,19 +72,25 @@ describe('Presets', () => {
     for (const preset of Object.keys(PRESETS) as Preset[]) {
       for (const seed of [1, 42]) {
         const def = generateQuickLevel(seed, preset);
-        const { world } = loadLevel(def);
-        expect(world.holes).toHaveLength(PRESETS[preset].holes);
-        expect(world.windZones).toHaveLength(PRESETS[preset].wind);
-        expect(world.checkpoints).toHaveLength(2);
+        const loaded = loadLevel(def);
+        // M42: Zutaten sind ueber ALLE Ebenen verteilt (Schwer hat zwei);
+        // Checkpoints: zwei auf jedem Loesungsweg plus die Ankunft ab Ebene 2.
+        const sum = (pick: (w: typeof loaded.world) => unknown[]) => loaded.floors.reduce((n, f) => n + pick(f.world).length, 0);
+        expect(sum((w) => w.holes)).toBe(PRESETS[preset].holes);
+        expect(sum((w) => w.windZones)).toBe(PRESETS[preset].wind);
+        expect(sum((w) => w.checkpoints)).toBe(2 * def.floors.length + (def.floors.length - 1));
         expect(def.pingBudget).toBe(PRESETS[preset].pings);
-        expect(isSolvable(def)).toBe(true);
+        // M42: mehrere Ebenen – der goal-Beweis statt des Ein-Ebenen-Helfers
+        expect(validateLevel(def).find((c) => c.key === 'goal')?.ok, `${preset}/${seed}`).toBe(true);
       }
     }
   });
 
   it('Presets unterscheiden sich in der Feldgröße', () => {
     expect(generateQuickLevel(1, 'easy').floors[0]!.size).toEqual([5, 7]);
-    expect(generateQuickLevel(1, 'hard').floors[0]!.size).toEqual([11, 15]);
+    // M42: Schwer ist zwei Ebenen a 8x11 statt einer 11x15
+    expect(generateQuickLevel(1, 'hard').floors[0]!.size).toEqual([8, 11]);
+    expect(generateQuickLevel(1, 'hard').floors).toHaveLength(2);
   });
 });
 

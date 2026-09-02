@@ -333,20 +333,22 @@ describe('Schnelles Spiel', () => {
     for (const seed of [1, 7, 42, 99, 555, 1234, 4711, 90210]) {
       for (const preset of ['easy', 'normal', 'hard'] as Preset[]) {
         const def = generateQuickLevel(seed, preset);
-        const floor = def.floors[0]!;
-        const count = (t: string) => floor.elements.filter((e) => e.type === t).length;
+        // M42: „Schwer" hat zwei Ebenen – die Zutaten sind über alle verteilt.
+        const count = (t: string) => def.floors.reduce((n, f) => n + f.elements.filter((e) => e.type === t).length, 0);
         expect(count('echoCrystal'), `${preset}/${seed}`).toBe(PRESETS[preset].crystals);
         expect(count('anchor'), `${preset}/${seed}`).toBe(PRESETS[preset].anchors);
         expect(count('glass'), `${preset}/${seed}`).toBe(PRESETS[preset].glass);
         // Konservatives Modell: Glas- und Anker-Zellen komplett gesperrt –
-        // Ziel, Checkpoints UND Kristalle müssen erreichbar bleiben.
+        // Ziel, Checkpoints, Transporter, Öffner UND Kristalle müssen erreichbar bleiben.
         const safe = reachable(def, { brittleOpen: false, doorsOpen: true, glassBlocked: true, anchorsBlocked: true });
-        expect(safe.has(cellKey(0, floor.goal!)), `${preset}/${seed}: Ziel`).toBe(true);
-        for (const el of floor.elements) {
-          if (el.type === 'checkpoint' || el.type === 'echoCrystal') {
-            expect(safe.has(cellKey(0, el.cell)), `${preset}/${seed}: ${el.type} ${el.cell}`).toBe(true);
+        def.floors.forEach((floor, fl) => {
+          if (floor.goal) expect(safe.has(cellKey(fl, floor.goal)), `${preset}/${seed}: Ziel`).toBe(true);
+          for (const el of floor.elements) {
+            if (el.type === 'checkpoint' || el.type === 'echoCrystal' || el.type === 'transporter' || el.type === 'key' || el.type === 'timedSwitch') {
+              expect(safe.has(cellKey(fl, el.cell)), `${preset}/${seed}: ${el.type} E${fl + 1} ${el.cell}`).toBe(true);
+            }
           }
-        }
+        });
       }
     }
   });
@@ -359,9 +361,9 @@ describe('Schnelles Spiel', () => {
     for (const seed of [1, 7, 42, 99, 555, 1234, 4711, 90210, 31337, 8080]) {
       for (const preset of ['easy', 'normal', 'hard'] as Preset[]) {
         const def = generateQuickLevel(seed, preset);
-        const floor = def.floors[0]!;
-        const boxes = floor.elements.filter((e) => e.type === 'jukebox');
+        const boxes = def.floors.flatMap((f) => f.elements.filter((e) => e.type === 'jukebox'));
         expect(boxes.length, `${preset}/${seed}`).toBe(PRESETS[preset].jukeboxes);
+        for (const f of def.floors) expect(f.elements.filter((e) => e.type === 'jukebox').length, `${preset}/${seed}: je Ebene`).toBeLessThanOrEqual(1);
         for (const checks of [validateLevel(def)]) {
           for (const c of checks) {
             if (c.key === 'items') continue; // optional (Gems dürfen hinter Glas liegen)

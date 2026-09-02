@@ -183,6 +183,16 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   links/unten rechts liegen – Achse passend zu Richtungsbezügen im
   Intro-Text wählen ('x' erhält oben/unten, 'y' links/rechts);
   tests/mirror.test.ts erzwingt die Ecken-Verteilung.
+- `src/levels/puzzle.ts` – TÜR-RÄTSEL für die Generatoren (M42):
+  `planDoorPuzzle` setzt EINE Tür auf den Pflichtweg einer Ebene, alle Öffner
+  (Schlüssel, optional Zeitschloss ≤ 6 Zellen davor, 8 s) in den
+  ANKUNFTS-TEIL des Baums – im perfekten Maze teilt eine Türkante den Baum in
+  genau zwei Teile, deshalb bleiben goal/openers/softlock/timer beweisbar
+  grün; `require: 'all'` bei mehr als einem Öffner. Läuft VOR den anderen
+  Zutaten, liefert die Öffner-Wege als Pflichtwege (Schutz vor Anker, Glas,
+  Automat). Quick-Presets: `floors`, `brightChance`, `puzzle` („Schwer" hat
+  zwei Ebenen); Daily-Wochentage: `bright`, `puzzle` (Mo/Di keins). Nie alle
+  Ebenen hell; das Rätsel liegt auf der ersten hellen Ebene.
 - `src/levels/daily.ts` – Tages-Challenge: Wächter werden GENERIERT UND
   BEWIESEN. Am Ende läuft `guardsProof` (aus validate.ts herausgezogen –
   derselbe Beweis, den das Editor-Badge zeigt); ist er rot, wird der

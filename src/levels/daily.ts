@@ -10,6 +10,7 @@ import { mulberry32, seedFromString, type Rng } from '../core/rng';
 import { BALL_R } from '../core/constants';
 import type { ElementDef, LevelDef } from './schema';
 import { playlistFrom } from '../music';
+import { planDoorPuzzle } from './puzzle';
 
 export function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
@@ -38,17 +39,22 @@ interface DayParams {
   /** M27: Auf WIE VIELEN Ebenen steht ein Musikautomat (höchstens einer je
    *  Ebene – es gibt einen Musik-Bus, es klingt immer nur der nächste). */
   jukeboxFloors: number;
+  /** M42: Anzahl HELLER Ebenen (revealAll) – nie alle */
+  bright: number;
+  /** M42: Tür-Rätsel (Schlüssel + optional Zeitschloss, `require: 'all'` bei
+   *  mehr als einem Öffner) – bevorzugt auf der hellen Ebene; null = keins */
+  puzzle: { keys: number; switch: boolean } | null;
 }
 
 // Index = getUTCDay(): 0 = Sonntag.
 const WEEKDAYS: DayParams[] = [
-  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5, crystals: 2, anchors: 2, glass: 2, jukeboxFloors: 2 },
-  { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0, jukeboxFloors: 0 },
-  { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0, jukeboxFloors: 0 },
-  { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 0, jukeboxFloors: 0 },
-  { label: 'Donnerstag – drei Ebenen tief', floors: 3, cols: 5, rows: 6, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 4, gems: 3, crystals: 1, anchors: 1, glass: 1, jukeboxFloors: 1 },
-  { label: 'Freitag – es wird eng', floors: 3, cols: 6, rows: 7, holes: 4, wind: 2, guards: 1, brittleChance: 0.12, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 1, jukeboxFloors: 1 },
-  { label: 'Samstag – tief und wachsam', floors: 3, cols: 6, rows: 8, holes: 5, wind: 2, guards: 2, brittleChance: 0.15, pings: 3, gems: 4, crystals: 2, anchors: 1, glass: 2, jukeboxFloors: 2 },
+  { label: 'Sonntag – das volle Programm', floors: 3, cols: 8, rows: 11, holes: 8, wind: 3, guards: 2, brittleChance: 0.18, pings: 4, gems: 5, crystals: 2, anchors: 2, glass: 2, jukeboxFloors: 2, bright: 1, puzzle: { keys: 2, switch: true } },
+  { label: 'Montag – sanfter Einstieg', floors: 2, cols: 5, rows: 6, holes: 2, wind: 0, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0, jukeboxFloors: 0, bright: 0, puzzle: null },
+  { label: 'Dienstag – erster Gegenwind', floors: 2, cols: 5, rows: 7, holes: 3, wind: 1, guards: 0, brittleChance: 0, pings: 4, gems: 2, crystals: 1, anchors: 0, glass: 0, jukeboxFloors: 0, bright: 0, puzzle: null },
+  { label: 'Mittwoch – die Wache erwacht', floors: 2, cols: 6, rows: 7, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 0, jukeboxFloors: 0, bright: 1, puzzle: { keys: 2, switch: false } },
+  { label: 'Donnerstag – drei Ebenen tief', floors: 3, cols: 5, rows: 6, holes: 3, wind: 1, guards: 1, brittleChance: 0.1, pings: 4, gems: 3, crystals: 1, anchors: 1, glass: 1, jukeboxFloors: 1, bright: 1, puzzle: { keys: 2, switch: false } },
+  { label: 'Freitag – es wird eng', floors: 3, cols: 6, rows: 7, holes: 4, wind: 2, guards: 1, brittleChance: 0.12, pings: 3, gems: 3, crystals: 1, anchors: 1, glass: 1, jukeboxFloors: 1, bright: 1, puzzle: { keys: 1, switch: true } },
+  { label: 'Samstag – tief und wachsam', floors: 3, cols: 6, rows: 8, holes: 5, wind: 2, guards: 2, brittleChance: 0.15, pings: 3, gems: 4, crystals: 2, anchors: 1, glass: 2, jukeboxFloors: 2, bright: 1, puzzle: { keys: 2, switch: true } },
 ];
 
 // Zelle mit Zusatzfilter: Kandidaten aufzählen (terminiert garantiert);
@@ -192,6 +198,19 @@ export function generateDailyLevel(date: string): LevelDef {
     }
     for (const f of order.slice(0, Math.min(p.jukeboxFloors, p.floors))) jukeFloors.add(f);
   }
+  // M42: Helle Ebenen – deterministisch gewählt, nie alle. Das Tür-Rätsel
+  // liegt auf der ersten hellen Ebene (Sichtbarkeit nimmt die Suche, das
+  // Rätsel bleibt), sonst auf einer zufälligen.
+  const brightFloors = new Set<number>();
+  {
+    const order = Array.from({ length: p.floors }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [order[i], order[j]] = [order[j]!, order[i]!];
+    }
+    for (const f of order.slice(0, Math.min(p.bright, p.floors - 1))) brightFloors.add(f);
+  }
+  const puzzleFloor = p.puzzle ? (brightFloors.size ? Math.min(...brightFloors) : Math.floor(rng() * p.floors)) : -1;
 
   // Landepunkte der Transporter-Kette vorab würfeln (Ebene k -> k+1);
   // auch der Start auf Ebene 1 ist zufällig, nicht immer oben links.
@@ -222,6 +241,18 @@ export function generateDailyLevel(date: string): LevelDef {
     }
     if (!isLast) {
       elements.push({ type: 'transporter', cell: exit, target: { floor: f + 1, cell: landings[f + 1]! }, r: 32 });
+    }
+
+    // M42: Tür-Rätsel VOR den anderen Zutaten – seine Öffner brauchen freie
+    // Zellen, seine Wege gelten als Pflichtwege (siehe `spine` unten).
+    const puzzleProtected = new Set<number>();
+    if (f === puzzleFloor && p.puzzle) {
+      const path = solveMaze(cells, cols, rows, { x: landing[0], y: landing[1] }, { x: exit[0], y: exit[1] });
+      const plan = planDoorPuzzle(cells, cols, rows, rng, path, forbidden, p.puzzle, `tor-e${f + 1}`);
+      if (plan) {
+        elements.push(...plan.elements);
+        for (const k of plan.protectedCells) puzzleProtected.add(k);
+      }
     }
 
     for (let i = 0; i < guardsPer[f]!; i++) {
@@ -257,11 +288,12 @@ export function generateDailyLevel(date: string): LevelDef {
     for (let i = 0; i < crystalsPer[f]!; i++) {
       elements.push({ type: 'echoCrystal', cell: pickCell(rng, cols, rows, forbidden), r: 16 });
     }
-    const spine = new Set(
-      solveMaze(cells, cols, rows, { x: landing[0], y: landing[1] }, { x: exit[0], y: exit[1] }).map(
+    const spine = new Set([
+      ...solveMaze(cells, cols, rows, { x: landing[0], y: landing[1] }, { x: exit[0], y: exit[1] }).map(
         (c) => c.y * cols + c.x,
       ),
-    );
+      ...puzzleProtected,
+    ]);
     const offPath = (key: number) => !spine.has(key);
     for (let i = 0; i < anchorsPer[f]!; i++) {
       const cell = pickCellWhere(rng, cols, rows, forbidden, offPath);
@@ -292,7 +324,7 @@ export function generateDailyLevel(date: string): LevelDef {
       };
       for (const el of elements) {
         if (el.type === 'gem' || el.type === 'echoCrystal' || el.type === 'checkpoint') protect(el.cell);
-        else if (el.type === 'transporter') protect(el.cell);
+        else if (el.type === 'transporter' || el.type === 'key' || el.type === 'timedSwitch') protect(el.cell);
         else if (el.type === 'guard') for (const wp of el.patrol) protect(wp);
       }
       // Und die Zelle muss von der Ankunft aus erreichbar sein – ein
@@ -309,7 +341,7 @@ export function generateDailyLevel(date: string): LevelDef {
       elements,
       start: landing,
       goal: isLast ? exit : null,
-      bright: false,
+      bright: brightFloors.has(f),
     });
   }
 
