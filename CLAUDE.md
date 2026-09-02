@@ -27,6 +27,14 @@ und ein Altserver auf 8765 lässt jeden späteren Start still scheitern. JEDER
 Top-Level-Block eines Laufs steht in `if (want('id')) { … }` – auch ein
 zweiter Block unter demselben Kopf; ein nacktes `{` liefe in jedem Arbeiter
 und bei jedem Filter mit. Kontrolle nach dem Umbau: parallel = seriell + 3 ✓.
+Jeder Block steht außerdem in `try { … } catch (e) { check('Lauf X läuft ohne
+Absturz durch (…)', false) }`: Ein unbehandelter Wurf (etwa ein 30-s-Timeout
+von `page.click`) riss vorher den ganzen Arbeiter mit, und die Läufe hinter
+ihm fehlten STILL – 207 ✓ statt 247, exit 0 an keiner Stelle rot. Der
+Dispatcher meldet zusätzlich jeden zugeteilten Lauf, der nie sein `# Lauf X`
+druckte (`NICHT gelaufen`), und setzt exit ≠ 0. Ein Lauf, der allein grün ist
+und unter 4 Arbeitern rot, ist ein LAST-Flake (Lauf 9 „Coop" mit 34 s Sleep):
+Sleeps durch Zustands-Warten ersetzen, nicht die Arbeiterzahl senken.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem

@@ -150,7 +150,7 @@
   position: relative;
 }
 .chip::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: calc((var(--touch-min) - 100%) / -2) 0;
 }
@@ -203,16 +203,50 @@
   text-align: left;
   cursor: pointer;
 }
-.mode-item .mode-icon { font-size: 22px; flex-shrink: 0; }
-.mode-item .mode-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.mode-item .mode-title { font-size: var(--fs-body); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mode-item .mode-sub { font-size: var(--fs-small); opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mode-item .mode-meta { font-size: var(--fs-small); opacity: 0.8; color: var(--warning); white-space: nowrap; }
+.mode-item .mode-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.mode-item .mode-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mode-item .mode-title {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mode-item .mode-sub {
+  font-size: var(--fs-small);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mode-item .mode-meta {
+  font-size: var(--fs-small);
+  opacity: 0.8;
+  color: var(--warning);
+  white-space: nowrap;
+}
 /* Empfehlung für Neue (Tutorial noch offen): Teal-Rand wie .chip.active */
-.mode-item.suggest { border: 1px solid rgba(75, 224, 200, 0.4); }
-.mode-item.suggest .mode-sub { color: var(--accent); opacity: 1; }
+.mode-item.suggest {
+  border: 1px solid rgba(75, 224, 200, 0.4);
+}
+.mode-item.suggest .mode-sub {
+  color: var(--accent);
+  opacity: 1;
+}
 /* Zwei-Tap-Bestätigung auf einer Karte: der Untertitel warnt in Bernstein */
-.mode-item .mode-sub.warn { color: var(--warning); opacity: 1; }
+.mode-item .mode-sub.warn {
+  color: var(--warning);
+  opacity: 1;
+}
 
 .banner {
   display: flex;
@@ -276,4 +310,10 @@
 
 .hidden {
   display: none !important;
+}
+
+/* Bewaffneter Zwei-Tap (Backup wiederherstellen): Bernstein wie .mode-sub.warn */
+.btn.warn {
+  color: var(--warning);
+  border-color: var(--warning);
 }

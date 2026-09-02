@@ -65,7 +65,10 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   patrouillierende Wächter) – so beurteilst du den Rhythmus, ohne den
   Entwurf zu verlassen. Entwürfe in der echten Spielschleife testen und mit
   einem Tap zurückspringen; die
-  Bibliothek liegt lokal auf dem Gerät. Fertige Level teilst du über
+  Bibliothek liegt lokal auf dem Gerät – und weil eine Neuinstallation der
+  PWA sie mitnimmt, sichert **💾 Backup** im Startscreen alles (Fortschritt,
+  Bestzeiten, Werkstatt, Geister) in eine komprimierte Datei, die **📂**
+  wiederherstellt. Fertige Level teilst du über
   einen serverlosen Link (das Level reist deflate-komprimiert im
   URL-Hash; in der installierten App fügst du einen erhaltenen Link einfach
   ins Import-Feld ein, weil Links dort immer im Browser aufgehen – Teilen

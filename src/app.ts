@@ -1,4 +1,6 @@
 import './ui/theme.css';
+import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup, summarizeBackup, type BackupPayload } from './backup';
+import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
@@ -547,6 +549,72 @@ $('editBtn').addEventListener('click', () => {
 // Der Wechsel wirkt ab dem nächsten Start – dort läuft dann auch der
 // Kalibrier-Countdown mit der passenden Haltungs-Ansage erneut.
 const ctlChips = [...document.querySelectorAll<HTMLButtonElement>('#controlsRow .chip')];
+
+// --- Backup & Restore (src/backup.ts) -------------------------------------
+// Sichern: Datei per Web Share (iOS: „In Dateien sichern") oder Download.
+// Wiederherstellen: Datei wählen → Zusammenfassung → ZWEITER Tap ersetzt den
+// Stand → Reload, damit Profil und Werkstatt ihre Daten neu lesen.
+{
+  const status = $('backupStatus');
+  const fileInput = $<HTMLInputElement>('backupFile');
+  const loadBtn = $<HTMLButtonElement>('backupLoad');
+  let pending: BackupPayload | null = null;
+  let armTimer: ReturnType<typeof setTimeout> | null = null;
+  const disarm = (): void => {
+    pending = null;
+    loadBtn.textContent = t('bk.load');
+    loadBtn.classList.remove('warn');
+    if (armTimer) clearTimeout(armTimer);
+    armTimer = null;
+  };
+  $('backupSave').addEventListener('click', () => {
+    void (async () => {
+      const at = new Date().toISOString();
+      const payload = collectBackup(localStorage, __APP_VERSION__, at);
+      const text = await encodeBackup(payload);
+      const how = await saveTextFile(backupFileName(at), text);
+      status.textContent = t(how === 'share' ? 'bk.shared' : 'bk.saved', { n: Object.keys(payload.data).length, kb: Math.max(1, Math.round(text.length / 1024)) });
+    })();
+  });
+  loadBtn.addEventListener('click', () => {
+    if (!pending) {
+      fileInput.click();
+      return;
+    }
+    // Zweiter Tap: ersetzen und neu laden.
+    const r = applyBackup(localStorage, pending);
+    status.textContent = t('bk.restored', { n: r.restored });
+    disarm();
+    setTimeout(() => location.reload(), 300);
+  });
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!file) return;
+    void (async () => {
+      try {
+        const payload = await decodeBackup(await file.text());
+        const sum = summarizeBackup(payload);
+        pending = payload;
+        status.textContent = t('bk.summary', {
+          date: payload.at ? new Date(payload.at).toLocaleDateString() : '?',
+          levels: sum.levels,
+          best: sum.best,
+          ghosts: sum.ghosts,
+        });
+        loadBtn.textContent = `⚠ ${t('bk.confirm')}`;
+        loadBtn.classList.add('warn');
+        armTimer = setTimeout(() => {
+          disarm();
+          status.textContent = '';
+        }, 8000);
+      } catch (e) {
+        disarm();
+        status.textContent = t('bk.bad', { why: e instanceof Error ? e.message : String(e) });
+      }
+    })();
+  });
+}
 function refreshCtl(): void {
   for (const chip of ctlChips) chip.classList.toggle('active', chip.dataset.ctl === profile.controls);
 }

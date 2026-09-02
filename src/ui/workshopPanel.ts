@@ -4,6 +4,7 @@
 // nimmt den Quick-Generator als Grundgerüst.
 
 import { parseLevel } from '../levels/schema';
+import { saveTextFile } from './download';
 import { generatedBrittleEdges } from '../levels/loader';
 import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
@@ -133,12 +134,8 @@ export function setupWorkshopPanel(opts: {
       })();
     });
     iconBtn('⇩', t('ed.export'), () => {
-      const blob = new Blob([exportPayload(level.def)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `tiltr-level-${String(level.def.name ?? level.id).replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const name = `tiltr-level-${String(level.def.name ?? level.id).replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}.json`;
+      void saveTextFile(name, exportPayload(level.def), 'application/json');
     });
     // Löschen bleibt Zwei-Tap: der zweite Tap innerhalb von 3 s löscht.
     const del = iconBtn('🗑', t('ed.delete'), (b) => {

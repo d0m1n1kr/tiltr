@@ -62,7 +62,9 @@ automatically via GitHub Actions (tests → build → pages).
   own sound signature right in the properties panel, and ▶ animates the
   moving parts (breathing holes, sliding walls, patrolling guards) so you
   can judge the rhythm without leaving your draft. Test drafts in the real
-  game loop and jump back with one tap; levels live locally in your library. Share
+  game loop and jump back with one tap; levels live locally in your library – and because
+  reinstalling the PWA wipes it, **💾 Back up** on the start screen saves everything
+  (progress, best times, workshop, ghosts) to one compressed file that **📂** restores. Share
   finished levels via a serverless link (the level itself travels
   deflate-compressed in the URL hash; in the installed app you paste a
   received link into the import field, because links always open in the

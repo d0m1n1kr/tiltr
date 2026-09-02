@@ -306,6 +306,8 @@
     }
     #langRow { display: flex; gap: var(--space-2); }
     #controlsRow { display: flex; gap: var(--space-2); }
+    #backupRow { display: flex; gap: var(--space-2); }
+    #backupStatus:empty { display: none; }
     /* Footer einzeilig ab Tablet: Name, Steuerung und Sprache nebeneinander –
        der ganze Startscreen muss auf ein Querformat-Tablet OHNE Scrollen
        passen (der E2E-Tablet-Lauf misst genau das). Steht NACH der
@@ -769,6 +771,15 @@
         <button class="btn chip" data-lang="fr">FR</button>
         <button class="btn chip" data-lang="es">ES</button>
       </div>
+      <!-- Backup: Neuinstallation der PWA wischt den localStorage – Fortschritt,
+           Werkstatt, Geister. Eine komprimierte Datei (gleicher Codec wie
+           Teilen-Links) rettet alles; Wiederherstellen ERSETZT nach Zwei-Tap. -->
+      <div id="backupRow">
+        <button id="backupSave" class="btn chip" data-i18n="bk.save">💾 Sichern</button>
+        <button id="backupLoad" class="btn chip" data-i18n="bk.load">📂 Wiederherstellen</button>
+        <input id="backupFile" type="file" accept=".txt,.tiltr,text/plain" class="hidden">
+      </div>
+      <p id="backupStatus" class="menu-meta"></p>
       <p id="sensorNote" data-i18n-html="app.sensorNote"></p>
       <p id="version"></p>
     </div>

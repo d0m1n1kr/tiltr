@@ -612,6 +612,63 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M37 „Alles in einer Datei" ✓ (v2.7.0) – Backup & Restore
+
+**Die Meldung:** „Wenn die PWA neu installiert wird, ist mein Fortschritt und
+alle meine Levels aus der Werkstatt weg." – Richtig: Alles lebt im
+localStorage, und der gehört der Installation. Eine Neuinstallation (wegen
+M36 gerade nötig), „Website-Daten löschen" oder ein Gerätewechsel: weg.
+
+**Der Weg.** `src/backup.ts` sammelt ALLE `tiltr.*`-Schlüssel – durchgezählt,
+nicht als Liste: Geister liegen unter `tiltr.ghost.<levelId>`, das sind
+beliebig viele. Der Codec ist derselbe wie bei Teilen-Links
+(`encodePayload`): deflate-raw + base64url, die Datei IST das Token. Eine
+Sicherung mit einer Handvoll Leveln und Geistern liegt bei ein paar KB.
+
+Sichern geht über `src/ui/download.ts`: Web Share mit DATEI, wenn der Browser
+das kann – auf iOS ist das der native Weg („In Dateien sichern", AirDrop,
+Mail); sonst der klassische Download. Der Level-Export läuft jetzt über
+denselben Helfer. Wiederherstellen: Datei wählen → Zusammenfassung („Backup
+vom 2.9.2026: 5 Level, 12 Bestzeiten, 3 Geister – ersetzt den aktuellen
+Stand") → ZWEITER Tap auf den bernsteinfarbenen Knopf → alle `tiltr.*` raus,
+Datei rein → Reload. Der Reload ist Pflicht, nicht Komfort: `profile.ts` und
+`workshop.ts` halten ihre Daten im Speicher, der nächste Save hätte das
+Backup wieder überschrieben. ERSETZEN statt Mischen, weil Mischen bei
+Bestzeiten und Streak nicht definierbar ist.
+
+Abgewiesen wird mit Grund: fremdes Format (ein Level-Token ist kein Backup),
+unbekannte Version, Schlüssel außerhalb `tiltr.*`, Nicht-Text-Werte – und
+eine abgewiesene Datei fasst den Speicher nicht an. Codec-Fehler werden auf
+„Datei nicht lesbar" gemappt: Der erste E2E-Lauf zeigte in der Statuszeile
+Chromiums Innerei „Failed to fetch" – das klingt nach Netz und ist keins.
+
+8 Units (`tests/backup.test.ts`; Sabotage „Aufräumen vergessen" kippt genau
+den ERSETZT-Test). E2E-Lauf 27 ist ein ECHTER Datei-Roundtrip: Level per
+Import, Geist, Name → 💾 (Playwright fängt den Download) → `localStorage.clear()`
+→ Müll-Datei abgewiesen, Knopf unbewaffnet → echte Datei, Zusammenfassung,
+bewaffneter Knopf → zweiter Tap, Reload → dieselbe Schlüsselmenge wie vorher,
+Name/Geist/Level da.
+
+**Was ich nicht prüfen kann:** den iOS-Teilen-Dialog – Chromium hat kein Web
+Share mit Dateien, der E2E-Lauf nimmt den Download-Zweig. Ob „In Dateien
+sichern" auf deinem iPhone erscheint, ist dein Bericht.
+
+**Nebenbefund E2E: der stille Absturz.** Der erste volle Parallel-Lauf endete
+mit 207 ✓ statt 247 und einem einzigen ✗ in Lauf 9 (Coop) – `page.click` auf
+den Zwischenscreen lief in den 30-s-Timeout, der Wurf war unbehandelt, und
+Arbeiter 1 starb. Die vier Läufe hinter ihm (10, 14, 20, 25) fehlten, ohne
+dass irgendetwas rot wurde: Der Dispatcher zählte nur ✓/✗-Zeilen. Zwei
+Reparaturen: (1) `parallel.mjs` vergleicht zugeteilte Läufe mit den
+gedruckten `# Lauf X`-Markern und meldet jeden fehlenden als `NICHT gelaufen`
+(exit ≠ 0). (2) Alle 36 Top-Level-Blöcke in `smoke.mjs` stehen in einem
+`try/catch`, das einen Absturz als EINEN roten Check ausweist und den nächsten
+Lauf fahren lässt. Sabotage: `throw new Error("boom")` am Anfang von Lauf 2 →
+genau ein ✗ „Lauf 2 läuft ohne Absturz durch (Error: boom)", Lauf 3 lief mit
+11 ✓ weiter. Lauf 9 selbst war allein zweimal grün: ein Last-Flake unter vier
+Arbeitern (er schläft 34 s fest statt auf Zustand zu warten). Das ist der
+aufgeschobene dritte Hebel aus M35 – Sleeps gegen Zustands-Warten tauschen,
+Lauf 9 zuerst.
+
 ## M36 „Der weiße Moment" ✓ (v2.6.2) – iOS-Startbildschirm
 
 **Die Meldung:** „Wenn ich nach einer Weile unter iOS die gespeicherte PWA

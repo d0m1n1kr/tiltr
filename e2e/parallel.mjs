@@ -125,6 +125,17 @@ for (const r of results) {
   );
   process.stdout.write(r.out);
   if (r.code !== 0) failed = true;
+  // Ein abgestürzter Arbeiter (unbehandelte Ausnahme nach einem roten Check)
+  // lässt seine restlichen Läufe STILL aus – nur der Exit-Code verrät es. Hier
+  // steht, WELCHE Läufe nie ihren Marker geschrieben haben.
+  const ran = new Set([...r.out.matchAll(/^# Lauf (\S+)$/gm)].map((m) => m[1]));
+  const skipped = bins[r.i].ids.filter((id) => !ran.has(id));
+  if (skipped.length) {
+    console.log(
+      `✗ Arbeiter ${r.i + 1}: NICHT gelaufen (Absturz davor?): ${skipped.join(", ")}`,
+    );
+    failed = true;
+  }
 }
 const ok = results.reduce((n, r) => n + (r.out.match(/^✓/gm) ?? []).length, 0);
 const bad = results.reduce((n, r) => n + (r.out.match(/^✗/gm) ?? []).length, 0);
