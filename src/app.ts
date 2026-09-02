@@ -828,12 +828,21 @@ $('version').addEventListener('click', () => {
   diag.id = 'diag';
   diag.className = 'menu-meta';
   $('menuFooter').append(diag);
+  // Sensor-Diagnose (v3.0.4): Der 5. Tap ist eine Geste – der Sensor darf
+  // starten, damit die Zeile schon im Menü lebt (iOS fragt hier nach).
+  void input.start();
   const update = (): void => {
-    diag.textContent = viewportDiagnostics();
+    diag.textContent = `${viewportDiagnostics()}\n${input.diagnostics()}`;
   };
   update();
-  setInterval(update, 1000);
+  setInterval(update, 250);
 });
+// ?debug in der URL: dieselbe Freischaltung ohne fünf Taps – für Sensor-
+// Diagnosen auf fremden Geräten (Screenshot der Menü-Zeile genügt).
+if (new URLSearchParams(location.search).has('debug')) {
+  versionTaps = 4;
+  $('version').click();
+}
 homeBtn.addEventListener('click', showMenu);
 
 window.addEventListener('resize', () => renderer.resize());
@@ -2601,7 +2610,7 @@ function frame(now: number): void {
       statusEl.textContent = message;
     } else {
       const modeLabel = t(input.hasSensor ? 'hud.tilt' : 'hud.keys');
-      statusEl.textContent = debug ? `Debug · ${modeLabel} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)}` : '';
+      statusEl.textContent = debug ? `Debug · ${modeLabel} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)} · ${input.diagnostics()}` : '';
     }
   }
 

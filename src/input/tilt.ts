@@ -11,6 +11,10 @@ interface DeviceOrientationEventiOS {
 export class TiltInput {
   beta = 0; // vor/zurück
   gamma = 0; // links/rechts
+  alpha = 0; // Kompass (nur Diagnose)
+  /** accelerationIncludingGravity aus devicemotion – nur Diagnose (v3.0.4):
+   *  zweite, unabhängige Sicht auf die Schwerkraft im Geräterahmen. */
+  acc: { x: number; y: number; z: number } | null = null;
   beta0 = 0;
   gamma0 = 0;
   hasSensor = false;
@@ -42,6 +46,11 @@ export class TiltInput {
       }
       this.beta = e.beta;
       this.gamma = e.gamma;
+      this.alpha = e.alpha ?? 0;
+    });
+    window.addEventListener('devicemotion', (e) => {
+      const a = e.accelerationIncludingGravity;
+      if (a && a.x !== null && a.y !== null && a.z !== null) this.acc = { x: a.x, y: a.y, z: a.z };
     });
     this.startKeyboard(); // Tastatur bleibt zusätzlich aktiv
   }
@@ -49,6 +58,22 @@ export class TiltInput {
   private startKeyboard(): void {
     window.addEventListener('keydown', (e) => this.keys.add(e.key.toLowerCase()));
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+  }
+
+  /** Sensor-Diagnose (Debug, v3.0.4): Was meldet DIESES Gerät? Ausrichtung
+   *  (Typ, Winkel, natürliche Lage), rohe Winkel, Schwerkraft, Ergebnis. Die
+   *  Achsen-Konventionen von beta/gamma und screen.orientation sind auf
+   *  Tablets nicht überall gleich – ohne diese Zeile ist jede Korrektur
+   *  Raterei. */
+  diagnostics(): string {
+    const raw = screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
+    const type = screen.orientation?.type ?? '?';
+    const landscapeNow = innerWidth > innerHeight;
+    const natural = (raw % 180 === 0) === landscapeNow ? 'landscape' : 'portrait';
+    const t = this.tilt;
+    const acc = this.acc ? `acc ${this.acc.x.toFixed(1)} ${this.acc.y.toFixed(1)} ${this.acc.z.toFixed(1)}` : 'acc –';
+    const sensor = this.hasSensor ? '' : ' · kein Sensor';
+    return `${type} ${raw}° natural:${natural} · β ${this.beta.toFixed(0)} γ ${this.gamma.toFixed(0)} α ${this.alpha.toFixed(0)} · ${acc} · tilt ${t.x.toFixed(2)} ${t.y.toFixed(2)}${sensor}`;
   }
 
   calibrate(): void {

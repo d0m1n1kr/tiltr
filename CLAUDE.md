@@ -325,6 +325,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   links) = (gy, gx), 270° = (−gy, −gx), 180° = (−gx, −gy). Das weit kopierte
   Schnipsel mit y = −gamma bei 90° war FALSCH (Kugel rollte im Querformat
   bergauf). E2E Lauf 2 dreht den Bildschirm synthetisch per defineProperty.
+  SENSOR-DIAGNOSE (v3.0.4): Debug-Modus (5× Version oder `?debug`) zeigt in
+  `#diag` Typ/Winkel/natürliche Lage, β/γ/α, accelerationIncludingGravity und
+  tilt – Geräte weichen von der Spec ab (Tablets!), also ERST messen, dann
+  korrigieren. `input.diagnostics()` ist die eine Quelle (Menü + Debug-Status).
 - `src/core/breathing.ts` – Atem-Uhr (öffnen → offen → schließen → zu) für
   atmende Löcher, Schiebewände UND die Play-Vorschau des Editors: EINE
   Quelle für alle drei (`breathAt`, `breathOpenRemaining`), deterministisch,

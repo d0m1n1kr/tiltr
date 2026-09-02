@@ -583,6 +583,8 @@
     #wsBundleMeta { margin-left: auto; }
     .ws-order { display: flex; gap: var(--space-1); }
     .debug-only.hidden { display: none; }
+    /* Diagnose-Zeilen (Viewport + Sensor) untereinander, umbrechend. */
+    #diag { white-space: pre-line; overflow-wrap: anywhere; }
     .world-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
     .world-header > span { min-width: 0; }
     /* Rückmeldung im Knopf darf die Zeile nicht sprengen: schrumpfen statt umbrechen. */

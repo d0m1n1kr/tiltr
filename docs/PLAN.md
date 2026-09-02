@@ -612,6 +612,29 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M53 „Erst messen" ✓ (v3.0.4) – Sensor-Diagnose für die Achsenfrage
+
+Nach 3.0.3 die Rückmeldung: „Auf dem Tablet sind in JEDER Ausrichtung
+oben/unten und rechts/links vertauscht, auf dem Handy im Hochformat
+oben/unten." Das Hochformat-Mapping ist seit M1 unverändert (x = gamma,
+y = beta) und folgt der Spec-Rotationsmatrix (Gefälle im Geräterahmen
+(sinγ·cosβ, −sinβ)) – wenn es auf einem Gerät falsch ist, weicht das Gerät
+von der Spec ab (beta-Vorzeichen, screen.orientation-Winkel oder bereits
+bildschirmgedrehte Sensorwerte, alles auf Tablets dokumentiert). Solche
+Fälle lassen sich nicht herleiten, nur messen.
+
+Deshalb zuerst eine DIAGNOSE statt einer weiteren Korrektur: Im Debug-Modus
+(5× Version oder `?debug` in der URL) zeigt die Menü-Zeile `#diag` neben der
+Viewport-Wahrheit jetzt die Sensor-Wahrheit: `screen.orientation.type` und
+`-angle`, die natürliche Lage (aus Winkel und Seitenverhältnis), rohe β/γ/α,
+`accelerationIncludingGravity` (zweite, unabhängige Sicht auf die Schwerkraft)
+und das berechnete tilt (x, y). Der 5. Tap ist eine Geste, also startet dort
+der Sensor (iOS-Permission). Im Spiel trägt der Debug-Status dieselbe Zeile.
+Protokoll für den Nutzer: Gerät flach, dann OBERE Bildkante senken, dann
+RECHTE Bildkante senken – je Ausrichtung ein Screenshot. Erwartung nach
+Spec: β wächst, wenn die Geräte-Oberkante steigt; tilt.y < 0, wenn die obere
+BILDkante sinkt; acc.z ≈ +9,8 (Android) bzw. −9,8 (iOS) in Ruhe.
+
 ## M52 „Die Kugel rollt bergab" ✓ (v3.0.3) – Neigungsachsen im Querformat
 
 **Der Fehler.** „Beim Drehen der App (Tablet) oder mit Rotation Lock passen
