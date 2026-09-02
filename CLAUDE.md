@@ -12,8 +12,21 @@ npm run typecheck  # tsc --noEmit
 npm test           # Vitest-Units
 npm run lint       # ESLint
 npm run build      # Produktions-Build (dist/, inkl. PWA/Workbox)
-npm run e2e        # Playwright-Smoke gegen vite preview (fester Seed)
+npm run e2e        # Playwright-Smoke, PARALLEL: ein Server, 4 Arbeiter (e2e/parallel.mjs)
+npm run e2e:serial # dieselben Läufe in einem Prozess (e2e/smoke.mjs)
+E2E_ONLY=23,24 npm run e2e:serial   # nur diese Läufe – zum Iterieren, 20 s statt 4 min
 ```
+
+E2E_ONLY kennt die Lauf-Namen aus den Köpfen (`// --- Lauf 21b …`); ein
+unbekannter Name ist ein FEHLER (exit 2), damit ein Tippfehler nicht mit null
+Checks grün durchgeht. E2E_WORKERS überschreibt die Arbeiterzahl. Die Läufe
+sind unabhängig (eigene Seiten, eigener localStorage je Kontext) – wer einen
+neuen Lauf schreibt, hält das so, sonst bricht die Parallelisierung. Vite wird
+DIREKT gestartet (nicht über npx): SIGTERM an npx ließ den Server überleben,
+und ein Altserver auf 8765 lässt jeden späteren Start still scheitern. JEDER
+Top-Level-Block eines Laufs steht in `if (want('id')) { … }` – auch ein
+zweiter Block unter demselben Kopf; ein nacktes `{` liefe in jedem Arbeiter
+und bei jedem Filter mit. Kontrolle nach dem Umbau: parallel = seriell + 3 ✓.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem

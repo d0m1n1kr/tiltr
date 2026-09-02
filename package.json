@@ -1,6 +1,6 @@
 {
   "name": "tiltr",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "private": true,
   "type": "module",
   "description": "Das unsichtbare Labyrinth – ein immersives Sensor-Spiel als PWA",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node e2e/smoke.mjs",
+    "e2e": "node e2e/parallel.mjs",
+    "e2e:serial": "node e2e/smoke.mjs",
     "lint": "eslint src tests",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"e2e/**/*.mjs\" \"*.{ts,json,md}\""
   },

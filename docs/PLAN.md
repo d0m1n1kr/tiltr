@@ -612,6 +612,74 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M35 „Die Suite schläft" ✓ (v2.6.1) – E2E-Filter und Parallelisierung
+
+**Die Frage:** „Die Tests und die CI laufen mittlerweile sehr lange. Kann man
+da was beschleunigen oder parallelisieren? Oder die Tests in Kategorien
+einteilen?" – **Erst messen.** Der CI-Lauf für v2.6.0 (4 min 45 s):
+
+| Schritt | Dauer |
+|---|---|
+| Checkout, Node, npm ci | 11 s |
+| typecheck + lint + test + build | 19 s |
+| Playwright installieren | 21 s |
+| **E2E** | **223 s (78 %)** |
+| Deploy | 8 s |
+
+Die 369 Units brauchen 7 Sekunden. Kategorien hätten nichts gebracht – die
+Zeit sitzt in der E2E, und dort in **205 Aufrufen von `waitForTimeout`,
+zusammen 183 s: 82 % der E2E ist geplantes Schlafen.** Feste Pausen nach
+Klicks, kein Warten auf einen Zustand. Ein Teil ist echte Zeit (Splash 4,2 s,
+Konfetti, Atem-Uhr, ein Ball muss rollen); der größere Teil ist Polster.
+
+**Zwei Hebel umgesetzt, der dritte als Regel:**
+
+1. **`E2E_ONLY=23,24 npm run e2e:serial`** – nur diese Läufe. Jeder der 29
+   Blöcke steckt jetzt in `if (want('id')) { … }`; die Liste `KNOWN_RUNS` ist
+   aus den Köpfen erzeugt. Ein unbekannter Name ist **exit 2**, kein leerer
+   Erfolg: Ein Tippfehler darf nicht grün durchgehen, weil null Checks liefen.
+   Der Gewinn ist der größte für die tägliche Arbeit – an diesem einen Tag lief
+   die volle E2E achtmal, fast immer wegen EINES neuen Laufs: rund 30 Minuten
+   Warten für 6 Minuten Information. Ein Einzellauf braucht jetzt 19 s.
+2. **`npm run e2e` ist parallel** (`e2e/parallel.mjs`): EIN Preview-Server,
+   vier Arbeiter als eigene `smoke.mjs`-Prozesse mit `E2E_BASE` + `E2E_ONLY`.
+   Verteilung greedy nach gemessenem Schlaf, damit Lauf 9 (34 s) und Lauf 16
+   (20 s) nicht im selben Arbeiter landen. Ausgabe je Arbeiter gesammelt,
+   nicht verschränkt – die ✓/✗-Zeilen bleiben greppbar. Bewusst KEIN Umbau auf
+   den Playwright-Test-Runner: der wäre richtig, aber 2600 Zeilen; der
+   Dispatcher hat 80 und ändert an den Läufen nichts. Voraussetzung, jetzt
+   als Regel in CLAUDE.md: Läufe bleiben unabhängig (eigene Seiten, eigener
+   localStorage je Kontext).
+3. **Schlaf → Zustand**, Lauf für Lauf, nicht in einem Abend: Jeder Lauf,
+   der künftig angefasst wird, verliert seine Pausen gegen `waitFor…`.
+
+**Gemessen, gleiche Maschine, gleicher Build:** seriell 240 s, parallel
+mit vier Arbeitern 77 s (Faktor 3,1; der langsamste Arbeiter trägt Lauf 9 mit seinen 34 s Schlaf – dort sitzt der nächste Hebel). Kontrollrechnung: 231 ✓ = 228 + 3, kein Server übrig.
+
+**Vier Funde am Rand.** Erstens hießen ZWEI Läufe „Lauf 6" (der Safe-Area-Lauf
+zwischen 7 und 9 war falsch nummeriert) – die Transformation hat es gemerkt,
+weil sie auf eindeutige Namen bestand; er heißt jetzt 8. Zweitens hat
+Prettier die erzeugte Lauf-Liste umbrochen und die Anführungszeichen
+getauscht, und der erste Dispatcher starb daran sofort – sein Parser liest
+jetzt beides und nennt den Fehler, statt an `null.map` zu sterben. Drittens
+lebte ein `vite preview` von vor 36 Minuten noch: `smoke.mjs` startete Vite
+über `npx` und schickte SIGTERM an npx – das Kind „vite" überlebte, hielt
+Port 8765, und jeder spätere `--strictPort`-Start scheiterte STILL, während
+die Warteschleife den fremden Server für den eigenen hielt. Vite wird jetzt
+direkt gestartet (`node_modules/vite/bin/vite.js`), und der Dispatcher
+bricht ab, wenn sein eigener Server stirbt, bevor er antwortet. (Der Fund
+kostete eine halbe Stunde, weil ich zusätzlich mit `pgrep -f` auf einen
+String gewartet habe, der in meiner eigenen Kommandozeile stand – die
+Schleife wartete auf sich selbst. Nach PID killen, nicht nach Muster.)
+Viertens – und das hätte ohne Zählen niemand gemerkt: Der parallele Lauf
+meldete **300 ✓ statt 228 + 3**. Fünf Läufe (6, 7, 8, 10b, 12) bestehen aus
+ZWEI nackten `{ … }`-Blöcken unter einem Kopf; eingehüllt hatte ich nur den
+ersten. Der zweite lief in JEDEM Arbeiter – und bei `E2E_ONLY=1` gleich mit,
+das „19 s für einen Lauf" war zu einem Drittel fremde Arbeit. Jetzt trägt
+jeder Top-Level-Block den Namen seines letzten Kopfes (34 Blöcke, 29 Köpfe),
+und die Kontrollrechnung ist Teil der Messung: parallel muss GENAU seriell
+plus drei Konsolen-Checks ergeben, sonst läuft etwas doppelt.
+
 ## M34 „Der Link, der im falschen Fenster aufgeht" ✓ (v2.6.0)
 
 **Das Problem ist die Plattform, nicht der Code:** Ein geteilter Link
