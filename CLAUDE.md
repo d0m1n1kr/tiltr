@@ -318,6 +318,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   HRTF: Die Feier kommt vom Schirm, nicht aus der Welt.
   ACHTUNG: Eine Canvas-Ebene braucht `width`/`height` EXPLIZIT – mit
   `inset: 0` allein streckt sich ein replaced element nicht (siehe DESIGN.md).
+- `src/core/orientation.ts` – NEIGUNG → BILDSCHIRM (`screenTilt`, v3.0.3):
+  Der Sensor meldet beta/gamma IMMER im Geräterahmen (Hochformat); die
+  Drehung nach `screen.orientation.angle` wohnt hier, rein und mit Units in
+  der Sprache der Kanten („Unterkante unten → wohin rollt es"). 90° (Oberkante
+  links) = (gy, gx), 270° = (−gy, −gx), 180° = (−gx, −gy). Das weit kopierte
+  Schnipsel mit y = −gamma bei 90° war FALSCH (Kugel rollte im Querformat
+  bergauf). E2E Lauf 2 dreht den Bildschirm synthetisch per defineProperty.
 - `src/core/breathing.ts` – Atem-Uhr (öffnen → offen → schließen → zu) für
   atmende Löcher, Schiebewände UND die Play-Vorschau des Editors: EINE
   Quelle für alle drei (`breathAt`, `breathOpenRemaining`), deterministisch,

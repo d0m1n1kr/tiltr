@@ -612,6 +612,32 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M52 „Die Kugel rollt bergab" ✓ (v3.0.3) – Neigungsachsen im Querformat
+
+**Der Fehler.** „Beim Drehen der App (Tablet) oder mit Rotation Lock passen
+die Achsen der Neigung nicht zur Darstellung." Der Sensor meldet beta/gamma
+immer im natürlichen Geräterahmen; tilt.ts drehte den Gefällevektor nach
+`screen.orientation.angle` – mit falschem y-Vorzeichen bei 90° und 270° (ein
+weit kopiertes Schnipsel). Im Querformat rollte die Kugel bei „rechte Kante
+unten" nach OBEN; x stimmte, deshalb wirkte es wie „eine Achse falsch".
+Rotation Lock ändert nichts am Modell: `screen.orientation` meldet die
+DARGESTELLTE Ausrichtung, genau die, in die gedreht werden muss.
+
+**Die Herleitung** steht in `core/orientation.ts` (`screenTilt`, rein):
+Geräterahmen x rechts, y zur Oberkante; gamma > 0 = rechte Kante unten,
+beta > 0 = Unterkante unten → Gefälle (gx, −gy). Bildschirm y zeigt nach
+unten. 90° (Oberkante links): x_S = −y_D, y_S = x_D → (gy, gx). 270°: (−gy,
+−gx). 180°: (−gx, −gy). Probe: Bei 90° liegt die Unterkante am rechten
+Bildrand – Unterkante unten muss nach rechts rollen (x = gy > 0), die rechte
+Kante liegt unten – rechte Kante unten muss nach unten rollen (y = gx > 0).
+
+**Tests.** `tests/orientation.test.ts` in der Sprache der Kanten („welche
+Kante liegt unten, wohin rollt es") plus die Zusicherung, dass 90° und 270°
+sich in BEIDEN Vorzeichen unterscheiden (vorher nur in x). E2E Lauf 2 dreht
+den Bildschirm synthetisch (`screen.orientation.angle` → 90 per
+defineProperty) und feuert Sensor-Events: Unterkante unten → rechts, rechte
+Kante unten → unten – mit dem alten Mapping rot (rollte nach oben).
+
 ## M51 „Kein Knopf sprengt die Zeile" ✓ (v3.0.2) – vier Rückmeldungen in Flex-Zeilen
 
 Nach dem Bundle-Löschknopf (M50) die Frage: Gibt es noch mehr solche Stellen?

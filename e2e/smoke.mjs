@@ -278,6 +278,47 @@ if (want("2")) {
       p2.x > p1.x + 10,
     );
 
+    // Querformat (v3.0.3): Bildschirm um 90° gedreht (Oberkante links), der
+    // Sensor meldet weiter im Geräterahmen. Unterkante unten (beta+) muss die
+    // Kugel jetzt nach RECHTS rollen lassen, rechte Kante unten (gamma+) nach
+    // UNTEN. Bis 3.0.2 war das y-Vorzeichen invertiert: gamma+ rollte nach
+    // oben – „die Achsen passen nicht zur Darstellung" (Tablet, Rotation Lock).
+    const land = await browser.newPage({
+      viewport: { width: 800, height: 400 },
+      locale: "de-DE",
+    });
+    land.on("pageerror", (e) => errors.push(String(e)));
+    await land.addInitScript(() => {
+      Object.defineProperty(screen.orientation, "angle", { get: () => 90, configurable: true });
+    });
+    await land.goto(`${BASE}/?seed=6&nosplash`);
+    const fireL = (beta, gamma) =>
+      land.evaluate(
+        ([b, g]) => {
+          window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: b, gamma: g }));
+        },
+        [beta, gamma],
+      );
+    await land.click("#quickBtn");
+    await fireL(20, 0);
+    await land.waitForTimeout(3800); // Countdown endet -> Kalibrierung auf beta=20
+    const q0 = await land.evaluate(() => window.__tiltrBall);
+    await fireL(32, 0); // Unterkante unten
+    await land.waitForTimeout(700);
+    const q1 = await land.evaluate(() => window.__tiltrBall);
+    await fireL(20, 12); // rechte Kante unten
+    await land.waitForTimeout(700);
+    const q2 = await land.evaluate(() => window.__tiltrBall);
+    check(
+      `Querformat 90°: Unterkante unten rollt nach RECHTS (dx=${(q1.x - q0.x).toFixed(0)}, dy=${(q1.y - q0.y).toFixed(0)})`,
+      q1.x > q0.x + 10 && Math.abs(q1.y - q0.y) < 15,
+    );
+    check(
+      `Querformat 90°: rechte Kante unten rollt nach UNTEN (dy=${(q2.y - q1.y).toFixed(0)})`,
+      q2.y > q1.y + 10,
+    );
+    await land.close();
+
     // Rotation mitten im Spiel: das Canvas-Backing muss dem neuen Element-Rect
     // folgen (sonst ist alles verzerrt) – der ResizeObserver sichert das ab.
     await page.setViewportSize({ width: 800, height: 400 });

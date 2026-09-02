@@ -1,6 +1,7 @@
 // Neigungssensor (DeviceOrientation) mit Kalibrierung + Tastatur-Fallback für Desktop.
 
 import type { Tilt } from '../core/types';
+import { screenTilt } from '../core/orientation';
 
 // iOS-Erweiterung: requestPermission existiert nur dort.
 interface DeviceOrientationEventiOS {
@@ -63,23 +64,12 @@ export class TiltInput {
       const dead = (v: number) => (Math.abs(v) < 0.04 ? 0 : v); // Totzone gegen Sensor-Drift
       const gx = (this.gamma - this.gamma0) / this.maxAngle;
       const gy = (this.beta - this.beta0) / this.maxAngle;
-      const raw =
-        screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
-      const angle = ((raw % 360) + 360) % 360;
-      let x: number, y: number;
-      if (angle === 90) {
-        x = gy;
-        y = -gx;
-      } else if (angle === 180) {
-        x = -gx;
-        y = -gy;
-      } else if (angle === 270) {
-        x = -gy;
-        y = gx;
-      } else {
-        x = gx;
-        y = gy;
-      }
+      // Drehung in Bildschirmachsen wohnt in core/orientation.ts (rein, mit
+      // Units) – hier nur den Winkel liefern. Rotation Lock: screen.orientation
+      // meldet die DARGESTELLTE Ausrichtung, also genau die, in die gedreht
+      // werden muss.
+      const raw = screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
+      const { x, y } = screenTilt(gx, gy, raw);
       return { x: clamp(dead(x)), y: clamp(dead(y)) };
     }
     const k = this.keys;
