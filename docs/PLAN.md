@@ -655,6 +655,10 @@ Konfetti, Atem-Uhr, ein Ball muss rollen); der größere Teil ist Polster.
 
 **Gemessen, gleiche Maschine, gleicher Build:** seriell 240 s, parallel
 mit vier Arbeitern 77 s (Faktor 3,1; der langsamste Arbeiter trägt Lauf 9 mit seinen 34 s Schlaf – dort sitzt der nächste Hebel). Kontrollrechnung: 231 ✓ = 228 + 3, kein Server übrig.
+**In der CI (Lauf für d86d66f, 4 vCPU):** E2E-Schritt 223 s → **63 s**, Gesamtlauf
+4:45 → **2:00**. Der Rest sind jetzt Installation (Playwright 20 s, npm ci 5 s)
+und die vier schnellen Schritte (19 s) – die E2E ist nicht mehr der Posten,
+der alles diktiert.
 
 **Vier Funde am Rand.** Erstens hießen ZWEI Läufe „Lauf 6" (der Safe-Area-Lauf
 zwischen 7 und 9 war falsch nummeriert) – die Transformation hat es gemerkt,
