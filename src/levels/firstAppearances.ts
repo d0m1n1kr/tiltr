@@ -15,9 +15,15 @@ import type { LevelDef } from './schema';
 export function levelFeatures(def: LevelDef): Set<string> {
   const f = new Set<string>();
   for (const fl of def.floors) {
-    for (const el of fl.elements) f.add(el.type);
+    for (const el of fl.elements) {
+      f.add(el.type);
+      // Varianten mit eigener Signatur zählen als eigenes Merkmal (M45).
+      if (el.type === 'guard' && el.sleeper) f.add('sleeper');
+      if (el.type === 'key' && el.voice === 'fork') f.add('fork');
+    }
     if (fl.maze.brittle.length > 0 || fl.maze.brittleChance > 0) f.add('wallBrittle');
     if (fl.maze.absorb.length > 0) f.add('wallAbsorb');
+    if (fl.maze.mirrors.length > 0) f.add('wallMirror');
   }
   return f;
 }

@@ -67,6 +67,13 @@ export class GameAudio {
   private rumblePanner!: PannerNode;
   private guardGain!: GainNode;
   private guardPanner!: PannerNode;
+  /** Schläfer (M45): tiefes, langsames Schnarchen statt Brummen */
+  private snoreGain!: GainNode;
+  private snorePanner!: PannerNode;
+  /** Stimmgabel (M45): zwei Sinus, UNGEPANNT – Ortung über die Schwebung */
+  private forkGain!: GainNode;
+  private forkA!: OscillatorNode;
+  private forkB!: OscillatorNode;
   private portalGain!: GainNode;
   private portalPanner!: PannerNode;
   private currentGain!: GainNode;
@@ -226,6 +233,46 @@ export class GameAudio {
     this.guardGain.connect(this.guardPanner).connect(this.master);
     growl.start();
     tremolo.start();
+
+    // Schläfer (M45): tiefes Schnarchen – Sinus um 70 Hz, im 0,45-Hz-Atem
+    // moduliert, mit einem rauen Anteil. Unverwechselbar gegen das Wächter-
+    // Brummen (Tremolo 6 Hz): Das hier ist LANGSAM.
+    this.snoreGain = this.ctx.createGain();
+    this.snoreGain.gain.value = 0;
+    this.snorePanner = this.panner();
+    const snore = this.ctx.createOscillator();
+    snore.type = 'sawtooth';
+    snore.frequency.value = 68;
+    const snoreFilter = this.ctx.createBiquadFilter();
+    snoreFilter.type = 'lowpass';
+    snoreFilter.frequency.value = 220;
+    const breath = this.ctx.createOscillator();
+    breath.frequency.value = 0.45;
+    const breathGain = this.ctx.createGain();
+    breathGain.gain.value = 0.5;
+    const breathBase = this.ctx.createGain();
+    breathBase.gain.value = 0.5;
+    breath.connect(breathGain).connect(breathBase.gain);
+    snore.connect(snoreFilter).connect(breathBase).connect(this.snoreGain);
+    this.snoreGain.connect(this.snorePanner).connect(this.master);
+    snore.start();
+    breath.start();
+
+    // Stimmgabel (M45): zwei Sinus-Oszillatoren, ungepannt direkt auf den
+    // Master – die Information liegt in der Schwebung, nicht in der Richtung.
+    this.forkGain = this.ctx.createGain();
+    this.forkGain.gain.value = 0;
+    this.forkA = this.ctx.createOscillator();
+    this.forkB = this.ctx.createOscillator();
+    this.forkA.type = 'sine';
+    this.forkB.type = 'sine';
+    this.forkA.frequency.value = 440;
+    this.forkB.frequency.value = 444;
+    this.forkA.connect(this.forkGain);
+    this.forkB.connect(this.forkGain);
+    this.forkGain.connect(this.master);
+    this.forkA.start();
+    this.forkB.start();
 
     // Transporter: schwebender Doppelton (zwei leicht verstimmte Sinus ->
     // langsames Schweben) – klar unterscheidbar von Wind, Grollen und Wächter.
@@ -676,6 +723,70 @@ export class GameAudio {
     const t = this.ctx.currentTime;
     this.guardGain.gain.setTargetAtTime(Math.min(0.5, closeness01 ** 1.5 * 0.55), t, 0.1);
     if (closeness01 > 0) this.place(this.guardPanner, dx, dy);
+  }
+
+  /** Schläfer (M45): Schnarchen aus seiner Richtung, closeness01 wie beim Wächter. */
+  setSnore(closeness01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.snoreGain.gain.setTargetAtTime(Math.min(0.4, closeness01 ** 1.5 * 0.45), t, 0.12);
+    if (closeness01 > 0) this.place(this.snorePanner, dx, dy);
+  }
+
+  /** Schläfer erwacht (M45): scharfes Zischen aus seiner Richtung – der Ping
+   *  hat ihn geweckt, und das hört man SOFORT. */
+  sleeperWake(dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('white');
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(1800, t);
+    bp.frequency.exponentialRampToValueAtTime(4200, t + 0.35);
+    bp.Q.value = 2.5;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.5, t + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    src.connect(bp).connect(gain).connect(this.spatialOut(dx, dy));
+    src.start(t);
+    src.stop(t + 0.55);
+  }
+
+  /** Stimmgabel (M45): level01 = Lautstärke (0 = aus), beatHz = Schwebung. */
+  setFork(level01: number, beatHz: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.forkGain.gain.setTargetAtTime(Math.min(0.22, level01 * 0.22), t, 0.08);
+    if (level01 > 0) this.forkB.frequency.setTargetAtTime(440 + beatHz, t, 0.06);
+  }
+
+  /** Sanduhr eingesammelt (M45): kurzes Rieseln, dann ein heller Tick. */
+  collectHourglass(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer('white');
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 5000;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    src.connect(hp).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.4);
+    const tick = this.ctx.createOscillator();
+    tick.type = 'square';
+    tick.frequency.value = 1480;
+    const tg = this.ctx.createGain();
+    tg.gain.setValueAtTime(0, t + 0.3);
+    tg.gain.linearRampToValueAtTime(0.25, t + 0.31);
+    tg.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    tick.connect(tg).connect(this.master);
+    tick.start(t + 0.3);
+    tick.stop(t + 0.55);
   }
 
   /** Rivale im Duell: Rollen aus seiner Richtung. Hörst du ihn hinter dir,

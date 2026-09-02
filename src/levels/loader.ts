@@ -132,6 +132,7 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
     };
     edgeWall(floor.maze.brittle, 'brüchig', (w) => (w.hp = floor.maze.brittleHits));
     edgeWall(floor.maze.absorb, 'schallschützend', (w) => (w.absorb = true));
+    edgeWall(floor.maze.mirrors, 'spiegelnd', (w) => (w.mirror = true));
 
     // Innenwände zufällig als brüchig markieren (Außenrand nie). Der Wurf
     // hängt an der WANDPOSITION, nicht an der Listenreihenfolge: Sonst

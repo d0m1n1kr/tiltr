@@ -40,7 +40,7 @@ interface RawEl {
 }
 interface RawFloor {
   size: [number, number];
-  maze: { seed: number; carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[]; [k: string]: unknown };
+  maze: { seed: number; carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[]; mirrors: Edge[]; [k: string]: unknown };
   elements: RawEl[];
   start: [number, number];
   goal: [number, number] | null;
@@ -98,14 +98,15 @@ const edgeDrop = (list: Edge[], e: Edge) => {
   if (i !== -1) list.splice(i, 1);
 };
 
-export type EdgeState = 'open' | 'wall' | 'brittle' | 'absorb';
-export type WallVariant = 'solid' | 'brittle' | 'absorb';
-export type MazeEdits = { carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[] };
+export type EdgeState = 'open' | 'wall' | 'brittle' | 'absorb' | 'mirror';
+export type WallVariant = 'solid' | 'brittle' | 'absorb' | 'mirror';
+export type MazeEdits = { carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[]; mirrors: Edge[] };
 
 /** Sichtbarer Zustand einer Kante: Variante, wenn gelistet; sonst offen/Wand
  *  nach dem AKTUELLEN Maze (Seed + Edits). */
 export function edgeState(maze: MazeEdits, e: Edge, open: boolean): EdgeState {
   if (edgeIn(maze.absorb, e)) return 'absorb';
+  if (edgeIn(maze.mirrors, e)) return 'mirror';
   if (edgeIn(maze.brittle, e)) return 'brittle';
   return open ? 'open' : 'wall';
 }
@@ -124,6 +125,7 @@ export function toggleEdge(maze: MazeEdits, e: Edge, open: boolean, seedOpen: bo
   edgeDrop(maze.add, e);
   edgeDrop(maze.brittle, e);
   edgeDrop(maze.absorb, e);
+  edgeDrop(maze.mirrors, e);
   if (open) {
     if (seedOpen) maze.add.push(e);
     return 'wall';
@@ -139,8 +141,10 @@ export function toggleEdge(maze: MazeEdits, e: Edge, open: boolean, seedOpen: bo
 export function setEdgeVariant(maze: MazeEdits, e: Edge, v: WallVariant): void {
   edgeDrop(maze.brittle, e);
   edgeDrop(maze.absorb, e);
+  edgeDrop(maze.mirrors, e);
   if (v === 'brittle') maze.brittle.push(e);
   if (v === 'absorb') maze.absorb.push(e);
+  if (v === 'mirror') maze.mirrors.push(e);
 }
 
 /** Landeplätze auf Ebene `floorIndex`: jede Transporter-Zielzelle, die auf
@@ -252,6 +256,7 @@ const PLACEABLE = [
   'guard',
   'listener',
   'anchor',
+  'hourglass',
   'transporter',
   'jukebox',
 ] as const;
@@ -384,11 +389,12 @@ export function setupEditor(opts: {
     if (!draft) return;
     draft.floors ??= [];
     for (const f of draft.floors) {
-      f.maze ??= { seed: 1, carve: [], add: [], brittle: [], absorb: [] };
+      f.maze ??= { seed: 1, carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
       f.maze.carve ??= [];
       f.maze.add ??= [];
       f.maze.brittle ??= [];
       f.maze.absorb ??= [];
+      f.maze.mirrors ??= [];
       f.elements ??= [];
       // Wie bei maze.add: Ein rohes Def darf Felder auslassen, der Editor
       // greift aber direkt darauf zu. EINMAL auffüllen statt an jeder
@@ -1415,7 +1421,7 @@ export function setupEditor(opts: {
         label.textContent = `${t('ed.selected')}: ${t('ed.wall')} · ${t('ed.scope.element')}`;
         head.append(miniCanvas('wallEcho'), label);
         const state = edgeState(f.maze, e, false);
-        const demo = galleryDemos.get(state === 'absorb' ? 'wallAbsorb' : 'wallEcho');
+        const demo = galleryDemos.get(state === 'absorb' ? 'wallAbsorb' : state === 'mirror' ? 'wallMirror' : 'wallEcho');
         if (demo) {
           const listen = document.createElement('button');
           listen.className = 'btn btn-soft ed-listen';
@@ -1424,10 +1430,11 @@ export function setupEditor(opts: {
           head.append(listen);
         }
         propsEl.append(head);
-        const sel = selectInput(state === 'brittle' || state === 'absorb' ? state : 'solid', [
+        const sel = selectInput(state === 'brittle' || state === 'absorb' || state === 'mirror' ? state : 'solid', [
           ['solid', t('ed.v.solid')],
           ['brittle', t('ed.v.brittle')],
           ['absorb', t('ed.v.absorb')],
+          ['mirror', t('ed.v.mirror')],
         ], (v) => {
           setEdgeVariant(f.maze, e, v as WallVariant);
           rebuild();
@@ -1490,6 +1497,44 @@ export function setupEditor(opts: {
         propsEl.append(field(t('ed.f.dir'), selectInput(String(el.dir ?? 'e'), DIR_OPTIONS, (v) => (el.dir = v))));
       }
       if (el.type === 'guard' || el.type === 'listener') num(t('ed.f.speed'), 'speed', 40, 200, 5);
+      if (el.type === 'guard') {
+        // Schläfer (M45): Variante des Wächters – schläft, bis ein Ping ihn weckt.
+        const sleeper = el.sleeper as { wakeRadius?: number; awakeS?: number } | undefined;
+        const sel = selectInput(sleeper ? 'yes' : 'no', [
+          ['no', t('ed.sleeper.no')],
+          ['yes', t('ed.sleeper.yes')],
+        ], (v) => {
+          if (v === 'yes') el.sleeper = { wakeRadius: 220, awakeS: 5 };
+          else delete el.sleeper;
+          renderProps();
+          rebuild();
+        });
+        sel.id = 'edSleeper';
+        propsEl.append(field(t('ed.f.sleeper'), sel));
+        if (sleeper) {
+          sleeper.wakeRadius ??= 220;
+          sleeper.awakeS ??= 5;
+          num(t('ed.f.wakeRadius'), 'wakeRadius', 100, 500, 20, sleeper as Record<string, unknown>);
+          num(t('ed.f.awakeS'), 'awakeS', 2, 20, 1, sleeper as Record<string, unknown>);
+        }
+      }
+      if (el.type === 'key') {
+        // Stimmgabel (M45): Klang-Variante des Schlüssels.
+        const voice = selectInput(String(el.voice ?? 'tinkle'), [
+          ['tinkle', t('ed.voice.tinkle')],
+          ['fork', t('ed.voice.fork')],
+        ], (v) => {
+          if (v === 'tinkle') delete el.voice;
+          else el.voice = v;
+          rebuild();
+        });
+        voice.id = 'edKeyVoice';
+        propsEl.append(field(t('ed.f.voice'), voice));
+      }
+      if (el.type === 'hourglass') {
+        if (el.bonusS === undefined) el.bonusS = 10;
+        num(t('ed.f.bonusS'), 'bonusS', 5, 60, 5);
+      }
       if (el.type === 'key' || el.type === 'timedSwitch') {
         // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel überall.
         const options = doorOptions(el.type === 'timedSwitch');
@@ -1766,7 +1811,7 @@ export function setupEditor(opts: {
         const cur = floor();
         draft!.floors.push({
           size: [...cur.size] as [number, number],
-          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [], absorb: [] },
+          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [], absorb: [], mirrors: [] },
           elements: [],
           start: [0, 0],
           goal: null,

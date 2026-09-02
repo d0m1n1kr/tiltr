@@ -15,7 +15,7 @@ type RawFloor = RawLevel['floors'][number];
 
 const fl = (over: Partial<RawFloor> = {}): RawFloor => ({
   size: [4, 4],
-  maze: { seed: 1, carve: [], add: [], brittle: [], absorb: [] },
+  maze: { seed: 1, carve: [], add: [], brittle: [], absorb: [], mirrors: [] },
   elements: [],
   start: [0, 0],
   goal: null,

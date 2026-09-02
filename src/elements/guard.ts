@@ -18,6 +18,8 @@ registerElement<GuardDef>({
       waypoints,
       target: waypoints.length > 1 ? 1 : 0,
       dir: 1,
+      // Schläfer (M45): beginnt schlafend (awakeLeft 0) auf Wegpunkt 0.
+      sleeper: def.sleeper ? { wakeRadius: def.sleeper.wakeRadius, awakeS: def.sleeper.awakeS, awakeLeft: 0 } : undefined,
     });
   },
 

@@ -70,6 +70,7 @@ function mirrorFloor(floor: FloorDef, axis: MirrorAxis, sizes: ReadonlyArray<rea
       add: floor.maze.add.map((e) => me(e as Edge)),
       brittle: floor.maze.brittle.map((e) => me(e as Edge)),
       absorb: floor.maze.absorb.map((e) => me(e as Edge)),
+      mirrors: floor.maze.mirrors.map((e) => me(e as Edge)),
     },
     elements,
     start: mc(floor.start),

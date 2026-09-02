@@ -12,6 +12,13 @@ import type { Wall } from './types';
  *  Wächter, Portal, Musik werden mit ihm skaliert). */
 export const ABSORB_GAIN = 0.35;
 
+/** Echo-Spiegel (M45): Die Reflexion einer spiegelnden Wand kommt vom
+ *  GESPIEGELTEN Punkt – doppelt so weit, dieselbe Richtung. Das Ohr hört eine
+ *  Wand, die nicht da ist, und muss lernen, dem Trugbild zu misstrauen. */
+export function mirrorReflection(dx: number, dy: number, dist: number): { dx: number; dy: number; dist: number } {
+  return { dx: dx * 2, dy: dy * 2, dist: dist * 2 };
+}
+
 /** Schneidet die Strecke (ax,ay)→(bx,by) das Rechteck? Slab-Test (Liang–Barsky). */
 export function segmentHitsRect(
   ax: number,

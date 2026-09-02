@@ -9,6 +9,7 @@ import type {
   Current,
   FogZone,
   GlassPlate,
+  Hourglass,
   Goal,
   Guard,
   Hole,
@@ -50,6 +51,7 @@ export class World {
   fogZones: FogZone[] = [];
   ice: IcePatch[] = [];
   crystals: Collectible[] = [];
+  hourglasses: Hourglass[] = [];
   anchors: Anchor[] = [];
   glass: GlassPlate[] = [];
   keys: Key[] = [];
@@ -212,6 +214,26 @@ export class World {
    *  braucht: Patrouillen laufen sehen, ohne zu spielen. */
   advanceGuards(dt: number): void {
     for (const g of this.guards) {
+      // Schläfer (M45): wach = Patrouille wie jeder Wächter, die Uhr läuft ab;
+      // schlafend = heim zu Wegpunkt 0 und dort stehen bleiben.
+      if (g.sleeper) {
+        if (g.sleeper.awakeLeft > 0) {
+          g.sleeper.awakeLeft = Math.max(0, g.sleeper.awakeLeft - dt);
+        } else {
+          const home = g.waypoints[0]!;
+          const dx = home.x - g.x,
+            dy = home.y - g.y;
+          const d = Math.hypot(dx, dy);
+          const step = Math.min(d, g.speed * 0.6 * dt);
+          if (d > 1e-6) {
+            g.x += (dx / d) * step;
+            g.y += (dy / d) * step;
+          }
+          g.target = g.waypoints.length > 1 ? 1 : 0;
+          g.dir = 1;
+          continue;
+        }
+      }
       let remaining = g.speed * dt;
       while (remaining > 0 && g.waypoints.length > 1) {
         const t = g.waypoints[g.target]!;
@@ -256,6 +278,24 @@ export class World {
       l.x += (dx / d) * step;
       l.y += (dy / d) * step;
     }
+  }
+
+  /** Schläfer wecken (M45): Ein Echo-Ping bei (x,y) weckt jeden Schläfer in
+   *  seinem Weckradius für `awakeS` Sekunden. Liefert die Geweckten (Klang). */
+  wakeSleepers(x: number, y: number): Guard[] {
+    const woken: Guard[] = [];
+    for (const g of this.guards) {
+      if (!g.sleeper) continue;
+      if (Math.hypot(g.x - x, g.y - y) > g.sleeper.wakeRadius) continue;
+      if (g.sleeper.awakeLeft <= 0) woken.push(g);
+      g.sleeper.awakeLeft = g.sleeper.awakeS;
+    }
+    return woken;
+  }
+
+  /** Schläft dieser Wächter gerade? (Kein Schläfer = nie.) */
+  static asleep(g: Guard): boolean {
+    return g.sleeper !== undefined && g.sleeper.awakeLeft <= 0;
   }
 
   /** Liegt der Ballmittelpunkt gerade auf einer Eisfläche? */

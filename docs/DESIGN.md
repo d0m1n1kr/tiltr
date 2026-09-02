@@ -89,6 +89,9 @@ weiche Lichtschichten OHNE gezeichneten Rand und stets unter
 `BALL_CORE_ALPHA`: ein harter Ring liest sich als Körper, und der einzige
 feste Körper im Bild ist der eigene Ball. Im Ziel wechselt der Schein in
 die Zielfarbe),
+Echo-Spiegel Silber (`200, 215, 235` – kühler und heller als Wand-Blau, ein
+Trugbild aus poliertem Metall; M45), Sanduhr Sand (`232, 196, 140` – Zeit,
+nicht Wert: das Gem ist eisblau, der Schlüssel Gold; M45),
 Schiebewand Stein-Perlgrau (`235, 224, 200` – eine Wand, die sich bewegt),
 Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
 Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das

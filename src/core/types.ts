@@ -16,6 +16,10 @@ export interface Wall {
   /** Schallschutzwand: verschluckt den Echo-Ping, schirmt Klang dahinter ab
    *  (core/occlusion.ts), Rempler klingt gedämpft. */
   absorb?: boolean;
+  /** Echo-Spiegel (M45): Der Ping meldet die Wand am GESPIEGELTEN Punkt –
+   *  doppelt so weit, in derselben Richtung: eine Wand, die nicht da ist.
+   *  Kollision und Beweis: normale Wand. */
+  mirror?: boolean;
   /** Verschlossene Tür. Schlüssel entfernen sie dauerhaft; Coop-Türen
    *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird. */
   door?: { id: string; open?: boolean; require?: 'any' | 'all' };
@@ -102,6 +106,10 @@ export interface Guard {
   target: number;
   /** Laufrichtung durch die Wegpunktliste (Ping-Pong) */
   dir: 1 | -1;
+  /** Schläfer (M45): steht schlafend auf Wegpunkt 0. Ein Echo-Ping in
+   *  `wakeRadius` weckt ihn für `awakeS` Sekunden Patrouille (`awakeLeft`
+   *  zählt herunter), danach kehrt er heim und schläft wieder. */
+  sleeper?: { wakeRadius: number; awakeS: number; awakeLeft: number };
   litFrom?: number;
   litUntil?: number;
 }
@@ -118,6 +126,9 @@ export interface Collectible {
 export interface Key extends Collectible {
   /** Tür-ID, die dieser Schlüssel öffnet */
   opens: string;
+  /** Klang (M45): 'tinkle' klimpert gepannt; 'fork' ist eine Stimmgabel –
+   *  ungepannter Ton, dessen Schwebung verrät, ob man auf sie zu neigt. */
+  voice: 'tinkle' | 'fork';
 }
 
 export interface Plate {
@@ -190,6 +201,11 @@ export interface IcePatch {
 
 /** Sog-Anker: zieht den Ball im Radius an – Kraft bleibt unter der
  *  Neigungs-Beschleunigung, man kommt immer (mühsam) wieder heraus. */
+/** Sanduhr (M45): Sammler, der die Par um `bonusS` verlängert. */
+export interface Hourglass extends Collectible {
+  bonusS: number;
+}
+
 export interface Anchor {
   x: number;
   y: number;

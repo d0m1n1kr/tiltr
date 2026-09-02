@@ -146,7 +146,7 @@ export function planDoorPuzzle(
   };
   let used = 0;
   for (; used < candidates.length && openers.length < spec.keys; used++) {
-    openers.push({ type: 'key', cell: take(candidates[used]!), opens: id, r: 18 });
+    openers.push({ type: 'key', cell: take(candidates[used]!), opens: id, r: 18, voice: 'tinkle' });
   }
   if (spec.switch) {
     // Nahe der Tür: Distanz im Ankunfts-Teil zur Türzelle a.

@@ -57,6 +57,86 @@ export function extraEntries(): TypedEntry[] {
       },
     },
     {
+      type: 'wallMirror',
+      title: 'Echo-Spiegel',
+      description:
+        'Eine Wand aus poliertem Metall (silber): Der Echo-Ping meldet sie doppelt so weit, als sie ist – eine Wand, die nicht da ist. Anrempeln klingt hart wie jede Wand. Trau dem Trugbild nicht.',
+      draw(ctx, w, h) {
+        ctx.fillStyle = `rgba(${WORLD.mirror}, 0.95)`;
+        ctx.fillRect(w * 0.47, h * 0.18, 6, h * 0.64);
+        // Der Ping kommt von links, die Antwort scheint weit RECHTS zu stehen.
+        ctx.strokeStyle = `rgba(${WORLD.ping}, 0.7)`;
+        ctx.beginPath();
+        ctx.arc(w * 0.2, h / 2, h * 0.2, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(${WORLD.ping}, 0.35)`;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.arc(w * 0.9, h / 2, h * 0.2, Math.PI / 2, (3 * Math.PI) / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      },
+      demoSound(audio) {
+        // Antwort aus doppelter Entfernung, metallisch – dann der harte Rempler.
+        audio.echoPing([{ dx: 2, dy: 0, delay: 0.42, gain: 0.3, freq: 1800 }]);
+        setTimeout(() => audio.hit(0.7, -1, 0), 1200);
+      },
+    },
+    {
+      type: 'sleeper',
+      title: 'Schläfer',
+      description:
+        'Ein Wächter, der schläft – tiefes, langsames Schnarchen aus seiner Richtung. Ein Echo-Ping in seiner Nähe weckt ihn mit einem Zischen: fünf Sekunden Patrouille, dann schläft er wieder. Der Ping wird zum Risiko.',
+      draw(ctx, w, h) {
+        ctx.fillStyle = `rgba(${WORLD.guard}, 0.55)`;
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, h * 0.24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(${WORLD.guard}, 0.9)`;
+        ctx.font = `${Math.round(h * 0.32)}px sans-serif`;
+        ctx.fillText('z', w * 0.68, h * 0.34);
+        ctx.font = `${Math.round(h * 0.22)}px sans-serif`;
+        ctx.fillText('z', w * 0.8, h * 0.22);
+      },
+      demoSound(audio) {
+        audio.setSnore(0.9, 1, 0);
+        setTimeout(() => {
+          audio.setSnore(0, 0, 0);
+          audio.sleeperWake(1, 0);
+          audio.setGuard(0.85, 1, 0);
+        }, 1600);
+        setTimeout(() => audio.setGuard(0, 0, 0), 2800);
+      },
+    },
+    {
+      type: 'fork',
+      title: 'Stimmgabel',
+      description:
+        'Ein Schlüssel, der nicht klimpert, sondern tönt – aus keiner Richtung. Die SCHWEBUNG verrät den Weg: Neigst du auf sie zu, steht der Ton fast still; neigst du weg, flattert er. Ortung über die Tonhöhe statt über das Panning.',
+      draw(ctx, w, h) {
+        const cx = w / 2,
+          cy = h / 2,
+          r = h * 0.3;
+        ctx.strokeStyle = `rgba(${WORLD.key}, 0.95)`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r);
+        ctx.lineTo(cx, cy);
+        ctx.moveTo(cx - r * 0.5, cy - r);
+        ctx.lineTo(cx - r * 0.5, cy - r * 0.2);
+        ctx.quadraticCurveTo(cx, cy + r * 0.15, cx + r * 0.5, cy - r * 0.2);
+        ctx.lineTo(cx + r * 0.5, cy - r);
+        ctx.stroke();
+      },
+      demoSound(audio) {
+        // Weg-geneigt (schnelle Schwebung) → auf sie zu (fast stehend).
+        audio.setFork(0.9, 8);
+        setTimeout(() => audio.setFork(0.9, 3), 900);
+        setTimeout(() => audio.setFork(0.9, 0.5), 1800);
+        setTimeout(() => audio.setFork(0, 0), 3000);
+      },
+    },
+    {
       type: 'goal',
       title: 'Ziel-Beacon',
       description: 'Sonar-Ping des Ziels: je näher, desto schneller, lauter und höher. Richtung über Spatial Audio.',

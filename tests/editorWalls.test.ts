@@ -17,7 +17,7 @@ import {
 } from '../src/ui/editor';
 
 const E: Edge = [[1, 1], 'e'];
-const fresh = (): MazeEdits => ({ carve: [], add: [], brittle: [], absorb: [] });
+const fresh = (): MazeEdits => ({ carve: [], add: [], brittle: [], absorb: [], mirrors: [] });
 const same = (a: Edge, b: Edge) => a[1] === b[1] && a[0][0] === b[0][0] && a[0][1] === b[0][1];
 
 /** Ist E im Maze offen? Wie das echte Maze: add schließt, carve öffnet, sonst Seed. */
@@ -28,7 +28,7 @@ describe('toggleEdge', () => {
   it('offene Seed-Kante: Wand (add) → wieder offen (Listen leer)', () => {
     const maze = fresh();
     expect(toggleEdge(maze, E, openOf(maze, true), true)).toBe('wall');
-    expect(maze).toEqual({ carve: [], add: [E], brittle: [], absorb: [] });
+    expect(maze).toEqual({ carve: [], add: [E], brittle: [], absorb: [], mirrors: [] });
     expect(toggleEdge(maze, E, openOf(maze, true), true)).toBe('open');
     expect(maze).toEqual(fresh());
   });
@@ -36,7 +36,7 @@ describe('toggleEdge', () => {
   it('Seed-Wand: offen (carve) → wieder Wand (Listen leer)', () => {
     const maze = fresh();
     expect(toggleEdge(maze, E, openOf(maze, false), false)).toBe('open');
-    expect(maze).toEqual({ carve: [E], add: [], brittle: [], absorb: [] });
+    expect(maze).toEqual({ carve: [E], add: [], brittle: [], absorb: [], mirrors: [] });
     expect(toggleEdge(maze, E, openOf(maze, false), false)).toBe('wall');
     expect(maze).toEqual(fresh());
   });
@@ -55,10 +55,10 @@ describe('toggleEdge', () => {
   });
 
   it('eine entfernte Wand nimmt ihre Variante mit', () => {
-    const maze: MazeEdits = { carve: [], add: [], brittle: [E], absorb: [] };
+    const maze: MazeEdits = { carve: [], add: [], brittle: [E], absorb: [], mirrors: [] };
     expect(toggleEdge(maze, E, false, false)).toBe('open');
     expect(maze.brittle).toEqual([]);
-    const m2: MazeEdits = { carve: [], add: [E], brittle: [], absorb: [E] };
+    const m2: MazeEdits = { carve: [], add: [E], brittle: [], absorb: [E], mirrors: [] };
     expect(toggleEdge(m2, E, false, true)).toBe('open');
     expect(m2).toEqual(fresh());
   });
@@ -85,15 +85,15 @@ describe('setEdgeVariant', () => {
   });
 
   it('edgeState: Schallschutz vor brüchig vor offen/Wand', () => {
-    expect(edgeState({ carve: [], add: [], brittle: [E], absorb: [E] }, E, false)).toBe('absorb');
-    expect(edgeState({ carve: [], add: [], brittle: [E], absorb: [] }, E, false)).toBe('brittle');
+    expect(edgeState({ carve: [], add: [], brittle: [E], absorb: [E], mirrors: [] }, E, false)).toBe('absorb');
+    expect(edgeState({ carve: [], add: [], brittle: [E], absorb: [], mirrors: [] }, E, false)).toBe('brittle');
     expect(edgeState(fresh(), E, true)).toBe('open');
     expect(edgeState(fresh(), E, false)).toBe('wall');
   });
 });
 
 describe('landingsOn', () => {
-  const maze = (seed: number) => ({ seed, carve: [], add: [], brittle: [], absorb: [] });
+  const maze = (seed: number) => ({ seed, carve: [], add: [], brittle: [], absorb: [], mirrors: [] });
   const lv: RawLevel = {
     id: 't',
     name: 'T',

@@ -54,6 +54,15 @@ export const guardDef = z.object({
   /** px/s */
   speed: z.number().positive().default(90),
   r: z.number().positive().default(26),
+  /** Schläfer (M45): schläft auf Wegpunkt 0, bis ein Echo-Ping in
+   *  `wakeRadius` (px) ihn weckt – dann `awakeS` Sekunden Patrouille. Macht
+   *  den Ping zum Risiko. Beweis: wie Wächter (Patrouille als Riegel geprüft). */
+  sleeper: z
+    .object({
+      wakeRadius: z.number().positive().default(220),
+      awakeS: z.number().positive().default(5),
+    })
+    .optional(),
 });
 
 export const keyDef = z.object({
@@ -62,6 +71,18 @@ export const keyDef = z.object({
   /** Tür-ID, die dieser Schlüssel öffnet */
   opens: z.string().min(1),
   r: z.number().positive().default(18),
+  /** Klang (M45): Klimpern (gepannt) oder Stimmgabel – reiner Ton, dessen
+   *  Schwebung mit der Neigungsrichtung wandert (Ortung über Tonhöhe). */
+  voice: z.enum(['tinkle', 'fork']).default('tinkle'),
+});
+
+/** Sanduhr (M45): Sammler, der die Par um `bonusS` verlängert – die zweite
+ *  Routen-Entscheidung neben den Gems: Zeit holen oder Gems holen? */
+export const hourglassDef = z.object({
+  ...base,
+  type: z.literal('hourglass'),
+  r: z.number().positive().default(22),
+  bonusS: z.number().positive().default(10),
 });
 
 export const doorDef = z.object({
@@ -236,6 +257,7 @@ export const elementDef = z.discriminatedUnion('type', [
   anchorDef,
   glassDef,
   jukeboxDef,
+  hourglassDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -256,6 +278,7 @@ export type IceDef = z.infer<typeof iceDef>;
 export type EchoCrystalDef = z.infer<typeof echoCrystalDef>;
 export type AnchorDef = z.infer<typeof anchorDef>;
 export type GlassDef = z.infer<typeof glassDef>;
+export type HourglassDef = z.infer<typeof hourglassDef>;
 export type JukeboxDef = z.infer<typeof jukeboxDef>;
 export type TuneDef = z.infer<typeof tuneSchema>;
 export type PlaylistEntry = z.infer<typeof playlistEntry>;
@@ -274,6 +297,9 @@ export const floorSchema = z.object({
     /** Schallschutzwände: Wandkanten, die den Ping verschlucken und Klang
      *  dahinter abschirmen. Wie `brittle` muss die Wand existieren. */
     absorb: z.array(wallEdge).default([]),
+    /** Echo-Spiegel (M45): Wandkanten, die den Ping am gespiegelten Punkt
+     *  antworten lassen – eine Wand, die nicht da ist. Wand muss existieren. */
+    mirrors: z.array(wallEdge).default([]),
     /** Anteil zufällig brüchiger Innenwände (0 = keine) */
     brittleChance: z.number().min(0).max(1).default(0),
     /** Treffer bis zum Einsturz */

@@ -264,7 +264,7 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
 
     floors.push({
       size: [cols, rows],
-      maze: { seed: mazeSeed, carve: [], add: [], brittle: [], absorb: [], brittleChance: p.brittleChance, brittleHits: 3 },
+      maze: { seed: mazeSeed, carve: [], add: [], brittle: [], absorb: [], mirrors: [], brittleChance: p.brittleChance, brittleHits: 3 },
       elements,
       start,
       goal: isLast ? exit : null,

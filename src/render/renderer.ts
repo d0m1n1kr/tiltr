@@ -220,7 +220,19 @@ export class Renderer {
     // Wand-Variante für das Aufleuchten: Tür, Schiebewand, Automat,
     // Schallschutz oder brüchig – eine schlichte Wand leuchtet nie auf.
     const wallType = (w: World['walls'][number]): string =>
-      w.door ? 'door' : w.slide ? 'slidingWall' : w.jukebox !== undefined ? 'jukebox' : w.absorb ? 'wallAbsorb' : w.hp !== undefined ? 'wallBrittle' : 'wall';
+      w.door
+        ? 'door'
+        : w.slide
+          ? 'slidingWall'
+          : w.jukebox !== undefined
+            ? 'jukebox'
+            : w.absorb
+              ? 'wallAbsorb'
+              : w.mirror
+                ? 'wallMirror'
+                : w.hp !== undefined
+                  ? 'wallBrittle'
+                  : 'wall';
     const ctx = this.ctx;
     const s = this.scale,
       ox = this.offsetX,
@@ -297,7 +309,9 @@ export class Renderer {
               ? WORLD.brittle
               : w.absorb
                 ? WORLD.absorb
-                : WORLD.wall;
+                : w.mirror
+                  ? WORLD.mirror
+                  : WORLD.wall;
       addRect(w, wallAlpha(w), color);
     }
     for (const d of world.debris) {
@@ -540,18 +554,52 @@ export class Renderer {
       ctx.fill();
     }
 
-    // Schlüssel: goldene Raute.
+    // Schlüssel: goldene Raute; die Stimmgabel (M45) als goldenes Y.
     for (const key of world.keys) {
       if (key.collected) continue;
       const alpha = revealAlpha(key, 0.95, 'key');
       if (alpha <= 0.01) continue;
       ctx.save();
       ctx.translate(tx(key.x), ty(key.y));
-      ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = `rgba(${WORLD.key}, ${alpha})`;
-      const s2 = key.r * s * 0.9;
-      ctx.fillRect(-s2 / 2, -s2 / 2, s2, s2);
+      if (key.voice === 'fork') {
+        const r = key.r * s;
+        ctx.strokeStyle = `rgba(${WORLD.key}, ${alpha})`;
+        ctx.lineWidth = 3 * this.dpr;
+        ctx.beginPath();
+        ctx.moveTo(0, r);
+        ctx.lineTo(0, 0);
+        ctx.moveTo(-r * 0.5, -r);
+        ctx.lineTo(-r * 0.5, -r * 0.2);
+        ctx.quadraticCurveTo(0, r * 0.15, r * 0.5, -r * 0.2);
+        ctx.lineTo(r * 0.5, -r);
+        ctx.stroke();
+      } else {
+        ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = `rgba(${WORLD.key}, ${alpha})`;
+        const s2 = key.r * s * 0.9;
+        ctx.fillRect(-s2 / 2, -s2 / 2, s2, s2);
+      }
       ctx.restore();
+    }
+
+    // Sanduhr (M45): zwei Dreiecke in Sandfarbe.
+    for (const hg of world.hourglasses) {
+      if (hg.collected) continue;
+      const alpha = revealAlpha(hg, 0.95, 'hourglass');
+      if (alpha <= 0.01) continue;
+      const cx = tx(hg.x),
+        cy = ty(hg.y),
+        r = hg.r * s;
+      ctx.fillStyle = `rgba(${WORLD.hourglass}, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.7, cy - r);
+      ctx.lineTo(cx + r * 0.7, cy - r);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + r * 0.7, cy + r);
+      ctx.lineTo(cx - r * 0.7, cy + r);
+      ctx.lineTo(cx, cy);
+      ctx.closePath();
+      ctx.fill();
     }
 
     // Gems: eisblaue Raute mit Ring.
@@ -577,9 +625,11 @@ export class Renderer {
         g.waypoints.forEach((p, i) => (i ? ctx.lineTo(tx(p.x), ty(p.y)) : ctx.moveTo(tx(p.x), ty(p.y))));
         ctx.stroke();
       }
-      const alpha = revealAlpha(g, 0.9, 'guard');
+      const alpha = revealAlpha(g, 0.9, 'guard') * (g.sleeper && g.sleeper.awakeLeft <= 0 ? 0.6 : 1);
       if (alpha <= 0.01) continue;
-      const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), g.r * s * 2.2);
+      // Schläfer (M45): schlafend gedämpft, der Schein atmet langsam.
+      const breath = g.sleeper && g.sleeper.awakeLeft <= 0 ? 1.9 + 0.3 * Math.sin(now / 700) : 2.2;
+      const grad = ctx.createRadialGradient(tx(g.x), ty(g.y), 0, tx(g.x), ty(g.y), g.r * s * breath);
       grad.addColorStop(0, `rgba(${WORLD.guard}, ${alpha * 0.35})`);
       grad.addColorStop(1, `rgba(${WORLD.guard}, 0)`);
       ctx.fillStyle = grad;

@@ -19,6 +19,7 @@ import './echoCrystal';
 import './anchor';
 import './glass';
 import './jukebox';
+import './hourglass';
 
 export { buildElements, galleryEntries, registerElement } from './registry';
 export type { BuildContext, ElementModule, GalleryEntry } from './registry';

@@ -42,6 +42,12 @@ export const WORLD = {
   /** Schallschutzwand: mattes Filz-Khaki – Dämmstoff, kein Signal. Absichtlich
    *  stumpf zwischen Wand-Blau und Brüchig-Bernstein: Sie nimmt Klang weg. */
   absorb: '160, 165, 120',
+  /** Echo-Spiegel (M45): kühles Silber – heller und kälter als Wand-Blau, ein
+   *  Trugbild aus poliertem Metall. */
+  mirror: '200, 215, 235',
+  /** Sanduhr (M45): warmer Sand – Zeit, nicht Wert (das Gem ist eisblau, der
+   *  Schlüssel Gold). */
+  hourglass: '232, 196, 140',
   // Glasboden nutzt bewusst das Brüchig-Bernstein (WORLD.brittle):
   // gleiche Bedeutung "brüchig, Vorsicht" – nur als Boden statt Wand.
 } as const;

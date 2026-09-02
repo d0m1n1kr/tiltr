@@ -612,6 +612,56 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M45 „Vier kleine Stimmen" ✓ (Phase 2 von 3.0.0) – Sanduhr, Schläfer, Echo-Spiegel, Stimmgabel
+
+Vier Elemente nach dem Bauplan (Schema → Modell → Loader/Physik → Audio →
+Renderer/Palette → Registry/Galerie → Editor → i18n ×4 → Tests). Alle vier
+sind Varianten oder Sammler – kein neuer Körper, kein neuer Beweis.
+
+**Sanduhr** (`hourglass`, eigener Typ): Sammler, der die Par um `bonusS`
+(10 s) verlängert – die zweite Routen-Entscheidung neben den Gems: Zeit holen
+oder Gems holen. Die Sterne-Rechnung ist dafür aus app.ts in `core/stars.ts`
+gezogen (`starsFor`, `effectivePar`, Units): EINE Stelle, an der der Bonus
+zählt; die Ergebnis-Karte zeigt „Par 85 s, mit ⏳ +10". Signatur: Rieseln als
+Doppel-Blip (1480 Hz), Tick beim Einsammeln. Palette Sand (`232, 196, 140`).
+
+**Schläfer** (`guard.sleeper`): Wächter-Variante. Schläft auf Wegpunkt 0
+(schnarcht: Sägezahn 68 Hz im 0,45-Hz-Atem, eigener Bus `setSnore` – langsam,
+unverwechselbar gegen das 6-Hz-Tremolo des Brummens). Ein Echo-Ping in
+`wakeRadius` weckt ihn (`World.wakeSleepers`, Zischen `sleeperWake`): `awakeS`
+Sekunden Patrouille, dann heim und schlafen (`advanceGuards`, dt-basiert,
+deterministisch). Der Ping wird zum Risiko. Beweis: wie Wächter (konservativ,
+Patrouille als Riegel). Editor: Auswahl „Schläfer ja/nein" + Weckradius +
+Wachzeit; Galerie-Extra-Eintrag `sleeper` mit eigener Demo; Erst-Vorkommen
+als eigenes Merkmal. `World.asleep(g)` ist die eine Frage, die Renderer
+(gedämpft, atmender Schein) und Spielschleife (Schnarchen statt Brummen)
+stellen.
+
+**Echo-Spiegel** (`maze.mirrors`, Wand-Variante wie `absorb`): Der Ping
+meldet die Wand am GESPIEGELTEN Punkt – `mirrorReflection` in occlusion.ts:
+doppelte Distanz, dieselbe Richtung, metallisch (1800 Hz). Eine Wand, die
+nicht da ist. Kollision, Rempler, Beweis: normale Wand. Loader verlangt die
+Existenz, `mirrorLevel` spiegelt die Liste, der Editor führt sie als vierte
+Variante (`edgeState`/`setEdgeVariant`/`toggleEdge`, `#edWallVariant`),
+Galerie-Extra `wallMirror`. Palette Silber (`200, 215, 235`).
+
+**Stimmgabel** (`key.voice: 'fork'`): Ein Schlüssel, der nicht klimpert,
+sondern TÖNT – ungepannt, zwei Sinus direkt auf den Master. `core/fork.ts`
+(`forkTone`, Units): Schwebung 0,4–9 Hz aus dem Winkel zwischen
+Neigungsvektor und Richtung zur Gabel; auf sie zu steht der Ton fast still,
+weg flattert er; ohne Neigung schwebt er mittel („sie ist da, such"). Ortung
+über Tonhöhe statt Panning – die zweite Ohr-Fähigkeit. Renderer zeichnet ein
+goldenes Y, der Ping antwortet mit reinem 880 statt 1650. Editor: Auswahl
+„Klang" am Schlüssel; Galerie-Extra `fork`.
+
+**Tests.** 458 Units grün: `fork` (Monotonie, Totzone, Betragsunabhängigkeit),
+`stars` (Bonus macht den Stern, ohne Par keiner), `sleeper` (steht, weckt in
+Weckweite, patrouilliert, schläft nach awakeS wieder ein und kehrt heim,
+Doppel-Ping meldet nichts Neues), `mirrorWall` (Reflexionspunkt, Loader,
+Spiegelung, Editor-Variante). Alle vier Merkmale sind Aufleuchten-fähig
+(Renderer-Typen `hourglass`, `wallMirror`; `sleeper`/`fork` über die
+Galerie-Extras).
+
 ## M44 „Vier Welten, ein Ohr" ✓ (Phase 1 von 3.0.0) – Welten 1–4 nach dem Review
 
 Alle Level-Umbauten aus dem Kampagnen-Review, mit vorhandenen Elementen.

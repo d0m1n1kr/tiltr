@@ -10,7 +10,7 @@ registerElement<KeyDef>({
 
   build(def, ctx) {
     const p = cellCenter(def.cell, ctx.cell);
-    ctx.world.keys.push({ x: p.x, y: p.y, r: def.r, collected: false, opens: def.opens });
+    ctx.world.keys.push({ x: p.x, y: p.y, r: def.r, collected: false, opens: def.opens, voice: def.voice });
   },
 
   gallery: {

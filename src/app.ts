@@ -6,7 +6,7 @@ import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { doorState, type OpenerState } from './core/doors';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
-import type { Ball, World } from './core/physics';
+import type { Ball } from './core/physics';
 import { TiltInput } from './input/tilt';
 import { GameAudio } from './audio/audio';
 import { haptics } from './audio/haptics';
@@ -16,6 +16,10 @@ import { generateQuickLevel, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
 import { newFeaturesIn } from './levels/firstAppearances';
+import { starsFor, effectivePar } from './core/stars';
+import { forkTone } from './core/fork';
+import { mirrorReflection } from './core/occlusion';
+import { World } from './core/physics';
 import { galleryEntries } from './elements/registry';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang, type Dict } from './i18n';
@@ -204,6 +208,8 @@ let pings = 0;
 let pingMax = 3;
 let pingsUsed = 0; // Blind-Stern: Kampagnen-Sieg ohne einen einzigen Ping
 let falls = 0;
+/** Sanduhr-Sekunden dieses Laufs (M45): verlängern die Par. */
+let bonusS = 0;
 let levelCols = 0;
 let levelRows = 0;
 // Geist-Replay: Bestzeit-Spur des aktuellen Levels + Rekorder des Laufs
@@ -536,6 +542,8 @@ function showMenu(): void {
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
+  audio.setSnore(0, 0, 0);
+  audio.setFork(0, 0);
   audio.setRival(0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
@@ -945,6 +953,7 @@ function launch(def: LevelDef): void {
   pings = pingMax;
   pingsUsed = 0;
   falls = 0;
+  bonusS = 0;
   warpReady = true;
   activateFloor(0);
   // ⚑ Editor-Vorschau ab gewählter Stelle: Ebene wechseln und die (EINE,
@@ -1127,17 +1136,16 @@ function onWin(seconds: number): void {
     const gemsTotal = allGems.length;
     const gemsGot = allGems.filter((g) => g.collected).length;
     // Sterne: 1 = geschafft, 2 = unter Par, 3 = alle Gems (bzw. sturzfrei ohne Gems)
-    const stars =
-      1 +
-      (def.parTimeS !== undefined && seconds <= def.parTimeS ? 1 : 0) +
-      (gemsTotal > 0 ? (gemsGot === gemsTotal ? 1 : 0) : falls === 0 ? 1 : 0);
+    const stars = starsFor({ seconds, parS: def.parTimeS, bonusS, gemsTotal, gemsGot, falls });
     profile.submitStars(def.id, stars);
     // Blind-Stern 🌑: der optionale vierte Stern – ohne einen einzigen Ping.
     if (pingsUsed === 0) profile.markBlind(def.id);
     const isRecord = profile.submitTime(def.id, seconds);
     const hasNext = index + 1 < CAMPAIGN_LEVELS.length;
     const lines = [
-      `${t('res.time', { time: fmtTime(seconds) })}${def.parTimeS ? t('res.par', { n: def.parTimeS }) : ''}${isRecord ? t('res.newBest') : ''}`,
+      `${t('res.time', { time: fmtTime(seconds) })}${
+        def.parTimeS ? (bonusS > 0 ? t('res.parBonus', { n: effectivePar(def.parTimeS, bonusS)!, bonus: bonusS }) : t('res.par', { n: def.parTimeS })) : ''
+      }${isRecord ? t('res.newBest') : ''}`,
       gemsTotal > 0 ? `💎 ${gemsGot}/${gemsTotal}` : t('res.falls', { n: falls }),
       pingsUsed === 0 ? t('res.blind') : '',
     ].filter(Boolean);
@@ -1398,6 +1406,12 @@ function firePing(now: number): void {
     // Schallschutzwand: die Wellenfront deckt sie auf (Licht), aber sie
     // antwortet NICHT – ein stilles Stück Richtung ist ihr Signal.
     if (w.absorb) continue;
+    // Echo-Spiegel (M45): antwortet vom GESPIEGELTEN Punkt, metallisch.
+    if (w.mirror) {
+      const m = mirrorReflection(cx - b.x, cy - b.y, dist);
+      reflections.push({ ...m, freq: 1800 });
+      continue;
+    }
     // Schiebewände antworten tiefer, steinerner als normale Wände; der
     // Jukebox-Kasten hohl-hölzern dazwischen (er IST ein Möbel).
     reflections.push({
@@ -1421,9 +1435,17 @@ function firePing(now: number): void {
     o.litUntil = o.litFrom + 1200;
     reflections.push({ dx: o.x - b.x, dy: o.y - b.y, dist, freq, double });
   };
-  for (const key of world.keys) if (!key.collected) reveal(key, 1650);
+  // Stimmgabel antwortet als reiner Ton (880), das Klimpern hell (1650).
+  for (const key of world.keys) if (!key.collected) reveal(key, key.voice === 'fork' ? 880 : 1650);
+  // Sanduhr (M45): feines Rieseln als Doppel-Blip.
+  for (const hg of world.hourglasses) if (!hg.collected) reveal(hg, 1480, true);
   for (const gem of world.gems) if (!gem.collected) reveal(gem, 2093, true);
   for (const g of world.guards) reveal(g, 240);
+  // Schläfer (M45): der Ping weckt, wer in Hörweite schläft – mit Zischen.
+  for (const g of world.wakeSleepers(b.x, b.y)) {
+    audio.sleeperWake(g.x - b.x, g.y - b.y);
+    flash(t('st.sleeperWake'));
+  }
   // Zeitschloss-Schalter: dumpfes Tick-Tock als Doppel-Blip.
   for (const sw of world.switches) reveal(sw, 520, true);
   // Horcher: dunkler als der Wächter (der antwortet mit 240).
@@ -1995,6 +2017,8 @@ function mpCheckResult(): void {
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
   audio.setGuard(0, 0, 0);
+  audio.setSnore(0, 0, 0);
+  audio.setFork(0, 0);
   audio.setRival(0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
@@ -2187,9 +2211,19 @@ function frame(now: number): void {
     // Wächter: Brummen aus seiner Richtung, fließt in die Gefahr (Herzschlag) ein
     let guardDanger = 0;
     let nearGuard: { dx: number; dy: number } | null = null;
+    // Schläfer (M45): schnarcht statt zu brummen – eigener Bus, eigene Nähe.
+    let snoreClose = 0;
+    let nearSleeper: { dx: number; dy: number } | null = null;
     for (const g of world.guards) {
       const d = Math.max(0, Math.hypot(g.x - world.ball.x, g.y - world.ball.y) - g.r);
       const c = Math.max(0, 1 - d / GUARD_HEAR);
+      if (World.asleep(g)) {
+        if (c > snoreClose) {
+          snoreClose = c;
+          nearSleeper = { dx: g.x - world.ball.x, dy: g.y - world.ball.y };
+        }
+        continue;
+      }
       if (c > guardDanger) {
         guardDanger = c;
         nearGuard = { dx: g.x - world.ball.x, dy: g.y - world.ball.y };
@@ -2197,6 +2231,8 @@ function frame(now: number): void {
     }
     if (nearGuard) audio.setGuard(guardDanger * shield(nearGuard.dx, nearGuard.dy), nearGuard.dx, nearGuard.dy);
     else audio.setGuard(0, 0, 0);
+    if (nearSleeper) audio.setSnore(snoreClose * shield(nearSleeper.dx, nearSleeper.dy), nearSleeper.dx, nearSleeper.dy);
+    else audio.setSnore(0, 0, 0);
 
     // Horcher: Schnüffeln schwillt mit der EIGENEN Rollgeschwindigkeit an –
     // Stillstehen nimmt ihn (fast) aus dem Herzschlag heraus.
@@ -2227,12 +2263,24 @@ function frame(now: number): void {
     if (danger > 0.55) haptics.holeWarning(danger);
     audio.heartbeat(Math.max(danger, guardDanger, listenerDanger));
 
-    // Schlüssel: Klimpern in Hörweite, Einsammeln öffnet die Tür
+    // Schlüssel: Klimpern in Hörweite, Einsammeln öffnet die Tür.
+    // Stimmgabel (M45): ungepannter Ton, Schwebung aus der Neigungsrichtung.
+    let forkLevel = 0;
+    let forkBeat = 0;
     for (const key of world.keys) {
       if (key.collected) continue;
       const kdx = key.x - world.ball.x,
         kdy = key.y - world.ball.y;
       const kd = Math.hypot(kdx, kdy);
+      if (key.voice === 'fork' && kd >= key.r + world.ball.r && kd < KEY_HEAR) {
+        const tone = forkTone(tilt.x, tilt.y, kdx, kdy);
+        const level = (1 - kd / KEY_HEAR) * shield(kdx, kdy);
+        if (level > forkLevel) {
+          forkLevel = level;
+          forkBeat = tone.beatHz;
+        }
+        continue;
+      }
       if (kd < key.r + world.ball.r) {
         key.collected = true;
         audio.collectKey();
@@ -2245,6 +2293,19 @@ function frame(now: number): void {
       } else if (kd < KEY_HEAR) {
         // Hinter einer Schallschutzwand klingt der Schlüssel wie weit weg.
         audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR / shield(kdx, kdy)));
+      }
+    }
+    audio.setFork(forkLevel, forkBeat);
+
+    // Sanduhr (M45): einsammeln verlängert die Par.
+    for (const hg of world.hourglasses) {
+      if (hg.collected) continue;
+      if (Math.hypot(hg.x - world.ball.x, hg.y - world.ball.y) < hg.r + world.ball.r) {
+        hg.collected = true;
+        bonusS += hg.bonusS;
+        audio.collectHourglass();
+        haptics.checkpoint();
+        flash(t('st.hourglass', { n: hg.bonusS }));
       }
     }
 
@@ -2563,6 +2624,12 @@ function frame(now: number): void {
     crystals: world.crystals.length,
     anchors: world.anchors.length,
     glass: world.glass.length,
+    hourglasses: world.hourglasses.length,
+    bonusS,
+    sleepers: world.guards.filter((g) => g.sleeper).length,
+    asleep: world.guards.filter((g) => World.asleep(g)).length,
+    mirrors: world.walls.filter((w) => w.mirror).length,
+    forks: world.keys.filter((k) => k.voice === 'fork').length,
     bright: bright(),
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,

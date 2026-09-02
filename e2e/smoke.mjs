@@ -81,6 +81,7 @@ const KNOWN_RUNS = [
   "27",
   "28",
   "29",
+  "30",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -5395,6 +5396,85 @@ if (want("29")) {
   } catch (e) {
     check(
       `Lauf 29 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 30: Vier kleine Stimmen (M45). Galerie kennt Sanduhr, Echo-Spiegel,
+// Schläfer und Stimmgabel; ein importiertes Level mit allen vieren läuft in
+// der Spielschleife (Zähler in __tiltrWorld), und der erste Ping weckt den
+// Schläfer – der Ping ist ab jetzt ein Risiko.
+if (want("30")) {
+  try {
+    const page = await browser.newPage({
+      viewport: { width: 400, height: 800 },
+      locale: "de-DE",
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?nosplash`);
+
+    await page.click("#galleryLink");
+    await page.waitForTimeout(200);
+    const titles = await page.locator(".gallery-item h3").allTextContents();
+    const wanted = ["Sanduhr", "Echo-Spiegel", "Schläfer", "Stimmgabel"];
+    const missing = wanted.filter((w) => !titles.some((t) => t.includes(w)));
+    check(
+      `Galerie kennt die vier neuen Stimmen (${titles.length} Einträge, fehlt: ${JSON.stringify(missing)})`,
+      missing.length === 0 && titles.length >= 27,
+    );
+    await page.click("#galleryClose");
+
+    // Offener Raum 4×3, eine Spiegelwand unter (1,0), Sanduhr, Stimmgabel-
+    // Schlüssel für die Tür vor dem Ziel, ein Schläfer mit großem Weckradius.
+    const carve = [];
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) carve.push([[x, y], "e"]);
+    for (let y = 0; y < 2; y++) for (let x = 0; x < 4; x++) carve.push([[x, y], "s"]);
+    const def = {
+      id: "custom-m45",
+      name: "Vier Stimmen",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 1, carve, add: [[[1, 0], "s"]], mirrors: [[[1, 0], "s"]] },
+          elements: [
+            { type: "hourglass", cell: [2, 0] },
+            { type: "key", cell: [3, 0], opens: "tor", voice: "fork" },
+            { type: "door", id: "tor", edge: [[3, 1], "s"] },
+            { type: "guard", patrol: [[1, 2], [2, 2]], speed: 90, sleeper: { wakeRadius: 600, awakeS: 5 } },
+          ],
+          start: [0, 0],
+          goal: [3, 2],
+        },
+      ],
+    };
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await page.waitForTimeout(400);
+    const status = (await page.textContent("#wsImportStatus")).trim();
+    check(`Level mit den vier Elementen importiert ("${status}")`, status.includes("✓"));
+    await page.locator("#workshopList .ws-item .btn-primary").last().click();
+    await page.waitForTimeout(3600); // Kalibrier-Countdown
+    const w = await page.evaluate(() => window.__tiltrWorld);
+    check(
+      `Spielschleife kennt alle vier (Sanduhr ${w?.hourglasses}, Spiegel ${w?.mirrors}, Stimmgabel ${w?.forks}, Schläfer ${w?.sleepers}, davon schlafend ${w?.asleep})`,
+      w?.hourglasses === 1 && w?.mirrors === 1 && w?.forks === 1 && w?.sleepers === 1 && w?.asleep === 1,
+    );
+    await page.keyboard.press("Space"); // Echo-Ping
+    await page.waitForTimeout(300);
+    const w2 = await page.evaluate(() => window.__tiltrWorld);
+    const st = (await page.textContent("#status")).trim();
+    check(
+      `Der Ping weckt den Schläfer (schlafend ${w2?.asleep}, "${st}")`,
+      w2?.asleep === 0 && /Schläfer/.test(st),
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 30 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

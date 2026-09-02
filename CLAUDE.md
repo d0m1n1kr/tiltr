@@ -160,6 +160,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   DORT ab und wechselt auf die Ebene (`startCustom(def, true, from)` →
   `launch`), Respawn ebenfalls dort. Kein Teil der Def: nicht gespeichert,
   nicht geteilt, lebt nur im Editor (überlebt aber den ✏️-Rücksprung).
+- ELEMENTE M45 (Phase 2 von 3.0.0): SANDUHR `hourglass` verlängert die Par
+  (`core/stars.ts` ist die EINE Sterne-Rechnung – app.ts ruft `starsFor`);
+  SCHLÄFER `guard.sleeper` (schläft auf Wegpunkt 0, `World.wakeSleepers` beim
+  Ping, `World.asleep(g)` für Renderer und Schnarch-Bus, Beweis wie Wächter);
+  ECHO-SPIEGEL `maze.mirrors` (Wand-Variante wie absorb, Ping-Antwort vom
+  gespiegelten Punkt via `mirrorReflection`, Editor-Variante 'mirror');
+  STIMMGABEL `key.voice: 'fork'` (`core/fork.ts` `forkTone`: Schwebung aus
+  Neigungswinkel, UNGEPANNT – Ortung über Tonhöhe). Neue Merkmale melden sich
+  im Aufleuchten über `levelFeatures` (sleeper, fork, wallMirror).
 - `src/core/occlusion.ts` – SCHALLSCHUTZWAND (`maze.absorb`, Wand mit
   `absorb`, Palette `absorb` Filz-Khaki): Der Echo-Ping deckt sie auf, aber
   sie antwortet NICHT; Klangquellen, deren Strahl vom Ball eine solche Wand
