@@ -551,9 +551,18 @@
     .ws-top { display: flex; align-items: flex-start; gap: var(--space-2); }
     .ws-top .ws-head { flex: 1 1 auto; min-width: 0; }
     .ws-order .ws-icon { flex: 0 0 auto; min-width: var(--touch-min); padding: 0 var(--space-2); }
-    #wsBundleBar { display: grid; gap: var(--space-2); padding: var(--space-3) 14px; }
-    .ws-bundle-row { display: flex; align-items: center; gap: var(--space-2); }
-    .ws-bundle-row .btn { min-width: var(--touch-min); padding: 0 var(--space-2); }
+    /* Überlauffest: Grid-Kinder dürfen die Spalte NICHT aufziehen (min-width:
+       auto wäre die Intrinsic-Breite des Selects), der Select schrumpft mit
+       Ellipse, Beschreibung und Meta brechen um – ein langer Bundle-Titel
+       („Welt 1 – Die Tiefe erwacht (10)") sprengte sonst das Phone-Layout. */
+    #workshopContent > *, #workshopList > * { min-width: 0; }
+    #wsBundleBar { display: grid; gap: var(--space-2); padding: var(--space-3) 14px; min-width: 0; }
+    .ws-bundle-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+    .ws-bundle-row select { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ws-bundle-row .btn { flex: 0 0 auto; min-width: var(--touch-min); padding: 0 var(--space-2); }
+    #wsBundleDesc { overflow-wrap: anywhere; white-space: normal; }
+    #wsBundleMeta { white-space: normal; overflow-wrap: anywhere; }
+    #wsBundlePlay { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
     #wsBundleForm { display: grid; gap: var(--space-2); }
     #wsBundleForm.hidden { display: none; }
     #wsBundleDesc:empty { display: none; }

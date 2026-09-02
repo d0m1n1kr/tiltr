@@ -2388,10 +2388,14 @@ if (want("14")) {
     const lightSel = page.locator("#edFloorBright");
     await lightSel.selectOption("bright");
     await page.waitForTimeout(200);
-    const brightSet = await page.evaluate(() => window.__tiltrEd.def.floors[0].bright);
+    const brightSet = await page.evaluate(
+      () => window.__tiltrEd.def.floors[0].bright,
+    );
     await lightSel.selectOption("dark");
     await page.waitForTimeout(200);
-    const brightCleared = await page.evaluate(() => window.__tiltrEd.def.floors[0].bright);
+    const brightCleared = await page.evaluate(
+      () => window.__tiltrEd.def.floors[0].bright,
+    );
     check(
       `Ebene: „Licht" schreibt bright (hell → ${brightSet}, dunkel → ${brightCleared})`,
       brightSet === true && brightCleared === undefined,
@@ -4849,6 +4853,59 @@ if (want("28")) {
         created.desc === "Drei Prüfungen" &&
         created.empty,
     );
+
+    // (2b) Langer Titel + lange Beschreibung dürfen das Phone-Layout nicht
+    // sprengen: Panelbreite ≤ Viewport, kein horizontaler Scroll, Select mit
+    // Ellipse statt Intrinsic-Breite (Screenshot 2.11.0: „Welt 1 – Die Tiefe
+    // erwacht (10)" zog Leiste und Karten über den rechten Rand).
+    await page.fill(
+      "#wsBundleTitle",
+      "Welt 1 – Die Tiefe erwacht und noch ein sehr langer Zusatz",
+    );
+    await page.dispatchEvent("#wsBundleTitle", "input");
+    await page.fill(
+      "#wsBundleDescInput",
+      "Eingebaute Kampagne, Welt 1 – Die Tiefe erwacht – Stand tiltr 2.11.0, eine Beschreibung ohne Umbruchstellen_die_wirklich_lang_ist",
+    );
+    await page.dispatchEvent("#wsBundleDescInput", "change");
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.waitForTimeout(250);
+    const narrow = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const bar = document
+        .getElementById("wsBundleBar")
+        .getBoundingClientRect();
+      const sel = document
+        .getElementById("wsBundleSelect")
+        .getBoundingClientRect();
+      const btnRight = Math.max(
+        ...[...document.querySelectorAll(".ws-bundle-row .btn")].map(
+          (b) => b.getBoundingClientRect().right,
+        ),
+      );
+      return {
+        vw,
+        scrollW: document.documentElement.scrollWidth,
+        panelScrollW: document.getElementById("workshop").scrollWidth,
+        barRight: Math.round(bar.right),
+        selW: Math.round(sel.width),
+        btnRight: Math.round(btnRight),
+      };
+    });
+    check(
+      `Langer Bundle-Titel sprengt das Phone-Layout nicht (Viewport ${narrow.vw}, Dokument ${narrow.scrollW}, Panel ${narrow.panelScrollW}, Leiste bis ${narrow.barRight}, Knöpfe bis ${narrow.btnRight}, Select ${narrow.selW}px)`,
+      narrow.scrollW <= narrow.vw &&
+        narrow.panelScrollW <= narrow.vw &&
+        narrow.barRight <= narrow.vw &&
+        narrow.btnRight <= narrow.vw &&
+        narrow.selW < 260,
+    );
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.fill("#wsBundleTitle", "Turnier");
+    await page.dispatchEvent("#wsBundleTitle", "input");
+    await page.fill("#wsBundleDescInput", "Drei Prüfungen");
+    await page.dispatchEvent("#wsBundleDescInput", "change");
+    await page.waitForTimeout(200);
 
     // (3) Import mit Ziel-Bundle: zwei Level ins aktuelle Bundle „Turnier".
     await openImport();

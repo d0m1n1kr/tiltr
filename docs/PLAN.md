@@ -654,6 +654,18 @@ Loader und Spiegel). E2E Lauf 14: Tür-Feld schreibt require und räumt den
 Default, Ebenen-Feld schreibt bright, die ⚑-Vorschau auf der hellen E2 meldet
 `bright`.
 
+**2.11.1 – Layout-Nachtrag (Screenshot vom iPhone):** Ein langer Bundle-Titel
+(„Welt 1 – Die Tiefe erwacht (10)") zog Bundle-Leiste UND Level-Karten über
+den rechten Rand. Ursache: Grid-Kinder haben `min-width: auto`, also die
+Intrinsic-Breite ihres Inhalts – und die eines `<select>` ist die längste
+Option. Die Spalte wurde breiter als der Viewport, alle Karten folgten. Fix:
+`min-width: 0` auf den Grid-Kindern von `#workshopContent`/`#workshopList`
+und der Leiste, Select mit `flex: 1 1 0` + Ellipse, Beschreibung und Meta
+mit `overflow-wrap: anywhere`, der ▶-Knopf mit Ellipse. E2E (Lauf 28) setzt
+einen überlangen Titel samt Beschreibung, schaltet auf 390 px und verlangt:
+kein horizontaler Scroll, Leiste und Knöpfe innerhalb des Viewports, Select
+schmaler als 260 px – rot gesehen ohne die Regeln.
+
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
 **Der Wunsch:** Was in der Werkstatt bearbeitet wird, soll ein Level-BUNDLE

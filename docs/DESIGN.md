@@ -69,6 +69,12 @@ Chevron als Data-URI – der native iOS-Select ist weiß und bricht das
 Dark-Design (Screenshot 2.10.0). Sortierknöpfe ▲▼ (`.ws-order`) sind keine
 Aktionszeile: kompakt rechts im Kartenkopf, sie dehnen sich nie zur Zeile.
 
+Überlauf-Regel für Panel-Listen: Grid-Kinder bekommen `min-width: 0`
+(sonst zieht die Intrinsic-Breite eines `<select>` mit langer Option die
+ganze Spalte auf), Selects in Zeilen `flex: 1 1 0` mit Ellipse, Fließtext
+`overflow-wrap: anywhere`. Ein Titel darf lang sein, ein Layout nie breiter
+als der Viewport (E2E Lauf 28 bei 390 px).
+
 ### Weltfarben (Canvas, `src/render/palette.ts`)
 
 RGB-Tripel als String (`'110, 168, 255'`), weil das Rendering eigene
