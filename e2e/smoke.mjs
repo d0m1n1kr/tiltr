@@ -2361,6 +2361,42 @@ if (want("14")) {
       renamed?.id === "haupttor" && key?.opens === "haupttor",
     );
 
+    // M41: Tür-Eigenschaft „Öffner nötig" (einer / alle) schreibt require in
+    // die Def – und 'any' bleibt als Default WEG (kein Rauschen in der Datei).
+    await page.locator(".ed-tile", { hasText: "☝" }).first().click();
+    const doorEl = (await els(0)).findIndex((e) => e.type === "door");
+    const doorEdge = (await els(0))[doorEl]?.edge;
+    await tap(doorEdge[0][0], doorEdge[0][1], doorEdge[1]);
+    const reqSel = page.locator("#edDoorRequire");
+    const reqCount = await reqSel.count();
+    if (reqCount) {
+      await reqSel.selectOption("all");
+      await page.waitForTimeout(150);
+    }
+    const reqAll = (await els(0))[doorEl]?.require;
+    if (reqCount) {
+      await reqSel.selectOption("any");
+      await page.waitForTimeout(150);
+    }
+    const reqAny = (await els(0))[doorEl]?.require;
+    check(
+      `Tür: „Öffner nötig" schreibt require (Feld: ${reqCount}, alle → ${reqAll}, einer → ${reqAny})`,
+      reqCount === 1 && reqAll === "all" && reqAny === undefined,
+    );
+
+    // M41: Ebenen-Licht – „hell" schreibt bright in die Ebene, „dunkel" räumt es.
+    const lightSel = page.locator("#edFloorBright");
+    await lightSel.selectOption("bright");
+    await page.waitForTimeout(200);
+    const brightSet = await page.evaluate(() => window.__tiltrEd.def.floors[0].bright);
+    await lightSel.selectOption("dark");
+    await page.waitForTimeout(200);
+    const brightCleared = await page.evaluate(() => window.__tiltrEd.def.floors[0].bright);
+    check(
+      `Ebene: „Licht" schreibt bright (hell → ${brightSet}, dunkel → ${brightCleared})`,
+      brightSet === true && brightCleared === undefined,
+    );
+
     // Transporter-Ziel per 🔗 neu wählen – auch über Ebenen (Pad E1, Ziel E2).
     await page.locator(".ed-tile", { hasText: "Transporter" }).click();
     await tap(1, 6);
@@ -2474,6 +2510,9 @@ if (want("14")) {
     // ⚑ Test ab hier: Startpunkt der Vorschau auf E2 bei (1,3) setzen, Vorschau
     // starten – die Kugel steht dort (Mitte der Zelle), die HUD-Ebene sagt E2.
     // Zurück im Editor ist die Flagge noch da; Tap auf dieselbe Zelle hebt auf.
+    // E2 HELL schalten: Die Vorschau muss dort alles aufdecken (revealAll).
+    await page.locator("#edFloorBright").selectOption("bright");
+    await page.waitForTimeout(200);
     await page.locator(".ed-tile", { hasText: "⚑" }).click();
     await tap(1, 3);
     const flag = await page.evaluate(() => window.__tiltrEd.testStart);
@@ -2489,7 +2528,12 @@ if (want("14")) {
       hud: !document.getElementById("hud")?.classList.contains("hidden"),
       loadError: window.__tiltrEd?.loadError,
       status: document.getElementById("edStatus")?.textContent,
+      bright: window.__tiltrWorld?.bright,
     }));
+    check(
+      `Helle Ebene: die Vorschau auf E2 deckt alles auf (bright=${started.bright})`,
+      started.bright === true,
+    );
     check(
       `Vorschau startet an der Flagge auf E2 (Ball ${JSON.stringify(started.ball)}, Ebene "${started.floor}", loadError=${started.loadError}, status=${started.status})`,
       started.hud &&

@@ -83,6 +83,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Ein-Zellen-Korridor NICHT vorbei, also werden Patrouillen abschnittsweise
   gequert – nur solange eine Patrouillenzelle für den Wächter frei bleibt.
   Neue Level mit Wächtern brauchen Ausweichbuchten oder Quer-Passagen.
+  TÜREN MIT MEHREREN ÖFFNERN (M41): `door.require` 'any' | 'all'. Die EINE
+  Türregel wohnt in `core/doors.ts` (`doorState`), im Spiel ruft NUR
+  `updateDoors(now)` in app.ts sie – Schlüssel, Zeitschloss und MP-Platten
+  schalten keine Tür mehr selbst. `permanent` (Schutt) nur bei reinen
+  Schlüssel-Bedingungen. `coopReachable` und der `openers`-Check rechnen
+  'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
+  HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
 - `src/workshop.ts` + `src/ui/editor.ts` – Werkstatt: eigene Level in
   localStorage, seit M40 in LEVEL-BUNDLES (`tiltr.workshop.v2`): ein Bundle =
   geordnete Level-Reihe mit ID, Version, Titel, Beschreibung – spielbar wie

@@ -15,6 +15,8 @@ export interface LoadedFloor {
   world: World;
   cols: number;
   rows: number;
+  /** Helle Ebene: alles sichtbar (Renderer revealAll) */
+  bright: boolean;
 }
 
 export interface LoadedLevel {
@@ -154,7 +156,7 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
 
     const world = new World(walls, ball, goal);
     buildElements(floor.elements, { world, cell: CELL, cols, rows, floorIndex });
-    floors.push({ world, cols, rows });
+    floors.push({ world, cols, rows, bright: floor.bright });
   });
 
   if (goalFloor === -1) throw new Error(`Level ${def.id}: kein Ziel definiert`);

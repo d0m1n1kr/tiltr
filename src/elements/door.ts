@@ -26,7 +26,7 @@ registerElement<DoorDef>({
     );
     if (blocked) throw new Error(`Tür ${def.id}: Kante (${x},${y},${dir}) ist im Maze nicht offen`);
 
-    ctx.world.walls.push({ ...rect, door: { id: def.id } });
+    ctx.world.walls.push({ ...rect, door: { id: def.id, require: def.require } });
   },
 
   gallery: {

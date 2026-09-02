@@ -1516,6 +1516,17 @@ export function setupEditor(opts: {
         info.className = 'menu-meta';
         info.textContent = `${t('ed.f.openers')}: ${openersOf(String(el.id)).length}`;
         propsEl.append(info);
+        // Mehrere Öffner: einer genügt (any) oder alle gleichzeitig (all) –
+        // core/doors.ts; der Beweis (coopReachable) rechnet dasselbe.
+        const req = selectInput(String(el.require ?? 'any'), [
+          ['any', t('ed.req.any')],
+          ['all', t('ed.req.all')],
+        ], (v) => {
+          if (v === 'any') delete el.require;
+          else el.require = v;
+        });
+        req.id = 'edDoorRequire';
+        propsEl.append(field(t('ed.f.require'), req));
       }
       if (el.type === 'transporter') {
         const tg = el.target as { floor: number; cell: [number, number] } | undefined;
@@ -1597,6 +1608,20 @@ export function setupEditor(opts: {
       field(t('ed.rows'), numInput(f.size[1], 3, 24, 1, (v) => resize(f.size[0], v))),
     );
     propsEl.append(sizeRow);
+
+    // Helle Ebene: Labyrinth und Elemente sichtbar (Renderer revealAll) –
+    // ein Stilmittel je Stockwerk, Default bleibt die dunkle Welt.
+    const fr = f as unknown as Record<string, unknown>;
+    const light = selectInput(fr.bright === true ? 'bright' : 'dark', [
+      ['dark', t('ed.light.dark')],
+      ['bright', t('ed.light.bright')],
+    ], (v) => {
+      if (v === 'bright') fr.bright = true;
+      else delete fr.bright;
+      rebuild();
+    });
+    light.id = 'edFloorBright';
+    propsEl.append(field(t('ed.f.light'), light));
 
     const reroll = document.createElement('button');
     reroll.className = 'btn btn-ghost';

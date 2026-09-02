@@ -222,6 +222,7 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
         elements,
         start,
         goal,
+        bright: false,
       },
     ],
   };

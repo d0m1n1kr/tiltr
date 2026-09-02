@@ -3,6 +3,7 @@ import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup,
 import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
+import { doorState, type OpenerState } from './core/doors';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
 import type { Ball, World } from './core/physics';
@@ -814,6 +815,11 @@ function beginLevel(): void {
   } else {
     launch(def);
   }
+}
+
+/** Helle Ebene (floor.bright): alles sichtbar wie in der Debug-Ansicht. */
+function bright(): boolean {
+  return loaded?.floors[activeFloor]?.bright === true;
 }
 
 function activateFloor(index: number): void {
@@ -1810,27 +1816,61 @@ function mpFrame(now: number): void {
   }
   mp.localHolds = holds;
 
-  // Türen über alle Ebenen: offen, solange irgendwer eine passende Platte hält
+  // Platten gelten als gehalten, wenn irgendwer (lokal oder fern) darauf steht;
+  // die Türen entscheidet updateDoors über alle Ebenen (require any/all).
   for (const floor of loaded.floors) {
-    for (const w of floor.world.walls) {
-      if (!w.door) continue;
-      const shouldOpen = holds.has(w.door.id) || mp.remoteHolds.has(w.door.id);
-      if (shouldOpen !== (w.door.open ?? false)) {
-        w.door.open = shouldOpen;
-        w.litFrom = 0;
-        w.litUntil = now + 1500;
-        if (floor.world === world) {
-          const dx = w.x + w.w / 2 - world.ball.x;
-          const dy = w.y + w.h / 2 - world.ball.y;
-          if (shouldOpen) audio.doorOpen(dx, dy);
-          else audio.doorClose(dx, dy);
-        }
-      }
-    }
     for (const pl of floor.world.plates) {
       pl.held = holds.has(pl.opens) || mp.remoteHolds.has(pl.opens);
     }
   }
+  updateDoors(now);
+}
+
+/** EINE Türregel für Schlüssel, Zeitschloss-Schalter und Platten über alle
+ *  Ebenen (core/doors.ts): Öffner-Zustände sammeln, pro Tür auswerten,
+ *  Übergänge hörbar machen (nur auf der aktuellen Ebene). Dauerhaft offene
+ *  Türen (nur Schlüssel) werden zu Schutt. Liefert die IDs der Türen, die
+ *  JETZT offen sind. */
+function updateDoors(now: number): Set<string> {
+  const openNow = new Set<string>();
+  if (!loaded || !world) return openNow;
+  const openers = new Map<string, OpenerState[]>();
+  const add = (id: string, o: OpenerState): void => {
+    const list = openers.get(id) ?? [];
+    list.push(o);
+    openers.set(id, list);
+  };
+  for (const fl of loaded.floors) {
+    for (const k of fl.world.keys) add(k.opens, { kind: 'key', satisfied: k.collected });
+    for (const s of fl.world.switches) add(s.opens, { kind: 'timedSwitch', satisfied: s.openUntil !== null && s.openUntil > now });
+    for (const p of fl.world.plates) add(p.opens, { kind: 'plate', satisfied: p.held });
+  }
+  for (const fl of loaded.floors) {
+    for (let i = fl.world.walls.length - 1; i >= 0; i--) {
+      const w = fl.world.walls[i]!;
+      if (!w.door) continue;
+      const state = doorState(openers.get(w.door.id) ?? [], w.door.require ?? 'any');
+      if (state.open) openNow.add(w.door.id);
+      const dx = w.x + w.w / 2 - world.ball.x;
+      const dy = w.y + w.h / 2 - world.ball.y;
+      if (state.permanent) {
+        fl.world.walls.splice(i, 1);
+        fl.world.debris.push({ ...w, litUntil: now + 2000 });
+        if (fl.world === world) audio.doorOpen(dx, dy);
+        continue;
+      }
+      if (state.open !== (w.door.open ?? false)) {
+        w.door.open = state.open;
+        w.litFrom = 0;
+        w.litUntil = now + 1500;
+        if (fl.world === world) {
+          if (state.open) audio.doorOpen(dx, dy);
+          else audio.doorClose(dx, dy);
+        }
+      }
+    }
+  }
+  return openNow;
 }
 
 function mpLocalFinish(now: number): void {
@@ -2091,20 +2131,11 @@ function frame(now: number): void {
         key.collected = true;
         audio.collectKey();
         haptics.checkpoint();
-        // Öffnet die Tür auf ALLEN Ebenen – das Lösbarkeits-Modell
-        // (coopReachable) behandelt Öffner ebenenübergreifend, das Spiel
-        // muss dasselbe tun. Hörbar ist nur die Tür der aktuellen Ebene.
-        for (const fl of loaded!.floors) {
-          for (let i = fl.world.walls.length - 1; i >= 0; i--) {
-            const w = fl.world.walls[i]!;
-            if (w.door?.id === key.opens) {
-              fl.world.walls.splice(i, 1);
-              fl.world.debris.push({ ...w, litUntil: now + 2000 });
-              if (fl.world === world) audio.doorOpen(w.x + w.w / 2 - world.ball.x, w.y + w.h / 2 - world.ball.y);
-            }
-          }
-        }
-        flash(t('st.door'));
+        // Ob die Tür damit aufgeht, entscheidet updateDoors (require any/all)
+        // über ALLE Ebenen – das Lösbarkeits-Modell (coopReachable) ist
+        // ebenenübergreifend, das Spiel muss dasselbe tun.
+        const opened = updateDoors(now);
+        flash(opened.has(key.opens) ? t('st.door') : t('st.keyMore'));
       } else if (kd < KEY_HEAR) {
         // Hinter einer Schallschutzwand klingt der Schlüssel wie weit weg.
         audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR / shield(kdx, kdy)));
@@ -2218,33 +2249,16 @@ function frame(now: number): void {
     if (!mp) {
       const allSwitches = loaded!.floors.flatMap((f) => f.world.switches);
       if (allSwitches.length) {
-        const switchIds = new Set(allSwitches.map((s) => s.opens));
-        const openIds = new Set<string>();
         let urgency = 0; // dringlichster laufender Timer (0 = keiner aktiv)
+        let running = 0;
         for (const s of allSwitches) {
           if (s.openUntil !== null && s.openUntil > now) {
-            openIds.add(s.opens);
+            running++;
             urgency = Math.max(urgency, 1 - (s.openUntil - now) / (s.durationS * 1000));
           }
         }
-        for (const floor of loaded!.floors) {
-          for (const w of floor.world.walls) {
-            if (!w.door || !switchIds.has(w.door.id)) continue;
-            const shouldOpen = openIds.has(w.door.id);
-            if (shouldOpen !== (w.door.open ?? false)) {
-              w.door.open = shouldOpen;
-              w.litFrom = 0;
-              w.litUntil = now + 1500;
-              if (floor.world === world) {
-                const ddx = w.x + w.w / 2 - world.ball.x;
-                const ddy = w.y + w.h / 2 - world.ball.y;
-                if (shouldOpen) audio.doorOpen(ddx, ddy);
-                else audio.doorClose(ddx, ddy);
-              }
-            }
-          }
-        }
-        if (openIds.size) audio.switchTick(urgency);
+        updateDoors(now);
+        if (running) audio.switchTick(urgency);
       }
     }
 
@@ -2286,7 +2300,7 @@ function frame(now: number): void {
       pad.litUntil = now + 1200;
       startWarp(pad.tx, pad.ty, pad.targetFloor, pad.dir);
       renderer.follow(world.ball.x, world.ball.y);
-      renderer.draw(world, { debug, revealAll: revealUntil > now, now });
+      renderer.draw(world, { debug, revealAll: revealUntil > now || bright(), now });
       return;
     }
 
@@ -2427,7 +2441,7 @@ function frame(now: number): void {
   }
   renderer.draw(world, {
     debug,
-    revealAll: revealUntil > now,
+    revealAll: revealUntil > now || bright(),
     now,
     buddy,
     ghost: ghostOpt,
@@ -2443,6 +2457,7 @@ function frame(now: number): void {
     crystals: world.crystals.length,
     anchors: world.anchors.length,
     glass: world.glass.length,
+    bright: bright(),
   };
   (window as unknown as { __tiltrFp?: unknown }).__tiltrFp = fpOn()
     ? { heading: fpState.heading, turnRate: fpState.turnRate, view: renderer.lastView }

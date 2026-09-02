@@ -69,6 +69,9 @@ export const doorDef = z.object({
   id: z.string().min(1),
   /** Wandkante, auf der die Tür sitzt – muss im Maze OFFEN sein */
   edge: wallEdge,
+  /** Mehrere Öffner (Schlüssel, Zeitschloss, Platte): 'any' = einer genügt,
+   *  'all' = alle müssen gleichzeitig erfüllt sein (core/doors.ts). */
+  require: z.enum(['any', 'all']).default('any'),
 });
 
 export const gemDef = z.object({
@@ -280,6 +283,9 @@ export const floorSchema = z.object({
   start: cellCoord,
   /** null = Ziel liegt auf einer anderen Ebene (ab M5) */
   goal: cellCoord.nullable(),
+  /** Helle Ebene: Labyrinth und Elemente sind sichtbar wie in der
+   *  Debug-Ansicht (Renderer revealAll) – Default ist die dunkle Welt. */
+  bright: z.boolean().default(false),
 });
 export type FloorDef = z.infer<typeof floorSchema>;
 

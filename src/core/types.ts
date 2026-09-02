@@ -18,7 +18,7 @@ export interface Wall {
   absorb?: boolean;
   /** Verschlossene Tür. Schlüssel entfernen sie dauerhaft; Coop-Türen
    *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird. */
-  door?: { id: string; open?: boolean };
+  door?: { id: string; open?: boolean; require?: 'any' | 'all' };
   /** Schiebewand: öffnet/schließt zyklisch (openness 1 = Lücke, passierbar).
    *  lastState/nextTick sind Laufzeit-Zustand der Klang-Steuerung. */
   slide?: {

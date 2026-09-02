@@ -256,19 +256,33 @@ export function guardSafeReachable(def: LevelDef): Set<string> {
  */
 export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set(), from?: StartPos): Set<string> {
   const openDoorIds = new Set<string>();
+  // Türen mit require 'all' öffnen erst, wenn ALLE Öffner erreichbar sind
+  // (core/doors.ts: alle gleichzeitig erfüllt). Reihenfolge und Timing
+  // prüft das Modell nicht – es fragt nur nach Erreichbarkeit.
+  const requireAll = new Set<string>();
+  const openersOf = new Map<string, Array<{ fl: number; cell: readonly [number, number] }>>();
+  def.floors.forEach((floor, fl) => {
+    for (const el of floor.elements) {
+      if (el.type === 'door' && el.require === 'all') requireAll.add(el.id);
+      if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
+        const list = openersOf.get(el.opens) ?? [];
+        list.push({ fl, cell: el.cell });
+        openersOf.set(el.opens, list);
+      }
+    }
+  });
   for (;;) {
     const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds }, from);
     let changed = false;
-    def.floors.forEach((floor, fl) => {
-      for (const el of floor.elements) {
-        if ((el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') && !bannedDoors.has(el.opens)) {
-          if (!openDoorIds.has(el.opens) && seen.has(cellKey(fl, el.cell))) {
-            openDoorIds.add(el.opens);
-            changed = true;
-          }
-        }
+    for (const [doorId, openers] of openersOf) {
+      if (bannedDoors.has(doorId) || openDoorIds.has(doorId)) continue;
+      const reached = openers.filter((o) => seen.has(cellKey(o.fl, o.cell))).length;
+      const opens = requireAll.has(doorId) ? reached === openers.length : reached > 0;
+      if (opens) {
+        openDoorIds.add(doorId);
+        changed = true;
       }
-    });
+    }
     if (!changed) return seen;
   }
 }
@@ -454,14 +468,19 @@ export function validateLevel(raw: unknown): CheckResult[] {
       openersByDoor.set(el.opens, list);
     }
   });
+  const requireAllDoors = new Set(
+    def.floors.flatMap((f) => f.elements.filter((e): e is DoorDef => e.type === 'door' && e.require === 'all').map((d) => d.id)),
+  );
   for (const [doorId, openers] of openersByDoor) {
     if (!doorIds.has(doorId)) continue; // hängende Verknüpfung: das sagt `links`
     const keyed = openers.filter((o) => o.type !== 'plate');
     if (!keyed.length) continue; // reine Platten-Tür: Umfang wie vorher, ungeprüft
     const withoutThisDoor = coopReachable(def, new Set([doorId]));
-    if (openers.some((o) => withoutThisDoor.has(cellKey(o.fl, o.cell)))) continue;
+    // 'all': JEDER Öffner muss ohne diese Tür erreichbar sein; 'any': einer.
+    const reachableOpeners = openers.filter((o) => withoutThisDoor.has(cellKey(o.fl, o.cell)));
+    if (requireAllDoors.has(doorId) ? reachableOpeners.length === openers.length : reachableOpeners.length > 0) continue;
     openersOk = false;
-    const o = keyed[0]!;
+    const o = openers.find((x) => !withoutThisDoor.has(cellKey(x.fl, x.cell))) ?? keyed[0]!;
     openersDetail ??= `${doorId}: ${o.type} E${o.fl + 1} (${o.cell})`;
   }
   push('openers', openersOk, openersDetail);

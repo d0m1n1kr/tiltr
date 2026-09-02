@@ -612,6 +612,48 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M41 „Alle oder einer" ✓ (v2.11.0) – Türen mit mehreren Öffnern, helle Ebenen
+
+**Zwei Editor-Wünsche.** (1) Mehrere Schlüssel und Zeitschloss-Schalter
+(auch gemischt) an EINER Tür – und einstellbar, ob EINER genügt oder ALLE
+nötig sind. (2) Pro Ebene: dunkel (Standard) oder hell.
+
+**Türregel an einer Stelle.** Bisher gab es drei Stellen, die Türen
+schalteten: der Schlüssel entfernte die Wand sofort, der Zeitschloss-Block
+setzte `open` nach eigenen Regeln, der MP-Frame dasselbe für Platten – drei
+Meinungen über eine Tür. Jetzt gibt es `core/doors.ts` (`doorState`, rein):
+Öffner-Zustände (Schlüssel eingesammelt, Schalter läuft, Platte gehalten) und
+`require: 'any' | 'all'` ergeben `{ open, permanent }`. `permanent` nur, wenn
+die erfüllte Bedingung allein aus Schlüsseln besteht – dann wird die Tür zu
+Schutt wie bisher; sonst gleitet sie auf und wieder zu (auch bei 'all' aus
+Schlüssel + Schalter: offen nur im Überlapp). `updateDoors(now)` in app.ts
+sammelt die Öffner über ALLE Ebenen, wertet jede Tür aus und macht Übergänge
+auf der aktuellen Ebene hörbar. Schlüssel, Schalter-Block und MP-Frame rufen
+nur noch diese eine Funktion. Der Schlüssel-Flash sagt jetzt „Tür geöffnet"
+nur, wenn die Tür wirklich aufging, sonst „die Tür braucht noch mehr".
+
+**Beweis rechnet dasselbe.** `coopReachable` öffnet eine 'all'-Tür erst, wenn
+ALLE Öffner erreichbar sind; der `openers`-Check verlangt bei 'all', dass
+jeder Öffner ohne diese Tür erreichbar ist (bei 'any' weiter: einer). Beide
+Checks bleiben einig – der Korridor mit einem Schlüssel hinter der Tür ist
+bei 'all' in `goal` UND `openers` rot, bei 'any' grün. Was der Beweis NICHT
+prüft: Timing bei 'all' mit zwei Zeitschlössern (`timer` prüft weiter je
+Schalter den Weg zur Tür; ob beide gleichzeitig laufen können, ist Sache des
+Bauers – der Testlauf sagt es). Mehrere Öffner je Tür waren im Format schon
+immer möglich (jeder Öffner trägt `opens`); neu ist nur die Regel.
+
+**Helle Ebene.** `floor.bright` (Default false) läuft durch Schema, Loader
+(`LoadedFloor.bright`), Spiegelung und Renderer: Die Ebene wird mit
+`revealAll` gezeichnet – Labyrinth, Elemente, Ziel sichtbar wie in der
+Debug-Ansicht, der Klang bleibt. Editor: Feld „Licht" im Ebenen-Abschnitt.
+`__tiltrWorld.bright` legt es für E2E offen.
+
+Units: `tests/doors.test.ts` (Regel), `tests/requireAll.test.ts` (Schema,
+Beweis any/all einig, coopReachable, Loader trägt require, bright durch
+Loader und Spiegel). E2E Lauf 14: Tür-Feld schreibt require und räumt den
+Default, Ebenen-Feld schreibt bright, die ⚑-Vorschau auf der hellen E2 meldet
+`bright`.
+
 ## M40 „Level-Bundles" ✓ (v2.10.0) – Kampagnen aus der Werkstatt
 
 **Der Wunsch:** Was in der Werkstatt bearbeitet wird, soll ein Level-BUNDLE

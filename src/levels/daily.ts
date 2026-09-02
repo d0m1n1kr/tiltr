@@ -309,6 +309,7 @@ export function generateDailyLevel(date: string): LevelDef {
       elements,
       start: landing,
       goal: isLast ? exit : null,
+      bright: false,
     });
   }
 
