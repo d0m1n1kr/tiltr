@@ -5902,6 +5902,9 @@ if (want("33")) {
     };
 
     await pageA.goto(`${BASE}/?mpcode=TESTMP33&nosplash`);
+    // Menü-Untertitel der Kampagne zählt aus den Daten (M64): fünf Welten, 36 Level.
+    const campSub = (await pageA.textContent("#campaignSub")).trim();
+    check(`Kampagnen-Untertitel aus den Daten ("${campSub}")`, campSub === "5 Welten, 36 Level");
     await pageA.click("#workshopBtn");
     await pageA.click("#wsImportBtn");
     await pageA.fill("#wsImportText", JSON.stringify(def));

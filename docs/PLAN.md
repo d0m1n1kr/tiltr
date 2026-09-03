@@ -612,6 +612,22 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M64 „Zeig es" ✓ (v3.1.7) – README gestrafft, Screenshots reproduzierbar
+
+Beide READMEs neu geschnitten: Roadmap raus (das Bautagebuch ist PLAN.md),
+Spielmodi auf je einen Absatz, Elemente-Tabelle auf den Stand 3.1.6
+(Sanduhr, Glocke, Hallraum, Wanderloch, Rollstein, Schläfer, Echo-Spiegel,
+Stimmgabel, helle Ebene, Partner-Ball, Einladung, Zwei-Spieler-Level). Die
+Screenshots kommen nicht mehr von Hand: `tools/screenshots.mjs` fährt die App
+gegen `vite preview` und schießt 15 Bilder (Splash, Menü de/en, Ping,
+Kampagne, Ergebnis, Werkstatt, Editor Phone/Tablet, Lobby, Coop dunkel/hell,
+Zwei-Spieler-Intro, Tutorial, Hörtest, Galerie) – reproduzierbar, also beim
+nächsten Umbau ein Befehl statt einer Nachmittagsarbeit. Nebenbei auf einem
+der Bilder gefunden: Der Kampagnen-Untertitel im Menü sagte noch „4 Welten,
+28 Level" – eine feste Zahl im Wörterbuch. Jetzt zählt `refreshMenu` aus
+`WORLDS`/`CAMPAIGN_LEVELS` in Platzhalter (`{worlds} Welten, {levels}
+Level`), ein Unit-Test verlangt die Platzhalter, Lauf 33 liest den Text.
+
 ## M63 „Komm rein" ✓ (v3.1.6) – Einladung aus der Host-Lobby teilen
 
 Die Lobby hatte QR-Code und Raumcode – wer nicht im selben Raum sitzt,

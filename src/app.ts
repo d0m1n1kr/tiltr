@@ -382,6 +382,9 @@ function refreshMenu(): void {
   // Neuen Spielenden den Einstieg zeigen: Tutorial-Karte hervorheben.
   tutorialBtn.classList.toggle('suggest', done === 0);
   $('tutorialSub').textContent = done === 0 ? t('menu.tutorial.new') : t('menu.tutorial.sub');
+  // Aus den Daten, nicht aus dem Wörterbuch: „4 Welten, 28 Level" stand dort
+  // noch, als es längst fünf und 36 waren (gefunden auf einem README-Screenshot).
+  $('campaignSub').textContent = t('menu.campaign.sub', { worlds: WORLDS.length, levels: CAMPAIGN_LEVELS.length });
   for (const chip of presetChips) {
     chip.classList.toggle('active', chip.dataset.preset === profile.preset);
   }

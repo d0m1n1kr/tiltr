@@ -49,6 +49,13 @@ Text-Checks war die Einfahrt unter Last schon vorbei (v3.0.6). Eine neue
 Zusicherung nach einer Bewegung oder einem Klick wartet auf den Zustand, den
 sie prüft – nie auf eine Zeit.
 
+`npm run screenshots` (tools/screenshots.mjs) erzeugt alle README-Bilder in
+`docs/screenshots/` gegen den GEBAUTEN Stand (vite preview auf 8766, Phone
+390×844 @2x, Editor zusätzlich als Tablet): dieselbe Mechanik wie die E2E
+(Vite direkt, TEST-Raumcodes auf dem BroadcastChannel). Neue Oberfläche ⇒
+Bild dort ergänzen, nie von Hand schießen – die Bilder müssen zum Stand
+passen, und der Stand ändert sich.
+
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
 auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem
 Release die Version in `package.json` bumpen – sie erscheint auf dem

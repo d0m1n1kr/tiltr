@@ -3,218 +3,171 @@
 🇬🇧 [English version](README.md)
 
 **Ein immersives Sensor-Spiel als PWA.** Du steuerst einen Ball per Neigung
-des Handys durch ein unsichtbares Labyrinth – die Welt offenbart sich über
+des Handys durch ein unsichtbares Labyrinth. Die Welt offenbart sich über
 **räumlichen Klang** (Rollen, Wand-Echos, Sonar-Ping des Ziels),
 **Vibration** und **sparsames Licht**: Wände leuchten nur dort auf, wo du
 sie berührst oder dein Echo-Ping sie erreicht. Am besten mit Kopfhörern und
 halb geschlossenen Augen.
 
-**▶ Jetzt spielen: https://d0m1n1kr.github.io/tiltr/** – jeder Push deployt
-automatisch per GitHub Actions (Tests → Build → Pages).
+**▶ Jetzt spielen: https://d0m1n1kr.github.io/tiltr/** – als App
+installierbar, läuft offline. Jeder Push deployt automatisch (Tests → Build →
+GitHub Pages).
 
-| Splash | Menü | Echo-Ping | Multiplayer-Lobby | Coop |
+| Splash | Menü | Echo-Ping | Kampagne | Level geschafft |
 |---|---|---|---|---|
-| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände und Löcher auf"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer-Lobby mit QR-Code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop mit Druckplatte, Tür und Partner-Schein"> |
+| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände, eine brüchige Wand und eine Tür auf"> | <img src="docs/screenshots/campaign.png" width="150" alt="Kampagne mit fünf Welten und Sternen"> | <img src="docs/screenshots/result-confetti.png" width="150" alt="Ergebniskarte mit Konfetti"> |
+
+| Multiplayer-Lobby | Coop im Dunkeln | Coop im Hellen | Werkstatt | Editor (Tablet) |
+|---|---|---|---|---|
+| <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Lobby mit QR-Code, Raumcode und Einladungs-Knopf"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop: der Partner ist ein blasser Schein"> | <img src="docs/screenshots/mp-bright-partner.png" width="150" alt="Coop auf heller Ebene: der Partner ist ein roter Ball"> | <img src="docs/screenshots/workshop.png" width="150" alt="Werkstatt mit einem Level-Bundle"> | <img src="docs/screenshots/editor-tablet.png" width="150" alt="Level-Editor auf dem Tablet mit Beweis-Badges"> |
+
+| Editor (Phone) | Zwei-Spieler-Intro | Tutorial | Hörtest | Element-Galerie |
+|---|---|---|---|---|
+| <img src="docs/screenshots/editor-phone.png" width="150" alt="Level-Editor auf dem Phone"> | <img src="docs/screenshots/mp-intro.png" width="150" alt="Intro eines Zwei-Spieler-Levels mit Rolle"> | <img src="docs/screenshots/tutorial-intro.png" width="150" alt="Tutorial-Intro"> | <img src="docs/screenshots/hearing.png" width="150" alt="Hörtest mit Kompassrose"> | <img src="docs/screenshots/gallery.png" width="150" alt="Element-Galerie"> |
 
 ## Spielmodi
 
 - **⚡ Schnelles Spiel** – prozedural generiertes Labyrinth in drei
-  Schwierigkeiten, mit Bestzeiten pro Stufe. Höhere Stufen mischen
-  Echo-Kristalle, Sog-Anker und Glasböden hinein – Anker und Glas
-  beweisbar abseits des Pflichtwegs platziert.
+  Schwierigkeiten mit Bestzeiten je Stufe. Höhere Stufen bringen Ebenen,
+  helle Ebenen, Tür-Rätsel (Schlüssel plus Zeitschloss), Echo-Kristalle,
+  Sog-Anker und Glas – alles beweisbar abseits des Pflichtwegs.
 - **📅 Tages-Challenge** – Seed = UTC-Datum: ein Level für alle, jeden Tag
-  ein neues, komplett serverlos und reproduzierbar. Der erste Zieleinlauf
-  zählt als Tageswert, Serien 🔥 belohnen tägliches Spielen. Share-Links
-  (`#daily=DATUM&t=ZEIT`) fordern Freunde heraus, deine Zeit zu schlagen –
-  auch für vergangene Tage.
-- **🌍 Kampagne** – fünf handgebaute Welten (36 Level): Wächter, Schlüssel
-  und Türen, Gems, atmende Löcher, Wind, brüchige Wände, mehrstöckige
-  Karten mit Transportern und Multi-Screen-Weiten, über die die Kamera
-  scrollt. Welt 3 „Das Räderwerk" dreht sich ums Timing: Schiebewände,
-  Zeitschloss-Schalter und Einbahn-Strömungen. Welt 4 „Die Stille" ist die
-  Schleich-Welt: Horcher, die nur jagen, solange du rollst, Nebel, der
-  jeden Klang dämpft, und Eis, über das du gleitest. Welt 5 „Trugbild"
-  dreht die Sinne um: helle Ebenen, die man sieht, Echo-Spiegel, die Wände
-  doppelt so weit melden, Schallschutzwände, Lockglocken, die Horcher
-  ablenken, ein Hallraum, eine Stimmgabel als Schlüssel, den man über die
-  Tonhöhe findet, Rollsteine, die man auf Druckplatten schiebt, und ein
-  Schläfer, den dein Ping wecken würde. Bis zu drei Sterne pro Level
-  (geschafft, Par-Zeit – mit Sanduhren verlängerbar – und alle Gems), dazu
-  ein optionaler Blind-Stern 🌑 fürs Durchkommen ohne einen einzigen
-  Echo-Ping – und die eigene Bestzeit rollt bei späteren Versuchen als
-  blasser Geist-Schein mit. Das Tutorial beginnt im Licht: Der erste Raum
-  ist hell, der zweite derselbe Raum im Dunkeln.
+  ein neues, serverlos und reproduzierbar. Der erste Zieleinlauf zählt als
+  Tageswert, Serien 🔥 belohnen tägliches Spielen. `#daily=DATUM&t=ZEIT`-Links
+  fordern Freunde heraus, auch für vergangene Tage.
+- **🌍 Kampagne** – fünf handgebaute Welten, 36 Level. Welt 1 lehrt
+  Wächter, Schlüssel und Türen, Gems, atmende Löcher, Wind und brüchige
+  Wände; Welt 2 geht in die Tiefe mit Transportern und Weiten, über die die
+  Kamera scrollt; Welt 3 „Das Räderwerk" ist Timing (Schiebewände,
+  Zeitschlösser, Einbahn-Strömungen); Welt 4 „Die Stille" ist Schleichen
+  (Horcher, Nebel, Eis); Welt 5 „Trugbild" dreht die Sinne um (helle Ebenen,
+  Echo-Spiegel, Schallschutzwände, Lockglocken, ein Hallraum, eine
+  Stimmgabel als Schlüssel, Rollsteine, ein Schläfer). Bis zu drei Sterne pro
+  Level (geschafft, Par-Zeit – mit Sanduhren verlängerbar – und alle Gems)
+  plus ein Blind-Stern 🌑 fürs Durchkommen ohne einen einzigen Ping. Die
+  eigene Bestzeit rollt als blasser Geist mit. Das Tutorial beginnt im Licht:
+  Der erste Raum ist hell, der zweite derselbe Raum im Dunkeln.
 - **👥 Multiplayer** – zwei Spieler, Peer-to-Peer über WebRTC
-  ([trystero](https://github.com/dmotz/trystero); der Handshake läuft über
-  eine feste Liste von 8 etablierten Nostr-Relays, kein eigener Server).
-  Beitritt per QR-Code (In-App-Scanner oder Kamera-App – der Code trägt
-  einen `#join=`-Link) oder 6-stelligem Raumcode. **Coop:** Druckplatten
-  öffnen die Türen des Partners; jede Tür versiegelt eine Kammer mit einer
-  Platte außen und einer innen, und wer im Ziel liegt, hält die Zielplatte
-  für den Nachzügler – gewonnen ist erst, wenn beide drin sind. **Race:**
-  identisches Level, wer zuerst ankommt, gewinnt – mit Rematch. Neben den
-  handgebauten Leveln würfelt ein 🎲-Generator frische Coop- und
-  Race-Karten – der Gast regeneriert aus der Level-ID exakt dasselbe Level.
-  Ein schwacher, atmender Schein zeigt den Partner – reines Licht ohne Rand,
-  immer blasser als der eigene Ball, am Screenrand geklemmt, wenn er außer
-  Sicht ist, und in Zielgrün, sobald er durch ist. Der Zieleinlauf stoppt
-  die UHR, nicht die Kugel: Die Zeit bleibt stehen und wird grün, das
-  eigene Ziel leuchtet ruhig weiter, und man rollt weiter – im Coop hält man
-  so dem Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein 10-Sekunden-Fenster
-  zum Wiederverbinden.
-- **🛠 Werkstatt** – eigene Level in **Level-Bundles** (Titel, Beschreibung,
-  Reihenfolge, ID + Version), spielbar wie eine Kampagne mit gespeichertem
-  Stand, als Ganzes exportier-/importierbar; Level im Touch-Editor bauen (auf Tablets als
-  Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
-  schalten, mehrstöckige Karten mit Transportern bauen, Eigenschaften
-  feilen oder ein Level auf **zwei Spieler** stellen (eigener Start und
-  eigenes Ziel für den Gast, Druckplatten, Coop-/Race-Beweise als Badges)
-  und direkt aus der Werkstatt hosten – der Gast bekommt das Level mit dem
-  Raum und kann es speichern – während die Lösbarkeits-Beweise der Testsuite live als Badges
-  mitlaufen (Ziel erreichbar, kein Softlock, Timer reicht …). Jedes gewählte
-  Element spielt seine Klang-Signatur direkt im Eigenschaften-Panel, und ▶
-  lässt die bewegten Teile laufen (atmende Löcher, Schiebewände,
-  patrouillierende Wächter) – so beurteilst du den Rhythmus, ohne den
-  Entwurf zu verlassen. Entwürfe in der echten Spielschleife testen und mit
-  einem Tap zurückspringen; die
-  Bibliothek liegt lokal auf dem Gerät – und weil eine Neuinstallation der
-  PWA sie mitnimmt, sichert **💾 Backup** im Startscreen alles (Fortschritt,
-  Bestzeiten, Werkstatt, Geister) in eine komprimierte Datei, die **📂**
-  wiederherstellt. Fertige Level teilst du über
-  einen serverlosen Link (das Level reist deflate-komprimiert im
-  URL-Hash; in der installierten App fügst du einen erhaltenen Link einfach
-  ins Import-Feld ein, weil Links dort immer im Browser aufgehen – Teilen
-  geht erst, wenn alle Pflicht-Badges grün sind:
-  geteilte Level sind beweisbar lösbar) oder als JSON-Datei (Export +
-  Import per Datei oder Einfügen).
-- **🏁 Geist-Duell** – aus einem Lauf wird eine Herausforderung: Der Link
-  trägt Level, aufgezeichnete Spur und Zeit (serverlos im URL-Hash). Wer
-  ihn öffnet, rennt gegen die echte Spur – und *hört* den Rivalen räumlich
-  neben sich rollen. Schneller? Dann Revanche schicken – das ist der
-  Ping-Pong-Loop. Empfangene Spuren werden vorher auf Plausibilität
-  geprüft (Start, Ziel, kein Teleport), damit kein 0,1-Sekunden-Phantom
-  antritt.
-- **🎧 Hörtest** – der Ping kommt aus einer von acht Richtungen, du tippst
-  an, woher. Acht Runden, dann ein Urteil, das die beiden Achsen TRENNT:
-  links/rechts (stark – echte Ohr-Differenzen) und vorn/hinten (schwach –
-  eine generische HRTF trägt fremde Ohren). Gleichzeitig der
-  Kopfhörer-Check vor der ersten Runde.
-- **🎓 Tutorial** – acht Micro-Level, die die Klangsprache beibringen,
-  ein Element nach dem anderen.
-- **🧩 Element-Galerie** – lebende Doku: jedes Element mit Visual und
-  Klang-Signatur, per Knopfdruck anspielbar.
+  ([trystero](https://github.com/dmotz/trystero) über eine feste Liste von
+  Nostr-Relays, kein eigener Server). Beitritt per QR-Code, 6-stelligem
+  Raumcode oder der **📨 Einladung** des Hosts (Nachricht plus Link über das
+  Share-Sheet). **Coop:** Druckplatten, Schlüssel und Schalter wirken für
+  beide – du öffnest auch die Türen des Partners; gewonnen ist, wenn beide
+  drin sind. **Race:** identisches Level, wer zuerst ankommt, gewinnt, mit
+  Rematch. Je sechs handgebaute Level plus ein 🎲-Generator, und jedes
+  **Zwei-Spieler-Level aus der Werkstatt** lässt sich direkt aus der
+  Bibliothek hosten – der Gast bekommt es mit dem Raum. Der Partner ist im
+  Dunkeln ein blasser Schein und auf hellen Ebenen ein fester roter Ball.
+  Der Zieleinlauf stoppt die Uhr, nicht die Kugel – im Coop hält man so dem
+  Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein
+  10-Sekunden-Fenster.
+- **🛠 Werkstatt** – ein Touch-Editor für eigene Level (auf Tablets als
+  Dreispalter). Elemente aus der ganzen Registry setzen, Wände und
+  Wand-Varianten schalten, mehrstöckige Karten mit Transportern bauen –
+  während die Lösbarkeits-Beweise live als Badges mitlaufen: Ziel
+  erreichbar, Öffner vor der Tür, Timer reicht, kein Softlock, Wächter
+  passierbar, Stein lösbar. Ein Level auf **zwei Spieler** stellen bringt
+  eigenen Start und eigenes Ziel für den Gast, Druckplatten und
+  Coop-/Race-Beweise. Level liegen in **Bundles**, die wie eine Kampagne mit
+  gespeichertem Stand spielbar und als eine Datei exportierbar sind. Entwürfe
+  laufen in der echten Spielschleife; fertige Level teilt man als
+  serverlosen Link (das Level reist komprimiert in der URL; Teilen geht erst
+  mit allen Pflicht-Badges grün) oder als JSON. **💾 Sichern** schreibt
+  Fortschritt, Bestzeiten, Werkstatt und Geister in eine Datei, die **📂**
+  wiederherstellt.
+- **🏁 Geist-Duell** – aus einem gewonnenen Lauf wird ein Link mit Level,
+  Spur und Zeit. Wer ihn öffnet, fährt gegen die echte Spur und *hört* den
+  Rivalen neben sich rollen. Schneller? Revanche schicken.
+- **🎧 Hörtest** – der Ping kommt aus einer von acht Richtungen, du tippst,
+  woher. Die Auswertung trennt links/rechts (stark) von vorn/hinten (mit
+  generischer HRTF schwach). Der Kopfhörer-Check vor dem ersten Lauf.
+- **🎓 Tutorial** – acht Mikro-Level, die die Klangsprache lehren, ein
+  Element nach dem anderen. Was zum ersten Mal vorkommt, leuchtet ein paar
+  Sekunden auf und spielt seine Signatur.
+- **🧩 Element-Galerie** – jedes Element mit Bild und Klang, per Tap
+  anspielbar.
 
-**Jedes geschaffte Level wird gefeiert:** Konfetti schießt aus den unteren
-Bildecken – in den Farben des Spiels – während Papier-Knaller und Funkeln
-klingen, in jedem Modus, Tutorial eingeschlossen. Die Ergebnis-Karte zieht
-danach über das noch fallende Papier auf. `prefers-reduced-motion` lässt das
-Konfetti weg: Es ist Dekoration, kein Spielsignal.
-
+Jedes geschaffte Level wird gefeiert: Konfetti in der Weltpalette und ein
+Knall aus Papier (`prefers-reduced-motion` lässt das Konfetti weg).
 **Sprachen:** Deutsch, Englisch, Französisch und Spanisch – automatisch
-nach Browser-Locale, jederzeit auf dem Startscreen umschaltbar.
+erkannt, auf dem Startscreen umschaltbar.
 
-## Auf dem Handy spielen
+## Spielen am Handy
 
-Live-Seite öffnen, einen Modus antippen (aktiviert Bewegungssensoren und
-Audio), Kopfhörer aufsetzen und das Handy während des Kalibrier-Countdowns
-flach wie ein Tablett halten. HUD-Knöpfe: `⌖` neu kalibrieren, `👁`
-Debug-Ansicht (zeigt das Labyrinth), `🏠` zurück zum Menü. Als App
-installieren (offline & Vollbild) über den Hinweis oder das Browser-Menü.
+Live-Seite öffnen, einen Modus antippen (schaltet Sensoren und Audio frei),
+Kopfhörer auf und das Handy während des Kalibrier-Countdowns so halten, wie
+er es ansagt. HUD-Knöpfe: `⌖` neu kalibrieren, `🏠` Menü; `👁` (Debug-Ansicht)
+erscheint nach fünf Taps auf die Versionsnummer. Als App installieren über
+den Hinweis oder das Browser-Menü.
 
-Zwei Steuerungen, auf dem Startscreen umschaltbar und gültig für jeden
-Modus: **🥣 Draufsicht** (Handy flach wie ein Tablett, Neigen = Rollen) und
-**🧭 First Person** (Handy ~45° vor dir wie ein Lenkrad: Kippen = vor/zurück
-entlang der Blickrichtung, seitlich neigen = drehen – die Welt dreht sich um
-die Kugel, die Blickrichtung zeigt immer nach oben, und das räumliche Audio
-dreht mit: „links/rechts von mir" ist genau die Achse, die das Gehör am
-besten kann). Geister, Duelle und Multiplayer bleiben voll kompatibel –
-jeder wählt seine eigene Steuerung.
-
-Solange ein Lauf oder der Hörtest läuft, bleibt der Bildschirm wach
-(Screen Wake Lock) – gesteuert wird durch Neigen, das Handy würde sonst
-mitten im Level abdunkeln und sperren. Chromium-Browser (Android Chrome,
-Edge, Desktop-Chrome) unterstützen das; iOS/Safari bringt die API nicht
-mit, dort greift weiter die System-Zeitschaltung.
-
-Am Desktop gibt es einen Tastatur-Fallback: Pfeiltasten/WASD zum Rollen,
-Leertaste für den Ping.
+Zwei Steuerungen, auf dem Startscreen umschaltbar: **🥣 Draufsicht** (Handy
+flach wie ein Tablett) und **🧭 First Person** (Handy ~45° wie ein Lenkrad:
+nach vorn kippen rollt, seitlich neigen dreht – Welt und räumlicher Klang
+drehen sich um die Kugel). Geister, Duelle und Multiplayer bleiben kompatibel;
+jeder wählt seine Steuerung. Während eines Laufs bleibt der Bildschirm wach,
+wo der Browser Screen Wake Lock kann (Chromium; iOS nicht). Am Desktop:
+Pfeiltasten/WASD rollen, Leertaste pingt.
 
 ## Spielelemente
 
 | Element | Signatur |
 |---|---|
-| Neigungssteuerung | `DeviceOrientationEvent`, Kalibrier-Countdown nach Start-Tap, Achsen-Remap nach Screen-Orientierung, Tastatur-Fallback |
-| Spatial Audio | HRTF-`PannerNode`: alle Richtungsklänge räumlich (Kopfhörer!) |
-| Wände | Echo: berührte Wände leuchten kurz auf; brüchige Wände (bernstein) knirschen und stürzen nach 3 Treffern ein; Schallschutzwände (khaki) verschlucken den Ping und dämpfen alles dahinter |
-| Löcher | atmen (öffnen/schließen zyklisch, versetzt); offen = Sog + dunkles Grollen + Herzschlag, zu = harmlos |
-| Windzonen | konstante Windkraft, hörbar als Böen-Rauschen aus Richtung der Zone |
-| Checkpoints | auf dem Lösungsweg (BFS); Respawn-Punkt, +1 Echo-Ping |
-| Echo-Ping | Tap/Leertaste: Wellenfront deckt Umgebung auf, Reflexionen kommen entfernungs-verzögert & räumlich zurück; Durchgänge antworten hell & doppelt, Gems kristallklar, Türen dumpf; begrenzter Vorrat |
-| Wächter | patrouilliert (Ping-Pong über Wegpunkte), pulsierendes Brummen aus seiner Richtung; Berührung = zurück zum Checkpoint |
-| Schlüssel & Tür | Schlüssel klimpert in Hörweite, Einsammeln lässt die Tür hörbar aufgleiten |
-| Gems | optionale Sammelkristalle mit eigener Ping-Antwort; alle gesammelt = dritter Stern |
-| Transporter | trägt den Ball auf andere Ebenen (oder als Portal quer über die Map); schwebender Doppelton in der Nähe, Warp klingt abwärts fallend bzw. aufwärts steigend; Ziel-Beacon klingt auf fremden Ebenen gedämpft wie durch den Boden |
-| Schiebewand | schiebt sich im Takt auf und zu – nur voll geöffnet passierbar; rhythmisches Steinschleifen plus beschleunigender Warn-Takt kurz vorm Schließen |
-| Zeitschloss-Schalter | Betreten öffnet die verknüpfte Tür für ein paar Sekunden; ein Tick-Tock zählt herunter und wird hektisch, wenn die Zeit knapp wird |
-| Strömung | schiebt stärker, als man neigen kann – eine Einbahnstraße; pulsierendes, gerichtetes Rauschen, tiefer und drängender als Wind |
-| Horcher | jagt dich, solange du rollst – er hört dich sogar durch Wände; stehst du still, zieht er sich zurück; Schnüffeln schwillt mit deinem Tempo an |
-| Nebelzone | dämpft ALLE Klänge (auch den Ziel-Sonar) über einen globalen Lowpass; kein Physik-Einfluss – sie nimmt dir nur die Ohren |
-| Eisfläche | reibungsarmer Boden: du gleitest weiter, Bremsen und Lenken werden schwammig; kristallines Sirren unter dem Ball |
-| Echo-Kristall | abgefüllter Ping: Einsammeln gibt +1 Echo-Ping, auch über das Rundenbudget hinaus; heller einzelner Glockenton |
-| Sog-Anker | zieht im Radius an – immer überwindbar (Kraft bleibt unter voller Neigung), kostet aber Zeit; elektrisches Brummen schwillt mit der Nähe an |
-| Glasboden | erstes Überrollen knackt warnend, das zweite zersplittert ihn zum offenen Loch; helles Knacken, dann Splittern |
-| Jukebox | ein Musikautomat, der in seiner Zelle steht und 8-Bit-Themen spielt (gemeinfreie Klassiker – die Töne aus belegten Sätzen, siehe `tools/score2tiltr.py` – plus tiltr-Originale) – räumlich ortbar, also ein Wahrzeichen im Dunkeln. Musik verdeckt die Hinweise: Der Raum um ihn ist schwer, WEIL man die Wände nicht hört (der Echo-Ping duckt sie um ~12 dB, damit es spielbar bleibt). Anrempeln schaltet auf den nächsten Titel – Plattenkratzer inklusive. Der Kasten ist massiv, seine Zelle also dicht (die Generatoren setzen ihn deshalb beweisbar abseits jedes Pflichtwegs, höchstens einen je Ebene); vier Kampagnen-Level haben einen, Zufalls- und Tageslevel können einen haben |
-| Blind-Stern 🌑 | optionaler vierter Stern pro Kampagnen-Level: geschafft ohne einen einzigen Echo-Ping |
-| Geist-Replay | die eigene Bestzeit pro Level rollt als blasser Schein mit (Schnelles Spiel, Daily, Kampagne); lokal gespeichert, nur ein schnellerer Lauf ersetzt sie |
-| Druckplatte | Multiplayer-Element: gehalten öffnet sie die verknüpfte Partnertür – Loslassen schließt sie; Klick beim Betreten, Tür gleitet hörbar |
-| Partner-Schein | weiches, atmendes Licht an der Position des Mitspielers – kein Rand, kein Körper (der einzige feste Körper ist der eigene Ball); außer Sicht an den Screenrand geklemmt (mit Ebenen-Label), in Zielgrün sobald er im Ziel war |
+| Neigungssteuerung | `DeviceOrientationEvent`, Kalibrierung nach dem Start-Tap, Achsen-Umsetzung nach Bildschirm-Ausrichtung (auf iPhone und iPad gemessen), Tastatur-Fallback |
+| Räumlicher Klang | HRTF-`PannerNode`: jeder gerichtete Klang ist positioniert; jedes Echo hat einen breitbandigen Anschlag, damit das Ohr es orten kann |
+| Wände | berührte Wände leuchten auf; brüchige (Bernstein) stürzen nach 3 Treffern ein; Schallschutzwände (Khaki) verschlucken den Ping und dämpfen alles dahinter; Echo-Spiegel antworten aus doppelter Entfernung |
+| Löcher | atmen in versetzten Zyklen; offen = Sog, Grollen, Herzschlag; Wanderlöcher patrouillieren wie Wächter |
+| Windzone / Strömung | Wind schiebt, hörbar als Böen; eine Strömung schiebt stärker, als du neigen kannst – eine Einbahnstraße |
+| Checkpoint | Respawn-Punkt plus ein Echo-Ping; Transporter-Landeplätze sind ebenfalls Respawn |
+| Echo-Ping | eine Wellenfront deckt die Umgebung auf; Reflexionen kommen verzögert und räumlich platziert zurück; begrenzt je Level, Echo-Kristalle füllen auf |
+| Wächter / Schläfer | patrouilliert mit pulsierendem Summen; Berührung wirft zurück. Ein Schläfer schnarcht auf seinem Posten, bis dein Ping ihn weckt |
+| Schlüssel & Tür | der Schlüssel klimpert in Hörweite; eine Stimmgabel summt ungepannt, man findet sie über die Tonhöhe. Türen brauchen einen oder alle Öffner |
+| Druckplatte | gehalten öffnet sie die verknüpfte Tür – durch dich, den Partner oder einen Rollstein |
+| Zeitschloss-Schalter | öffnet seine Tür für einige Sekunden, das Ticken wird hektisch |
+| Schiebewand | gleitet im Takt auf und zu, Warnticken vor dem Schließen |
+| Gems & Sanduhr | Gems für den dritten Stern; Sanduhren verlängern die Par-Zeit |
+| Transporter | trägt die Kugel auf andere Ebenen oder quer über die Karte; schwebender Doppelton, der Warp steigt oder fällt in der Tonhöhe |
+| Horcher | jagt dich, solange du rollst, auch durch Wände; still stehen, und er zieht sich zurück. Lockglocken locken ihn weg, Schallschutzwände geben Deckung |
+| Nebel / Hallraum | Nebel dämpft alles über einen Tiefpass; der Hallraum hängt jedem Klang eine lange Fahne an |
+| Eis | du gleitest weiter, Bremsen wird schwammig; kristallines Sirren |
+| Sog-Anker / Glas | der Anker zieht, hält aber nie fest; Glas knackt beim ersten Mal und bricht beim zweiten |
+| Rollstein | ein zweiter Körper, zellweise geschoben: füllt Löcher, hält Platten, rollt auf Eis weiter |
+| Jukebox | ein massiver Automat mit 8-Bit-Themen (gemeinfreie Klassiker aus Notenquellen plus eigene); Musik verdeckt die Echos, Anrempeln schaltet weiter |
+| Helle Ebene / Dämmerung | eine Ebene, die man sieht; die Dämmerung bleibt hell bis zur ersten Wandberührung und blendet dann aus |
+| Partner | atmender Schein im Dunkeln, roter Ball auf hellen Ebenen, am Bildrand geklemmt, wenn außer Sicht |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
 
 ## Entwicklung
 
-TypeScript + Vite + Vitest + Playwright; PWA über `vite-plugin-pwa`. Der
-Ausbauplan steht in [`docs/PLAN.md`](docs/PLAN.md), die verbindliche
-UI-Guideline in [`docs/DESIGN.md`](docs/DESIGN.md); der ursprüngliche
-Phase-0-Prototyp liegt als Referenz in [`prototype/`](prototype/).
+TypeScript + Vite + Vitest + Playwright; PWA über `vite-plugin-pwa`. Das
+Bautagebuch liegt in [`docs/PLAN.md`](docs/PLAN.md), die verbindliche
+UI-Richtlinie in [`docs/DESIGN.md`](docs/DESIGN.md), Hinweise für Agenten in
+[`CLAUDE.md`](CLAUDE.md); der Phase-0-Prototyp steht in
+[`prototype/`](prototype/).
 
 ```bash
 npm install
-npm run dev        # Dev-Server (Desktop: Pfeiltasten/WASD, Leertaste = Ping)
-npm run typecheck  # tsc --noEmit
-npm test           # Vitest-Units (Physik, Maze, Level-Lösbarkeit, i18n)
-npm run lint       # ESLint
-npm run build      # Produktions-Build nach dist/ (inkl. Service Worker)
-npm run e2e        # Playwright-Smoke gegen vite preview (fester Seed)
+npm run dev          # Dev-Server (Desktop: Pfeile/WASD, Leertaste = Ping)
+npm run typecheck    # tsc --noEmit
+npm test             # Vitest-Units (Physik, Mazes, Level-Beweise, i18n)
+npm run lint         # ESLint
+npm run build        # Produktions-Build nach dist/ (inkl. Service Worker)
+npm run e2e          # Playwright-Smoke, 4 Arbeiter gegen vite preview
+npm run screenshots  # docs/screenshots/ aus dem gebauten Stand erzeugen
 ```
 
-Nützliche URL-Parameter: `?seed=<zahl|text>` macht Läufe reproduzierbar,
-`?unlock` schaltet alle Kampagnen-Level frei (Playtesting), `?nosplash`
-überspringt den Splash (E2E), `?mpcode=TEST…` erzwingt einen Raumcode auf
-dem lokalen `BroadcastChannel`-Transport (Multiplayer-E2E ohne Netz).
+URL-Parameter: `?seed=…` macht Läufe reproduzierbar, `?unlock` öffnet alle
+Kampagnen-Level, `?nosplash` überspringt den Splash, `?debug` schaltet
+Debug-Ansicht und Sensor-Diagnose frei, `?mpcode=TEST…` erzwingt einen
+Raumcode auf dem lokalen `BroadcastChannel`-Transport (Multiplayer ohne Netz).
 
-Test-Philosophie: Jedes Level kommt mit Lösbarkeits-Beweis (BFS über
-Ebenen, gerichtete Transporter-Kanten, Tür-/Schlüssel-/Platten-Fixpunkte –
-die Coop-Tests beweisen sogar, dass jede Tür notwendig ist und niemand
-eingesperrt werden kann), die vier Sprach-Wörterbücher werden auf
-Vollständigkeit erzwungen, und ein Safe-Area-Pflichtlauf spielt die in der
-installierten PWA wirksamen Insets nach, die im Browser unsichtbar sind.
-Fürs Testen am Handy braucht es HTTPS: am einfachsten die Live-Seite,
-sonst `npx vite --host` mit lokalem TLS-Plugin oder einem Tunnel.
-
-## Roadmap
-
-M1 Fundament ✓ → M2 Element-Registry + Levelformat ✓ → M3 Tutorial &
-Schnelles Spiel ✓ → M4 Kampagne Welt 1 ✓ → M5 Ebenen/Transporter + Welt 2 ✓
-→ M6 Tages-Challenge + Herausfordern ✓ → M7 Multiplayer Coop & Race ✓ →
-M8 Design-Politur, Splash & i18n (DE/EN/FR/ES) ✓ → **1.0** 🎉 →
-M9 Welt 3 „Das Räderwerk" (Schiebewände, Zeitschlösser, Strömungen) +
-Geist-Replay ✓ → M10 Welt 4 „Die Stille" (Horcher, Nebel, Eis) +
-Blind-Stern ✓ → M11 Echo-Kristall, Sog-Anker, Glasboden +
-Generator-Integration ✓ → M12a Werkstatt: Level-Editor mit
-Live-Lösbarkeits-Beweisen, Bibliothek & Spiel-Preview ✓ → M12b Teilen:
-serverlose Level-Links, JSON-Import/-Export, Mehr-Ebenen-Editor ✓ →
-M27 Die Jukebox: Chiptune-Maschine (Musik als Notendaten, keine Audiodateien)
-und ein anrempelbarer Musikautomat mit Playlist im Editor ✓
+Test-Philosophie: Jedes Level kommt mit Lösbarkeits-Beweis (BFS über Ebenen,
+gerichtete Transporter-Kanten, Tür-/Schlüssel-/Platten-Fixpunkte,
+Wächter-Patrouillen, Rollstein-Zustände; Zwei-Spieler-Level beweisen, dass
+beide ihr Ziel erreichen), dieselben Beweise speisen die Editor-Badges, die
+vier Wörterbücher werden auf Vollständigkeit erzwungen, und ein
+Safe-Area-Pflichtlauf spielt die Insets der installierten PWA nach, die im
+Browser unsichtbar sind. Fürs Testen am Handy braucht es HTTPS: am einfachsten
+die Live-Seite.
 
 ---
 

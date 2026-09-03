@@ -13,7 +13,7 @@ export const en: Dict = {
   'menu.daily.done': 'Today: {time}',
   'menu.daily.streak': ' · 🔥 {n} days',
   'menu.campaign': 'Campaign',
-  'menu.campaign.sub': '4 worlds, 28 levels',
+  'menu.campaign.sub': '{worlds} worlds, {levels} levels',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Co-op & race – two players, via QR code',
   'menu.tutorial': 'Tutorial',

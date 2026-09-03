@@ -16,7 +16,7 @@ export const de = {
   'menu.daily.done': 'Heute: {time}',
   'menu.daily.streak': ' · 🔥 {n} Tage',
   'menu.campaign': 'Kampagne',
-  'menu.campaign.sub': '4 Welten, 28 Level',
+  'menu.campaign.sub': '{worlds} Welten, {levels} Level',
   'menu.mp': 'Multiplayer',
   'menu.mp.sub': 'Coop & Race – zu zweit, per QR-Code',
   'menu.tutorial': 'Tutorial',

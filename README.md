@@ -3,212 +3,167 @@
 🇩🇪 [Deutsche Version](README.de.md)
 
 **An immersive sensor game as a PWA.** You steer a ball through an invisible
-maze by tilting your phone — the world reveals itself through **spatial
+maze by tilting your phone. The world reveals itself through **spatial
 sound** (rolling, wall echoes, the goal's sonar ping), **vibration** and
 **sparse light**: walls only flash where you touch them or where your echo
 ping reaches. Best played with headphones, eyes half closed.
 
-**▶ Play now: https://d0m1n1kr.github.io/tiltr/** — every push deploys
-automatically via GitHub Actions (tests → build → pages).
+**▶ Play now: https://d0m1n1kr.github.io/tiltr/** — installable as an app,
+works offline. Every push deploys automatically (tests → build → GitHub
+Pages).
 
-| Splash | Menu | Echo ping | Multiplayer lobby | Co-op |
+| Splash | Menu | Echo ping | Campaign | Level done |
 |---|---|---|---|---|
-| <img src="docs/screenshots/splash.png" width="150" alt="Animated splash screen"> | <img src="docs/screenshots/menu-en.png" width="150" alt="Start screen with game modes"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo ping reveals walls and holes"> | <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Multiplayer lobby with QR code"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Co-op with pressure plate, door and partner shimmer"> |
+| <img src="docs/screenshots/splash.png" width="150" alt="Animated splash screen"> | <img src="docs/screenshots/menu-en.png" width="150" alt="Start screen with game modes"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo ping reveals walls, a brittle wall and a door"> | <img src="docs/screenshots/campaign.png" width="150" alt="Campaign with five worlds and stars"> | <img src="docs/screenshots/result-confetti.png" width="150" alt="Result card with confetti"> |
+
+| Multiplayer lobby | Co-op in the dark | Co-op in the light | Workshop | Editor (tablet) |
+|---|---|---|---|---|
+| <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Lobby with QR code, room code and invite button"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Co-op: the partner is a faint shimmer"> | <img src="docs/screenshots/mp-bright-partner.png" width="150" alt="Co-op on a bright floor: the partner is a red ball"> | <img src="docs/screenshots/workshop.png" width="150" alt="Workshop with a level bundle"> | <img src="docs/screenshots/editor-tablet.png" width="150" alt="Level editor on a tablet with proof badges"> |
+
+| Editor (phone) | Two-player intro | Tutorial | Hearing test | Element gallery |
+|---|---|---|---|---|
+| <img src="docs/screenshots/editor-phone.png" width="150" alt="Level editor on a phone"> | <img src="docs/screenshots/mp-intro.png" width="150" alt="Intro of a two-player level with the player role"> | <img src="docs/screenshots/tutorial-intro.png" width="150" alt="Tutorial intro"> | <img src="docs/screenshots/hearing.png" width="150" alt="Hearing test with compass rose"> | <img src="docs/screenshots/gallery.png" width="150" alt="Element gallery"> |
 
 ## Game modes
 
-- **⚡ Quick Game** — a procedurally generated maze in three difficulties,
-  with best times per difficulty. Higher difficulties mix in echo crystals,
-  pull anchors and glass floors — anchors and glass provably placed off the
-  required path.
+- **⚡ Quick Game** — a procedurally generated maze in three difficulties
+  with best times per difficulty. Harder presets add floors, bright floors,
+  door puzzles (key plus time lock), echo crystals, pull anchors and glass,
+  all placed provably off the required path.
 - **📅 Daily Challenge** — seed = UTC date: one level for everyone, a new
-  one every day, fully serverless and reproducible. Your first finish is
-  the daily score, streaks 🔥 reward playing daily. Share links
-  (`#daily=DATE&t=TIME`) challenge friends to beat your time — for past
-  days too.
-- **🌍 Campaign** — five hand-built worlds (36 levels): guards, keys and
-  doors, gems, breathing holes, wind, brittle walls, multi-floor maps
-  connected by transporters, and multi-screen expanses the camera scrolls
-  across. World 3 "The Clockwork" is all about timing: sliding walls,
-  time-lock switches and one-way currents. World 4 "The Silence" is the
-  stealth world: listeners that hunt you only while you roll, fog that
-  muffles every sound, and sheet ice you glide across. World 5 "Mirage"
-  turns the senses around: bright floors you can see, echo mirrors that
-  report walls twice as far away, sound-deadening walls, decoy bells that
-  lure listeners, a hall with long reverb, a tuning-fork key you locate by
-  pitch, boulders you shove onto pressure plates, and a sleeping guard your
-  ping would wake. Up to three stars per level (finish, par time — extendable
-  with hourglasses — and all gems), plus an optional blind star 🌑 for
-  finishing without a single echo ping — and your best run rolls along as a
-  faint ghost halo on later attempts. The tutorial starts in the light: the
-  first room is lit, the second is the same room in the dark.
+  one every day, serverless and reproducible. Your first finish is the
+  daily score, streaks 🔥 reward playing daily. `#daily=DATE&t=TIME` links
+  challenge friends to beat your time, for past days too.
+- **🌍 Campaign** — five hand-built worlds, 36 levels. World 1 teaches
+  guards, keys and doors, gems, breathing holes, wind and brittle walls;
+  World 2 goes multi-floor with transporters and screen-scrolling expanses;
+  World 3 "The Clockwork" is timing (sliding walls, time locks, one-way
+  currents); World 4 "The Silence" is stealth (listeners, fog, ice); World 5
+  "Mirage" turns the senses around (bright floors, echo mirrors, sound-proof
+  walls, decoy bells, a reverb hall, a tuning-fork key, boulders, a sleeping
+  guard). Up to three stars per level (finish, par time — extendable with
+  hourglasses — and all gems) plus a blind star 🌑 for finishing without a
+  single ping. Your best run rolls along as a faint ghost. The tutorial
+  starts in the light: the first room is lit, the second is the same room in
+  the dark.
 - **👥 Multiplayer** — two players, peer-to-peer over WebRTC
-  ([trystero](https://github.com/dmotz/trystero); the handshake runs over a
-  fixed list of 8 established Nostr relays, no server of our own). Join via
-  QR code (in-app scanner or camera app — the code carries a `#join=` link)
-  or a 6-letter room code. **Co-op:** pressure plates open your partner's
-  doors; every door seals a chamber with a plate outside and one inside, and
-  whoever rests in the goal holds the goal plate for the straggler — you
-  only win once both of you are in. **Race:** identical level, first one
-  in wins, with rematch. Besides the hand-built levels, a 🎲 random level
-  generator creates fresh co-op and race maps on demand — the guest
-  regenerates the exact same level from the room's level id. A faint,
-  breathing shimmer shows your partner — pure light, no outline, always
-  dimmer than your own ball, clamped to the screen edge when they're out of
-  view and tinted goal-green once they're through. Reaching the goal stops
-  your CLOCK, not your ball: the timer locks on your time and turns green,
-  your goal keeps glowing softly, and you can keep rolling — in co-op that
-  means you can still work the plates for the straggler. Lost connections get a
+  ([trystero](https://github.com/dmotz/trystero) over a fixed list of Nostr
+  relays, no server of our own). Join via QR code, 6-letter room code or the
+  host's **📨 invite** (message plus join link through the share sheet).
+  **Co-op:** pressure plates, keys and switches work for both of you, so
+  you can open your partner's doors; you win once both are in. **Race:**
+  identical level, first one in wins, with rematch. Six hand-built levels per
+  mode plus a 🎲 generator, and every **two-player level from the workshop**
+  can be hosted straight from your library — the guest receives it with the
+  room. Your partner is a faint shimmer in the dark and a solid red ball on
+  bright floors. Reaching the goal stops your clock, not your ball, so you
+  can keep holding plates for the straggler. Lost connections get a
   10-second reconnect window.
-- **🛠 Workshop** — build your own levels in a touch-first editor; levels live in
-  **level bundles** (title, description, order, ID + version) that play like a
-  campaign with saved progress and export/import as one file
-  (three-pane layout on tablets): place elements from the full registry,
-  toggle walls, build multi-floor maps with transporters, tweak properties,
-  or switch a level to **two players** (own start and goal for the guest,
-  pressure plates, co-op/race proofs as badges) and host it straight from the
-  workshop — the guest receives the level with the room and can save it
-  — while the test suite's solvability proofs run live as badges (goal
-  reachable, no softlock, timer fits …). Every selected element plays its
-  own sound signature right in the properties panel, and ▶ animates the
-  moving parts (breathing holes, sliding walls, patrolling guards) so you
-  can judge the rhythm without leaving your draft. Test drafts in the real
-  game loop and jump back with one tap; levels live locally in your library – and because
-  reinstalling the PWA wipes it, **💾 Back up** on the start screen saves everything
-  (progress, best times, workshop, ghosts) to one compressed file that **📂** restores. Share
-  finished levels via a serverless link (the level itself travels
-  deflate-compressed in the URL hash; in the installed app you paste a
-  received link into the import field, because links always open in the
-  browser there — sharing unlocks only once all
-  required proof badges are green, so shared levels are provably
-  solvable), or exchange them as JSON files (export + import via file or
-  paste).
-- **🏁 Ghost duel** — turn a finished run into a challenge: the link
-  carries the level, your recorded trace and your time (all serverless in
-  the URL hash). Whoever opens it races the real trace — and *hears* the
-  rival rolling beside them, panned in 3D. Beat the time and send a
-  rematch; that's the ping-pong loop. Received traces are checked for
-  plausibility first (start, goal, no teleporting), so no 0.1-second
-  phantom ever lines up against you.
-- **🎧 Hearing test** — the ping comes from one of eight directions and you
-  tap where you heard it. Eight rounds, then a verdict that splits the two
-  axes: left/right (strong — real ear-difference cues) and front/back
-  (weak — a generic HRTF wearing someone else's ears). It doubles as a
-  headphone check before your first run.
+- **🛠 Workshop** — a touch-first level editor (three panes on tablets).
+  Place any element from the registry, toggle walls and wall variants,
+  build multi-floor maps with transporters, and watch the solvability
+  proofs run live as badges: goal reachable, openers before their doors,
+  timers long enough, no softlock, guards passable, boulder puzzle solvable.
+  Switch a level to **two players** for an own start and goal for the guest,
+  pressure plates and co-op/race proofs. Levels live in **bundles** that play
+  like a campaign with saved progress and export as one file. Test a draft in
+  the real game loop, share finished levels as a serverless link (the level
+  travels compressed in the URL; sharing unlocks only with all proof badges
+  green) or as JSON. **💾 Back up** saves progress, best times, workshop and
+  ghosts to one file that **📂** restores.
+- **🏁 Ghost duel** — turn a finished run into a challenge link that carries
+  the level, your trace and your time. Whoever opens it races the real trace
+  and *hears* the rival rolling beside them. Beat the time and send a
+  rematch.
+- **🎧 Hearing test** — the ping comes from one of eight directions, you tap
+  where you heard it. The verdict splits left/right (strong) from front/back
+  (weak with a generic HRTF). A headphone check before the first run.
 - **🎓 Tutorial** — eight micro-levels that teach the sound language, one
-  element at a time.
-- **🧩 Element Gallery** — living documentation: every element with its
-  visual and its sound signature, playable at the tap of a button.
+  element at a time. Elements that appear for the first time light up for a
+  few seconds and play their signature.
+- **🧩 Element gallery** — every element with its visual and its sound,
+  playable at a tap.
 
-**Every finished level is celebrated:** confetti fires from the bottom
-corners in the game's own palette while a burst of paper pops and sparkles
-plays — in every mode, tutorial included. The result card then rises over the
-still-falling paper. `prefers-reduced-motion` skips the confetti; it is
-decoration, not a game signal.
-
-**Languages:** English, German, French and Spanish — auto-detected from the
-browser locale, switchable anytime from the start screen.
+Every finished level is celebrated with confetti in the world's palette and a
+burst of paper sound (`prefers-reduced-motion` skips the confetti).
+**Languages:** English, German, French and Spanish, auto-detected and
+switchable on the start screen.
 
 ## Playing on your phone
 
-Open the live page, tap a mode (this enables motion sensors and audio),
-put on headphones and hold the phone flat like a tray during the
-calibration countdown. HUD buttons: `⌖` recalibrate, `👁` debug view
-(shows the maze), `🏠` back to the menu. Install it as an app (offline &
-fullscreen) via the install hint or your browser menu.
+Open the live page, tap a mode (this enables motion sensors and audio), put
+on headphones and hold the phone as announced during the calibration
+countdown. HUD buttons: `⌖` recalibrate, `🏠` menu; `👁` (debug view) appears
+after five taps on the version number. Install it as an app via the install
+hint or the browser menu.
 
-Two control schemes, switchable on the start screen and valid for every
-mode: **🥣 Top-down** (hold the phone flat like a tray, tilt to roll) and
-**🧭 First person** (hold it ~45° in front of you like a steering wheel:
-tip forward/back to roll along your view, lean sideways to turn — the world
-rotates around your ball, your heading always points up, and the spatial
-audio turns with you, so "left/right of me" becomes the axis your ears are
-best at). Ghosts, duels and multiplayer stay fully compatible — each player
-picks their own scheme.
-
-While a run or the hearing test is active the screen is kept awake
-(Screen Wake Lock) — you steer by tilting, so the phone would otherwise dim
-and lock mid-level. Chromium-based browsers (Android Chrome, Edge, desktop
-Chrome) support it; iOS/Safari does not expose the API, so there the system
-timeout still applies.
-
-On desktop there's a keyboard fallback: arrow keys/WASD to roll, Space to ping.
+Two control schemes, switchable on the start screen: **🥣 Top-down** (hold
+the phone flat like a tray) and **🧭 First person** (hold it at ~45° like a
+steering wheel: tip forward to roll, lean sideways to turn — the world and the
+spatial audio rotate around your ball). Ghosts, duels and multiplayer stay
+compatible; each player picks their own scheme. The screen stays awake during
+runs where the browser supports the Screen Wake Lock (Chromium; iOS does not
+expose it). On desktop: arrow keys/WASD roll, Space pings.
 
 ## Game elements
 
 | Element | Signature |
 |---|---|
-| Tilt control | `DeviceOrientationEvent`, calibration countdown after the start tap, axis remap by screen orientation, keyboard fallback |
-| Spatial audio | HRTF `PannerNode`: every directional sound is positional (headphones!) |
-| Walls | echo: touched walls flash briefly; brittle walls (amber) crunch and collapse after 3 hits; sound-proof walls (khaki) swallow the ping and muffle everything behind them |
-| Holes | breathe (open/close in offset cycles); open = pull + dark rumble + heartbeat, closed = harmless |
-| Wind zones | constant push, audible as gusts from the zone's direction |
-| Checkpoints | on the solution path (BFS); respawn point, +1 echo ping |
-| Echo ping | tap/Space: a wavefront reveals the surroundings, reflections return delayed by distance and spatially placed; passages answer bright and doubled, gems crystal clear, doors muffled; limited supply |
-| Guard | patrols (ping-pong over waypoints), pulsing hum from its direction; touch = back to the checkpoint |
-| Key & door | the key jingles within earshot, collecting it audibly slides the door open |
-| Gems | optional crystals with their own ping response; collect all for the third star |
-| Transporter | carries the ball to other floors (or across the map as a portal); hovering double tone nearby, the warp falls or rises in pitch; the goal beacon sounds muffled through the floor on other levels |
-| Sliding wall | slides open and shut to a beat — only fully open is it passable; rhythmic stone grinding plus an accelerating warning tick just before it closes |
-| Time-lock switch | stepping on it opens the linked door for a few seconds; a tick-tock counts down and turns frantic as time runs out |
-| Current | pushes harder than you can tilt — a one-way street; pulsing directional rush, deeper and more urgent than wind |
-| Listener | hunts you while you roll — it hears you even through walls; stand still and it withdraws; sniffing that swells with your own speed |
-| Fog zone | muffles ALL sounds (even the goal sonar) through one global lowpass; no physics effect — it just takes your ears |
-| Ice patch | low-friction floor: you keep gliding, braking and steering turn mushy; crystalline whirring under the ball |
-| Echo crystal | bottled ping: collecting it grants +1 echo ping, even beyond the round budget; bright single bell tone |
-| Pull anchor | drags you within its radius — always escapable (its force stays below full tilt), but it costs time; electric hum swells with proximity |
-| Glass floor | first roll-over cracks it as a warning, the second shatters it into an open hole; bright crack, then shattering |
-| Jukebox | a music box standing in its cell, playing 8-bit themes (public-domain classics — notes taken from scored sources, see `tools/score2tiltr.py` — plus tiltr originals) — spatially locatable, so a landmark in the dark. Music masks the clues: the room around it is hard BECAUSE you cannot hear the walls (the echo ping ducks it by ~12 dB so it stays playable). Bump it to skip to the next track — record scratch included. The cabinet is solid, so its cell is sealed (so generators place it provably off every mandatory path, at most one per floor); four campaign levels have one, and random/daily levels may |
-| Blind star 🌑 | optional fourth star per campaign level: finish without a single echo ping |
-| Ghost replay | your best time per level rolls along as a faint shimmer (quick game, daily and campaign); stored locally, beaten only by a faster run |
-| Pressure plate | multiplayer element: held, it opens the linked partner door — release and it closes; click on entry, the door audibly slides |
-| Partner shimmer | soft breathing light at your partner's position — no outline, no body (the only solid body is your own ball); clamped to the screen edge (with floor label) when out of view, goal-green once they have finished |
+| Tilt control | `DeviceOrientationEvent`, calibration after the start tap, axis remap by screen orientation (measured on iPhone and iPad), keyboard fallback |
+| Spatial audio | HRTF `PannerNode`: every directional sound is positional; every echo has a broadband onset so the ear can place it |
+| Walls | touched walls flash; brittle walls (amber) collapse after 3 hits; sound-proof walls (khaki) swallow the ping and muffle everything behind them; echo mirrors answer from twice the distance |
+| Holes | breathe in offset cycles; open = pull, rumble and heartbeat; roaming holes patrol like guards |
+| Wind zone / current | wind pushes, audible as gusts; a current pushes harder than you can tilt — a one-way street |
+| Checkpoint | respawn point plus one echo ping; transporter landings respawn too |
+| Echo ping | a wavefront reveals the surroundings; reflections return delayed and placed in space; limited per level, refilled by echo crystals |
+| Guard / sleeper | patrols with a pulsing hum; touch sends you back. A sleeper snores on its post until your ping wakes it |
+| Key & door | the key jingles within earshot; a tuning-fork key hums an ungpanned tone you locate by pitch. Doors take one or all of their openers |
+| Pressure plate | held, it opens the linked door — by you, your partner or a boulder |
+| Time-lock switch | opens its door for a few seconds with a tick-tock that turns frantic |
+| Sliding wall | grinds open and shut to a beat, warning tick before it closes |
+| Gems & hourglass | gems for the third star; hourglasses extend the par time |
+| Transporter | carries the ball to other floors or across the map; hovering double tone, warp rises or falls in pitch |
+| Listener | hunts you while you roll, even through walls; stand still and it withdraws. Decoy bells lure it away; sound-proof walls give cover |
+| Fog / reverb hall | fog muffles everything through one lowpass; the hall adds a long tail to every sound |
+| Ice | you keep gliding, braking turns mushy; crystalline whirring |
+| Pull anchor / glass | the anchor drags you but never traps you; glass cracks on the first pass and breaks on the second |
+| Boulder | a second body you push cell by cell: fills holes, holds plates, keeps rolling on ice |
+| Jukebox | a solid music box playing 8-bit themes (public-domain classics from scored sources plus originals); music masks the echoes, bumping it skips a track |
+| Bright floor / dusk | a lit floor you can see; dusk stays lit until your first wall touch, then fades |
+| Partner | a breathing shimmer in the dark, a red ball on bright floors, clamped to the screen edge when out of view |
 | Goal beacon | sonar ping: closer = faster, louder, higher |
 
 ## Development
 
 TypeScript + Vite + Vitest + Playwright; PWA via `vite-plugin-pwa`. The
-build plan lives in [`docs/PLAN.md`](docs/PLAN.md), the binding UI guideline
-in [`docs/DESIGN.md`](docs/DESIGN.md); the original phase-0 prototype is
-kept as reference in [`prototype/`](prototype/).
+design log lives in [`docs/PLAN.md`](docs/PLAN.md), the binding UI guideline
+in [`docs/DESIGN.md`](docs/DESIGN.md), agent notes in
+[`CLAUDE.md`](CLAUDE.md); the phase-0 prototype is kept in
+[`prototype/`](prototype/).
 
 ```bash
 npm install
-npm run dev        # dev server (desktop: arrows/WASD, Space = ping)
-npm run typecheck  # tsc --noEmit
-npm test           # Vitest units (physics, mazes, level solvability, i18n)
-npm run lint       # ESLint
-npm run build      # production build to dist/ (incl. service worker)
-npm run e2e        # Playwright smoke against vite preview (fixed seed)
+npm run dev          # dev server (desktop: arrows/WASD, Space = ping)
+npm run typecheck    # tsc --noEmit
+npm test             # Vitest units (physics, mazes, level proofs, i18n)
+npm run lint         # ESLint
+npm run build        # production build to dist/ (incl. service worker)
+npm run e2e          # Playwright smoke, 4 workers against vite preview
+npm run screenshots  # regenerate docs/screenshots/ from the built app
 ```
 
-Useful URL parameters: `?seed=<number|text>` makes runs reproducible,
-`?unlock` opens all campaign levels (playtesting), `?nosplash` skips the
-splash (used by e2e), `?mpcode=TEST…` forces a room code onto the local
-`BroadcastChannel` transport (multiplayer e2e without network).
+URL parameters: `?seed=…` makes runs reproducible, `?unlock` opens all
+campaign levels, `?nosplash` skips the splash, `?debug` enables the debug
+view and sensor diagnostics, `?mpcode=TEST…` forces a room code onto the local
+`BroadcastChannel` transport (multiplayer without network).
 
 Testing philosophy: every level ships with a solvability proof (BFS across
-floors, directed transporter edges, door/key/plate fixpoints — the co-op
-tests even prove every door is necessary and no one can get locked in), the
-four language dictionaries are enforced to be complete, and a mandatory
-safe-area e2e run replays installed-PWA insets that are invisible in the
-browser. Phone testing needs HTTPS: easiest via the live page, otherwise
-`npx vite --host` with a local-TLS plugin or a tunnel.
-
-## Roadmap
-
-M1 foundation ✓ → M2 element registry + level format ✓ → M3 tutorial &
-quick game ✓ → M4 campaign world 1 ✓ → M5 floors/transporters + world 2 ✓
-→ M6 daily challenge + share links ✓ → M7 multiplayer co-op & race ✓ →
-M8 design polish, splash & i18n (EN/DE/FR/ES) ✓ → **1.0** 🎉 →
-M9 world 3 "The Clockwork" (sliding walls, time locks, currents) + ghost
-replay ✓ → M10 world 4 "The Silence" (listeners, fog, ice) + blind star ✓ →
-M11 echo crystal, pull anchor, glass floor + generator integration ✓ →
-M12a workshop: level editor with live solvability proofs, library &
-in-game preview ✓ → M12b sharing: serverless level links, JSON
-import/export, multi-floor editing ✓ → M27 the jukebox: a chiptune engine
-(music as note data, not audio files) and a bumpable music box with an
-editor playlist ✓
+floors, directed transporter edges, door/key/plate fixpoints, guard
+patrols, boulder states; two-player levels prove both players reach their
+goal), the same proofs power the editor badges, the four dictionaries are
+enforced to be complete, and a mandatory safe-area run replays installed-PWA
+insets that are invisible in the browser. Phone testing needs HTTPS: easiest
+via the live page.
 
 ---
 

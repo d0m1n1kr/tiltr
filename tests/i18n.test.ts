@@ -24,6 +24,13 @@ describe('Wörterbücher', () => {
     }
   });
 
+  it('Kampagnen-Untertitel zählt aus den Daten (Platzhalter statt fester Zahlen)', () => {
+    // „4 Welten, 28 Level" stand im Wörterbuch, als es längst 5 und 36 waren.
+    expect(de['menu.campaign.sub']).toContain('{worlds}');
+    expect(de['menu.campaign.sub']).toContain('{levels}');
+    expect(t('menu.campaign.sub', { worlds: 5, levels: 36 })).toBe('5 Welten, 36 Level');
+  });
+
   it('kein leerer Wert', () => {
     for (const [lang, dict] of Object.entries(dicts)) {
       for (const [k, v] of Object.entries(dict)) expect(v.length, `${lang}:${k}`).toBeGreaterThan(0);
