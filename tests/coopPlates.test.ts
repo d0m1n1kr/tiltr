@@ -219,3 +219,87 @@ describe('Seitenwechsel an einer Tür mit Platten auf beiden Seiten (M77)', () =
     expect(pairReachable(own(false), true).p1.has(cellKey(0, [4, 0]))).toBe(true);
   });
 });
+
+// M78 – EINGERASTET BLEIBT EINGERASTET: Meldung aus dem Levelbau, direkt nach
+// M77: „Jetzt ist nur noch ein Softlock da, der nicht stimmt. Die Tür bleibt
+// offen." Genau daran lag es – der Softlock-Beweis setzte für JEDE Zelle neu
+// an und fragte, ob die Tür von DORT aus zu öffnen ist. Bei einer Tür mit
+// „bleibt offen" ist das die falsche Frage: Wer hinter ihr steht, hat sie
+// eingerastet, und sie kann nicht wieder zufallen (dieselbe Regel wie
+// „gebrochen bleibt gebrochen", M68).
+function returnTrip(latch: boolean) {
+  return parseLevel({
+    id: 'custom-return',
+    name: 'Rückweg',
+    players: 2,
+    mpMode: 'coop',
+    floors: [
+      {
+        size: [7, 2],
+        maze: oneRow(7),
+        elements: [
+          { type: 'door', id: 'tor', edge: [[2, 0], 'e'], require: 'all', latch },
+          { type: 'plate', cell: [1, 0], opens: 'tor' }, // Seite von Spieler 1
+          { type: 'plate', cell: [3, 0], opens: 'tor' }, // Seite von Spieler 2
+        ],
+        start: [0, 0],
+        goal: [2, 0], // Spieler 1 muss NICHT hinüber – kann aber
+        start2: [6, 0],
+        goal2: [4, 0],
+      },
+    ],
+  });
+}
+
+describe('Softlock hinter einer Tür, die offen bleibt (M78)', () => {
+  it('kein Softlock: von jenseits der Tür führt der Rückweg durch dieselbe (eingerastete) Tür', () => {
+    const rep = validateLevel(returnTrip(true));
+    expect(rep.find((c) => c.key === 'softlock')?.ok).toBe(true);
+    expect(rep.filter((c) => !c.ok).map((c) => c.key)).toEqual([]);
+    // Der Beweis rechnet die Tür ab der Zelle als offen: Spieler 1 steht
+    // hinter ihr und erreicht sein Ziel davor trotzdem.
+    const far = cellKey(0, [5, 0]);
+    expect(pairReachable(returnTrip(true), true).p1.has(far)).toBe(true);
+    expect(pairReachable(returnTrip(true), true, new Set(), { p1: { floor: 0, cell: [5, 0] } }, {}, new Set(), new Set(['tor'])).p1.has(cellKey(0, [2, 0]))).toBe(true);
+  });
+
+  it('ohne „bleibt offen" geht dieselbe Tür nie auf – dann steckt auch niemand dahinter', () => {
+    // Kein Softlock, aber aus dem anderen Grund: Zwei Platten und ein freier
+    // Spieler heißt, die Tür bleibt zu (M77) – hinüber kommt niemand, also
+    // sitzt auch niemand fest. Rot ist hier der Öffner-Check.
+    const rep = validateLevel(returnTrip(false));
+    expect(rep.find((c) => c.key === 'softlock')?.ok).toBe(true);
+    expect(rep.find((c) => c.key === 'openers')?.ok).toBe(false);
+    expect(pairReachable(returnTrip(false), true).p1.has(cellKey(0, [5, 0]))).toBe(false);
+  });
+
+  it('die Einrast-Annahme gilt NUR für die Tür – ein echter Riegel bleibt rot', () => {
+    // Gegenprobe zum Gummistempel: Dasselbe Level plus Transporter in eine
+    // Ebene ohne Rückweg. Die latchende Tür ändert daran nichts.
+    const trap = parseLevel({
+      id: 'custom-trap',
+      name: 'Falle',
+      players: 2,
+      mpMode: 'coop',
+      floors: [
+        {
+          size: [7, 2],
+          maze: oneRow(7),
+          elements: [
+            { type: 'door', id: 'tor', edge: [[2, 0], 'e'], require: 'all', latch: true },
+            { type: 'plate', cell: [1, 0], opens: 'tor' },
+            { type: 'plate', cell: [3, 0], opens: 'tor' },
+            { type: 'transporter', cell: [5, 0], target: { floor: 1, cell: [0, 0] } },
+          ],
+          start: [0, 0],
+          goal: [2, 0],
+          start2: [6, 0],
+          goal2: [4, 0],
+        },
+        { size: [2, 2], maze: { seed: 5 }, elements: [], start: [0, 0], goal: null },
+      ],
+    });
+    const rep = validateLevel(trap);
+    expect(rep.find((c) => c.key === 'softlock')?.ok).toBe(false);
+  });
+});

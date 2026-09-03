@@ -301,10 +301,14 @@ export function coopReachable(
   def: LevelDef,
   bannedDoors: Set<string> = new Set(),
   from?: StartPos,
-  opts: { plates?: boolean; brittle?: BrittleState } = {},
+  opts: { plates?: boolean; brittle?: BrittleState; latched?: ReadonlySet<string> } = {},
 ): Set<string> {
   const plates = opts.plates ?? true;
-  const openDoorIds = new Set<string>();
+  // EINGERASTET BLEIBT EINGERASTET (M78): Eine Tür mit „bleibt offen", die
+  // schon aufgegangen ist, kann nicht wieder zufallen – der Softlock-Beweis
+  // muss sie ab dort als offen führen, sonst meldet er einen Riegel, den es
+  // nicht gibt (dieselbe Regel wie „gebrochen bleibt gebrochen", M68).
+  const openDoorIds = new Set<string>(opts.latched ?? []);
   // Türen mit require 'all' öffnen erst, wenn ALLE Öffner erreichbar sind
   // (core/doors.ts: alle gleichzeitig erfüllt). Reihenfolge und Timing
   // prüft das Modell nicht – es fragt nur nach Erreichbarkeit.
@@ -422,6 +426,9 @@ export function pairReachable(
   /** Platten, die ein ROLLSTEIN halten kann (M74, aus boulderProof). Sie
    *  brauchen niemanden, der stehen bleibt. */
   stonePlates: ReadonlySet<string> = new Set(),
+  /** Türen mit „bleibt offen", die schon eingerastet SIND (M78): Sie öffnen
+   *  in BEIDEN Welten, denn die Tür ist physisch offen. */
+  latched: ReadonlySet<string> = new Set(),
 ): PairReach {
   const f0 = def.floors[0]!;
   const start1: StartPos = from?.p1 ?? { floor: 0, cell: f0.start };
@@ -446,7 +453,7 @@ export function pairReachable(
       }
     }
   });
-  const open = [new Set<string>(), new Set<string>()];
+  const open = [new Set<string>(latched), new Set<string>(latched)];
   for (;;) {
     const seen = [
       reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0], player: 1, ...brittle.p1 }, start1),
@@ -964,13 +971,36 @@ export function validateLevel(raw: unknown): CheckResult[] {
   const brokenAt = (k: string, without: Map<string, Set<string>>): BrittleState => ({
     brokenBrittle: new Set(oneWayWalls.filter((w) => !without.get(w)!.has(k))),
   });
+  // EINGERASTET BLEIBT EINGERASTET (M78) – dieselbe Regel wie beim Bruch:
+  // Wer eine Zelle NUR durch eine Tür mit „bleibt offen" erreicht, hat sie
+  // eingerastet; von dort ist sie offen, für beide Spieler (die Tür ist
+  // physisch offen). Eine Zelle, die man auch ohne die Tür erreicht, zählt
+  // ohne sie – dort ist sie vielleicht noch zu.
+  const latchIds = def.floors.flatMap((f) =>
+    f.elements.filter((e): e is DoorDef => e.type === 'door' && e.latch).map((d) => d.id),
+  );
+  /** Türen, die an Zelle k sicher eingerastet sind (je Spieler-Reichweite). */
+  const latchedAt = (k: string, without: Map<string, Set<string>>): Set<string> =>
+    new Set(latchIds.filter((d) => !without.get(d)!.has(k)));
   if (two) {
     const pair = pairCoop ? coopPair! : racePair!;
     const sealed = (w: string): BrittleState => ({ sealedBrittle: new Set([w]) });
     const without1 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p1: sealed(w) }, stonePlates).p1]));
     const without2 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p2: sealed(w) }, stonePlates).p2]));
+    // Reichweite, wenn GENAU DIESE latchende Tür nie aufgeht – daraus folgt
+    // je Zelle, ob sie eingerastet sein MUSS.
+    const noLatch = new Map(
+      latchIds.map((d) => [d, pairReachable(def, pairCoop, new Set([d]), undefined, {}, stonePlates)]),
+    );
+    const noLatch1 = new Map([...noLatch].map(([d, r]) => [d, r.p1]));
+    const noLatch2 = new Map([...noLatch].map(([d, r]) => [d, r.p2]));
     for (const k of pair.p1) {
-      if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }, stonePlates).p1.has(goalKey)) {
+      const latchedHere = latchedAt(k, noLatch1);
+      if (
+        !pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }, stonePlates, latchedHere).p1.has(
+          goalKey,
+        )
+      ) {
         softlockOk = false;
         softlockDetail = `Spieler 1: ${k}`;
         softlockAt = placeOf(k);
@@ -979,7 +1009,12 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
     if (softlockOk) {
       for (const k of pair.p2) {
-        if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }, stonePlates).p2.has(goal2Key)) {
+        const latchedHere = latchedAt(k, noLatch2);
+        if (
+          !pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }, stonePlates, latchedHere).p2.has(
+            goal2Key,
+          )
+        ) {
           softlockOk = false;
           softlockDetail = `Spieler 2: ${k}`;
           softlockAt = placeOf(k);
@@ -991,8 +1026,14 @@ export function validateLevel(raw: unknown): CheckResult[] {
     const without = new Map(
       oneWayWalls.map((w) => [w, coopReachable(def, new Set(), undefined, { brittle: { sealedBrittle: new Set([w]) } })]),
     );
+    const noLatch = new Map(latchIds.map((d) => [d, coopReachable(def, new Set([d]))]));
     for (const k of fromStart) {
-      if (!coopReachable(def, new Set(), parse(k), { brittle: brokenAt(k, without) }).has(goalKey)) {
+      if (
+        !coopReachable(def, new Set(), parse(k), {
+          brittle: brokenAt(k, without),
+          latched: latchedAt(k, noLatch),
+        }).has(goalKey)
+      ) {
         softlockOk = false;
         softlockDetail = k;
         softlockAt = placeOf(k);

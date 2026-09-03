@@ -160,7 +160,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `openers`-Bericht (`holdDetail` nennt den Ausweg: „… – „bleibt offen" löst
   das"); die Prüfung steht VOR dem Ausstieg für reine Platten-Türen, sonst
   bliebe der häufigste Fall stumm. Bei einer latchenden Tür zählt auch die
-  EIGENE Platte als Öffner – M74 gilt nur für Türen, die wieder zufallen. `coopReachable` und der `openers`-Check rechnen
+  EIGENE Platte als Öffner – M74 gilt nur für Türen, die wieder zufallen.
+  EINGERASTET BLEIBT EINGERASTET (M78, wie M68 für Wände): Der Softlock-Beweis
+  setzt je Zelle neu an – bei einer latchenden Tür wäre „kannst du sie von
+  DORT öffnen?" die falsche Frage. Wer eine Zelle NUR durch sie erreicht, hat
+  sie eingerastet; ab dort gilt sie als offen, für BEIDE Spieler. Saat über
+  `pairReachable(…, latched)` bzw. `coopReachable(…, {latched})`, je Zelle
+  abgeleitet in `latchedAt(k, …)` aus der Reichweite mit GENAU DIESER Tür
+  gebannt. Eine Zelle, die man auch ohne sie erreicht, zählt ohne sie. `coopReachable` und der `openers`-Check rechnen
   'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
   HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
   DÄMMERUNG (M43): `floor.dusk` = hell bis zur ersten Wandberührung, dann

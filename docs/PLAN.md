@@ -612,6 +612,34 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M78 „Eingerastet bleibt eingerastet" ✓ (v3.10.1)
+
+Meldung direkt nach M77: „Jetzt ist nur noch ein Softlock da, der nicht
+stimmt. Die Tür bleibt offen." Genau daran lag es. Der Softlock-Beweis setzt
+für JEDE erreichbare Zelle neu an und fragt: Ist das Ziel von hier noch
+erreichbar? Dabei leitete er die Türzustände jedes Mal frisch ab – und bei
+einer Tür mit „bleibt offen" ist das die falsche Frage. Wer hinter ihr steht,
+hat sie eingerastet; sie kann nicht wieder zufallen. Das Modell fragte
+trotzdem „kannst du sie von DORT aus öffnen?", fand die Platte auf der
+falschen Seite und meldete einen Riegel, den es nicht gibt.
+
+Die Regel dafür stand schon in M68 („gebrochen bleibt gebrochen") und heißt
+jetzt auch für Türen: Wer eine Zelle NUR durch die latchende Tür erreicht, hat
+sie eingerastet – ab dieser Zelle gilt sie als offen, und zwar für BEIDE
+Spieler (die Tür ist physisch offen). Eine Zelle, die man auch ohne sie
+erreicht, zählt ohne sie: dort ist die Tür vielleicht noch zu, und wenn nur
+sie hinausführt, ist das ein echter Softlock. Technisch: `pairReachable` und
+`coopReachable` nehmen die eingerasteten Türen als Saat (`latched` /
+`opts.latched`), und `latchedAt(k, …)` leitet je Zelle ab, welche das sind –
+aus der Reichweite mit GENAU DIESER Tür gebannt.
+
+Units in tests/coopPlates.test.ts: der Rückweg durch die eingerastete Tür ist
+kein Softlock (rot gesehen, indem die Saat entfernt wurde); ohne „bleibt
+offen" geht dieselbe Tür nie auf, dann steckt auch niemand dahinter (rot ist
+der Öffner-Check, nicht der Softlock); und ein Transporter in eine Ebene ohne
+Rückweg bleibt neben einer latchenden Tür rot – die Annahme gilt für die Tür,
+nicht als Gummistempel.
+
 ## M77 „Seitenwechsel" ✓ (v3.10.0) – wer halten kann, entscheidet die Tür
 
 Meldung mit Bild, direkt nach M76: „Hier müssen P1 und P2 die Seite wechseln.
