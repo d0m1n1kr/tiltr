@@ -5954,6 +5954,34 @@ if (want("33")) {
       tp: window.__tiltrEd?.toolPlayer,
       tool: window.__tiltrEd?.tool,
     }));
+    // Druckplatte platzieren (M60): bekommt sofort eine Tür (`opens`), die Def
+    // parst weiter (kein loadError – vorher blieb die Platte unsichtbar), und
+    // das Eigenschaften-Panel zeigt das Tür-Feld.
+    await pageA.click("#edEl-plate");
+    const nBefore = await pageA.evaluate(() => window.__tiltrEd?.elements);
+    const platePt = await pageA.evaluate(() => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById("edCanvas").getBoundingClientRect();
+      return { x: box.left + (ed.ox + 250 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 150 * ed.scale) / ed.dpr };
+    });
+    await pageA.mouse.click(platePt.x, platePt.y);
+    const plateRes = await until(async () => {
+      const r = await pageA.evaluate(() => {
+        const ed = window.__tiltrEd;
+        const el = ed?.def?.floors?.[0]?.elements?.[ed.selected];
+        return { n: ed?.elements, loadError: ed?.loadError, type: el?.type, opens: el?.opens, hasOpensField: !!document.querySelector("#edProps .ed-link") };
+      });
+      return r.n === nBefore + 1 && r.hasOpensField ? r : null;
+    }, { timeout: 3000 });
+    check(
+      `Druckplatte platziert: Tür verknüpft, Def lädt, 🔗-Feld da (${JSON.stringify(plateRes)})`,
+      !!plateRes && plateRes.loadError === null && plateRes.type === "plate" && ["g", "k"].includes(plateRes.opens),
+    );
+    // Test-Platte wieder löschen (Auswahl weg, Level wie importiert) – das
+    // Werkzeug-Feld „Setzt für" erscheint nur ohne ausgewähltes Element.
+    await pageA.locator("#edProps button", { hasText: "Element löschen" }).click();
+    await until(async () => (await pageA.evaluate(() => window.__tiltrEd?.elements)) === nBefore);
+    await pageA.click("#edTool-start");
     await pageA.selectOption("#edToolPlayer", "1"); // und über das Feld zurück
     const viaField = await pageA.evaluate(() => ({ tp: window.__tiltrEd?.toolPlayer, label: document.getElementById("edTool-start")?.textContent }));
     check(

@@ -233,7 +233,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   siebten Kachel. Die DRUCKPLATTE steht nur
   bei zwei Spielern in der Palette: solo hielte sie niemand, und
   `coopReachable` zählte sie trotzdem als Öffner – ein grünes, unlösbares
-  Level. Werkstatt: „👥 Zu zweit" statt Spielen → Lobby mit `#mpCustomItem`,
+  Level. JEDER Öffner-Typ braucht im Editor drei Dinge: Auto-Link beim
+  Setzen (`placeAt` → `nearestDoorId`), das Feld „Öffnet Tür" + 🔗 in
+  `renderProps` und einen Fallback in `normalizeDraft` – die Platte hatte
+  keins davon, parste nicht und blieb unsichtbar (M60). Werkstatt: „👥 Zu zweit" statt Spielen → Lobby mit `#mpCustomItem`,
   Bundles überspringen MP-Level (`bundleProgress.skipped`). Protokoll: Host
   hängt die Def an `setup`, der Gast prüft `validateLevel` + `isShareable`
   vor dem Intro; Ergebniskarte des Gasts: „In Werkstatt speichern". E2E Lauf

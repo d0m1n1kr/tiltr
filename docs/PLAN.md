@@ -612,6 +612,19 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M60 „Die unsichtbare Platte" ✓ (v3.1.3) – Druckplatte im Editor verknüpfbar
+
+Rückmeldung: „Druckplatten sieht man im Editor nicht." Ursache war keine
+Zeichenfrage: `placeAt` gab nur Schlüssel und Zeitschaltern beim Setzen die
+nächste Tür (`opens`); eine Platte ohne `opens` parst nicht, `rebuild()` ließ
+das letzte gültige Bild stehen – die Platte war da, aber unsichtbar, und der
+Status nannte den zod-Fehler. Jetzt bekommt die Platte wie der Schlüssel die
+nächstgelegene Tür (ebenenübergreifend) und in den Eigenschaften das Feld
+„Öffnet Tür" plus 🔗 „Tür antippen"; `normalizeDraft` füllt alte Entwürfe
+mit `tor1` auf, damit sie laden (das Badge „Verknüpfungen" sagt dann, was
+fehlt). E2E Lauf 33 platziert eine Platte und prüft Verknüpfung, Ladezustand
+und Feld – rot gegen den alten Build.
+
 ## M59 „Dein Schlüssel, meine Tür" ✓ (v3.1.2) – Coop-Öffner gelten für beide
 
 Erstes echtes Coop-Level aus der Werkstatt: Spieler 1 holt den Schlüssel für

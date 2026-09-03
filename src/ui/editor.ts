@@ -438,7 +438,12 @@ export function setupEditor(opts: {
       // Wie bei maze.add: Ein rohes Def darf Felder auslassen, der Editor
       // greift aber direkt darauf zu. EINMAL auffüllen statt an jeder
       // Zugriffsstelle prüfen.
-      for (const el of f.elements) if (el.type === 'jukebox') el.playlist ??= ['tiltr'];
+      for (const el of f.elements) {
+        if (el.type === 'jukebox') el.playlist ??= ['tiltr'];
+        // Platte ohne Tür (Entwürfe vor 3.1.3): auffüllen, damit die Def parst –
+        // das Badge „Verknüpfungen" sagt dann, dass „tor1" fehlt.
+        if (el.type === 'plate') el.opens ??= 'tor1';
+      }
     }
   }
   const flash = (text: string, error = false): void => {
@@ -1199,8 +1204,11 @@ export function setupEditor(opts: {
       // Auto-Verknüpfung: die NÄCHSTGELEGENE Tür (Schlüssel notfalls auf
       // anderer Ebene). Gibt es keine, zeigt 'tor1' auf die erste Tür, die
       // später gesetzt wird – bis dahin ist das Badge „Verknüpfungen" rot.
-      if (placeType === 'key' || placeType === 'timedSwitch')
-        el.opens = nearestDoorId(activeFloor, target.cell!, placeType === 'key') ?? 'tor1';
+      // Platte (M60) wie Schlüssel: Türen wirken ebenenübergreifend. Ohne
+      // `opens` parst die Def nicht – die Platte war unsichtbar, weil das
+      // letzte gültige Bild stehen blieb.
+      if (placeType === 'key' || placeType === 'timedSwitch' || placeType === 'plate')
+        el.opens = nearestDoorId(activeFloor, target.cell!, placeType !== 'timedSwitch') ?? 'tor1';
       if (placeType === 'hole') el.breathing = { offset: Math.round(Math.random() * 8) / 2 }; // 0,5er-Schritte wie das Eingabefeld
       // Eine Jukebox ohne Titel gibt es nicht (Schema: min. 1) – das Haus-Thema
       // ist der Vorgabewert.
@@ -1647,8 +1655,9 @@ export function setupEditor(opts: {
         if (el.bonusS === undefined) el.bonusS = 10;
         num(t('ed.f.bonusS'), 'bonusS', 5, 60, 5);
       }
-      if (el.type === 'key' || el.type === 'timedSwitch') {
-        // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel überall.
+      if (el.type === 'key' || el.type === 'timedSwitch' || el.type === 'plate') {
+        // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel und
+        // Platten überall (M60: die Platte hatte weder Feld noch 🔗).
         const options = doorOptions(el.type === 'timedSwitch');
         const cur = String(el.opens ?? '');
         if (!options.some(([v]) => v === cur)) options.unshift([cur, `${cur} ⚠`]);
