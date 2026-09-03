@@ -370,7 +370,16 @@ export class World {
 
   /** Rollsteine (M47): Kollision mit dem Ball, Anstoß, Rollen, Ankunft.
    *  Zellgröße ist implizit: `size` ist 0,72 Zellen, also Zelle = size/0.72. */
-  private updateBoulders(dt: number): void {
+  /**
+   * `withBall`: Darf hier die KUGEL mitgerechnet werden (Kollision, Anstoßen)?
+   * Nein für fremde Ebenen (M84b): Der Loader gibt ALLEN Ebenen-Welten
+   * DIESELBE Ball-Instanz (`new Ball()` einmal, dann jede `new World(walls,
+   * ball, goal)`) – wer die Steine einer anderen Ebene weiterrollt, schob die
+   * Kugel aus einem Kasten heraus, der ganz woanders steht. Genau so kam die
+   * Meldung: „Auf Ebene 1 komme ich nicht auf ein Feld, auf dem in Ebene 3 ein
+   * Stein liegt."
+   */
+  private updateBoulders(dt: number, withBall = true): void {
     const b = this.ball;
     for (const st of this.boulders) {
       if (st.sunk) continue;
@@ -409,6 +418,7 @@ export class World {
         else if (pl.boulder && this.boulders.every((o) => o.sunk || o.move || Math.hypot(pl.x - o.x, pl.y - o.y) >= cell * 0.4)) pl.boulder = false;
       }
       // Kollision Ball ↔ Stein: fester Kasten; ein kräftiger Stoß rollt ihn an.
+      if (!withBall) continue;
       const hit = this.collideCircleRect(b, World.boulderRect(st));
       if (!hit || st.move) continue;
       if (hit.impact < this.pushSpeed) continue;
@@ -452,12 +462,18 @@ export class World {
     return true;
   }
 
-  /** Steine weiterrollen lassen OHNE eigenen Ballschritt: für Welten, die die
-   *  Spielschleife nicht schrittet (andere Ebene, ruhende Seite im
-   *  MP-Testmodus). Stoßen kann dort niemand – die ruhende Kugel erreicht
-   *  `pushSpeed` nicht. */
-  advanceBoulders(dt: number): void {
-    this.updateBoulders(dt);
+  /**
+   * Steine weiterrollen lassen OHNE eigenen Ballschritt: für Welten, die die
+   * Spielschleife nicht schrittet (andere Ebene, ruhende Seite im
+   * MP-Testmodus).
+   *
+   * `withBall` bleibt standardmäßig AUS: Die Kugel ist über alle Ebenen
+   * DIESELBE (Loader), also gehört sie nicht in die Rechnung einer Ebene, auf
+   * der sie gar nicht steht. Nur die ruhende Seite im MP-Testmodus rechnet sie
+   * mit – dort ist es ihre eigene Kugel auf ihrer eigenen Ebene.
+   */
+  advanceBoulders(dt: number, withBall = false): void {
+    this.updateBoulders(dt, withBall);
   }
 
   /** Stein-Ereignisse seit dem letzten Aufruf (für den Klang; ein 'roll' aus

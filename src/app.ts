@@ -2473,7 +2473,10 @@ function mpTestFrame(now: number, dt: number): void {
   // Der Stein drüben rollt zu Ende und legt sich auf seine Platte (M84).
   // Seine Klang-Ereignisse gehören NICHT hierher: derselbe Stein klingt
   // schon in der eigenen Welt.
-  otherWorld.advanceBoulders(dt);
+  // Hier MIT Kugel: Es ist die eigene Kugel der ruhenden Seite auf ihrer
+  // eigenen Ebene – anders als bei den Leerlauf-Ebenen (dort ist die Kugel
+  // über alle Ebenen dieselbe Instanz, siehe advanceBoulders).
+  otherWorld.advanceBoulders(dt, true);
   otherWorld.consumeBoulderEvents();
   const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.id));
   for (const id of held) if (!mpTest.held.has(id)) audio.plate(true);

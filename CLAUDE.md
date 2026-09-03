@@ -337,6 +337,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `boulder` ist Pflicht fürs Teilen. Abgrenzung bewusst: kein Stein-Stein,
   kein Transporter, keine Schiebewand-Zelle – hält beide Seiten klein. Neue
   Regeln IMMER in Physik UND Beweis eintragen (zwei Stellen, eine Wahrheit).
+  DIE KUGEL IST ÜBER ALLE EBENEN DIESELBE (M84b): Der Loader baut EINE
+  `Ball`-Instanz und gibt sie jeder Ebenen-Welt (`new World(walls, ball,
+  goal)`). Wer eine Welt anfasst, auf der der Spieler NICHT steht, darf die
+  Kugel deshalb nicht mitrechnen – `advanceBoulders(dt, withBall = false)`
+  lässt die Ball-Kollision aus, und nur die ruhende Seite im MP-Testmodus
+  bekommt `true` (dort ist es ihre eigene Kugel auf ihrer eigenen Ebene). Ohne
+  das schob ein Stein auf Ebene 3 die Kugel auf Ebene 1 aus der Zelle – so
+  gemeldet, Unit in tests/boulder.test.ts. Gilt für JEDE künftige
+  `advance…`-Methode: erst fragen, ob sie `this.ball` berührt.
   ZU ZWEIT ROLLT ER FÜR BEIDE (M84): Die Nachricht `boulder` ({f, i, d})
   überträgt den STOSS, nicht die Position – `World.pushBoulderAt(i, dir)`
   wendet dieselbe Regel an („Zielzelle frei?"), Loch/Eis/Platte folgen daraus.

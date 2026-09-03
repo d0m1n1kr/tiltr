@@ -612,6 +612,28 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M84b „Der Stein wirkte auf der falschen Ebene" ✓ (v3.17.1)
+
+Meldung direkt nach M84: „Der Stein wirkt jetzt auf der falschen Ebene.
+Plötzlich kann ich auf Ebene 1 nicht mehr auf ein Feld, das in Ebene 3 ein
+Stein ist." Genau so war es, und der Grund ist eine Eigenschaft des Loaders,
+die man kennen muss: Er baut EINE `Ball`-Instanz und gibt sie JEDER
+Ebenen-Welt (`new World(walls, ball, goal)`) – die Kugel ist über alle Ebenen
+dasselbe Objekt, nur die Welt drumherum wechselt.
+
+M84 ließ die Steine auf allen NICHT geschritteten Ebenen weiterrollen
+(`advanceIdleWorlds`), damit ein Stein, den der Partner drüben anstößt, auch
+ankommt – eine Platte kann eine Tür über Ebenen öffnen. `updateBoulders`
+rechnet aber auch die Ball-Kollision mit, und die traf die geteilte Kugel:
+Der Kasten auf Ebene 3 stieß sie auf Ebene 1 aus der Zelle.
+
+`advanceBoulders(dt, withBall = false)` lässt die Kollision jetzt aus – eine
+Welt, auf der niemand steht, hat auch niemanden zu schieben. Nur die ruhende
+Seite im MP-Testmodus bekommt `true`: Dort ist es ihre eigene Kugel auf ihrer
+eigenen Ebene. Die Unit hält beides fest: dass der Loader die Kugel teilt (die
+Annahme, die den Fehler möglich machte) und dass ein Stein zwei Ebenen tiefer
+sie nicht mehr bewegt – ohne den Fix rutscht sie von 250 auf 192.
+
 ## M85 „Weitersagen" ✓ (v3.17.0)
 
 Wunsch: „Ich hätte gerne einen Promo-Share-Link im Home-Screen. Zum Teilen der

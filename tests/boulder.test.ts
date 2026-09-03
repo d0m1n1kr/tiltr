@@ -175,3 +175,59 @@ describe('Rollstein über das Netz (M84)', () => {
     expect(world.pushBoulderAt(7, [1, 0])).toBe(false); // gibt es nicht
   });
 });
+
+// M84b – DIE KUGEL IST ÜBER ALLE EBENEN DIESELBE. Der Loader baut EINE
+// Ball-Instanz und gibt sie jeder Ebenen-Welt (`new World(walls, ball, goal)`).
+// M84 ließ die Steine auf ALLEN Ebenen weiterrollen, damit eine Platte auch
+// über Ebenen eine Tür öffnen kann – und schob damit die Kugel aus einem
+// Kasten, der zwei Ebenen tiefer steht. Gemeldet als: „Auf Ebene 1 komme ich
+// nicht auf ein Feld, auf dem in Ebene 3 ein Stein liegt."
+describe('Steine fremder Ebenen fassen die Kugel nicht an (M84b)', () => {
+  const twoFloors = () =>
+    parseLevel({
+      id: 'zwei',
+      name: 'Zwei Ebenen',
+      pingBudget: 3,
+      floors: [
+        {
+          size: [6, 2],
+          maze: { seed: 3, carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[3, 0], 'e'], [[4, 0], 'e'], [[0, 0], 's']] },
+          elements: [{ type: 'transporter', cell: [5, 0], target: { floor: 1, cell: [0, 0] } }],
+          start: [0, 0],
+          goal: [0, 1],
+        },
+        {
+          // Ebene 2 hat an derselben Stelle einen Stein wie Ebene 1 freie Bahn.
+          size: [6, 2],
+          maze: { seed: 3, carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[3, 0], 'e'], [[4, 0], 'e'], [[0, 0], 's']] },
+          elements: [{ type: 'boulder', cell: [2, 0] }],
+          start: [0, 0],
+          goal: null,
+        },
+      ],
+    });
+
+  it('der Loader teilt EINE Kugel über alle Ebenen (die Annahme des Tests)', () => {
+    const loaded = loadLevel(twoFloors());
+    expect(loaded.floors[1]!.world.ball).toBe(loaded.floors[0]!.world.ball);
+  });
+
+  it('advanceBoulders auf der anderen Ebene verschiebt die Kugel NICHT', () => {
+    const loaded = loadLevel(twoFloors());
+    const deep = loaded.floors[1]!.world; // Ebene 2, dort liegt der Stein
+    const ball = deep.ball;
+    // Die Kugel rollt auf EBENE 1 genau durch die Zelle, in der Ebene 2 ihren
+    // Stein hat (Zellmitte (2,0) = 250/50).
+    ball.x = 250;
+    ball.y = 50;
+    ball.vx = 200;
+    ball.vy = 0;
+    for (let i = 0; i < 30; i++) deep.advanceBoulders(1 / 60);
+    expect(ball.x).toBe(250);
+    expect(ball.vx).toBe(200);
+    // Mit Kugel (ruhende Seite im MP-Testmodus, eigene Ebene) wirkt der Kasten
+    // wie immer – sonst wäre die Gegenprobe wertlos.
+    deep.advanceBoulders(1 / 60, true);
+    expect(ball.x).not.toBe(250);
+  });
+});
