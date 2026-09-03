@@ -82,8 +82,10 @@ Pages).
   you left it (still holding its plate). Levels live in **bundles** that play
   like a campaign with saved progress and export as one file. Test a draft in
   the real game loop, share finished levels as a serverless link (the level
-  travels compressed in the URL; sharing unlocks only with all proof badges
-  green) or as JSON. **💾 Back up** saves progress, best times, workshop and
+  travels compressed in the URL) or as JSON. A level with failing badges
+  shares too, after a confirmation – as a diagnostic link that warns the
+  recipient, and the export file then carries the findings, so someone else
+  can look at what the proof objects to. **💾 Back up** saves progress, best times, workshop and
   ghosts to one file that **📂** restores.
 - **🏁 Ghost duel** — turn a finished run into a challenge link that carries
   the level, your trace and your time. Whoever opens it races the real trace

@@ -229,7 +229,9 @@ export const de = {
   'ed.importOk': '„{name}" importiert ✓',
   'ed.importBad': 'Kein gültiges tiltr-Level.',
   'ed.shareCopied': 'Link kopiert! 📋',
-  'ed.shareBlocked': 'Erst alle Pflicht-Badges grün machen.',
+  'ed.shareLoadBad': 'Das Level lädt nicht – erst den Ladefehler beheben.',
+  'ed.shareAnyway': 'Trotzdem teilen?',
+  'ed.shareDiag': 'Diagnose-Link: {hard} rot, {soft} Warnung – der Empfänger sieht die Warnung.',
   'ed.shareBig': 'Achtung: sehr großer Link – lieber als Datei exportieren.',
   'ed.fit': 'Ansicht einpassen',
   'ed.animate': '▶ Bewegte Elemente laufen lassen',
@@ -244,6 +246,7 @@ export const de = {
   'share.try': 'Ausprobieren',
   'share.keep': 'In die Werkstatt',
   'share.bad': 'Dieser Level-Link ist beschädigt oder unvollständig.',
+  'share.diag': '⚠ Diagnose-Link: Dieses Level hat rote Badges – es ist vielleicht nicht lösbar. Zum Anschauen gedacht, nicht zum Spielen.',
 
   'duel.shareTitle': '🏁 tiltr-Duell',
   'duel.copied': 'Link kopiert! 📋',

@@ -225,7 +225,9 @@ export const fr: Dict = {
   'ed.importOk': '« {name} » importé ✓',
   'ed.importBad': 'Ce n’est pas un niveau tiltr valide.',
   'ed.shareCopied': 'Lien copié ! 📋',
-  'ed.shareBlocked': 'Passe d’abord tous les badges obligatoires au vert.',
+  'ed.shareLoadBad': 'Ce niveau ne se charge pas – corrige d’abord l’erreur de chargement.',
+  'ed.shareAnyway': 'Partager quand même ?',
+  'ed.shareDiag': 'Lien de diagnostic : {hard} en échec, {soft} avertissement – le destinataire voit l’avertissement.',
   'ed.shareBig': 'Attention : lien très long – mieux vaut exporter en fichier.',
   'ed.fit': 'Ajuster la vue',
   'ed.animate': '▶ Animer les éléments mobiles',
@@ -240,6 +242,7 @@ export const fr: Dict = {
   'share.try': 'Essayer',
   'share.keep': 'Vers l’atelier',
   'share.bad': 'Ce lien de niveau est endommagé ou incomplet.',
+  'share.diag': '⚠ Lien de diagnostic : ce niveau a des badges en échec – il n’est peut-être pas résoluble. À examiner, pas à jouer.',
 
   'duel.shareTitle': '🏁 Duel tiltr',
   'duel.copied': 'Lien copié ! 📋',

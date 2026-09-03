@@ -612,6 +612,39 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M80 „Ein rotes Level kommt aus dem Gerät heraus" ✓ (v3.12.0)
+
+Aus dem Levelbau, direkt nach M79: „Zur Analyse wäre es gut, wenn man Level mit
+Fehlern (nach Rückfrage) exportieren kann. Dann könnte ich es dir zur Analyse
+geben." Genau der Fall war verbaut: Teilen (🔗) verlangte grüne Pflicht-Badges –
+und das ROTE Level ist ja das, über das man reden will. Die Export-Datei ging
+zwar immer, trug aber nur die Def, also ohne den Befund, um den es geht.
+
+Drei Änderungen, eine Idee (der Beweis darf niemandem den Mund verbieten):
+
+1. **Teilen nach Rückfrage.** Rote Badges blockieren den Link nicht mehr, sie
+   stellen eine Frage: Der erste Tap bewaffnet (🔗 → ⚠, die Frage in die
+   STATUSZEILE – im Knopf stünde ein Satz und sprengte die Kopfzeile, Regel aus
+   v3.0.2), der zweite teilt und nennt das Ergebnis „Diagnose-Link: 1 rot, 0
+   Warnung". Dasselbe in der Werkstattliste (Icon-Knopf: ⚠ im Text, Frage im
+   Tip – dafür nimmt `twoTap` jetzt einen eigenen `armedTip`). Was NICHT lädt,
+   hat weiterhin keinen Link (`ed.shareLoadBad`): Ein Token, das der Empfänger
+   nicht dekodieren kann, hilft niemandem – dafür ist die Datei da.
+2. **Der Export trägt die Befunde.** `src/levels/diagnosis.ts` (rein) leitet
+   aus dem Bericht die nicht-grünen Checks ab (`findings`: Schlüssel,
+   hart/weich, Detail, Ort 1-basiert wie im Editor);
+   `exportPayload(def, report)` hängt sie plus App-Version an die Hülle. Der
+   Import liest nur `def` und stört sich nicht daran, ein sauberes Level
+   exportiert weiter schlank.
+3. **Der Empfänger wird gewarnt.** `offerSharedLevel` prüft selbst und schreibt
+   „⚠ Diagnose-Link: … vielleicht nicht lösbar. Zum Anschauen gedacht, nicht zum
+   Spielen." ins Angebot – sonst wäre „Ausprobieren" ein Versprechen, das das
+   Level nicht hält. Ein grünes Level wird ohne diesen Satz angeboten
+   (Gegenprobe im E2E).
+
+`twoTap`/`disarm` wohnen jetzt in `src/ui/twoTap.ts` – Werkstatt UND Editor
+brauchen sie, und eine Kopie wäre die zweite Wahrheit.
+
 ## M79 „Der Softlock sagt, WER ihn verursacht" ✓ (v3.11.0)
 
 Meldung aus dem Levelbau: „Weiterer Softlock: er denkt, ein Horcher ist im Weg,

@@ -225,7 +225,9 @@ export const es: Dict = {
   'ed.importOk': '«{name}» importado ✓',
   'ed.importBad': 'No es un nivel tiltr válido.',
   'ed.shareCopied': '¡Enlace copiado! 📋',
-  'ed.shareBlocked': 'Primero pon en verde todas las insignias obligatorias.',
+  'ed.shareLoadBad': 'Este nivel no carga – corrige primero el error de carga.',
+  'ed.shareAnyway': '¿Compartir igual?',
+  'ed.shareDiag': 'Enlace de diagnóstico: {hard} en rojo, {soft} aviso – quien lo reciba ve el aviso.',
   'ed.shareBig': 'Ojo: enlace muy largo – mejor exportar como archivo.',
   'ed.fit': 'Ajustar vista',
   'ed.animate': '▶ Animar los elementos móviles',
@@ -240,6 +242,7 @@ export const es: Dict = {
   'share.try': 'Probarlo',
   'share.keep': 'Al taller',
   'share.bad': 'Este enlace de nivel está dañado o incompleto.',
+  'share.diag': '⚠ Enlace de diagnóstico: este nivel tiene insignias en rojo – puede que no sea resoluble. Para examinarlo, no para jugarlo.',
 
   'duel.shareTitle': '🏁 Duelo de tiltr',
   'duel.copied': '¡Enlace copiado! 📋',

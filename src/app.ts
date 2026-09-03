@@ -1705,9 +1705,13 @@ function offerSharedLevel(token: string): void {
       });
       return;
     }
+    // Ein DIAGNOSE-Link (M80) trägt ein Level mit roten Badges: Das Angebot
+    // sagt es, sonst wäre „Ausprobieren" ein Versprechen, das das Level nicht
+    // hält. Geteilt wird so etwas absichtlich – zum Anschauen.
+    const diag = !isShareable(validateLevel(raw));
     showInterstitial({
       title: t('share.title'),
-      text: t('share.text', { name: def.name }),
+      text: t('share.text', { name: def.name }) + (diag ? `\n\n${t('share.diag')}` : ''),
       primary: { label: t('share.try'), onClick: () => startCustom(raw as never, false) },
       secondary: {
         label: t('share.keep'),

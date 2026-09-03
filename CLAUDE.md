@@ -381,6 +381,18 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Akustik: keine Beugung, kein Filter auf den Stetigkeits-Quellen. Für die
   Lösbarkeit ist sie eine normale Wand. Galerie: Extra-Eintrag `wallAbsorb`
   (wie `wallEcho`), `extraEntries` exportiert für den Editor-Kopf.
+  DIAGNOSE-TEILEN (M80): Rote Badges verbieten das Teilen nicht mehr, sie
+  fragen nach – 🔗 wird zum ⚠ (Zwei-Tap, `twoTap` liegt dafür jetzt in
+  `src/ui/twoTap.ts`, mit eigenem `armedTip` für Icon-Knöpfe), die FRAGE steht
+  in der Statuszeile, und danach heißt der Link „Diagnose-Link". Was nicht
+  LÄDT, hat weiter keinen Link (`ed.shareLoadBad`) – ein undekodierbares Token
+  hilft niemandem, dafür ist die Datei da. Die Export-Hülle trägt dann die
+  BEFUNDE (`findings` in `src/levels/diagnosis.ts`, rein: Schlüssel,
+  hart/weich, Detail, Ebene 1-basiert; `exportPayload(def, report)` hängt sie
+  plus App-Version an) – der Import liest nur `def` und merkt nichts davon. Und
+  der Empfänger wird gewarnt: `offerSharedLevel` prüft selbst und schreibt
+  `share.diag` ins Angebot, sonst wäre „Ausprobieren" ein Versprechen, das das
+  Level nicht hält.
   IMPORT NIMMT JSON UND TEILEN-LINK: Ein geteilter Link (`#level=`, auch
   `#duel=`) öffnet immer den BROWSER, nie die installierte PWA – deshalb
   akzeptiert das Import-Feld den Link (oder das nackte Token) eingefügt, plus

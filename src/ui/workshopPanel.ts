@@ -13,6 +13,8 @@ import { generateQuickLevel } from '../levels/quick';
 import { randomSeed } from '../core/rng';
 import { validateLevel, isShareable } from '../levels/validate';
 import { encodeLevel } from '../levels/shareCodec';
+import { findings } from '../levels/diagnosis';
+import { twoTap } from './twoTap';
 import {
   blankLevel,
   bundleProgress,
@@ -87,41 +89,6 @@ export function setupWorkshopPanel(opts: {
       b.dataset.armed = '';
       target.textContent = prev;
       sub?.classList.remove('warn');
-    }, 3000);
-  }
-
-  /** Bewaffnung zurücknehmen: Text, Tip und Zustand wie vor dem ersten Tap –
-   *  in BEIDEN Pfaden (Ausführen und Ablauf). Vorher stellte nur der Ablauf
-   *  zurück, und der Bundle-Löschknopf blieb nach dem Löschen mit dem langen
-   *  Bestätigungstext stehen (Level-Knöpfe rettete der Neuaufbau der Karten). */
-  function disarm(b: HTMLButtonElement): void {
-    b.dataset.armed = '';
-    b.classList.remove('armed');
-    b.closest('.ws-bundle-row')?.classList.remove('confirming');
-    if (b.dataset.restText !== undefined) b.textContent = b.dataset.restText;
-    if (b.dataset.restTip !== undefined) b.dataset.tip = b.dataset.restTip;
-    delete b.dataset.restText;
-    delete b.dataset.restTip;
-  }
-
-  /** Zwei-Tap-Bewaffnung eines Buttons: zweiter Tap innerhalb 3 s führt aus.
-   *  In der Bundle-Leiste weichen die übrigen Aktionen, solange die Frage
-   *  steht (`.confirming`) – die Frage ersetzt sie, statt die Zeile zu sprengen. */
-  function twoTap(b: HTMLButtonElement, armedText: string, action: () => void): void {
-    if (b.dataset.armed === '1') {
-      disarm(b);
-      action();
-      return;
-    }
-    b.dataset.restText = b.textContent ?? '';
-    if (b.dataset.tip !== undefined) b.dataset.restTip = b.dataset.tip;
-    b.dataset.armed = '1';
-    b.classList.add('armed');
-    b.textContent = armedText;
-    b.dataset.tip = armedText;
-    b.closest('.ws-bundle-row')?.classList.add('confirming');
-    setTimeout(() => {
-      if (b.dataset.armed === '1') disarm(b);
     }, 3000);
   }
 
@@ -279,28 +246,36 @@ export function setupWorkshopPanel(opts: {
       render();
     });
     iconBtn('🔗', t('ed.share'), (b) => {
-      // Teilen nur mit grünen Pflicht-Badges: geteilte Level sind beweisbar lösbar.
       const flash = (text: string): void => {
         b.dataset.tip = text;
         setTimeout(() => (b.dataset.tip = t('ed.share')), 2500);
       };
-      if (!isShareable(validateLevel(level.def))) return flash(t('ed.shareBlocked'));
-      void (async () => {
-        const url = `${location.origin}${location.pathname}#level=${await encodeLevel(level.def)}`;
-        try {
-          if (navigator.share) await navigator.share({ title: String(level.def.name ?? ''), url });
-          else {
-            await navigator.clipboard.writeText(url);
-            flash(t('ed.shareCopied'));
+      // Ein Level mit roten Badges ist NACH RÜCKFRAGE teilbar (M80): So gibt
+      // man es zur Analyse weiter. Was nicht LÄDT, hat keinen Link – dafür
+      // ist der Export da.
+      const checks = validateLevel(level.def);
+      if (checks.some((c) => c.key === 'load' && !c.ok)) return flash(t('ed.shareLoadBad'));
+      const send = (): void => {
+        void (async () => {
+          const url = `${location.origin}${location.pathname}#level=${await encodeLevel(level.def)}`;
+          try {
+            if (navigator.share) await navigator.share({ title: String(level.def.name ?? ''), url });
+            else {
+              await navigator.clipboard.writeText(url);
+              flash(t('ed.shareCopied'));
+            }
+          } catch {
+            /* abgebrochen */
           }
-        } catch {
-          /* abgebrochen */
-        }
-      })();
+        })();
+      };
+      if (!isShareable(checks)) return twoTap(b, '⚠', send, t('ed.shareAnyway'));
+      send();
     });
     iconBtn('📤', t('ed.export'), () => {
       const name = `tiltr-level-${slug(String(level.def.name ?? level.id))}${EXPORT_EXT}`;
-      void saveTextFile(name, exportPayload(level.def), 'file');
+      // Befunde mit in die Datei (M80) – der Empfänger sieht die Kreuze.
+      void saveTextFile(name, exportPayload(level.def, findings(validateLevel(level.def))), 'file');
     });
     // Löschen bleibt Zwei-Tap: der zweite Tap innerhalb von 3 s löscht.
     const del = iconBtn('🗑', t('ed.delete'), (b) => {

@@ -85,8 +85,10 @@ GitHub Pages).
   lässt (und hält dort weiter die Platte). Level liegen in **Bundles**, die wie eine Kampagne mit
   gespeichertem Stand spielbar und als eine Datei exportierbar sind. Entwürfe
   laufen in der echten Spielschleife; fertige Level teilt man als
-  serverlosen Link (das Level reist komprimiert in der URL; Teilen geht erst
-  mit allen Pflicht-Badges grün) oder als JSON. **💾 Sichern** schreibt
+  serverlosen Link (das Level reist komprimiert in der URL) oder als JSON.
+  Ein Level mit roten Badges lässt sich nach Rückfrage ebenfalls teilen – als
+  Diagnose-Link, der den Empfänger warnt; die Export-Datei trägt dann die
+  Befunde mit, damit jemand anders nachsehen kann, was der Beweis bemängelt. **💾 Sichern** schreibt
   Fortschritt, Bestzeiten, Werkstatt und Geister in eine Datei, die **📂**
   wiederherstellt.
 - **🏁 Geist-Duell** – aus einem gewonnenen Lauf wird ein Link mit Level,

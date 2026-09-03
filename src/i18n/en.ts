@@ -225,7 +225,9 @@ export const en: Dict = {
   'ed.importOk': '“{name}” imported ✓',
   'ed.importBad': 'Not a valid tiltr level.',
   'ed.shareCopied': 'Link copied! 📋',
-  'ed.shareBlocked': 'Turn all required badges green first.',
+  'ed.shareLoadBad': 'This level does not load – fix the load error first.',
+  'ed.shareAnyway': 'Share anyway?',
+  'ed.shareDiag': 'Diagnostic link: {hard} failing, {soft} warning – the recipient sees the warning.',
   'ed.shareBig': 'Careful: very large link – better export as a file.',
   'ed.fit': 'Fit view',
   'ed.animate': '▶ Animate moving elements',
@@ -240,6 +242,7 @@ export const en: Dict = {
   'share.try': 'Try it',
   'share.keep': 'Add to workshop',
   'share.bad': 'This level link is damaged or incomplete.',
+  'share.diag': '⚠ Diagnostic link: this level has failing badges – it may not be solvable. Meant for inspection, not for playing.',
 
   'duel.shareTitle': '🏁 tiltr duel',
   'duel.copied': 'Link copied! 📋',

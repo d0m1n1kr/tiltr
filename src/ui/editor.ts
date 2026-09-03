@@ -24,6 +24,8 @@ import { MUSIC, compiledById } from '../music';
 import { compileTune, type CompiledTune, type Tune } from '../audio/chiptune';
 import { previewTune } from '../audio/musicPreview';
 import { clearDraft, exportPayload, saveDraft, workshop } from '../workshop';
+import { findings, findingsSummary } from '../levels/diagnosis';
+import { twoTap } from './twoTap';
 import { t, applyI18n, type Dict } from '../i18n';
 import { ZodError } from 'zod';
 
@@ -2415,9 +2417,37 @@ export function setupEditor(opts: {
 
   /* --- Teilen / Export ---------------------------------------------------------- */
 
-  $('edShare').addEventListener('click', () => {
+  $('edShare').addEventListener('click', (ev) => {
     if (!draft) return;
-    if (loadError || !isShareable(checks)) return flash(t('ed.shareBlocked'), true);
+    // Ein Level, das nicht lädt, hat keinen Link – da gibt es nichts zu
+    // dekodieren. Rote BADGES dagegen sind seit M80 nach Rückfrage teilbar:
+    // Genau so ein Level will man jemandem zeigen („schau mal, warum sagt er
+    // Softlock?"). Der Link heißt dann Diagnose-Link, der Empfänger sieht die
+    // Warnung im Angebot.
+    if (loadError) return flash(t('ed.shareLoadBad'), true);
+    if (!isShareable(checks)) {
+      const sum = findingsSummary(checks);
+      const b = ev.currentTarget as HTMLButtonElement;
+      // Der Knopf steht in der Kopfzeile neben ▶ Testen und Speichern: dort
+      // gehört nur ein KURZER Wechseltext hin (⚠ statt 🔗), die Frage in die
+      // Statuszeile – ein Satz im Knopf sprengt die Zeile auf dem Phone.
+      if (b.dataset.armed !== '1') flash(t('ed.shareAnyway'), true);
+      return twoTap(
+        b,
+        '⚠',
+        () => {
+          flash(t('ed.shareDiag', { hard: sum?.hard ?? 0, soft: sum?.soft ?? 0 }), true);
+          doShare();
+        },
+        t('ed.shareAnyway'),
+      );
+    }
+    doShare();
+  });
+
+  /** Teilen-Link erzeugen und weitergeben (Web Share, sonst Zwischenablage). */
+  function doShare(): void {
+    if (!draft) return;
     draft.name = nameInput.value.trim() || t('ed.untitled');
     const def = draft as unknown as Record<string, unknown>;
     void (async () => {
@@ -2437,16 +2467,21 @@ export function setupEditor(opts: {
         /* abgebrochen */
       }
     })();
-  });
+  }
 
   $('edExport').addEventListener('click', () => {
     if (!draft) return;
     draft.name = nameInput.value.trim() || t('ed.untitled');
     // Derselbe Weg wie Werkstatt und Backup: Teilen als Datei (text/plain),
     // sonst Download – der nackte Download-Link war in der iOS-PWA tot.
+    // Befunde mit in die Datei (M80): Wer ein rotes Level weitergibt, gibt
+    // die Kreuze mit – ohne sie muss der Empfänger den Beweis neu raten.
+    const payload = exportPayload(draft as unknown as Record<string, unknown>, findings(checks));
+    // Testbarkeits-Hook wie __tiltrShareUrl: was die Datei enthalten hätte.
+    (window as unknown as { __tiltrExport?: string }).__tiltrExport = payload;
     void saveTextFile(
       `tiltr-level-${draft.name.replace(/[^\wäöüÄÖÜß-]+/g, '_').toLowerCase()}${EXPORT_EXT}`,
-      exportPayload(draft as unknown as Record<string, unknown>),
+      payload,
       'file',
     );
   });

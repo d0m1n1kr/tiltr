@@ -482,9 +482,21 @@ export function clearDraft(): void {
 
 /* --- Einzel-Level: Export/Import (JSON, Teilen-Link) ---------------------- */
 
-/** Export-Hülle um eine rohe Def. */
-export function exportPayload(def: Record<string, unknown>): string {
-  return JSON.stringify({ format: FILE_FORMAT, version: 1, def }, null, 2);
+/** Export-Hülle um eine rohe Def. `report` (M80) hängt die BEFUNDE des
+ *  Beweises an, wenn es welche gibt: Eine Datei über ein Level mit roten
+ *  Badges soll sagen, WELCHE – sonst muss der Empfänger raten. Der Import
+ *  liest nur `def`, kennt das Feld also nicht und stört sich nicht daran. */
+export function exportPayload(def: Record<string, unknown>, report?: readonly unknown[]): string {
+  return JSON.stringify(
+    {
+      format: FILE_FORMAT,
+      version: 1,
+      ...(report && report.length ? { app: __APP_VERSION__, report } : {}),
+      def,
+    },
+    null,
+    2,
+  );
 }
 
 /** Rohe Def aus JSON-Text: Export-Hülle ODER nackte Def, per parseLevel

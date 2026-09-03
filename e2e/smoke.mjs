@@ -2410,9 +2410,12 @@ if (want("13")) {
     const shareTitle = (await pageB.textContent("#interTitle")).trim();
     const shareText = (await pageB.textContent("#interText")).trim();
     check(
-      `Geteiltes Level wird angeboten ("${shareTitle}")`,
+      // Gegenprobe zu M80: Ein GRÜNES Level wird ohne Diagnose-Warnung
+      // angeboten – gewarnt wird nur, wo es etwas zu warnen gibt.
+      `Geteiltes Level wird angeboten, ohne Diagnose-Warnung ("${shareTitle}")`,
       shareTitle.includes("Geteiltes Level") &&
-        shareText.includes("Ebenen-Probe"),
+        shareText.includes("Ebenen-Probe") &&
+        !shareText.includes("Diagnose-Link"),
     );
     check(
       "Level-Hash wurde aus der URL entfernt",
@@ -6830,6 +6833,101 @@ if (want("37")) {
     check(
       `Grünes Badge: Erklärung ja, Ort und „Zeigen" nein (${JSON.stringify(green)})`,
       green !== null && green.title.startsWith("✓") && green.why.length > 40 && green.detail === "" && green.show === false,
+    );
+
+    // M80: Ein Level mit roten Badges ist NACH RÜCKFRAGE teilbar – genau so
+    // gibt man es zur Analyse weiter. Erster Tap fragt, zweiter Tap teilt.
+    // Erst die Erklär-Tafel schließen: sie ist MODAL und liegt über der
+    // Kopfzeile (sonst läuft der Klick auf 🔗 in einen 30-s-Timeout).
+    await page.click("#edCheckClose");
+    await until(async () =>
+      (await page.locator("#edCheckSheet").getAttribute("class")).includes("hidden"),
+    );
+    await page.evaluate(() => {
+      window.__tiltrShareUrl = undefined;
+    });
+    await page.click("#edShare");
+    const armed = await page.evaluate(() => ({
+      text: document.getElementById("edShare")?.textContent?.trim() ?? "",
+      status: document.getElementById("edStatus")?.textContent?.trim() ?? "",
+      url: window.__tiltrShareUrl ?? null,
+    }));
+    check(
+      // Kurzer Wechseltext im Knopf, die FRAGE in der Statuszeile (Design-Regel
+      // für Knöpfe in einer Flex-Zeile) – und noch kein Link.
+      `Teilen fragt erst zurück, ohne Link (Knopf „${armed.text}", Status „${armed.status}", Link=${armed.url})`,
+      armed.text === "⚠" && /Trotzdem teilen/.test(armed.status) && armed.url === null,
+    );
+    // Die Statuszeile wandert weiter („Link kopiert!"), sobald der Link raus
+    // ist – deshalb MITSCHREIBEN statt hinterher nachsehen.
+    await page.evaluate(() => {
+      window.__edStatusLog = [];
+      const el = document.getElementById("edStatus");
+      new MutationObserver(() => window.__edStatusLog.push(el.textContent.trim())).observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    });
+    await page.click("#edShare");
+    const shared = await until(
+      async () => {
+        const v = await page.evaluate(() => ({
+          url: window.__tiltrShareUrl ?? null,
+          status: (window.__edStatusLog ?? []).join(" | "),
+        }));
+        // Der Link entsteht erst nach dem Kodieren – ohne url ist der Wert
+        // noch nichts wert (ein Objekt allein ist immer wahr).
+        return v.url ? v : null;
+      },
+      { timeout: 4000 },
+    );
+    check(
+      `Zweiter Tap teilt trotzdem und nennt es Diagnose-Link (${JSON.stringify({
+        url: (shared?.url ?? "").slice(0, 40),
+        status: shared?.status,
+      })})`,
+      /#level=/.test(shared?.url ?? "") && /Diagnose/.test(shared?.status ?? ""),
+    );
+
+    // Und die Export-Datei trägt die BEFUNDE mit, nicht nur die Def.
+    await page.evaluate(() => {
+      window.__tiltrExport = undefined;
+      navigator.canShare = () => true;
+      navigator.share = () => Promise.resolve();
+    });
+    await page.click("#edExport");
+    const payload = await until(async () => await page.evaluate(() => window.__tiltrExport ?? null), {
+      timeout: 4000,
+    });
+    let report = null;
+    try {
+      report = JSON.parse(payload ?? "{}").report ?? null;
+    } catch {
+      /* kein JSON */
+    }
+    check(
+      `Export trägt den Befund (${JSON.stringify(report)})`,
+      Array.isArray(report) &&
+        report.some((f) => f.key === "softlock" && /kein Weg zurück/.test(f.detail ?? "")),
+    );
+
+    // Empfängerseite: Das Angebot WARNT – „Ausprobieren" wäre sonst ein
+    // Versprechen, das ein rotes Level nicht hält.
+    const token = (shared?.url ?? "").split("#level=")[1];
+    await page.goto(`${BASE}/?nosplash#level=${token}`);
+    const offer = await until(
+      async () =>
+        await page.evaluate(() => {
+          const box = document.getElementById("interstitial");
+          if (!box || box.classList.contains("hidden")) return null;
+          return document.getElementById("interText")?.textContent ?? "";
+        }),
+      { timeout: 6000 },
+    );
+    check(
+      `Diagnose-Link warnt beim Empfänger (${JSON.stringify((offer ?? "").slice(-90))})`,
+      /Diagnose-Link/.test(offer ?? ""),
     );
     await page.close();
   } catch (e) {
