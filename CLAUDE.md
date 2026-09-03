@@ -181,7 +181,11 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   (`patrolLines` sammelt nur `guard`, und die Softlock-Abfragen laufen ohne
   `guardSafe`) – ein Bericht, der nur den Ort nennt, verleitet zur falschen
   Ursache („da steht doch ein Horcher"); das sagt jetzt auch
-  `ed.help.softlock` in allen vier Sprachen. `coopReachable` und der `openers`-Check rechnen
+  `ed.help.softlock` in allen vier Sprachen. Der Editor zeigt Ort UND Grund in
+  EINER Zeile: `checkDetailText` streicht den Zellschlüssel (steht schon in
+  Klartext da) und putzt dabei den Gedankenstrich weg, der ihn vom Grund
+  trennte – sonst stand da „Ebene 2, Zelle 0/0 · – von Ebene 2 führt kein Weg
+  zurück" (v3.11.1). `coopReachable` und der `openers`-Check rechnen
   'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
   HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
   DÄMMERUNG (M43): `floor.dusk` = hell bis zur ersten Wandberührung, dann

@@ -638,6 +638,15 @@ Horcher und Wächter hier NIE der Grund sind (Wächter haben ihr eigenes Badge).
 Ein Bericht, der zur falschen Ursache verleitet, ist so teuer wie ein falscher
 Bericht.
 
+NACHTRAG v3.11.1: Der Grund kam auf dem Gerät zwar an, aber mit einem Fransen.
+`checkDetailText` im Editor streicht den Zellschlüssel aus dem technischen
+Detail – der Ort steht ja darüber in Klartext –, und übrig blieb der
+Gedankenstrich, der ihn vom Grund trennte: „Ebene 2, Zelle 0/0 · – von Ebene 2
+führt kein Weg zurück". Bei zwei Spielern kam die Rolle mit doppeltem
+Trennzeichen dazu („Spieler 1: – kein Rückweg"). Jetzt räumt die Funktion beides
+auf, und E2E Lauf 37 prüft die GANZE Zeile (Anfang bis Ende) statt nur den Ort –
+ein Fransen ist genau der Fehler, den eine Teil-Zusicherung durchlässt.
+
 ## M78 „Eingerastet bleibt eingerastet" ✓ (v3.10.1)
 
 Meldung direkt nach M77: „Jetzt ist nur noch ein Softlock da, der nicht

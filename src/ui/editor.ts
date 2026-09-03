@@ -765,7 +765,14 @@ export function setupEditor(opts: {
   function checkDetailText(c: CheckResult): string {
     const tech = (c.detail ?? '')
       .replace(/\b\d+:\d+,\d+\b/g, '')
-      .replace(/[:·]\s*$/, '')
+      // Der Zellschlüssel stand im Bericht VOR dem Gedankenstrich, der ihn
+      // vom Grund trennte (M79: „Spieler 1: 1:0,0 – kein Rückweg …“).
+      // Fällt er hier weg, bleibt ein Fransen: „· – kein Rückweg“ am
+      // Satzanfang oder „Spieler 1: – …“ mit zwei Trennzeichen.
+      .replace(/\s+/g, ' ')
+      .replace(/:\s*–\s*/g, ': ')
+      .replace(/^\s*[–·:]\s*/, '')
+      .replace(/[:·–]\s*$/, '')
       .trim();
     const place = c.at ? t('ed.check.at', { f: c.at.floor + 1, x: c.at.cell[0], y: c.at.cell[1] }) : '';
     return [place, tech].filter(Boolean).join(' · ');

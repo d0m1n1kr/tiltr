@@ -6790,11 +6790,15 @@ if (want("37")) {
         : null;
     }, { timeout: 4000 });
     check(
-      `Tafel erklärt den Beweis und nennt den Ort (${JSON.stringify(sheet)})`,
+      `Tafel erklärt den Beweis, nennt Ort UND Grund (${JSON.stringify(sheet)})`,
       sheet !== null &&
         /Softlock/.test(sheet.title) &&
         sheet.why.length > 40 &&
-        /Ebene 2, Zelle \d+\/\d+/.test(sheet.detail) &&
+        // Ort + Grund (M79) in EINER Zeile, ohne Fransen: Der Zellschlüssel
+        // fällt weg, sein Gedankenstrich darf nicht stehen bleiben.
+        /^Ebene 2, Zelle \d+\/\d+ · von Ebene 2 führt kein Weg zurück \(Transporter\?\)$/.test(
+          sheet.detail,
+        ) &&
         sheet.show === true,
     );
 
