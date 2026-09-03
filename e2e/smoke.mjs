@@ -5922,16 +5922,48 @@ if (want("33")) {
         !badges.some((b) => /Ziel erreichbar/.test(b)) &&
         badges.some((b) => /Wege ähnlich lang/.test(b)),
     );
+    // Die Leiste bleibt bei SECHS Kacheln (M58: auf dem Phone waren mehr nicht
+    // erreichbar) – Spieler 2 ist eine EIGENSCHAFT von ● und ◎: Feld im
+    // Eigenschaften-Panel oder die aktive Kachel nochmal antippen.
     const tools2 = await pageA.evaluate(() => ({
-      start2: !!document.getElementById("edTool-start2"),
-      goal2: !!document.getElementById("edTool-goal2"),
+      tiles: document.querySelectorAll("#edTools .ed-tile").length,
+      start2Tile: !!document.getElementById("edTool-start2"),
       plate: !!document.getElementById("edEl-plate"),
       players: window.__tiltrEd?.players,
       mode: document.getElementById("edMpMode")?.value,
     }));
     check(
-      `Werkzeuge ●²/◎² und Druckplatte in der Palette, Modus-Feld „coop" (${JSON.stringify(tools2)})`,
-      tools2.start2 && tools2.goal2 && tools2.plate && tools2.players === 2 && tools2.mode === "coop",
+      `Sechs Werkzeug-Kacheln, keine ●²-Kachel, Druckplatte in der Palette, Modus „coop" (${JSON.stringify(tools2)})`,
+      tools2.tiles === 6 && !tools2.start2Tile && tools2.plate && tools2.players === 2 && tools2.mode === "coop",
+    );
+    await pageA.click("#edTool-start");
+    const before = await pageA.evaluate(() => ({
+      field: document.getElementById("edToolPlayer")?.value,
+      label: document.getElementById("edTool-start")?.textContent,
+      tp: window.__tiltrEd?.toolPlayer,
+    }));
+    await pageA.click("#edTool-start"); // aktive Kachel nochmal: Spieler 2
+    const after = await pageA.evaluate(() => ({
+      field: document.getElementById("edToolPlayer")?.value,
+      label: document.getElementById("edTool-start")?.textContent,
+      goal: document.getElementById("edTool-goal")?.textContent,
+      tp: window.__tiltrEd?.toolPlayer,
+      tool: window.__tiltrEd?.tool,
+    }));
+    await pageA.selectOption("#edToolPlayer", "1"); // und über das Feld zurück
+    const viaField = await pageA.evaluate(() => ({ tp: window.__tiltrEd?.toolPlayer, label: document.getElementById("edTool-start")?.textContent }));
+    check(
+      `●-Werkzeug: Feld „Setzt für" da; zweiter Tap → Spieler 2 (●²/◎²), Feld zurück → Spieler 1 (${JSON.stringify({ before, after, viaField })})`,
+      before.field === "1" &&
+        before.tp === 1 &&
+        after.tp === 2 &&
+        after.tool === "start" &&
+        after.field === "2" &&
+        after.label.startsWith("●²") &&
+        after.goal.startsWith("◎²") &&
+        viaField.tp === 1 &&
+        viaField.label.startsWith("●") &&
+        !viaField.label.startsWith("●²"),
     );
     await pageA.click("#edClose"); // zurück in die Werkstatt, Draft bleibt
 
@@ -6052,7 +6084,7 @@ if (want("33")) {
     await until(async () => !!(await pageA.evaluate(() => document.getElementById("edPlayers"))));
     await pageA.selectOption("#edPlayers", "1");
     const solo = await pageA.evaluate(() => ({
-      start2: !!document.getElementById("edTool-start2"),
+      start2: !!document.getElementById("edToolPlayer"),
       plate: !!document.getElementById("edEl-plate"),
       players: window.__tiltrEd?.players,
       s2: window.__tiltrEd?.def?.floors?.[0]?.start2,
@@ -6060,7 +6092,7 @@ if (want("33")) {
       mode: window.__tiltrEd?.def?.mpMode,
     }));
     check(
-      `Schalter auf 1: keine ●²/Platte mehr, start2/goal2/mpMode weg (${JSON.stringify(solo)})`,
+      `Schalter auf 1: kein „Setzt für"-Feld, keine Platte mehr, start2/goal2/mpMode weg (${JSON.stringify(solo)})`,
       !solo.start2 && !solo.plate && solo.players === 1 && solo.s2 === undefined && solo.g2 === undefined && solo.mode === undefined,
     );
     const soloBadges = await until(async () => {
@@ -6072,13 +6104,14 @@ if (want("33")) {
       !!soloBadges && !soloBadges.some((x) => /Coop lösbar/.test(x)),
     );
     await pageA.selectOption("#edPlayers", "2");
+    await pageA.click("#edTool-goal");
     const two = await pageA.evaluate(() => ({
-      start2: !!document.getElementById("edTool-start2"),
-      goal2: !!document.getElementById("edTool-goal2"),
+      field: !!document.getElementById("edToolPlayer"),
+      tiles: document.querySelectorAll("#edTools .ed-tile").length,
       plate: !!document.getElementById("edEl-plate"),
       mode: window.__tiltrEd?.def?.mpMode,
     }));
-    check(`Schalter auf 2: Werkzeuge und Platte zurück, Modus wieder coop (${JSON.stringify(two)})`, two.start2 && two.goal2 && two.plate && two.mode === "coop");
+    check(`Schalter auf 2: „Setzt für"-Feld am ◎, sechs Kacheln, Platte zurück, Modus wieder coop (${JSON.stringify(two)})`, two.field && two.tiles === 6 && two.plate && two.mode === "coop");
 
     await ctx.close();
   } catch (e) {

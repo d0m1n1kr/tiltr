@@ -612,6 +612,18 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M58 „Sechs Kacheln" ✓ (v3.1.1) – Spieler 2 als Eigenschaft von ● und ◎
+
+3.1.0 hängte für Zwei-Spieler-Level zwei Kacheln an die Werkzeugleiste
+(●², ◎²) – acht statt sechs, und auf dem Phone waren die letzten nicht mehr
+erreichbar (Rückmeldung nach dem Release). Jetzt setzen ● und ◎ „für
+Spieler 1 oder 2": ein Feld „Setzt für" im Eigenschaften-Panel, solange das
+Werkzeug aktiv ist (`#edToolPlayer`, `toolPlayer` im Editor-Zustand), und
+die AKTIVE Kachel nochmal antippen wechselt den Spieler – die Kachel zeigt
+dann ●²/◎², der Tip sagt es an. Die Leiste bleibt bei sechs Kacheln, auf
+jedem Gerät. Tap-Semantik unverändert: Start 2 nur Ebene 1, Tap auf dieselbe
+Zelle hebt auf. E2E Lauf 33 zählt die Kacheln und fährt beide Wechselwege.
+
 ## M57 „Zu zweit gebaut" ✓ (v3.1.0) – Multiplayer-Level im Editor
 
 Bis 3.0.7 kannte der Multiplayer nur die eingebauten Coop-/Race-Level und den

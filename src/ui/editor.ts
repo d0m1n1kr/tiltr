@@ -243,7 +243,7 @@ export function removeFloor(level: RawLevel, index: number): void {
   if (hadGoal2) f0.goal2 = freeCellFor(f0, [f0.size[0] - 1, 0], taken());
 }
 
-type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal' | 'start2' | 'goal2' | 'test';
+type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal' | 'test';
 
 /** Startpunkt für den TESTLAUF (⚑): Ebene + Zelle, an der die Vorschau die
  *  Kugel absetzt – statt am Level-Start. Kein Teil der Def (wird nicht
@@ -395,6 +395,11 @@ export function setupEditor(opts: {
   let testStart: TestStart | null = null;
   /** Zwei Spieler (M57): als wer die Vorschau läuft, und ob der Partner hält. */
   let testPlayer: 1 | 2 = 1;
+  /** Für WEN setzen ● und ◎ (M58)? Eigenschaft der beiden Werkzeuge statt
+   *  eigener Kacheln – die Leiste bleibt bei sechs, auf dem Phone waren mehr
+   *  nicht erreichbar. Umschalten: Eigenschaften-Feld oder die aktive Kachel
+   *  nochmal antippen. */
+  let toolPlayer: 1 | 2 = 1;
   let partnerHolds = true;
   const twoPlayers = (): boolean => draft?.players === 2;
   let pendingGuard: [number, number] | null = null;
@@ -697,6 +702,8 @@ export function setupEditor(opts: {
       players: draft.players ?? 1,
       testPlayer,
       partnerHolds,
+      toolPlayer,
+      tool,
       // Landeplätze dieser Ebene – genau das, was der Overlay-Ring zeigt.
       landings: landingsOn(draft, activeFloor),
       selected,
@@ -1007,27 +1014,25 @@ export function setupEditor(opts: {
       flash(testStart ? t('ed.testSet', { floor: activeFloor + 1, x: target.cell[0], y: target.cell[1] }) : t('ed.testCleared'));
     } else if (tool === 'start' || tool === 'goal') {
       if (target.kind !== 'cell') return;
+      const forTwo = twoPlayers() && toolPlayer === 2;
       if (tool === 'start') {
         if (activeFloor !== 0) return flash(t('ed.startFloor1'));
-        floor().start = target.cell;
-      } else {
+        if (!forTwo) floor().start = target.cell;
+        else {
+          // Spieler 2 (M57): Tap setzt, Tap auf dieselbe Zelle hebt auf – dann
+          // gilt wieder der Start von Spieler 1 für beide.
+          const same = floor().start2 && floor().start2![0] === target.cell[0] && floor().start2![1] === target.cell[1];
+          if (same) {
+            delete floor().start2;
+            flash(t('ed.start2Cleared'));
+          } else floor().start2 = target.cell;
+        }
+      } else if (!forTwo) {
         // Ein-Ziel-Invariante über alle Ebenen: das neue Ziel gewinnt.
         for (const f of draft.floors) f.goal = null;
         floor().goal = target.cell;
-      }
-    } else if (tool === 'start2' || tool === 'goal2') {
-      // Zwei Spieler (M57): Tap setzt, Tap auf dieselbe Zelle hebt auf – dann
-      // gilt wieder Start/Ziel von Spieler 1 für beide.
-      if (target.kind !== 'cell') return;
-      const same = (c: [number, number] | undefined) => !!c && c[0] === target.cell[0] && c[1] === target.cell[1];
-      if (tool === 'start2') {
-        if (activeFloor !== 0) return flash(t('ed.startFloor1'));
-        if (same(floor().start2)) {
-          delete floor().start2;
-          flash(t('ed.start2Cleared'));
-        } else floor().start2 = target.cell;
       } else {
-        const had = same(floor().goal2);
+        const had = floor().goal2 && floor().goal2![0] === target.cell[0] && floor().goal2![1] === target.cell[1];
         for (const f of draft.floors) delete f.goal2;
         if (had) flash(t('ed.goal2Cleared'));
         else floor().goal2 = target.cell;
@@ -1248,19 +1253,18 @@ export function setupEditor(opts: {
 
     const toolsWrap = document.createElement('div');
     toolsWrap.id = 'edTools';
+    // Zwei Spieler (M57/M58): ● und ◎ setzen für Spieler 1 ODER 2 – keine
+    // eigenen Kacheln (die Leiste bleibt bei sechs, mehr passte auf dem
+    // Phone nicht), sondern eine Eigenschaft des Werkzeugs: Feld im
+    // Eigenschaften-Panel, oder die AKTIVE Kachel nochmal antippen.
+    const two = twoPlayers();
+    const sup = two && toolPlayer === 2 ? '²' : '';
     const tools: Array<[Tool, string, string]> = [
       ['select', '☝', t('ed.tool.select')],
       ['wall', '▤', t('ed.tool.wall')],
       ['erase', '⌫', t('ed.tool.erase')],
-      ['start', '●', t('ed.tool.start')],
-      ['goal', '◎', t('ed.tool.goal')],
-      // Zwei Spieler (M57): Start und Ziel des Gasts – nur dann in der Leiste.
-      ...(twoPlayers()
-        ? ([
-            ['start2', '●²', t('ed.tool.start2')],
-            ['goal2', '◎²', t('ed.tool.goal2')],
-          ] as Array<[Tool, string, string]>)
-        : []),
+      ['start', `●${sup}`, sup ? t('ed.tool.start2') : t('ed.tool.start')],
+      ['goal', `◎${sup}`, sup ? t('ed.tool.goal2') : t('ed.tool.goal')],
       ['test', '⚑', t('ed.tool.test')],
     ];
     for (const [tl, ico, lbl] of tools) {
@@ -1269,20 +1273,31 @@ export function setupEditor(opts: {
       // Start gibt es nur auf Ebene 1. Der Knopf bleibt anklickbar und
       // ERKLÄRT sich (ein `disabled` Knopf nimmt weder Hover noch Fokus –
       // die Tooltip-Blase käme nie, und ein toter Knopf sagt nichts).
-      const off = (tl === 'start' || tl === 'start2') && activeFloor !== 0;
+      const off = tl === 'start' && activeFloor !== 0;
+      const switchable = two && (tl === 'start' || tl === 'goal');
       b.className = 'panel ed-tile' + (tool === tl ? ' active' : '') + (off ? ' off' : '');
       const i = document.createElement('span');
       i.textContent = ico;
       b.append(i, lblSpan(lbl));
-      b.dataset.tip = off ? t('ed.startFloor1') : lbl; // Hover (Desktop) / Fokus (Touch)
+      b.dataset.tip = off
+        ? t('ed.startFloor1')
+        : switchable
+          ? `${lbl} · ${t('ed.toolAgain', { n: toolPlayer === 2 ? 1 : 2 })}`
+          : lbl; // Hover (Desktop) / Fokus (Touch)
       b.addEventListener('click', () => {
         if (off) {
           flash(t('ed.startFloor1'));
           document.getElementById(`edTool-${tl}`)?.focus({ preventScroll: true });
           return;
         }
+        // Aktive ●/◎-Kachel nochmal: Spieler wechseln (nur bei zwei Spielern).
+        if (switchable && tool === tl) {
+          toolPlayer = toolPlayer === 2 ? 1 : 2;
+          paint();
+        }
         tool = tl;
         clearPendings();
+        renderProps(); // die Werkzeug-Eigenschaft („Setzt für") folgt der Kachel
         closeSheet();
         renderPalette();
         // renderPalette ersetzt den Button: Fokus zurückgeben, damit die
@@ -1321,6 +1336,7 @@ export function setupEditor(opts: {
         clearPendings();
         closeSheet();
         renderPalette();
+        renderProps(); // Werkzeug-Eigenschaft von ●/◎ verschwindet
       });
       elementsWrap.append(b);
     }
@@ -1723,6 +1739,21 @@ export function setupEditor(opts: {
       propsEl.append(del);
     }
 
+    // Werkzeug-Eigenschaft (M58): ● und ◎ setzen für Spieler 1 oder 2.
+    if (twoPlayers() && (tool === 'start' || tool === 'goal') && selected < 0 && !selEdge) {
+      propsEl.append(scopeHead(`${tool === 'start' ? '●' : '◎'} ${t(tool === 'start' ? 'ed.tool.start' : 'ed.tool.goal')}`));
+      const who = selectInput(String(toolPlayer), [
+        ['1', t('ed.forPlayer.1')],
+        ['2', t('ed.forPlayer.2')],
+      ], (v) => {
+        toolPlayer = v === '2' ? 2 : 1;
+        renderPalette();
+        paint();
+      });
+      who.id = 'edToolPlayer';
+      propsEl.append(field(t('ed.forPlayer'), who));
+    }
+
     // Level-Metadaten: gelten für ALLE Ebenen.
     propsEl.append(scopeHead(t('ed.scope.level'), selected < 0));
 
@@ -1757,7 +1788,7 @@ export function setupEditor(opts: {
           delete f.start2;
           delete f.goal2;
         }
-        if (tool === 'start2' || tool === 'goal2') tool = 'select';
+        toolPlayer = 1;
         if (placeType === 'plate') placeType = 'hole';
         testPlayer = 1;
       }
@@ -1943,7 +1974,7 @@ export function setupEditor(opts: {
     pendingGuard = null;
     // Mit dem Start-Werkzeug in der Hand auf eine tiefere Ebene wechseln:
     // Dort gibt es keinen Start zu setzen – zurück aufs Auswählen.
-    if ((tool === 'start' || tool === 'start2') && activeFloor !== 0) tool = 'select';
+    if (tool === 'start' && activeFloor !== 0) tool = 'select';
     renderFloorTabs();
     renderPalette(); // der ●-Knopf hängt an der Ebene (gedämpft ab E2)
     renderProps();
@@ -2127,6 +2158,7 @@ export function setupEditor(opts: {
       placeType = 'hole';
       testPlayer = 1;
       partnerHolds = true;
+      toolPlayer = 1;
       setPlaying(false);
       animT = 0;
       nameInput.value = String(draft.name ?? '');

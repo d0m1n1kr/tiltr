@@ -221,7 +221,12 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   eigenen Start, PLATTEN zählen im Coop, wenn einer sie erreicht, im Race gar
   nicht (Schlüssel wirken nur lokal – so tut es auch das Spiel). Badges
   `coop`/`race` ERSETZEN `goal` bei zwei Spielern (bei 'any' beide Pflicht),
-  `fair` ist weich (`SOFT_CHECKS`, wie `items`). Die DRUCKPLATTE steht nur
+  `fair` ist weich (`SOFT_CHECKS`, wie `items`). KEINE EIGENEN KACHELN für
+  Start 2/Ziel 2 (M58): Die Werkzeugleiste hat SECHS Kacheln, mehr sind auf
+  dem Phone nicht erreichbar – ● und ◎ tragen `toolPlayer` (Feld „Setzt für"
+  im Eigenschaften-Panel, aktive Kachel nochmal tippen wechselt). Wer ein
+  Werkzeug braucht, macht es zur Eigenschaft eines vorhandenen, nicht zur
+  siebten Kachel. Die DRUCKPLATTE steht nur
   bei zwei Spielern in der Palette: solo hielte sie niemand, und
   `coopReachable` zählte sie trotzdem als Öffner – ein grünes, unlösbares
   Level. Werkstatt: „👥 Zu zweit" statt Spielen → Lobby mit `#mpCustomItem`,
