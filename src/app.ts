@@ -2785,6 +2785,8 @@ function frame(now: number): void {
           sameFloor: mp.remote.floor === activeFloor,
           floorLabel: mp.remote.floor === activeFloor ? undefined : `E${mp.remote.floor + 1}`,
           done: mp.remote.finished,
+          // Coop auf heller Ebene (M62): Partner als fester roter Ball.
+          solid: mp.mode === 'coop' && bright(),
         }
       : null;
   // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
@@ -2880,6 +2882,7 @@ function frame(now: number): void {
         remote: { ...mp.remote },
         localFinished: mp.localFinished,
         goalLit: renderer.goalLit,
+        buddySolid: renderer.buddySolid,
         localHolds: [...mp.localHolds],
         remoteHolds: [...mp.remoteHolds],
       }

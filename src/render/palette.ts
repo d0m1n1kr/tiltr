@@ -28,6 +28,10 @@ export const WORLD = {
   portal: '240, 130, 230',
   plate: '255, 214, 90',
   buddy: '210, 225, 255',
+  /** Partner als KÖRPER (M62): im Coop auf hellen Ebenen ein fester roter
+   *  Ball – Rot ist die einzige Ballfarbe, die im Bild noch frei ist (Wächter-
+   *  Rot ist ein Streifen, kein Ball) und liest sich nicht als das eigene Teal. */
+  partner: '255, 96, 110',
   /** Schiebewand: helles Stein-Perlgrau – Wand, die sich bewegt */
   slider: '235, 224, 200',
   /** Strömung: Chartreuse – gerichteter, unüberwindbarer Fluss */

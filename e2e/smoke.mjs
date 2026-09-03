@@ -977,6 +977,9 @@ if (want("9")) {
         (await pageB.evaluate(() => window.__tiltrMp?.phase)) === "playing",
     );
 
+    // Dunkles Coop-Level: der Partner bleibt ein Schein (M62 gilt nur im Hellen).
+    const solidDark = await pageA.evaluate(() => window.__tiltrMp?.buddySolid);
+    check(`Dunkles Coop-Level: Partner bleibt Schein (buddySolid=${solidDark})`, solidDark === false);
     const hudA = !(await pageA.locator("#hud").getAttribute("class")).includes(
       "hidden",
     );
@@ -5893,6 +5896,7 @@ if (want("33")) {
           goal: [3, 0],
           start2: [0, 2],
           goal2: [3, 2],
+          bright: true,
         },
       ],
     };
@@ -6062,6 +6066,13 @@ if (want("33")) {
         Math.abs(mpB.ball.x - 50) < 2 &&
         Math.abs(mpB.ball.y - 250) < 2,
     );
+    // Helle Ebene im Coop (M62): der Partner ist ein fester roter Ball, kein Schein.
+    const solidA = await until(async () => {
+      const v = await pageA.evaluate(() => window.__tiltrMp?.buddySolid);
+      return v === true ? v : null;
+    }, { timeout: 3000 });
+    check(`Coop auf heller Ebene: Partner als fester Ball gezeichnet (buddySolid=${solidA})`, solidA === true);
+
     // Der Gast steht auf der Platte – der Host sieht sie als fern gehalten.
     const remoteHolds =
       (await until(async () => {

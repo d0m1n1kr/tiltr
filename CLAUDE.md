@@ -389,7 +389,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Tastatur: ↑/↓ Schub, ←/→ drehen. `window.__tiltrFp` zeigt Heading und
   Ansicht; Kalibrier-Countdown sagt die Haltung je Modus an (Tablett/45°).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
-  Bild. Alles Fremde (Partner im MP, Geist der Bestzeit) ist ein SCHEIN:
+  Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
+  (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,
+  `drawPartnerBall`, Palette `partner`); im Race und im Dunkeln bleibt er ein
+  Schein. Alles Fremde (Partner im MP, Geist der Bestzeit) ist sonst ein SCHEIN:
   `haloLayers()` liefert weiche Lichtschichten ohne gezeichneten Rand, stets
   unter `BALL_CORE_ALPHA` (Units in tests/render.test.ts). Wer im MP im Ziel
   ist, friert NICHT ein – es steht die Uhr (`.hud-chip.done`), das eigene

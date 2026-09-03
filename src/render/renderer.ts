@@ -2,6 +2,7 @@
 // leuchten kurz auf ("Echo") und verblassen wieder – so offenbart sich die Welt.
 
 import type { World } from '../core/physics';
+import { BALL_R } from '../core/constants';
 import { WORLD } from './palette';
 
 export interface DrawOptions {
@@ -20,7 +21,7 @@ export interface DrawOptions {
   /** Partner im Multiplayer: Position (Weltkoordinaten der EIGENEN Ebene
    *  nur wenn sameFloor), sonst wird der Schein an den Rand geklemmt.
    *  `done` = schon im Ziel (Schein wechselt in die Zielfarbe). */
-  buddy?: { x: number; y: number; sameFloor: boolean; floorLabel?: string; done?: boolean } | null;
+  buddy?: { x: number; y: number; sameFloor: boolean; floorLabel?: string; done?: boolean; solid?: boolean } | null;
   /** Geist-Replay der Bestzeit: gleicher Schein wie der Partner, nur blasser. */
   ghost?: { x: number; y: number; sameFloor: boolean } | null;
   /** Das eigene Ziel ist geschafft: Es leuchtet ruhig weiter, auch ohne
@@ -110,6 +111,8 @@ export class Renderer {
    *  „geschafft"). Der Renderer sagt selbst, was er gezeichnet hat – so ist
    *  es prüfbar, ohne Pixel zu lesen (siehe e2e/smoke.mjs, Lauf 9). */
   goalLit = false;
+  /** Wurde der Partner im letzten Frame als fester Ball gezeichnet (M62)? */
+  buddySolid = false;
   /** Hat der letzte Frame die Kugel gezeichnet? (Gegenstück zu `goalLit`:
    *  Der Renderer sagt selbst, was im Bild steht – prüfbar ohne Pixel.) */
   ballDrawn = false;
@@ -845,8 +848,41 @@ export class Renderer {
     // geklemmt. Kein Rand, kein Körper: nur Licht. Gezeichnet NACH dem
     // restore: die Klemmung rechnet in Screen-Koordinaten.
     if (opts.ghost) this.drawHalo(opts.ghost, now, 0.45, 13);
-    if (opts.buddy) {
-      this.drawHalo(opts.buddy, now, 1, 16, opts.buddy.floorLabel, opts.buddy.done === true);
+    // Partner (M62): Auf einer HELLEN Ebene im Coop sieht man alles – dann
+    // auch den Partner als festen roten Ball, nicht als Schein. Die Regel
+    // „der eigene Ball ist der einzige Körper" gilt für die dunkle Welt, in
+    // der Licht eine Information ist; im Hellen wäre der Schein nur vage.
+    this.buddySolid = opts.buddy?.solid === true && opts.buddy.sameFloor;
+    if (opts.buddy && this.buddySolid) this.drawPartnerBall(opts.buddy, now, opts.buddy.done === true);
+    else if (opts.buddy) this.drawHalo(opts.buddy, now, 1, 16, opts.buddy.floorLabel, opts.buddy.done === true);
+  }
+
+  /** Fester Partner-Ball (M62): Kugel in Partner-Rot mit weichem Glow, in
+   *  derselben Größe wie der eigene Ball; im Ziel ein ruhiger Ring in der
+   *  Zielfarbe – er rollt weiter, man sieht aber, dass er durch ist. */
+  private drawPartnerBall(pos: { x: number; y: number }, now: number, done: boolean): void {
+    const ctx = this.ctx;
+    // Weltpunkt -> Screen wie beim Schein: linear plus FP-Drehung um den Ball.
+    const lin = { x: this.offsetX + pos.x * this.scale, y: this.offsetY + pos.y * this.scale };
+    const p = this.rot === 0 ? lin : rotateAround(lin.x, lin.y, this.rotCx, this.rotCy, -this.rot);
+    const br = BALL_R * this.scale;
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, br * 4);
+    glow.addColorStop(0, `rgba(${WORLD.partner}, 0.45)`);
+    glow.addColorStop(1, `rgba(${WORLD.partner}, 0)`);
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, br * 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgb(${WORLD.partner})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, br, 0, Math.PI * 2);
+    ctx.fill();
+    if (done) {
+      ctx.strokeStyle = `rgba(${WORLD.goal}, ${0.6 + 0.3 * Math.sin(now / 700)})`;
+      ctx.lineWidth = 2 * this.dpr;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, br * 1.6, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
 

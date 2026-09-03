@@ -612,6 +612,19 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M62 „Im Hellen ein Körper" ✓ (v3.1.5) – Partner als roter Ball auf hellen Coop-Ebenen
+
+Wunsch: Im Coop soll der Partner auf hellen Ebenen als fester roter Ball zu
+sehen sein. Die M22-Regel „der eigene Ball ist der einzige Körper im Bild"
+gilt für die DUNKLE Welt, in der Licht eine Information ist; auf einer hellen
+Ebene sieht man ohnehin alles, und der Schein wäre nur vage. Renderer:
+`buddy.solid` → `drawPartnerBall` (Partner-Rot `255, 96, 110`, Ballgröße,
+weicher Glow, im Ziel ein ruhiger Ring in Zielfarbe), sonst wie bisher der
+Schein; `renderer.buddySolid` für E2E. app.ts setzt `solid` nur im Coop und
+nur bei Licht (`bright()`), also auch in der Dämmerung, solange sie brennt;
+im Race bleibt der Rivale ein Schein – dort ist Hören die Disziplin. E2E:
+Lauf 33 (helle Ebene) sieht den festen Ball, Lauf 9 (dunkel) den Schein.
+
 ## M61 „Was fehlt, steht da" ✓ (v3.1.4) – lesbare Ladefehler im Editor
 
 Der Screenshot zur unsichtbaren Platte zeigte die Statuszeile: rohes zod-JSON
