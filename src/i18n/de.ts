@@ -431,6 +431,9 @@ export const de = {
   'mp.floors': '{n} Ebenen',
   'mp.random': 'Zufallslevel',
   'mp.error': 'Verbindung fehlgeschlagen – bitte nochmal versuchen.',
+  'mp.share': '📨 Einladung teilen',
+  'mp.shareText': 'Spiel tiltr mit mir – „{level}", Raum {code}. Link antippen und beitreten:',
+  'mp.shareCopied': '✓ Einladung kopiert',
 
   /* --- Install / Update / Splash / Galerie --- */
   'inst.android': 'tiltr als App installieren – offline & im Vollbild.',

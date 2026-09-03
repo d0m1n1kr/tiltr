@@ -1810,6 +1810,7 @@ async function mpHost(level: LevelDef, custom = false): Promise<void> {
   $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${lvName(level)}`;
   $('mpQr').innerHTML = renderSVG(mpJoinUrl(code));
   $('mpQr').classList.remove('hidden');
+  $('mpShareBtn').classList.remove('hidden'); // nur der Host lädt ein
   $('mpCode').textContent = code;
   mpShowLobby(t('mp.connecting'));
   mpPending = code;
@@ -1830,6 +1831,7 @@ async function mpJoin(code: string): Promise<void> {
   code = code.toUpperCase();
   $('mpLobbyTitle').textContent = t('mp.join');
   $('mpQr').classList.add('hidden');
+  $('mpShareBtn').classList.add('hidden');
   $('mpCode').textContent = code;
   mpShowLobby(t('mp.connecting'));
   mpPending = code;
@@ -2252,6 +2254,31 @@ $('mpJoinBtn').addEventListener('click', () => {
 });
 // Tab/App wird geschlossen: dem Partner sofort Bescheid geben statt Timeout.
 window.addEventListener('pagehide', () => mp?.transport.leave());
+
+// Einladung teilen (M63): Nachricht + Beitritts-Link über das Share-Sheet
+// (Signal, WhatsApp, Mail …) – der Link ist derselbe wie im QR-Code. Text und
+// URL getrennt übergeben: Android setzt beides zusammen, iOS zeigt beides;
+// ohne Web Share landet „Nachricht Link" in der Zwischenablage.
+$('mpShareBtn').addEventListener('click', () => {
+  const code = $('mpCode').textContent?.trim() ?? '';
+  if (!code) return;
+  const url = mpJoinUrl(code);
+  const text = t('mp.shareText', { code, level: mp?.level ? lvName(mp.level) : t('mp.random') });
+  (window as unknown as { __tiltrInvite?: unknown }).__tiltrInvite = { text, url };
+  const btn = $<HTMLButtonElement>('mpShareBtn');
+  void (async () => {
+    try {
+      if (navigator.share) await navigator.share({ text, url });
+      else {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+        btn.textContent = t('mp.shareCopied');
+        setTimeout(() => (btn.textContent = t('mp.share')), 2500);
+      }
+    } catch {
+      /* abgebrochen */
+    }
+  })();
+});
 
 $('mpScanBtn').addEventListener('click', () => {
   void scanRoomCode().then((code) => {

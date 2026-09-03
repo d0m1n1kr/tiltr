@@ -6019,6 +6019,15 @@ if (want("33")) {
     await pageA.click("#mpCustomItem");
     await until(async () => (await pageA.innerHTML("#mpQr")).includes("<svg"));
     check(`Raum eröffnet (${(await pageA.textContent("#mpCode")).trim()})`, (await pageA.textContent("#mpCode")).trim() === "TESTMP33");
+    // Einladung teilen (M63): nur der Host hat den Knopf; er liefert Nachricht
+    // (Levelname + Raumcode) und denselben #join=-Link wie der QR-Code.
+    const shareVisible = !(await pageA.locator("#mpShareBtn").getAttribute("class")).includes("hidden");
+    await pageA.click("#mpShareBtn");
+    const invite = await until(async () => (await pageA.evaluate(() => window.__tiltrInvite)) ?? null, { timeout: 2000 });
+    check(
+      `Host: „Einladung teilen" sichtbar, Nachricht nennt Level + Raum, Link = #join (${JSON.stringify(invite)})`,
+      shareVisible && !!invite && invite.text.includes("Zwei Gänge") && invite.text.includes("TESTMP33") && invite.url.endsWith("#join=TESTMP33"),
+    );
 
     // Gast tritt über den QR-LINK bei (#join=… beim Kaltstart) – der Weg,
     // den jeder gescannte Code nimmt. Bis 3.0.7 starb die App genau hier:
@@ -6038,6 +6047,8 @@ if (want("33")) {
       errorsB.length === 0 && joinB.code === "TESTMP33" && joinB.hash === "",
     );
     check(`Gast sieht das Intro des Werkstatt-Levels`, (await pageB.textContent("#interTitle")).includes("Zwei Gänge"));
+    const shareGuest = (await pageB.locator("#mpShareBtn").getAttribute("class")).includes("hidden");
+    check(`Gast-Lobby ohne „Einladung teilen" (hidden=${shareGuest})`, shareGuest);
     const introA = (await pageA.textContent("#interText")).trim();
     const introB = (await pageB.textContent("#interText")).trim();
     check(

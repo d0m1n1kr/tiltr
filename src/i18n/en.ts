@@ -427,6 +427,9 @@ export const en: Dict = {
   'mp.floors': '{n} floors',
   'mp.random': 'Random level',
   'mp.error': 'Connection failed – please try again.',
+  'mp.share': '📨 Share invite',
+  'mp.shareText': 'Play tiltr with me – “{level}”, room {code}. Tap the link to join:',
+  'mp.shareCopied': '✓ Invite copied',
 
   /* --- Install / update / splash / gallery --- */
   'inst.android': 'Install tiltr as an app – offline & fullscreen.',

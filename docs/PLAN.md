@@ -612,6 +612,19 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M63 „Komm rein" ✓ (v3.1.6) – Einladung aus der Host-Lobby teilen
+
+Die Lobby hatte QR-Code und Raumcode – wer nicht im selben Raum sitzt,
+musste den Code abtippen. Jetzt gibt es „📨 Einladung teilen": Web Share mit
+Nachricht (Levelname, Raumcode, „Link antippen und beitreten") und dem
+`#join=`-Link – derselbe Link wie im QR-Code, also derselbe Kaltstart-Pfad,
+den Lauf 33 seit 3.1.0 fährt. Text und URL werden GETRENNT übergeben (Android
+setzt beides zusammen, iOS zeigt beides – die Datei-Lektion aus M41f gilt
+hier nicht, es gibt keine Datei, die vom Text verdrängt werden könnte). Ohne
+Web Share landet „Nachricht Link" in der Zwischenablage, der Knopf sagt es
+kurz („✓ Einladung kopiert", Kurztext-Regel). Nur der Host sieht den Knopf;
+`window.__tiltrInvite` legt Nachricht und Link für E2E offen.
+
 ## M62 „Im Hellen ein Körper" ✓ (v3.1.5) – Partner als roter Ball auf hellen Coop-Ebenen
 
 Wunsch: Im Coop soll der Partner auf hellen Ebenen als fester roter Ball zu
