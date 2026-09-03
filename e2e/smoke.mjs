@@ -86,6 +86,7 @@ const KNOWN_RUNS = [
   "32",
   "33",
   "34",
+  "35",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -6332,6 +6333,173 @@ if (want("34")) {
   } catch (e) {
     check(
       `Lauf 34 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 35: MP-Testmodus im Editor (M69). Dasselbe Coop-Level wie Lauf 33
+// (Spieler 2 startet auf der Platte, die Tür von Spieler 1 öffnet; der
+// Schlüssel für die Tür von Spieler 2 liegt im Gang von Spieler 1), aber
+// ALLEIN in der Vorschau: Beide Welten sind geladen, 👥 wechselt, der andere
+// bleibt liegen, wo man ihn lässt. Geprüft wird die ganze Kette – Partner als
+// fester roter Ball (helles Coop), Platte des Ruhenden öffnet die Tür,
+// Schlüssel gilt für beide, Wechsel friert ein (Position bleibt), Taste „p"
+// wechselt auch, Ziel je Seite und Sieg erst, wenn BEIDE drin sind. ---
+if (want("35")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveRow = (y) => [0, 1, 2].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m69",
+      name: "Testmodus",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 7, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          elements: [
+            { type: "door", id: "g", edge: [[1, 0], "e"] },
+            { type: "plate", cell: [0, 2], opens: "g" },
+            { type: "door", id: "k", edge: [[1, 2], "e"] },
+            { type: "key", cell: [2, 0], opens: "k" },
+            { type: "transporter", cell: [2, 2], target: { floor: 0, cell: [3, 2] }, player: 2 },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 2],
+          goal2: [3, 2],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    // Der Phantom-Partner („hält alle Platten") ist weg – es gibt nur noch den
+    // Hinweis, dass 👥 in der Vorschau den Spieler wechselt.
+    const hint = await page.evaluate(() => ({
+      swap: document.getElementById("edSwapHint")?.textContent ?? "",
+      phantom: !!document.getElementById("edPartner"),
+      testAs: !!document.getElementById("edTestAs"),
+    }));
+    check(
+      `Editor: Hinweis „👥 wechselt" statt Phantom-Feld (${JSON.stringify(hint.swap.slice(0, 40))}, Phantom=${hint.phantom})`,
+      hint.swap.includes("👥") && !hint.phantom && hint.testAs,
+    );
+
+    // ▶ Test: beide Welten geladen, Spieler 1 am Zug, Partner an Start 2.
+    await page.click("#edTest");
+    // Der Kalibrier-Countdown ist eine Karte auf #interstitial und läuft VOR
+    // dem Levelstart: Sobald der Testmodus steht, ist sie weg – danach ist die
+    // Karte wieder das Signal „Ergebnis" (Zustand statt fester Zeit).
+    const t0 = await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+    check(
+      `Testmodus: zwei Welten, Spieler 1 am Zug (coop), Partner an Start 2 (${JSON.stringify(t0)})`,
+      t0?.player === 1 &&
+        t0.coop === true &&
+        t0.balls.length === 2 &&
+        Math.abs(t0.balls[0].x - 50) < 25 &&
+        Math.abs(t0.balls[0].y - 50) < 25 &&
+        Math.abs(t0.balls[1].x - 50) < 25 &&
+        Math.abs(t0.balls[1].y - 250) < 25,
+    );
+    check(
+      `Kachel 👥1 im HUD, Partner als fester roter Ball (helles Coop) (Kachel=${JSON.stringify(
+        (await page.textContent("#swapBtn")).trim(),
+      )}, solid=${t0?.buddySolid})`,
+      (await page.textContent("#swapBtn")).trim() === "👥1" && t0?.buddySolid === true,
+    );
+    // Die Platte hält, wer WIRKLICH darauf steht: der ruhende Spieler 2.
+    check(`Platte „g" gilt als gehalten – vom ruhenden Spieler 2 (${JSON.stringify(t0?.held)})`, t0?.held.includes("g"));
+
+    // Also ist die Tür von Spieler 1 offen: durch und den Schlüssel holen.
+    const gotKey = await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrWorld?.keysCollected)) >= 1,
+      12000,
+    );
+    check(`Tür „g" offen (Partner auf der Platte): Spieler 1 rollt durch und holt den Schlüssel (${gotKey})`, gotKey === true);
+    // Weiter ins eigene Ziel (3,0): Seite 1 ist durch, die Uhr steht, der
+    // Sieg kommt aber NICHT – im Coop erst, wenn beide drin sind.
+    const done1 = await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.done[0])) === true,
+      12000,
+    );
+    const afterGoal = await page.evaluate(() => ({
+      done: window.__tiltrMpTest?.done,
+      timerDone: document.getElementById("timer")?.classList.contains("done"),
+      inter: !document.getElementById("interstitial")?.classList.contains("hidden"),
+      status: document.getElementById("status")?.textContent ?? "",
+    }));
+    check(
+      `Spieler 1 im Ziel: seine Uhr steht, kein Sieg (Coop wartet auf beide) (${JSON.stringify(afterGoal)})`,
+      done1 === true && afterGoal.done[0] === true && afterGoal.done[1] === false && afterGoal.timerDone === true && !afterGoal.inter,
+    );
+
+    // Wechsel per Taste „p": Spieler 2 ist am Zug, Spieler 1 friert ein.
+    const frozenAt = (await page.evaluate(() => window.__tiltrMpTest)).balls[0];
+    await page.keyboard.press("p");
+    const t1 = await until(async () => {
+      const x = await page.evaluate(() => window.__tiltrMpTest);
+      return x?.player === 2 ? x : null;
+    }, { timeout: 4000 });
+    await page.waitForTimeout(600); // eingefroren heißt: bleibt auch liegen
+    const t1b = await page.evaluate(() => window.__tiltrMpTest);
+    check(
+      `Taste „p" wechselt auf Spieler 2; Spieler 1 bleibt eingefroren stehen (${JSON.stringify(t1b?.balls[0])} vs ${JSON.stringify(frozenAt)}, Kachel=${JSON.stringify((await page.textContent("#swapBtn")).trim())})`,
+      t1?.player === 2 &&
+        Math.abs(t1b.balls[0].x - frozenAt.x) < 2 &&
+        Math.abs(t1b.balls[0].y - frozenAt.y) < 2 &&
+        (await page.textContent("#swapBtn")).trim() === "👥2",
+    );
+
+    // Spieler 2: Seine Tür „k" ist offen, weil SPIELER 1 den Schlüssel geholt
+    // hat (Coop-Öffner gelten für beide) – durch, aufs Pad, ins eigene Ziel.
+    // Damit sind beide drin: Sieg mit Ergebniskarte.
+    const won = await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => !document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      15000,
+    );
+    const end = await page.evaluate(() => ({
+      done: window.__tiltrMpTest?.done,
+      title: document.getElementById("interTitle")?.textContent ?? "",
+      primary: document.getElementById("interPrimary")?.textContent ?? "",
+    }));
+    check(
+      `Spieler 2 durch seine Tür (Schlüssel von Spieler 1) ins Ziel: beide drin, Ergebniskarte „zurück zum Editor" (${JSON.stringify(end)})`,
+      won === true && end.done[0] === true && end.done[1] === true && /Editor/.test(end.primary),
+    );
+    // Zurück in den Editor: die Kachel 👥 verschwindet mit dem Testmodus.
+    await page.click("#interPrimary");
+    const chipGone = await until(async () =>
+      (await page.evaluate(() => document.getElementById("swapBtn")?.classList.contains("hidden"))) === true,
+    );
+    check(`Zurück im Editor: die 👥-Kachel ist weg (${chipGone})`, chipGone === true);
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 35 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

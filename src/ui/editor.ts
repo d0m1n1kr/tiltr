@@ -313,13 +313,13 @@ export interface TestStart {
   cell: [number, number];
 }
 
-/** Testlauf eines Entwurfs (M57): ⚑-Start, als welcher Spieler die Vorschau
- *  läuft (Zwei-Spieler-Level: Start/Ziel des Gasts) und ob der abwesende
- *  Partner alle Druckplatten hält – sonst wäre eine Coop-Tür solo nie offen. */
+/** Testlauf eines Entwurfs (M57): ⚑-Start und als welcher Spieler die
+ *  Vorschau BEGINNT. Bei zwei Spielern lädt die Vorschau beide Welten und
+ *  wechselt per 👥 (M69) – der Phantom-Partner, der „alle Platten hält",
+ *  ist damit weg: es hält, wer wirklich drauf steht. */
 export interface TestRun {
   from: TestStart | null;
   player: 1 | 2;
-  partnerHolds: boolean;
 }
 
 /** Palette: alles außer Druckplatte – die kommt nur bei ZWEI Spielern dazu
@@ -461,7 +461,6 @@ export function setupEditor(opts: {
    *  nicht erreichbar. Umschalten: Eigenschaften-Feld oder die aktive Kachel
    *  nochmal antippen. */
   let toolPlayer: 1 | 2 = 1;
-  let partnerHolds = true;
   const twoPlayers = (): boolean => draft?.players === 2;
   let pendingGuard: [number, number] | null = null;
   /** Transporter-Platzierung: Pad gesetzt, Ziel-Tap steht aus (Ebenenwechsel erlaubt). */
@@ -771,7 +770,6 @@ export function setupEditor(opts: {
       testStart,
       players: draft.players ?? 1,
       testPlayer,
-      partnerHolds,
       toolPlayer,
       tool,
       // Landeplätze dieser Ebene – genau das, was der Overlay-Ring zeigt.
@@ -1939,14 +1937,11 @@ export function setupEditor(opts: {
       });
       asSel.id = 'edTestAs';
       propsEl.append(field(t('ed.testAs'), asSel));
-      const holdSel = selectInput(partnerHolds ? 'holds' : 'none', [
-        ['holds', t('ed.partner.holds')],
-        ['none', t('ed.partner.none')],
-      ], (v) => {
-        partnerHolds = v === 'holds';
-      });
-      holdSel.id = 'edPartner';
-      propsEl.append(field(t('ed.partner'), holdSel));
+      const swapHint = document.createElement('p');
+      swapHint.className = 'menu-meta';
+      swapHint.id = 'edSwapHint';
+      swapHint.textContent = t('ed.testSwap');
+      propsEl.append(swapHint);
     }
 
     // Ab hier gilt alles nur für die AKTIVE Ebene – Größe und Maze sind
@@ -2226,7 +2221,6 @@ export function setupEditor(opts: {
     opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel, {
       from,
       player: twoPlayers() ? testPlayer : 1,
-      partnerHolds: twoPlayers() && partnerHolds,
     });
   });
 
@@ -2275,7 +2269,6 @@ export function setupEditor(opts: {
       tool = 'place';
       placeType = 'hole';
       testPlayer = 1;
-      partnerHolds = true;
       toolPlayer = 1;
       setPlaying(false);
       animT = 0;

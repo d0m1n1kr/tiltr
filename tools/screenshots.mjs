@@ -197,6 +197,27 @@ async function importLevel(page, def) {
   await tablet.mouse.click(pt.x, pt.y);
   await sleep(400);
   await shot(tablet, "editor-tablet");
+  // MP-Testmodus (M69): Vorschau des Zwei-Spieler-Levels auf dem PHONE – beide
+  // Kugeln im Bild (der ruhende Partner ist der rote Ball) und die Kachel 👥1.
+  // FRISCHE Seite: Auf der alten lag ein Entwurf, und die Karte rutschte
+  // hinter die Modus-Karten (Klick wurde abgefangen).
+  const mpPage = await ctx.newPage();
+  await mpPage.goto(`${BASE}/?nosplash`);
+  await mpPage.click("#workshopBtn");
+  const mpCardPhone = mpPage.locator('#workshopList .ws-item[data-level-id="custom-shot-mp"]');
+  const mpEdit = mpCardPhone.locator("button", { hasText: "✏️" });
+  await mpEdit.scrollIntoViewIfNeeded();
+  await mpEdit.click();
+  const armPhone = mpCardPhone.locator("button", { hasText: "Entwurf verwerfen" });
+  if (await armPhone.count()) await armPhone.click();
+  await until(async () => (await mpPage.locator("#edBadges .ed-badge").count()) > 0);
+  await mpPage.click("#edTest");
+  await until(async () => await mpPage.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+  await until(async () =>
+    await mpPage.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden")),
+  );
+  await sleep(600);
+  await shot(mpPage, "editor-mptest");
   await ctx.close();
 }
 

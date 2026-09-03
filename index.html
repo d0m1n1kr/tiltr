@@ -59,6 +59,10 @@
     #hud .btn { pointer-events: auto; margin-left: var(--space-2); }
     #hudStats { display: flex; align-items: center; gap: var(--space-2); min-width: 0; overflow: hidden; }
     #hudButtons { flex-shrink: 0; white-space: nowrap; }
+    /* MP-Testmodus (M69): WER am Zug ist. Spieler 2 in Partner-Koralle –
+       dieselbe Farbe, in der der ruhende Partner im Bild liegt. */
+    #swapBtn { font-variant-numeric: tabular-nums; }
+    #swapBtn.p2 { color: var(--partner); border-color: var(--partner); }
     /* Timer breit genug für "999.9 s": die laufende Zeit schiebt nichts herum. */
     #timer { min-width: 4.6em; font-weight: 700; }
     #floor { color: var(--accent-2); }
@@ -745,6 +749,7 @@
     <span id="hudButtons">
       <button id="calibrateBtn" class="btn btn-ghost" data-i18n-title="hud.calibrate">⌖</button>
       <button id="debugBtn" class="btn btn-ghost hidden" data-i18n-title="hud.debug">👁</button>
+      <button id="swapBtn" class="btn btn-ghost hidden" data-i18n-title="hud.swap">👥1</button>
       <button id="editBtn" class="btn btn-ghost hidden" data-i18n-title="hud.edit">✏️</button>
       <button id="homeBtn" class="btn btn-ghost" data-i18n-title="hud.home">🏠</button>
     </span>

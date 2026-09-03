@@ -3,7 +3,7 @@ import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup,
 import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
-import { doorState, type OpenerState } from './core/doors';
+import { collectOpeners, doorState } from './core/doors';
 import { brittleBreakable } from './core/brittle';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
@@ -83,6 +83,7 @@ const tutorialBtn = $('tutorialBtn');
 const calibrateBtn = $('calibrateBtn');
 const debugBtn = $('debugBtn');
 const homeBtn = $('homeBtn');
+const swapBtn = $('swapBtn') as HTMLButtonElement;
 const interstitial = $('interstitial');
 const interTitle = $('interTitle');
 const interText = $('interText');
@@ -232,9 +233,34 @@ let customDef: LevelDef | null = null;
 let customFromEditor = false;
 /** ⚑ Editor-Vorschau ab einer anderen Stelle (Ebene + Zelle) statt am Start. */
 let customFrom: TestStart | null = null;
-/** Vorschau eines Zwei-Spieler-Entwurfs (M57): als wer, und hält der Partner? */
+/** Vorschau eines Zwei-Spieler-Entwurfs (M57): als welcher Spieler sie beginnt. */
 let customPlayer: 1 | 2 = 1;
-let customPartnerHolds = false;
+
+/* --- MP-Testmodus (M69) -----------------------------------------------------
+   Editor-Vorschau eines Zwei-Spieler-Levels: BEIDE Welten sind geladen, EINE
+   ist am Zug, die andere steht still (die Kugel ohne Schwung, ihre Welt läuft
+   weiter). 👥 im HUD (oder Taste „p") wechselt. Damit prüft einer allein einen
+   Coop-Plan: Platte halten, wechseln, durch die Tür. Der frühere Phantom-
+   Partner („hält ALLE Platten") ist damit weg – es hält, wer wirklich drauf
+   steht. Öffner gelten wie im echten Spiel: Platten für beide (die Nachricht
+   'plate' kennt keinen Modus), Schlüssel und Zeitschalter nur im Coop (M59).
+   Jede Seite hat ihre eigene Ebene, ihren Respawn und ihr Ping-Budget – wie
+   zwei Geräte, nur abwechselnd. */
+interface TestSide {
+  loaded: LoadedLevel;
+  /** Ebene, auf der diese Kugel steht (die Kugel ist über alle Ebenen EINE). */
+  floor: number;
+  respawn: { floor: number; x: number; y: number };
+  pings: number;
+  done: boolean;
+  elapsed: number | null;
+}
+let mpTest: { sides: [TestSide, TestSide]; active: 0 | 1; coop: boolean; held: Set<string> } | null = null;
+
+/** Die ruhende Seite – im Testmodus immer die andere als `active`. */
+function mpTestOther(): TestSide {
+  return mpTest!.sides[mpTest!.active === 0 ? 1 : 0]!;
+}
 
 /** Für wen die Welt gebaut wird: Host = 1, Gast = 2; Editor-Vorschau wählt. */
 function playerRole(): 1 | 2 {
@@ -566,15 +592,10 @@ for (const chip of presetChips) {
   });
 }
 
-function showMenu(): void {
-  if (mp) {
-    mp.transport.leave();
-    mp = null;
-  }
-  state = 'menu';
-  mode = null;
-  world = null;
-  currentDef = null;
+/** Alle STETIGEN Weltklänge auf null – EINE Stelle für Menü und jeden Sieg
+ *  (Menü und mpCheckResult hatten je eine eigene Liste; im Solo-Sieg fehlten
+ *  Schnarchen und Stimmgabel, die dann über die Ergebniskarte weiterliefen). */
+function silenceWorld(): void {
   audio.setRolling(0);
   audio.setWind(0, 0, 0);
   audio.setHoleRumble(0, 0, 0);
@@ -589,12 +610,26 @@ function showMenu(): void {
   audio.setFog(0);
   audio.setReverb(0);
   audio.setAnchor(0, 0, 0);
+}
+
+function showMenu(): void {
+  if (mp) {
+    mp.transport.leave();
+    mp = null;
+  }
+  state = 'menu';
+  mode = null;
+  mpTest = null;
+  world = null;
+  currentDef = null;
+  silenceWorld();
   audio.setHeading(0);
   audio.stopMusic();
   confetti.clear();
   hideInterstitial();
   wake.release();
   hud.classList.add('hidden');
+  swapBtn.classList.add('hidden');
   $('editBtn').classList.add('hidden');
   homeBtn.classList.remove('hidden');
   overlay.classList.remove('hidden');
@@ -641,7 +676,6 @@ function startCustom(raw: RawLevel, fromEditor: boolean, run: TestRun | null = n
   customFromEditor = fromEditor;
   customFrom = fromEditor ? run?.from ?? null : null;
   customPlayer = fromEditor ? run?.player ?? 1 : 1;
-  customPartnerHolds = fromEditor && run?.partnerHolds === true;
   $('editor').classList.add('hidden');
   $('workshop').classList.add('hidden');
   void startMode({ kind: 'custom' });
@@ -988,6 +1022,30 @@ function activateFloor(index: number): void {
 
 function launch(def: LevelDef): void {
   loaded = loadLevel(def, { player: playerRole() });
+  // MP-Testmodus (M69): Die Vorschau eines Zwei-Spieler-Entwurfs lädt die
+  // Welt des ANDEREN gleich mit – er ist kein Phantom, sondern eine Kugel,
+  // die wartet, wo man sie stehen lässt.
+  mpTest = null;
+  if (mode?.kind === 'custom' && customFromEditor && def.players === 2) {
+    const mine = loaded;
+    const theirs = loadLevel(def, { player: customPlayer === 1 ? 2 : 1 });
+    const side = (l: LoadedLevel): TestSide => ({
+      loaded: l,
+      floor: 0,
+      respawn: { floor: 0, x: l.world.ball.x, y: l.world.ball.y },
+      pings: l.pingBudget,
+      done: false,
+      elapsed: null,
+    });
+    // 'any' testet als Coop: Der Modus steht erst in der Lobby fest, und die
+    // schwerere Frage ist immer „geht es zusammen?".
+    mpTest = {
+      sides: customPlayer === 1 ? [side(mine), side(theirs)] : [side(theirs), side(mine)],
+      active: customPlayer === 1 ? 0 : 1,
+      coop: def.mpMode !== 'race',
+      held: new Set(),
+    };
+  }
   // Geist-Replay: nur in Quick/Daily/Kampagne (nicht Tutorial, nicht MP) –
   // die Level-ID trägt bei Quick den Seed, der Geist erscheint also nur auf
   // exakt demselben Level.
@@ -1001,8 +1059,10 @@ function launch(def: LevelDef): void {
       mode.kind === 'duel');
   // Im Duell IST der Geist der Rivale aus dem Link – nicht die eigene
   // Bestzeit. Aufgezeichnet wird trotzdem: daraus wird die Revanche.
-  ghost = mode?.kind === 'duel' ? mode.ghost : ghostable ? loadGhost(def.id) : null;
-  ghostRecorder = ghostable ? new GhostRecorder() : null;
+  // Im MP-Testmodus gibt es keinen Geist: Eine Spur, die zwischen zwei Kugeln
+  // springt, wäre keine Bestzeit, sondern ein Rätsel.
+  ghost = mpTest ? null : mode?.kind === 'duel' ? mode.ghost : ghostable ? loadGhost(def.id) : null;
+  ghostRecorder = ghostable && !mpTest ? new GhostRecorder() : null;
   rivalAhead = null;
   audio.setRival(0, 0, 0);
   pingMax = loaded.pingBudget;
@@ -1026,6 +1086,13 @@ function launch(def: LevelDef): void {
     renderer.follow(ball.x, ball.y, true);
   }
   respawnPoint = { floor: activeFloor, x: loaded.world.ball.x, y: loaded.world.ball.y };
+  // Jede Seite merkt sich ihren eigenen Respawn – der ⚑-Teststart gilt für
+  // die Seite, die beginnt (sie steht ja dort).
+  if (mpTest) {
+    for (const s of mpTest.sides) s.respawn = { floor: 0, x: s.loaded.world.ball.x, y: s.loaded.world.ball.y };
+    mpTest.sides[mpTest.active]!.respawn = respawnPoint;
+    mpTest.sides[mpTest.active]!.floor = activeFloor;
+  }
   duskStart = null;
   // Aufleuchten (M43): Nur Tutorial und Kampagne lehren – dort leuchtet, was
   // das Level neu bringt, und die erste Signatur spielt einmal.
@@ -1048,8 +1115,10 @@ function launch(def: LevelDef): void {
   $('editBtn').classList.toggle('hidden', !editorPreview);
   updateDebugButton(editorPreview);
   homeBtn.classList.toggle('hidden', editorPreview);
+  swapBtn.classList.toggle('hidden', mpTest === null);
+  updateSwapChip();
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
-  if (editorPreview && customPartnerHolds) flash(t('st.partnerHolds'), 3000);
+  if (mpTest) flash(t('st.mpTestStart', { n: mpTest.active + 1 }), 3000);
   input.calibrate();
   fpState = fpInitial();
   renderer.setFpView(fpOn());
@@ -1571,7 +1640,10 @@ function firePing(now: number): void {
 canvas.addEventListener('pointerdown', () => firePing(performance.now()));
 window.addEventListener('keydown', (e) => {
   if (e.key === ' ' && !e.repeat) firePing(performance.now());
+  // „p" wie player: Spieler wechseln im MP-Testmodus (Desktop-Testen).
+  if ((e.key === 'p' || e.key === 'P') && !e.repeat) mpTestSwap();
 });
+swapBtn.addEventListener('click', mpTestSwap);
 
 // Nähe + Richtung zu einem Rechteck (für den Windzonen-Sound).
 function zoneProximity(z: WindZone, b: Ball): { dist: number; dx: number; dy: number } {
@@ -2093,39 +2165,45 @@ function mpFrame(now: number): void {
  *  Türen (nur Schlüssel) werden zu Schutt. Liefert die IDs der Türen, die
  *  JETZT offen sind. */
 function updateDoors(now: number): Set<string> {
+  if (!loaded || !world) return new Set();
+  const worlds = (l: LoadedLevel): World[] => l.floors.map((f) => f.world);
+  if (!mpTest) return applyDoors(worlds(loaded), worlds(loaded), now);
+  const a = worlds(mpTest.sides[0]!.loaded);
+  const b = worlds(mpTest.sides[1]!.loaded);
+  // Coop-Testmodus: Schlüssel und Schalter beider Seiten öffnen beide Welten
+  // (M59). Race: jede Welt entscheidet für sich – die geteilten PLATTEN
+  // stecken schon im `held`-Flag der jeweiligen Platte.
+  if (mpTest.coop) return applyDoors([...a, ...b], [...a, ...b], now);
+  const open = [applyDoors(a, a, now), applyDoors(b, b, now)];
+  return open[mpTest.active]!;
+}
+
+/** Türen aus den Öffnern von `sources` bestimmen und auf die Wände in
+ *  `targets` anwenden (Schutt, Aufleuchten, Klang nur auf der eigenen Ebene).
+ *  Liefert die IDs der Türen, die JETZT offen sind. */
+function applyDoors(sources: readonly World[], targets: readonly World[], now: number): Set<string> {
   const openNow = new Set<string>();
-  if (!loaded || !world) return openNow;
-  const openers = new Map<string, OpenerState[]>();
-  const add = (id: string, o: OpenerState): void => {
-    const list = openers.get(id) ?? [];
-    list.push(o);
-    openers.set(id, list);
-  };
-  for (const fl of loaded.floors) {
-    for (const k of fl.world.keys) add(k.opens, { kind: 'key', satisfied: k.collected });
-    for (const s of fl.world.switches) add(s.opens, { kind: 'timedSwitch', satisfied: s.openUntil !== null && s.openUntil > now });
-    // Platte gehalten: von einem Spieler (MP) oder von einem Rollstein (M47).
-    for (const p of fl.world.plates) add(p.opens, { kind: 'plate', satisfied: p.held || p.boulder === true });
-  }
-  for (const fl of loaded.floors) {
-    for (let i = fl.world.walls.length - 1; i >= 0; i--) {
-      const w = fl.world.walls[i]!;
+  if (!world) return openNow;
+  const openers = collectOpeners(sources, now);
+  for (const fw of targets) {
+    for (let i = fw.walls.length - 1; i >= 0; i--) {
+      const w = fw.walls[i]!;
       if (!w.door) continue;
       const state = doorState(openers.get(w.door.id) ?? [], w.door.require ?? 'any');
       if (state.open) openNow.add(w.door.id);
       const dx = w.x + w.w / 2 - world.ball.x;
       const dy = w.y + w.h / 2 - world.ball.y;
       if (state.permanent) {
-        fl.world.walls.splice(i, 1);
-        fl.world.debris.push({ ...w, litUntil: now + 2000 });
-        if (fl.world === world) audio.doorOpen(dx, dy);
+        fw.walls.splice(i, 1);
+        fw.debris.push({ ...w, litUntil: now + 2000 });
+        if (fw === world) audio.doorOpen(dx, dy);
         continue;
       }
       if (state.open !== (w.door.open ?? false)) {
         w.door.open = state.open;
         w.litFrom = 0;
         w.litUntil = now + 1500;
-        if (fl.world === world) {
+        if (fw === world) {
           if (state.open) audio.doorOpen(dx, dy);
           else audio.doorClose(dx, dy);
         }
@@ -2133,6 +2211,88 @@ function updateDoors(now: number): Set<string> {
     }
   }
   return openNow;
+}
+
+/** HUD-Kachel des Testmodus: WER am Zug ist (👥1 / 👥2, Spieler 2 in
+ *  Partner-Rot). Tippen wechselt. */
+function updateSwapChip(): void {
+  if (!mpTest) return;
+  swapBtn.textContent = `\u{1F465}${mpTest.active + 1}`;
+  swapBtn.classList.toggle('p2', mpTest.active === 1);
+}
+
+/** Spieler wechseln (👥 oder Taste „p"): Die abgegebene Kugel bleibt liegen,
+ *  wo sie ist – ohne Schwung, sonst rollte sie beim Zurückwechseln weiter.
+ *  Ebene, Respawn und Ping-Budget gehören der SEITE, nicht dem Lauf. */
+function mpTestSwap(): void {
+  if (!mpTest || !loaded || !world || state !== 'playing') return;
+  const cur = mpTest.sides[mpTest.active]!;
+  world.ball.vx = 0;
+  world.ball.vy = 0;
+  cur.floor = activeFloor;
+  cur.respawn = respawnPoint;
+  cur.pings = pings;
+  mpTest.active = mpTest.active === 0 ? 1 : 0;
+  const nxt = mpTest.sides[mpTest.active]!;
+  loaded = nxt.loaded;
+  respawnPoint = nxt.respawn;
+  pings = nxt.pings;
+  activateFloor(nxt.floor);
+  audio.setRolling(0);
+  audio.checkpoint();
+  haptics.checkpoint();
+  updateSwapChip();
+  flash(t('st.mpTestTurn', { n: mpTest.active + 1 }), 1500);
+}
+
+/** Ein Frame im Testmodus: Die ruhende WELT läuft weiter (Wächter,
+ *  Wanderlöcher – sonst zeigte dieselbe Patrouille beiden Spielern zwei
+ *  Stellen), und eine Platte hält, wer WIRKLICH darauf steht: beide Kugeln
+ *  zählen, wie die Nachricht 'plate' im echten Spiel, die keinen Modus kennt.
+ *  Schlüssel und Zeitschalter teilt nur der Coop – das entscheidet
+ *  updateDoors über beide Welten (M59). */
+function mpTestFrame(now: number, dt: number): void {
+  if (!mpTest || !world) return;
+  const cur = mpTest.sides[mpTest.active]!;
+  cur.floor = activeFloor;
+  cur.pings = pings;
+  const other = mpTestOther();
+  const otherWorld = other.loaded.floors[other.floor]!.world;
+  otherWorld.advanceGuards(dt);
+  otherWorld.advanceHoles(dt);
+  const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.opens));
+  for (const id of held) if (!mpTest.held.has(id)) audio.plate(true);
+  for (const id of mpTest.held) if (!held.has(id)) audio.plate(false);
+  mpTest.held = held;
+  for (const side of mpTest.sides)
+    for (const fl of side.loaded.floors) for (const pl of fl.world.plates) pl.held = held.has(pl.opens);
+  updateDoors(now);
+}
+
+/** Im Ziel: Diese Seite ist durch, ihre Uhr steht – die Kugel rollt weiter
+ *  (ein Fertiger kann dem Partner die Platte halten, wie im echten Spiel).
+ *  Coop gewinnt, wenn BEIDE drin sind; im Race der erste. */
+function mpTestFinish(now: number): void {
+  if (!mpTest) return;
+  const side = mpTest.sides[mpTest.active]!;
+  if (side.done) return;
+  side.done = true;
+  side.elapsed = (now - t0) / 1000;
+  audio.checkpoint();
+  haptics.checkpoint();
+  if (!mpTest.coop || mpTest.sides.every((sd) => sd.done)) winRun(now, side.elapsed);
+  else flash(t('st.mpTestDone', { n: mpTest.active + 1 }), 2500);
+}
+
+/** Sieg eines Einzel-Laufs (auch der MP-Testmodus endet hier): Uhr aus,
+ *  Konfetti, Ergebniskarte über onWin. */
+function winRun(now: number, seconds: number): void {
+  state = 'won';
+  revealUntil = now + 4000;
+  silenceWorld();
+  celebrate();
+  statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
+  onWin(seconds);
 }
 
 function mpLocalFinish(now: number): void {
@@ -2153,20 +2313,7 @@ function mpCheckResult(): void {
   mp.phase = 'done';
   state = 'won';
   revealUntil = performance.now() + 4000;
-  audio.setRolling(0);
-  audio.setWind(0, 0, 0);
-  audio.setHoleRumble(0, 0, 0);
-  audio.setGuard(0, 0, 0);
-  audio.setSnore(0, 0, 0);
-  audio.setFork(0, 0);
-  audio.setRival(0, 0, 0);
-  audio.setPortal(0, 0, 0);
-  audio.setCurrent(0, 0, 0);
-  audio.setListener(0, 0, 0, 0);
-  audio.setIce(0);
-  audio.setFog(0);
-  audio.setReverb(0);
-  audio.setAnchor(0, 0, 0);
+  silenceWorld();
   audio.stopMusic();
   const mine = mp.localElapsed ?? 0;
   const theirs = mp.remote.elapsed ?? 0;
@@ -2642,13 +2789,6 @@ function frame(now: number): void {
       }
     }
     if (!mp) {
-      // Editor-Vorschau eines Zwei-Spieler-Levels (M57): Der abwesende
-      // Partner hält alle Druckplatten – sonst bliebe jede Coop-Tür solo zu.
-      const phantom = mode?.kind === 'custom' && customFromEditor && customPartnerHolds;
-      if (phantom) {
-        for (const f of loaded!.floors) for (const pl of f.world.plates) pl.held = true;
-        updateDoors(now);
-      }
       const allSwitches = loaded!.floors.flatMap((f) => f.world.switches);
       if (allSwitches.length) {
         let urgency = 0; // dringlichster laufender Timer (0 = keiner aktiv)
@@ -2707,6 +2847,7 @@ function frame(now: number): void {
     }
 
     if (mp && mp.phase === 'playing' && !disconnected) mpFrame(now);
+    if (mpTest) mpTestFrame(now, dt);
     if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
       if (remaining <= 0) {
@@ -2726,9 +2867,10 @@ function frame(now: number): void {
 
     // Im Ziel steht die Uhr auf der erreichten Zeit – das unmissverständliche
     // „du bist durch", während der Ball weiterrollen darf.
-    const shownTime = mp?.localElapsed ?? (now - t0) / 1000;
+    const testSide = mpTest ? mpTest.sides[mpTest.active]! : null;
+    const shownTime = testSide?.elapsed ?? mp?.localElapsed ?? (now - t0) / 1000;
     timerEl.textContent = fmtTime(shownTime);
-    timerEl.classList.toggle('done', mp?.localFinished === true);
+    timerEl.classList.toggle('done', mp?.localFinished === true || testSide?.done === true);
     // Nur bei Änderung schreiben: erspart Layout-Arbeit pro Frame.
     const pingsTxt = '●'.repeat(pings) + '○'.repeat(Math.max(0, pingMax - pings));
     if (pingsEl.textContent !== pingsTxt) pingsEl.textContent = pingsTxt;
@@ -2779,25 +2921,12 @@ function frame(now: number): void {
       statusEl.textContent = t(mp.mode === 'coop' ? 'mp.doneCoop' : 'mp.doneRace');
     } else if (mp && world.goalReached()) {
       mpLocalFinish(now);
-    } else if (!mp && world.goalReached()) {
-      state = 'won';
-      revealUntil = now + 4000;
-      const seconds = (now - t0) / 1000;
-      audio.setRolling(0);
-      audio.setWind(0, 0, 0);
-      audio.setHoleRumble(0, 0, 0);
-      audio.setGuard(0, 0, 0);
-      audio.setRival(0, 0, 0);
-      audio.setPortal(0, 0, 0);
-      audio.setCurrent(0, 0, 0);
-      audio.setListener(0, 0, 0, 0);
-      audio.setIce(0);
-      audio.setFog(0);
-      audio.setReverb(0);
-      audio.setAnchor(0, 0, 0);
-      celebrate();
-      statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
-      onWin(seconds);
+    } else if (mpTest && world.goalReached()) {
+      mpTestFinish(now);
+    } else if (mpTest?.sides[mpTest.active]!.done) {
+      statusEl.textContent = t(mpTest.coop ? 'mp.doneCoop' : 'mp.doneRace');
+    } else if (!mp && !mpTest && world.goalReached()) {
+      winRun(now, (now - t0) / 1000);
     } else if (messageUntil > now) {
       statusEl.textContent = message;
     } else {
@@ -2818,7 +2947,18 @@ function frame(now: number): void {
           // Coop auf heller Ebene (M62): Partner als fester roter Ball.
           solid: mp.mode === 'coop' && bright(),
         }
-      : null;
+      : // Testmodus (M69): der ruhende Spieler IST der Partner – dieselbe
+        // Darstellung wie im echten Spiel, damit die Vorschau nicht lügt.
+        mpTest
+        ? {
+            x: mpTestOther().loaded.world.ball.x,
+            y: mpTestOther().loaded.world.ball.y,
+            sameFloor: mpTestOther().floor === activeFloor,
+            floorLabel: mpTestOther().floor === activeFloor ? undefined : `E${mpTestOther().floor + 1}`,
+            done: mpTestOther().done,
+            solid: mpTest.coop && bright(),
+          }
+        : null;
   // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
   const ghostPos = ghost && state === 'playing' ? sampleGhost(ghost, (now - t0) / 1000) : null;
   const ghostOpt = ghostPos ? { x: ghostPos.x, y: ghostPos.y, sameFloor: ghostPos.floor === activeFloor } : null;
@@ -2905,6 +3045,17 @@ function frame(now: number): void {
   }
   (window as unknown as { __tiltrGhost?: unknown }).__tiltrGhost = ghost
     ? { time: ghost.time, active: ghostPos !== null }
+    : null;
+  (window as unknown as { __tiltrMpTest?: unknown }).__tiltrMpTest = mpTest
+    ? {
+        player: mpTest.active + 1,
+        coop: mpTest.coop,
+        floor: activeFloor,
+        buddySolid: renderer.buddySolid,
+        held: [...mpTest.held],
+        done: mpTest.sides.map((sd) => sd.done),
+        balls: mpTest.sides.map((sd) => ({ x: sd.loaded.world.ball.x, y: sd.loaded.world.ball.y, floor: sd.floor })),
+      }
     : null;
   (window as unknown as { __tiltrMp?: unknown }).__tiltrMp = mp
     ? {

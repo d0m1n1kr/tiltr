@@ -12,17 +12,21 @@ ping reaches. Best played with headphones, eyes half closed.
 works offline. Every push deploys automatically (tests → build → GitHub
 Pages).
 
-| Splash | Menu | Echo ping | Campaign | Level done |
-|---|---|---|---|---|
-| <img src="docs/screenshots/splash.png" width="150" alt="Animated splash screen"> | <img src="docs/screenshots/menu-en.png" width="150" alt="Start screen with game modes"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo ping reveals walls, a brittle wall and a door"> | <img src="docs/screenshots/campaign.png" width="150" alt="Campaign with five worlds and stars"> | <img src="docs/screenshots/result-confetti.png" width="150" alt="Result card with confetti"> |
+| Splash | Menu | Echo ping | Campaign |
+|---|---|---|---|
+| <img src="docs/screenshots/splash.png" width="150" alt="Animated splash screen"> | <img src="docs/screenshots/menu-en.png" width="150" alt="Start screen with game modes"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo ping reveals walls, a brittle wall and a door"> | <img src="docs/screenshots/campaign.png" width="150" alt="Campaign with five worlds and stars"> |
 
-| Multiplayer lobby | Co-op in the dark | Co-op in the light | Workshop | Editor (tablet) |
-|---|---|---|---|---|
-| <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Lobby with QR code, room code and invite button"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Co-op: the partner is a faint shimmer"> | <img src="docs/screenshots/mp-bright-partner.png" width="150" alt="Co-op on a bright floor: the partner is a red ball"> | <img src="docs/screenshots/workshop.png" width="150" alt="Workshop with a level bundle"> | <img src="docs/screenshots/editor-tablet.png" width="150" alt="Level editor on a tablet with proof badges"> |
+| Level done | Tutorial | Hearing test | Element gallery |
+|---|---|---|---|
+| <img src="docs/screenshots/result-confetti.png" width="150" alt="Result card with confetti"> | <img src="docs/screenshots/tutorial-intro.png" width="150" alt="Tutorial intro"> | <img src="docs/screenshots/hearing.png" width="150" alt="Hearing test with compass rose"> | <img src="docs/screenshots/gallery.png" width="150" alt="Element gallery"> |
 
-| Editor (phone) | Two-player intro | Tutorial | Hearing test | Element gallery |
-|---|---|---|---|---|
-| <img src="docs/screenshots/editor-phone.png" width="150" alt="Level editor on a phone"> | <img src="docs/screenshots/mp-intro.png" width="150" alt="Intro of a two-player level with the player role"> | <img src="docs/screenshots/tutorial-intro.png" width="150" alt="Tutorial intro"> | <img src="docs/screenshots/hearing.png" width="150" alt="Hearing test with compass rose"> | <img src="docs/screenshots/gallery.png" width="150" alt="Element gallery"> |
+| Multiplayer lobby | Co-op in the dark | Co-op in the light | Two-player intro |
+|---|---|---|---|
+| <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Lobby with QR code, room code and invite button"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Co-op: the partner is a faint shimmer"> | <img src="docs/screenshots/mp-bright-partner.png" width="150" alt="Co-op on a bright floor: the partner is a red ball"> | <img src="docs/screenshots/mp-intro.png" width="150" alt="Intro of a two-player level with the player role"> |
+
+| Workshop | Editor (phone) | Editor (tablet) | Two-player test mode |
+|---|---|---|---|
+| <img src="docs/screenshots/workshop.png" width="150" alt="Workshop with a level bundle"> | <img src="docs/screenshots/editor-phone.png" width="150" alt="Level editor on a phone"> | <img src="docs/screenshots/editor-tablet.png" width="150" alt="Level editor on a tablet with proof badges"> | <img src="docs/screenshots/editor-mptest.png" width="150" alt="Two-player test mode: the resting partner as a red ball, 👥1 chip"> |
 
 ## Game modes
 
@@ -65,7 +69,9 @@ Pages).
   proofs run live as badges: goal reachable, openers before their doors,
   timers long enough, no softlock, guards passable, boulder puzzle solvable.
   Switch a level to **two players** for an own start and goal for the guest,
-  pressure plates and co-op/race proofs. Levels live in **bundles** that play
+  pressure plates and co-op/race proofs — plus a **test mode for one**: the
+  preview loads both balls, 👥 switches player, and the other one stays where
+  you left it (still holding its plate). Levels live in **bundles** that play
   like a campaign with saved progress and export as one file. Test a draft in
   the real game loop, share finished levels as a serverless link (the level
   travels compressed in the URL; sharing unlocks only with all proof badges

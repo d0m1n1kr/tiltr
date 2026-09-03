@@ -18,6 +18,7 @@
   --accent-2: #6ea8ff; /* Blau: Wände, Information, Links */
   --warning: #ffb060; /* Bernstein: Brüchiges */
   --danger: #965adc; /* Violett: Löcher, Gefahr */
+  --partner: #ff606e; /* Koralle: der andere Spieler (= WORLD.partner in palette.ts) */
   --success: #4be08c; /* Grün: Ziel, Erfolg */
   --grad-primary: linear-gradient(90deg, var(--accent), var(--accent-2));
 

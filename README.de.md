@@ -13,17 +13,21 @@ halb geschlossenen Augen.
 installierbar, läuft offline. Jeder Push deployt automatisch (Tests → Build →
 GitHub Pages).
 
-| Splash | Menü | Echo-Ping | Kampagne | Level geschafft |
-|---|---|---|---|---|
-| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände, eine brüchige Wand und eine Tür auf"> | <img src="docs/screenshots/campaign.png" width="150" alt="Kampagne mit fünf Welten und Sternen"> | <img src="docs/screenshots/result-confetti.png" width="150" alt="Ergebniskarte mit Konfetti"> |
+| Splash | Menü | Echo-Ping | Kampagne |
+|---|---|---|---|
+| <img src="docs/screenshots/splash.png" width="150" alt="Animierter Splash-Screen"> | <img src="docs/screenshots/menu-de.png" width="150" alt="Startscreen mit Spielmodi"> | <img src="docs/screenshots/gameplay.png" width="150" alt="Echo-Ping deckt Wände, eine brüchige Wand und eine Tür auf"> | <img src="docs/screenshots/campaign.png" width="150" alt="Kampagne mit fünf Welten und Sternen"> |
 
-| Multiplayer-Lobby | Coop im Dunkeln | Coop im Hellen | Werkstatt | Editor (Tablet) |
-|---|---|---|---|---|
-| <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Lobby mit QR-Code, Raumcode und Einladungs-Knopf"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop: der Partner ist ein blasser Schein"> | <img src="docs/screenshots/mp-bright-partner.png" width="150" alt="Coop auf heller Ebene: der Partner ist ein roter Ball"> | <img src="docs/screenshots/workshop.png" width="150" alt="Werkstatt mit einem Level-Bundle"> | <img src="docs/screenshots/editor-tablet.png" width="150" alt="Level-Editor auf dem Tablet mit Beweis-Badges"> |
+| Level geschafft | Tutorial | Hörtest | Element-Galerie |
+|---|---|---|---|
+| <img src="docs/screenshots/result-confetti.png" width="150" alt="Ergebniskarte mit Konfetti"> | <img src="docs/screenshots/tutorial-intro.png" width="150" alt="Tutorial-Intro"> | <img src="docs/screenshots/hearing.png" width="150" alt="Hörtest mit Kompassrose"> | <img src="docs/screenshots/gallery.png" width="150" alt="Element-Galerie"> |
 
-| Editor (Phone) | Zwei-Spieler-Intro | Tutorial | Hörtest | Element-Galerie |
-|---|---|---|---|---|
-| <img src="docs/screenshots/editor-phone.png" width="150" alt="Level-Editor auf dem Phone"> | <img src="docs/screenshots/mp-intro.png" width="150" alt="Intro eines Zwei-Spieler-Levels mit Rolle"> | <img src="docs/screenshots/tutorial-intro.png" width="150" alt="Tutorial-Intro"> | <img src="docs/screenshots/hearing.png" width="150" alt="Hörtest mit Kompassrose"> | <img src="docs/screenshots/gallery.png" width="150" alt="Element-Galerie"> |
+| Multiplayer-Lobby | Coop im Dunkeln | Coop im Hellen | Zwei-Spieler-Intro |
+|---|---|---|---|
+| <img src="docs/screenshots/mp-lobby-qr.png" width="150" alt="Lobby mit QR-Code, Raumcode und Einladungs-Knopf"> | <img src="docs/screenshots/mp-ingame-halo.png" width="150" alt="Coop: der Partner ist ein blasser Schein"> | <img src="docs/screenshots/mp-bright-partner.png" width="150" alt="Coop auf heller Ebene: der Partner ist ein roter Ball"> | <img src="docs/screenshots/mp-intro.png" width="150" alt="Intro eines Zwei-Spieler-Levels mit Rolle"> |
+
+| Werkstatt | Editor (Phone) | Editor (Tablet) | Testmodus zu zweit |
+|---|---|---|---|
+| <img src="docs/screenshots/workshop.png" width="150" alt="Werkstatt mit einem Level-Bundle"> | <img src="docs/screenshots/editor-phone.png" width="150" alt="Level-Editor auf dem Phone"> | <img src="docs/screenshots/editor-tablet.png" width="150" alt="Level-Editor auf dem Tablet mit Beweis-Badges"> | <img src="docs/screenshots/editor-mptest.png" width="150" alt="MP-Testmodus: der ruhende Partner als roter Ball, Kachel 👥1"> |
 
 ## Spielmodi
 
@@ -68,7 +72,9 @@ GitHub Pages).
   erreichbar, Öffner vor der Tür, Timer reicht, kein Softlock, Wächter
   passierbar, Stein lösbar. Ein Level auf **zwei Spieler** stellen bringt
   eigenen Start und eigenes Ziel für den Gast, Druckplatten und
-  Coop-/Race-Beweise. Level liegen in **Bundles**, die wie eine Kampagne mit
+  Coop-/Race-Beweise – und einen **Testmodus für einen**: Die Vorschau lädt
+  beide Kugeln, 👥 wechselt den Spieler, der andere bleibt liegen, wo man ihn
+  lässt (und hält dort weiter die Platte). Level liegen in **Bundles**, die wie eine Kampagne mit
   gespeichertem Stand spielbar und als eine Datei exportierbar sind. Entwürfe
   laufen in der echten Spielschleife; fertige Level teilt man als
   serverlosen Link (das Level reist komprimiert in der URL; Teilen geht erst

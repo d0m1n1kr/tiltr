@@ -33,3 +33,30 @@ export function doorState(openers: readonly OpenerState[], require: DoorRequire 
   const open = keyDone || openers.some((o) => o.satisfied);
   return { open, permanent: keyDone };
 }
+
+/** Was eine Welt an Öffnern beiträgt – STRUKTURELL beschrieben, damit `World`
+ *  (physics.ts) ohne Import passt und ein Test mit nackten Objekten reicht. */
+export interface OpenerSource {
+  keys: readonly { opens: string; collected: boolean }[];
+  switches: readonly { opens: string; openUntil: number | null }[];
+  plates: readonly { opens: string; held: boolean; boulder?: boolean }[];
+}
+
+/** Öffner-Zustände mehrerer Welten (alle Ebenen – im Coop die BEIDER Spieler)
+ *  zu einer Liste je Tür-ID sammeln. EINE Stelle für Spiel, Multiplayer und
+ *  den Editor-Testmodus: Wer eine Öffner-Art einführt, trägt sie hier ein. */
+export function collectOpeners(sources: readonly OpenerSource[], now: number): Map<string, OpenerState[]> {
+  const openers = new Map<string, OpenerState[]>();
+  const add = (id: string, o: OpenerState): void => {
+    const list = openers.get(id);
+    if (list) list.push(o);
+    else openers.set(id, [o]);
+  };
+  for (const s of sources) {
+    for (const k of s.keys) add(k.opens, { kind: 'key', satisfied: k.collected });
+    for (const sw of s.switches) add(sw.opens, { kind: 'timedSwitch', satisfied: sw.openUntil !== null && sw.openUntil > now });
+    // Platte gehalten: von einem Spieler (MP, Testmodus) oder einem Rollstein (M47).
+    for (const p of s.plates) add(p.opens, { kind: 'plate', satisfied: p.held || p.boulder === true });
+  }
+  return openers;
+}

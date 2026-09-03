@@ -612,6 +612,48 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M69 „Beide Kugeln, abwechselnd" ✓ (v3.3.0) – MP-Testmodus im Editor
+
+Wunsch aus dem Levelbau: Ein Zwei-Spieler-Level allein testen können, mit
+Spielerwechsel. Bis jetzt lief die Vorschau als EIN Spieler, und der Partner
+war ein Phantom, das ALLE Druckplatten hielt (M57) – bequem, aber unwahr: Es
+sagte nichts darüber, ob der Partner die Platte überhaupt erreicht, und schon
+gar nicht, ob er sie halten kann, während er selbst weiterkommen muss.
+
+Jetzt lädt die Vorschau eines Zwei-Spieler-Entwurfs BEIDE Welten
+(`loadLevel(def, { player })` je Seite – Start, Ziel und die eigenen
+Transporter, wie im echten Spiel). Eine Seite ist am Zug, die andere liegt
+still, wo man sie gelassen hat: die Kugel ohne Schwung (sonst rollte sie beim
+Zurückwechseln weiter), ihre WELT aber läuft mit (`advanceGuards`,
+`advanceHoles` – sonst zeigte dieselbe Patrouille beiden Spielern zwei
+Stellen). Gewechselt wird per 👥-Kachel im HUD oder Taste „p"; die Kachel sagt,
+wer am Zug ist (Spieler 2 in Partner-Koralle). Der ruhende Spieler ist der
+PARTNER im Bild – dieselbe Darstellung wie im Multiplayer (Schein im Dunkeln,
+roter Ball im hellen Coop), damit die Vorschau nicht anders aussieht als das
+Spiel.
+
+Öffner folgen genau dem echten Spiel, nicht einer zweiten Regel: Eine Platte
+hält, wer WIRKLICH darauf steht – beide Kugeln zählen, in Coop wie Race (die
+Nachricht 'plate' kennt keinen Modus); Schlüssel und Zeitschalter teilt nur
+der Coop (M59). Dafür ist `collectOpeners` (core/doors.ts) aus app.ts
+herausgezogen: die EINE Sammelstelle, die jetzt über mehrere Welten läuft.
+`updateDoors` trennt seither Quellen und Ziele (`applyDoors`) – im Coop
+entscheiden beide Welten gemeinsam, im Race jede für sich.
+
+Ebene, Respawn und Ping-Budget gehören der SEITE, nicht dem Lauf – wie zwei
+Geräte, nur abwechselnd. Im Ziel ist eine Seite durch (ihre Uhr steht, die
+Kugel rollt weiter und kann dem Partner die Platte halten); der Coop gewinnt
+erst, wenn BEIDE drin sind, das Race mit dem ersten. Kein Geist in diesem
+Modus: eine Spur, die zwischen zwei Kugeln springt, wäre keine Bestzeit.
+Nebenbei aufgeräumt: `silenceWorld()` und `winRun()` – die stetigen
+Weltklänge und der Sieg-Ablauf standen dreimal im Code, im Solo-Sieg fehlten
+Schnarchen und Stimmgabel.
+
+Units: `collectOpeners` in tests/doors.test.ts. E2E Lauf 35 fährt die ganze
+Kette allein durch: Partner auf der Platte öffnet die Tür von Spieler 1,
+dessen Schlüssel öffnet im Coop die Tür von Spieler 2, „p" friert Spieler 1
+an seiner Stelle ein, Sieg erst mit beiden im Ziel.
+
 ## M68 „Gebrochen bleibt gebrochen" ✓ (v3.2.2) – Softlock-Beweis kennt den Wandzustand
 
 Meldung aus dem Levelbau: Eine Tasche, die man nur durch eine einseitig
@@ -812,6 +854,7 @@ hebt auf), die Druckplatte in der Palette (solo bleibt sie draußen: niemand
 hielte sie, und `coopReachable` zählte sie trotzdem – grün und unlösbar),
 gestrichelte „2"-Ringe im Overlay. Zurück auf 1 räumt start2/goal2/mpMode
 weg. Vorschau: „Vorschau als" Spieler 1/2 und „Partner hält alle Platten"
+(letzteres ist mit M69 durch den echten, wechselbaren Partner ersetzt)
 (sonst bliebe jede Coop-Tür solo zu) – `TestRun` statt nacktem ⚑-Start.
 `removeFloor` rettet auch goal2 in eine freie Zelle.
 

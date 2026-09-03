@@ -52,6 +52,7 @@ benutzt **Tokens und Komponenten-Klassen, keine Magic Values**:
 | `--accent-2` | `#6ea8ff` (Blau) | Wände, Information, Links |
 | `--warning` | `#ffb060` (Bernstein) | Brüchiges, Vorsicht |
 | `--danger` | `#965adc` (Violett) | Löcher, Gefahr |
+| `--partner` | `#ff606e` (Koralle) | Der andere Spieler (= `WORLD.partner` in palette.ts) |
 | `--success` | `#4be08c` (Grün) | Ziel, Erfolg |
 | `--grad-primary` | Teal→Blau, 90° | Primär-Buttons, Logo |
 
@@ -161,6 +162,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.inter-card` | Interstitial-Karte (Level-Intro, Ergebnis, Kalibrierung) auf abgedunkeltem Grund |
 | `.banner` | Toast/Hinweis unten: `--bg-panel`, Akzent-Rand, Schatten |
 | `.ws-item` (+ `.ws-actions`, `.ws-icons`, `.ws-icon`) | Werkstatt-Bibliothek: Karte mit Name/Meta-Kopf und EINER Aktionszeile – zwei Text-Buttons links, vier Icon-Aktionen (mit `[data-tip]`) rechts. Die Icon-Gruppe bricht als Ganzes um; ob überhaupt, entscheidet eine Container Query über die KARTENBREITE (`container-type: inline-size`), nicht die Fensterbreite |
+| `#swapBtn` | MP-Testmodus im Editor (M69): 👥 mit der Nummer des Spielers, der am Zug ist – Tippen wechselt. Spieler 2 in `--partner`, derselben Farbe, in der der ruhende Partner im Bild liegt. Im Spiel und im Menü ausgeblendet |
 | `.hud-chip.done` | Zeit steht: Im Multiplayer bleibt die Uhr auf der erreichten Zielzeit stehen (grün, `--success`), während der Ball weiterrollen darf. Früher erzählte das der festhängende Ball – und sah wie ein Fehler aus |
 | `.hear-cell` | Hörtest-Kompassrose: 3×3-Raster (`#hearGrid`, max. 320 px) quadratischer Ghost-Buttons – acht Richtungspfeile dort, wo die Richtung klingt (oben = vorn), Mitte (`#hearRepeat`, Akzent-Rand) wiederholt den Ping. Beschriftung als `[data-tip]`, nicht als Text: der Pfeil trägt die Richtung, die Blase den Namen |
 | `.ed-tile` | Editor-Palette: Werkzeug/Element mit Galerie-Miniatur; `.active` = Teal-Outline (ein Modus aktiv), `.off` = hier nicht anwendbar (gedämpft, aber anklickbar – der Tap erklärt den Grund; kein `disabled`, das nähme Hover UND Fokus und damit die Tooltip-Blase) |

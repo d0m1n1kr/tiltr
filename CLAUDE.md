@@ -237,7 +237,19 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Gast = Spieler 2. `loadLevel(def, { player })` baut die Welt für EINEN
   Spieler (Kugel an seinem Start, Zielzone = sein Ziel, das andere Ziel ist
   für ihn nicht da); Default 1, `playerRole()` in app.ts ist die eine Stelle,
-  die entscheidet (MP: mp.host; Editor-Vorschau: „Vorschau als"). Beweis:
+  die entscheidet (MP: mp.host; Editor-Vorschau: „Vorschau als" = die Seite,
+  die BEGINNT). MP-TESTMODUS (M69): Die Editor-Vorschau eines Zwei-Spieler-
+  Levels lädt BEIDE Welten (`mpTest` in app.ts, eine Seite je Spieler mit
+  eigener Ebene, eigenem Respawn und eigenem Ping-Budget); 👥 im HUD oder
+  Taste „p" wechselt, die abgegebene Kugel liegt ohne Schwung still, ihre
+  Welt läuft weiter (`advanceGuards`/`advanceHoles` – sonst steht dieselbe
+  Patrouille für beide woanders). Der Ruhende IST der Partner im Bild
+  (dieselbe `buddy`-Darstellung wie im echten Spiel). Öffner wie im Spiel:
+  Platten für beide (die Nachricht 'plate' kennt keinen Modus), Schlüssel und
+  Zeitschalter nur im Coop – der Phantom-Partner „hält ALLE Platten" ist
+  damit weg. Coop gewinnt mit BEIDEN im Ziel, Race mit dem ersten.
+  `collectOpeners` (core/doors.ts) ist die EINE Sammelstelle über beliebig
+  viele Welten, `updateDoors`/`applyDoors` trennt Quellen und Ziele. Beweis:
   `pairReachable(def, coop)` – pro Spieler eigener Fixpunkt vom eigenen
   Start; im COOP zählt JEDER Öffner (Platte, Schlüssel, Zeitschalter), wenn
   einer der beiden ihn erreicht – das Spiel synchronisiert sie über die
