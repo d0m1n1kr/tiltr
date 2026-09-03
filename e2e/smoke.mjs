@@ -1387,6 +1387,7 @@ if (want("10")) {
       splashShown &&
         /^v\d+\.\d+\.\d+$/.test(splashVersion) &&
         splashCredit.includes("Dominik Rössler") &&
+        splashCredit.includes("Jonas Meides") &&
         splashCredit.includes("Claude"),
     );
 

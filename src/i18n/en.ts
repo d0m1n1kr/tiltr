@@ -480,7 +480,7 @@ export const en: Dict = {
   'upd.available': 'New version available',
   'upd.availableV': 'New version v{v} available',
   'upd.button': 'Update',
-  'splash.credit': 'A game by Dominik Rössler & Claude',
+  'splash.credit': 'A game by Dominik Rössler, Jonas Meides & Claude',
   'gallery.title': '🧩 Element Gallery',
 
   /* --- Element gallery --- */

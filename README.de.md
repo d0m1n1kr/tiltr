@@ -180,7 +180,7 @@ die Live-Seite.
 
 ---
 
-Ein Spiel von **Dominik Rössler & Claude**.
+Ein Spiel von **Dominik Rössler, Jonas Meides & Claude**.
 
 ## Lizenz
 

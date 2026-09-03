@@ -176,7 +176,7 @@ via the live page.
 
 ---
 
-A game by **Dominik Rössler & Claude**.
+A game by **Dominik Rössler, Jonas Meides & Claude**.
 
 ## License
 

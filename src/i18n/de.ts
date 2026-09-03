@@ -484,7 +484,7 @@ export const de = {
   'upd.available': 'Neue Version verfügbar',
   'upd.availableV': 'Neue Version v{v} verfügbar',
   'upd.button': 'Aktualisieren',
-  'splash.credit': 'Ein Spiel von Dominik Rössler & Claude',
+  'splash.credit': 'Ein Spiel von Dominik Rössler, Jonas Meides & Claude',
   'gallery.title': '🧩 Element-Galerie',
 
   /* --- Element-Galerie --- */
