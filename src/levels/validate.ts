@@ -294,15 +294,17 @@ export function coopReachable(
   }
 }
 
-/* --- Zwei Spieler (M57) ------------------------------------------------------
+/* --- Zwei Spieler (M57/M59) --------------------------------------------------
    Ein Multiplayer-Level aus dem Editor hat zwei Starts (start, start2) und
-   zwei Ziele (goal, goal2) – oder je eines für beide. Das Spiel gibt jedem
-   Spieler seine EIGENE Welt: Schlüssel und Zeitschlösser wirken nur lokal,
-   DRUCKPLATTEN aber für beide (app.ts mpFrame: held = lokal ODER fern). Das
-   Modell rechnet genau das: pro Spieler ein Öffner-Fixpunkt vom eigenen
-   Start, Platten zählen, wenn IRGENDEINER der beiden sie erreicht – im Coop.
-   Im Race hilft niemand: Platten zählen gar nicht (der eigene Ball kann nicht
-   auf der Platte stehen UND durch die Tür rollen). */
+   zwei Ziele (goal, goal2) – oder je eines für beide. Jeder Spieler hat seine
+   eigene Welt, aber im COOP zählt jeder Öffner für beide: Druckplatten (held
+   = lokal ODER fern), Schlüssel und Zeitschalter (app.ts synchronisiert sie
+   über 'key'/'switch', M59 – „ich hole den Schlüssel für deine Tür" ist die
+   Coop-Idee). Das Modell rechnet genau das: pro Spieler ein Fixpunkt vom
+   eigenen Start, ein Öffner gilt, wenn IRGENDEINER der beiden ihn erreicht.
+   Im Race hilft niemand: Schlüssel und Schalter wirken lokal, Platten zählen
+   gar nicht (der eigene Ball kann nicht auf der Platte stehen UND durch die
+   Tür rollen). */
 
 export interface PairReach {
   p1: Set<string>;
@@ -342,9 +344,9 @@ export function pairReachable(
       for (const [doorId, openers] of openersOf) {
         if (bannedDoors.has(doorId) || open[p]!.has(doorId)) continue;
         const usable = openers.filter((o) =>
-          o.plate
-            ? coop && (seen[0]!.has(cellKey(o.fl, o.cell)) || seen[1]!.has(cellKey(o.fl, o.cell)))
-            : seen[p]!.has(cellKey(o.fl, o.cell)),
+          coop
+            ? seen[0]!.has(cellKey(o.fl, o.cell)) || seen[1]!.has(cellKey(o.fl, o.cell))
+            : !o.plate && seen[p]!.has(cellKey(o.fl, o.cell)),
         );
         // Im Race sind Platten für die Tür schlicht nicht da – eine Tür NUR
         // mit Platten ist dort eine Wand ('all' zählt nur die Nicht-Platten).

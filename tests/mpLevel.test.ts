@@ -120,14 +120,33 @@ describe('Beweise (pairReachable)', () => {
     expect(pr.p2.has(cellKey(0, [3, 2]))).toBe(true);
   });
 
-  it('Schlüssel wirken nur lokal: der Schlüssel im Gang des Gasts hilft dem Host nicht', () => {
+  it('Coop (M59): der Schlüssel im Gang des Gasts öffnet die Tür des Hosts – im Race nicht', () => {
     const raw = level();
     (raw.floors[0] as { elements: unknown[] }).elements = [
       { type: 'door', id: 'g', edge: [[1, 0], 'e'] },
       { type: 'key', cell: [1, 2], opens: 'g' },
     ];
-    const pr = pairReachable(parseLevel(raw), true);
-    expect(pr.p1.has(cellKey(0, [3, 0]))).toBe(false);
+    const def = parseLevel(raw);
+    expect(pairReachable(def, true).p1.has(cellKey(0, [3, 0]))).toBe(true);
+    expect(pairReachable(def, false).p1.has(cellKey(0, [3, 0]))).toBe(false);
+  });
+
+  it('Coop über Kreuz: jeder holt den Schlüssel für die Tür des anderen', () => {
+    const raw = level();
+    (raw.floors[0] as { elements: unknown[] }).elements = [
+      { type: 'door', id: 'g1', edge: [[1, 0], 'e'] },
+      { type: 'key', cell: [0, 2], opens: 'g1' },
+      { type: 'door', id: 'g2', edge: [[1, 2], 'e'] },
+      { type: 'key', cell: [2, 0], opens: 'g2' },
+    ];
+    const checks = validateLevel(raw);
+    const map = new Map(checks.map((c) => [c.key, c]));
+    expect(map.get('coop')?.ok).toBe(true);
+    expect(map.get('openers')?.ok).toBe(true);
+    expect(map.get('softlock')?.ok).toBe(true);
+    expect(isShareable(checks)).toBe(true);
+    // Als Race wäre es unlösbar: keiner kommt an den fremden Schlüssel.
+    expect(validateLevel({ ...raw, mpMode: 'race' }).find((c) => c.key === 'race')?.ok).toBe(false);
   });
 
   it('pathSteps zählt Zellen über Ebenen, Infinity ohne Weg', () => {

@@ -612,6 +612,22 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M59 „Dein Schlüssel, meine Tür" ✓ (v3.1.2) – Coop-Öffner gelten für beide
+
+Erstes echtes Coop-Level aus der Werkstatt: Spieler 1 holt den Schlüssel für
+die Tür auf der Seite von Spieler 2 und umgekehrt – und das Badge sagte
+„Coop nicht lösbar". Zu Recht nach dem Modell von 3.1.0, das Schlüssel und
+Zeitschalter als LOKAL rechnete (so war das Spiel: jeder Client eine Welt,
+nur Druckplatten wurden über das Netz geteilt). Aber genau dieses Level ist
+die Coop-Idee. Jetzt gilt im Coop JEDER Öffner für beide: `key`/`switch`-
+Nachrichten setzen den Zustand in der Partner-Welt (Schlüssel eingesammelt,
+Schalter mit derselben Dauer, gehaltener Schalter alle 500 ms aufgefrischt),
+`updateDoors` liest ihn wie jeden lokalen Öffner. `pairReachable(def, true)`
+rechnet dasselbe: ein Öffner zählt, wenn EINER ihn erreicht. Im Race bleibt
+alles lokal, Platten zählen gar nicht. Units: Schlüssel über Kreuz ist im Coop
+grün und im Race rot; E2E Lauf 33: der Host holt unterwegs den Schlüssel für
+die Gast-Tür, beim Gast ist er eingesammelt (`__tiltrWorld.keysCollected`).
+
 ## M58 „Sechs Kacheln" ✓ (v3.1.1) – Spieler 2 als Eigenschaft von ● und ◎
 
 3.1.0 hängte für Zwei-Spieler-Level zwei Kacheln an die Werkzeugleiste

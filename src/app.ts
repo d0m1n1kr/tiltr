@@ -167,6 +167,10 @@ interface MpSession {
   localElapsed: number | null;
   localHolds: Set<string>;
   remoteHolds: Set<string>;
+  /** Coop (M59): Zeitschalter, die wir dem Partner zuletzt gemeldet haben
+   *  (Schlüssel `floor:index` → Zeitpunkt), damit ein gehaltener Schalter
+   *  gedrosselt nachgemeldet wird statt in jedem Frame. */
+  switchSyncAt: Map<string, number>;
   lastStateSent: number;
   disconnectedAt: number | null;
 }
@@ -1861,6 +1865,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
     localElapsed: null,
     localHolds: new Set(),
     remoteHolds: new Set(),
+    switchSyncAt: new Map(),
     lastStateSent: 0,
     disconnectedAt: null,
   };
@@ -1944,6 +1949,30 @@ function mpOnMessage(type: string, payload: unknown): void {
     const p = payload as { id: string; held: boolean };
     if (p.held) mp.remoteHolds.add(p.id);
     else mp.remoteHolds.delete(p.id);
+  } else if (type === 'key') {
+    // Coop (M59): Der Partner hat einen Schlüssel geholt – er zählt für
+    // beide (der Öffner-Zustand lebt in der Welt, updateDoors liest ihn).
+    const p = payload as { f: number; i: number };
+    const key = loaded?.floors[p.f]?.world.keys[p.i];
+    if (key && !key.collected) {
+      key.collected = true;
+      updateDoors(performance.now());
+      flash(t('mp.partnerKey'));
+    }
+  } else if (type === 'switch') {
+    // Coop (M59): Zeitschalter des Partners – läuft hier mit derselben Dauer.
+    const p = payload as { f: number; i: number; ms: number };
+    const sw = loaded?.floors[p.f]?.world.switches[p.i];
+    if (sw) {
+      const fresh = sw.openUntil === null || sw.openUntil <= performance.now();
+      sw.openUntil = performance.now() + p.ms;
+      if (fresh) {
+        sw.litFrom = 0;
+        sw.litUntil = performance.now() + 2000;
+        flash(t('mp.partnerSwitch'));
+      }
+      updateDoors(performance.now());
+    }
   } else if (type === 'finish') {
     const p = payload as { elapsed: number };
     if (!mp.remote.finished) flash(t('mp.partnerFinished'));
@@ -2441,6 +2470,10 @@ function frame(now: number): void {
         key.collected = true;
         audio.collectKey();
         haptics.checkpoint();
+        // Coop (M59): Schlüssel gelten für beide – dem Partner melden. Im Race
+        // nicht: dort hilft niemand (so rechnet auch der Beweis).
+        if (mp && mp.mode === 'coop' && mp.phase === 'playing')
+          mp.transport.send('key', { f: activeFloor, i: world.keys.indexOf(key) });
         // Ob die Tür damit aufgeht, entscheidet updateDoors (require any/all)
         // über ALLE Ebenen – das Lösbarkeits-Modell (coopReachable) ist
         // ebenenübergreifend, das Spiel muss dasselbe tun.
@@ -2557,6 +2590,15 @@ function frame(now: number): void {
       const on = Math.hypot(sw.x - world.ball.x, sw.y - world.ball.y) < sw.r + world.ball.r / 2;
       if (on) {
         sw.openUntil = now + sw.durationS * 1000;
+        // Coop (M59): der Partner bekommt denselben Timer – beim Druck sofort,
+        // beim Draufbleiben alle 500 ms aufgefrischt.
+        if (mp && mp.mode === 'coop' && mp.phase === 'playing') {
+          const k = `${activeFloor}:${world.switches.indexOf(sw)}`;
+          if (!sw.held || now - (mp.switchSyncAt.get(k) ?? -Infinity) > 500) {
+            mp.switchSyncAt.set(k, now);
+            mp.transport.send('switch', { f: activeFloor, i: world.switches.indexOf(sw), ms: sw.durationS * 1000 });
+          }
+        }
         if (!sw.held) {
           sw.held = true;
           sw.litFrom = 0;
@@ -2804,6 +2846,7 @@ function frame(now: number): void {
     asleep: world.guards.filter((g) => World.asleep(g)).length,
     mirrors: world.walls.filter((w) => w.mirror).length,
     forks: world.keys.filter((k) => k.voice === 'fork').length,
+    keysCollected: world.keys.filter((k) => k.collected).length,
     bright: bright(),
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,

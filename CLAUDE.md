@@ -217,9 +217,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Spieler (Kugel an seinem Start, Zielzone = sein Ziel, das andere Ziel ist
   für ihn nicht da); Default 1, `playerRole()` in app.ts ist die eine Stelle,
   die entscheidet (MP: mp.host; Editor-Vorschau: „Vorschau als"). Beweis:
-  `pairReachable(def, coop)` – pro Spieler eigener Öffner-Fixpunkt vom
-  eigenen Start, PLATTEN zählen im Coop, wenn einer sie erreicht, im Race gar
-  nicht (Schlüssel wirken nur lokal – so tut es auch das Spiel). Badges
+  `pairReachable(def, coop)` – pro Spieler eigener Fixpunkt vom eigenen
+  Start; im COOP zählt JEDER Öffner (Platte, Schlüssel, Zeitschalter), wenn
+  einer der beiden ihn erreicht – das Spiel synchronisiert sie über die
+  Nachrichten `plate`/`key`/`switch` (M59: „ich hole den Schlüssel für deine
+  Tür" ist die Coop-Idee); im RACE wirken Schlüssel/Schalter lokal, Platten
+  zählen gar nicht. Neue Öffner-Arten IMMER an beiden Stellen (Sync in
+  app.ts UND pairReachable) eintragen. Badges
   `coop`/`race` ERSETZEN `goal` bei zwei Spielern (bei 'any' beide Pflicht),
   `fair` ist weich (`SOFT_CHECKS`, wie `items`). KEINE EIGENEN KACHELN für
   Start 2/Ziel 2 (M58): Die Werkzeugleiste hat SECHS Kacheln, mehr sind auf

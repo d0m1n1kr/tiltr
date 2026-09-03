@@ -5849,7 +5849,9 @@ if (want("32")) {
 }
 
 // --- Lauf 33: Multiplayer-Level aus dem Editor (M57). Ein Zwei-Spieler-Level
-// (Start 2 auf einer Druckplatte, Ziel 2, Tür für Spieler 1) wird importiert:
+// (Start 2 auf einer Druckplatte, Ziel 2, Tür für Spieler 1, und ein Schlüssel
+// im Gang des Hosts für die Tür des Gasts – Coop-Öffner gelten für beide, M59)
+// wird importiert:
 // Badges „Coop lösbar" statt „Ziel erreichbar", Werkzeuge ●²/◎² und die
 // Platte in der Palette. „👥 Zu zweit" hebt es in die Lobby (Modus fest),
 // der Gast (eigener Kontext, eigener localStorage) bekommt die Def über
@@ -5884,6 +5886,8 @@ if (want("33")) {
           elements: [
             { type: "door", id: "g", edge: [[1, 0], "e"] },
             { type: "plate", cell: [0, 2], opens: "g" },
+            { type: "door", id: "k", edge: [[1, 2], "e"] },
+            { type: "key", cell: [2, 0], opens: "k" },
           ],
           start: [0, 0],
           goal: [3, 0],
@@ -6041,6 +6045,13 @@ if (want("33")) {
     // Jeder rollt in SEIN Ziel: Host durch die offene Tür nach rechts, Gast unten.
     const finA = await holdUntil(pageA, "ArrowRight", () => pageA.evaluate(() => window.__tiltrMp?.localFinished === true), 8000);
     check(`Host erreicht Ziel 1 durch die Tür (${finA})`, finA === true);
+    // Der Host hat unterwegs den Schlüssel für die Gast-Tür geholt – der
+    // Schlüssel gilt für beide (M59): beim Gast ist er eingesammelt, die Tür offen.
+    const keyAtB = await until(async () => {
+      const k = await pageB.evaluate(() => window.__tiltrWorld?.keysCollected);
+      return k === 1 ? k : null;
+    }, { timeout: 3000 });
+    check(`Coop-Schlüssel des Hosts zählt beim Gast (keysCollected=${keyAtB})`, keyAtB === 1);
     const finB = await holdUntil(pageB, "ArrowRight", () => pageB.evaluate(() => window.__tiltrMp?.localFinished === true), 8000);
     check(`Gast erreicht Ziel 2 (${finB})`, finB === true);
     await until(
