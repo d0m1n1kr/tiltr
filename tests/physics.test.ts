@@ -63,7 +63,7 @@ describe('Wächter', () => {
     world.guards.push({
       x: 50, y: 50, r: 26, speed: 100,
       waypoints: [{ x: 50, y: 50 }, { x: 250, y: 50 }],
-      target: 1, dir: 1,
+      target: 1, dir: 1, waitLeft: 0,
     });
     const g = world.guards[0]!;
     for (let i = 0; i < 60; i++) world.step(1 / 60, { x: 0, y: 0 }); // 1 s -> 100 px
@@ -78,7 +78,7 @@ describe('Wächter', () => {
     const world = new World([], new Ball(100, 50, 22), { x: 900, y: 900, r: 30 });
     world.guards.push({
       x: 300, y: 50, r: 26, speed: 0,
-      waypoints: [{ x: 300, y: 50 }], target: 0, dir: 1,
+      waypoints: [{ x: 300, y: 50 }], target: 0, dir: 1, waitLeft: 0,
     });
     expect(world.guardCaught()).toBeNull();
     world.ball.x = 260;
@@ -248,5 +248,47 @@ describe('Windzonen', () => {
     world.windZones = [{ x: 100, y: 100, w: 100, h: 100, fx: 1150, fy: 0 }];
     world.step(0.1, { x: 0, y: 0 });
     expect(Math.abs(world.ball.vx)).toBeLessThan(1);
+  });
+});
+
+// M72: Pause je Wegpunkt – der Wächter hält dort an, statt durchzulaufen.
+describe('Wächter-Pause', () => {
+  const mk = (pause: number) => {
+    const world = new World([], new Ball(900, 900, 22), { x: 1500, y: 1500, r: 30 });
+    world.guards.push({
+      x: 50, y: 50, r: 26, speed: 100,
+      waypoints: [{ x: 50, y: 50 }, { x: 150, y: 50, pause }],
+      target: 1, dir: 1, waitLeft: 0,
+    });
+    return { world, g: world.guards[0]! };
+  };
+  const run = (world: World, seconds: number) => {
+    for (let i = 0; i < Math.round(seconds * 60); i++) world.advanceGuards(1 / 60);
+  };
+
+  it('ohne Pause läuft er sofort zurück', () => {
+    const { world, g } = mk(0);
+    run(world, 1.5); // 1 s bis zum Wegpunkt, dann 0,5 s zurück
+    expect(g.x).toBeCloseTo(100, 0);
+    expect(g.dir).toBe(-1);
+  });
+  it('mit Pause bleibt er am Wegpunkt stehen und läuft danach weiter', () => {
+    const { world, g } = mk(2);
+    run(world, 1.5); // nach 1 s am Wegpunkt, dann 0,5 s Pause
+    expect(g.x).toBeCloseTo(150, 0);
+    expect(g.waitLeft).toBeGreaterThan(0);
+    run(world, 0.9); // Pause noch nicht ganz um (2 s ab t=1 s)
+    expect(g.x).toBeCloseTo(150, 0);
+    run(world, 1); // Pause vorbei -> zurück auf dem Weg
+    expect(g.x).toBeLessThan(120);
+    expect(g.dir).toBe(-1);
+    expect(g.waitLeft).toBe(0);
+  });
+  it('ein Schläfer wartet nicht, er schläft (waitLeft bleibt 0)', () => {
+    const { world, g } = mk(3);
+    g.sleeper = { wakeRadius: 200, awakeS: 5, awakeLeft: 0 };
+    run(world, 2);
+    expect(g.waitLeft).toBe(0);
+    expect(g.x).toBeCloseTo(50, 0); // heim zu Wegpunkt 0
   });
 });

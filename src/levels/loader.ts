@@ -220,7 +220,7 @@ export function loadLevel(defOrData: LevelDef | unknown, opts: LoadOptions = {})
 
     const world = new World(walls, ball, goal);
     const elements = opts.allTransporters ? floor.elements : floor.elements.filter((el) => elementForPlayer(el, player));
-    buildElements(elements, { world, cell: CELL, cols, rows, floorIndex });
+    buildElements(elements, { world, cell: CELL, cols, rows, floorIndex, player });
     floors.push({ world, cols, rows, bright: floor.bright, dusk: floor.dusk });
   });
 

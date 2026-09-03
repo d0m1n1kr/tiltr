@@ -98,11 +98,14 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: Level
         setWall(cells, cols, rows, x, y, dir, false);
     }
   }
-  if (!cfg.doorsOpen) {
-    for (const el of floor.elements) {
-      if (el.type === 'door' && !cfg.openDoorIds?.has(el.id))
-        setWall(cells, cols, rows, el.edge[0][0], el.edge[0][1], el.edge[1], true);
-    }
+  for (const el of floor.elements) {
+    if (el.type !== 'door') continue;
+    // Tür nur für EINEN Spieler (M72): Für den anderen ist sie eine WAND – in
+    // JEDEM Modell, auch mit doorsOpen. Ohne `cfg.player` (Solo-Modell) gilt
+    // sie für alle, wie bisher.
+    const mine = cfg.player === undefined || el.player === undefined || el.player === cfg.player;
+    const closed = !mine || (!cfg.doorsOpen && !cfg.openDoorIds?.has(el.id));
+    if (closed) setWall(cells, cols, rows, el.edge[0][0], el.edge[0][1], el.edge[1], true);
   }
   return cells;
 }

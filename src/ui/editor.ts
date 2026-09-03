@@ -473,6 +473,10 @@ export function setupEditor(opts: {
   let pendingLink: { floor: number; index: number } | null = null;
   /** 🔗 Umverlegen: Transporter wartet auf sein neues Ziel (Ebenenwechsel erlaubt). */
   let pendingRetarget: { floor: number; index: number } | null = null;
+  /** ＋ Wegpunkt (M72): Wächter/Wanderloch wartet auf die nächste Zelle seiner
+   *  Bahn. Wie beim Setzen muss der Abschnitt achsenparallel sein – ein
+   *  diagonaler Wächter liefe durch Wände. */
+  let pendingWaypoint: { floor: number; index: number } | null = null;
   let view = { scale: 1, ox: 0, oy: 0 }; // Canvas-Pixel pro Welteinheit + Offset
   let checks: CheckResult[] = [];
   let validateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -818,6 +822,7 @@ export function setupEditor(opts: {
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
       selEdge,
       highlight,
+      pendingWaypoint,
       testStart,
       players: draft.players ?? 1,
       testPlayer,
@@ -1087,7 +1092,26 @@ export function setupEditor(opts: {
       } else if (sel.cell) {
         overlay.strokeRect(tx(sel.cell[0] * CELL), ty(sel.cell[1] * CELL), CELL * s, CELL * s);
       } else if (sel.patrol?.length) {
+        // Bahn des gewählten Wächters: Zellen, Verbindungslinie, Nummern und
+        // ⏸ wo gewartet wird – ab drei Punkten sonst nicht lesbar.
         for (const p of sel.patrol) overlay.strokeRect(tx(p[0] * CELL), ty(p[1] * CELL), CELL * s, CELL * s);
+        const mid = (p: [number, number]): [number, number] => [tx((p[0] + 0.5) * CELL), ty((p[1] + 0.5) * CELL)];
+        overlay.beginPath();
+        (sel.patrol as Array<[number, number]>).forEach((p, i) => {
+          const [mx, my] = mid(p);
+          if (i === 0) overlay.moveTo(mx, my);
+          else overlay.lineTo(mx, my);
+        });
+        overlay.stroke();
+        overlay.font = `600 ${11 * dpr}px system-ui, sans-serif`;
+        overlay.textAlign = 'center';
+        overlay.fillStyle = overlay.strokeStyle;
+        const pauses = (sel.pause as number[] | undefined) ?? [];
+        (sel.patrol as Array<[number, number]>).forEach((p, i) => {
+          const [mx, my] = mid(p);
+          const wait = pauses[i] ?? 0;
+          overlay.fillText(`${i + 1}${wait > 0 ? ` ⏸${wait}s` : ''}`, mx, my - 0.28 * CELL * s);
+        });
       }
     }
 
@@ -1103,6 +1127,20 @@ export function setupEditor(opts: {
         CELL * s,
       );
       overlay.setLineDash([]);
+    }
+
+    // ＋ Wegpunkt wartet: letzte Zelle der Bahn markieren, damit klar ist,
+    // wohin der nächste Abschnitt zeigt.
+    if (pendingWaypoint && pendingWaypoint.floor === activeFloor) {
+      const pat = (draft?.floors[pendingWaypoint.floor]?.elements[pendingWaypoint.index]?.patrol ?? []) as Array<[number, number]>;
+      const last = pat[pat.length - 1];
+      if (last) {
+        overlay.strokeStyle = `rgba(${WORLD.guard}, 0.9)`;
+        overlay.lineWidth = 2 * dpr;
+        overlay.setLineDash([4 * dpr, 4 * dpr]);
+        overlay.strokeRect(tx(last[0] * CELL), ty(last[1] * CELL), CELL * s, CELL * s);
+        overlay.setLineDash([]);
+      }
     }
 
     // Wächter-Platzierung: erster Wegpunkt wartet auf den zweiten
@@ -1126,6 +1164,13 @@ export function setupEditor(opts: {
     const target = pickTarget(wx, wy, cols, rows, wantsEdge);
     if (!target) return;
 
+    // ＋ Wegpunkt wartet: Der Tap verlängert die Bahn statt etwas zu setzen.
+    if (pendingWaypoint) {
+      waypointTap(target);
+      rebuild();
+      renderProps();
+      return;
+    }
     // 🔗-Modi fangen den Tap ab: Verknüpfen/Umverlegen statt Werkzeug-Aktion.
     if (pendingLink) {
       linkTap(target);
@@ -1377,6 +1422,7 @@ export function setupEditor(opts: {
     paletteEl.replaceChildren();
     const clearPendings = (): void => {
       pendingGuard = null;
+      pendingWaypoint = null;
       pendingTransporter = null;
       pendingLink = null;
       pendingRetarget = null;
@@ -1488,6 +1534,35 @@ export function setupEditor(opts: {
   }
 
   /* --- Eigenschaften ---------------------------------------------------------- */
+
+  /** Pause an Wegpunkt `i` setzen. Die parallele Liste wird nur geführt,
+   *  solange irgendwo gewartet wird – sonst fällt sie weg und die Def bleibt
+   *  so schlank wie vorher. */
+  function setPause(el: RawEl, i: number, v: number): void {
+    const list = [...(((el.pause as number[] | undefined) ?? []) as number[])];
+    while (list.length < (el.patrol?.length ?? 0)) list.push(0);
+    list[i] = v;
+    if (list.some((p) => p > 0)) el.pause = list;
+    else delete el.pause;
+  }
+
+  /** Tap nach „＋ Wegpunkt": Zelle prüfen und an die Bahn hängen. */
+  function waypointTap(target: NonNullable<ReturnType<typeof pickTarget>>): void {
+    const pending = pendingWaypoint!;
+    pendingWaypoint = null;
+    if (pending.floor !== activeFloor) return flash(t('ed.wpFloor'), true);
+    if (target.kind !== 'cell') return flash(t('ed.wpBad'), true);
+    const el = draft!.floors[pending.floor]!.elements[pending.index];
+    const pat = el?.patrol as Array<[number, number]> | undefined;
+    if (!el || !pat?.length) return;
+    const [lx, ly] = pat[pat.length - 1]!;
+    const [cx, cy] = target.cell!;
+    if ((lx === cx) === (ly === cy)) return flash(t('ed.guardBad'), true); // gleiche Zelle oder diagonal
+    if (!cellFree(target.cell!)) return flash(t('ed.cellTaken'), true);
+    pat.push([cx, cy]);
+    setPause(el, pat.length - 1, ((el.pause as number[] | undefined) ?? [])[pat.length - 1] ?? 0);
+    flash('');
+  }
 
   function field(label: string, input: HTMLElement): HTMLElement {
     const wrap = document.createElement('div');
@@ -1766,6 +1841,50 @@ export function setupEditor(opts: {
         if (el.ringS === undefined) el.ringS = 4;
         num(t('ed.f.ringS'), 'ringS', 1, 12, 0.5);
       }
+      if (el.type === 'guard' || el.type === 'roamingHole') {
+        // Wegpunkte (M72): beliebig viele, mit Pause je Punkt. Die Liste zeigt
+        // die Reihenfolge (Ping-Pong) und wo gewartet wird; ＋ hängt einen
+        // Punkt an (nächster Tap), − nimmt den letzten weg (zwei bleiben –
+        // ohne zwei Punkte gibt es keine Bahn).
+        const pat = (el.patrol ?? []) as Array<[number, number]>;
+        const pauses = (el.pause as number[] | undefined) ?? [];
+        propsEl.append(scopeHead(t('ed.f.waypoints', { n: pat.length })));
+        pat.forEach((c, i) => {
+          const inp = numInput(pauses[i] ?? 0, 0, 30, 0.5, (v) => {
+            setPause(el, i, v);
+            rebuild();
+            paint();
+          });
+          inp.id = `edPause${i}`;
+          propsEl.append(field(t('ed.f.pauseAt', { n: i + 1, x: c[0], y: c[1] }), inp));
+        });
+        const row = document.createElement('div');
+        row.className = 'ed-row';
+        const add = document.createElement('button');
+        add.className = 'btn btn-soft';
+        add.id = 'edWpAdd';
+        add.textContent = t('ed.wpAdd');
+        add.addEventListener('click', () => {
+          pendingWaypoint = { floor: activeFloor, index: selected };
+          flash(t('ed.wpNext'));
+          paint();
+        });
+        const drop = document.createElement('button');
+        drop.className = 'btn btn-ghost';
+        drop.id = 'edWpDrop';
+        drop.textContent = t('ed.wpDrop');
+        drop.addEventListener('click', () => {
+          if (pat.length <= 2) return flash(t('ed.wpMin'), true);
+          pat.pop();
+          if (Array.isArray(el.pause)) (el.pause as number[]).length = pat.length;
+          if (Array.isArray(el.pause) && !(el.pause as number[]).some((v) => v > 0)) delete el.pause;
+          rebuild();
+          renderProps();
+          paint();
+        });
+        row.append(add, drop);
+        propsEl.append(row);
+      }
       if (el.type === 'guard') {
         // Schläfer (M45): Variante des Wächters – schläft, bis ein Ping ihn weckt.
         const sleeper = el.sleeper as { wakeRadius?: number; awakeS?: number } | undefined;
@@ -1843,6 +1962,28 @@ export function setupEditor(opts: {
         });
         req.id = 'edDoorRequire';
         propsEl.append(field(t('ed.f.require'), req));
+        // Tür nur für einen Spieler (M72). Für den anderen ist sie eine WAND –
+        // das steht als Hinweis dabei, sonst sucht er später den Öffner.
+        if (twoPlayers()) {
+          const who = selectInput(String(el.player ?? 'both'), [
+            ['both', t('ed.tp.both')],
+            ['1', t('ed.tp.p1')],
+            ['2', t('ed.tp.p2')],
+          ], (v) => {
+            if (v === 'both') delete el.player;
+            else el.player = Number(v);
+            rebuild();
+            paint();
+          });
+          who.id = 'edDoorPlayer';
+          propsEl.append(field(t('ed.f.doorPlayer'), who));
+          if (el.player !== undefined) {
+            const hint = document.createElement('p');
+            hint.className = 'menu-meta';
+            hint.textContent = t('ed.doorPlayerHint');
+            propsEl.append(hint);
+          }
+        }
       }
       if (el.type === 'transporter') {
         const tg = el.target as { floor: number; cell: [number, number] } | undefined;
@@ -2332,6 +2473,7 @@ export function setupEditor(opts: {
       selected = -1;
       selEdge = null;
       pendingGuard = null;
+      pendingWaypoint = null;
       pendingTransporter = null;
       pendingLink = null;
       pendingRetarget = null;

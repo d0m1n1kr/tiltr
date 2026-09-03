@@ -26,7 +26,12 @@ registerElement<DoorDef>({
     );
     if (blocked) throw new Error(`Tür ${def.id}: Kante (${x},${y},${dir}) ist im Maze nicht offen`);
 
-    ctx.world.walls.push({ ...rect, door: { id: def.id, require: def.require } });
+    // Tür nur für EINEN Spieler (M72): Für den anderen ist sie eine reine
+    // WAND – ohne `door`-Eigenschaft, damit updateDoors sie nie anfasst. Sie
+    // klingt und leuchtet dann auch wie eine Wand: Eine Tür, die für mich nie
+    // aufgeht, ist keine Tür, sondern das Ende des Gangs.
+    const mine = def.player === undefined || def.player === ctx.player;
+    ctx.world.walls.push(mine ? { ...rect, door: { id: def.id, require: def.require } } : { ...rect });
   },
 
   gallery: {

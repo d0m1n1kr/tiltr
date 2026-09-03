@@ -3122,8 +3122,10 @@ function frame(now: number): void {
     mirrors: world.walls.filter((w) => w.mirror).length,
     forks: world.keys.filter((k) => k.voice === 'fork').length,
     keysCollected: world.keys.filter((k) => k.collected).length,
-    // Offene Türen dieser Ebene (E2E: „im Testmodus sind Türen NICHT immer
-    // offen" – eine Platte hält nur, solange wirklich jemand darauf steht).
+    // Türen dieser Ebene: wie viele es FÜR MICH gibt (M72: eine Tür für den
+    // anderen Spieler ist hier eine Wand) und welche gerade offen sind (M71:
+    // eine Platte hält nur, solange wirklich jemand darauf steht).
+    doors: world.walls.filter((w) => w.door !== undefined).length,
     doorsOpen: world.walls.filter((w) => w.door?.open === true).map((w) => w.door!.id),
     transporters: world.transporters.length,
     torches: world.torches.length,

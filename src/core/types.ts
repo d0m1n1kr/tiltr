@@ -130,9 +130,12 @@ export interface Guard {
   y: number;
   r: number;
   speed: number;
-  waypoints: Array<{ x: number; y: number }>;
+  /** Wegpunkte mit optionaler Pause (Sekunden), die dort gewartet wird (M72) */
+  waypoints: Array<{ x: number; y: number; pause?: number }>;
   /** Index des Wegpunkts, auf den sich der Wächter zubewegt */
   target: number;
+  /** Restliche Wartezeit am gerade erreichten Wegpunkt (M72) */
+  waitLeft: number;
   /** Laufrichtung durch die Wegpunktliste (Ping-Pong) */
   dir: 1 | -1;
   /** Schläfer (M45): steht schlafend auf Wegpunkt 0. Ein Echo-Ping in

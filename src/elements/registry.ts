@@ -13,6 +13,9 @@ export interface BuildContext {
   rows: number;
   /** Index der Ebene, in die gebaut wird (0 = Start-Ebene) */
   floorIndex: number;
+  /** Für WEN gebaut wird (M57/M72). Elemente, die sich je Spieler anders
+   *  verhalten, fragen hier – nicht am Loader vorbei. */
+  player: 1 | 2;
 }
 
 export interface GalleryEntry {

@@ -9,7 +9,8 @@ registerElement<GuardDef>({
   type: 'guard',
 
   build(def, ctx) {
-    const waypoints = def.patrol.map((c) => cellCenter(c, ctx.cell));
+    // Pause je Wegpunkt (M72): parallele Liste in der Def, hier am Wegpunkt.
+    const waypoints = def.patrol.map((c, i) => ({ ...cellCenter(c, ctx.cell), pause: def.pause?.[i] ?? 0 }));
     ctx.world.guards.push({
       x: waypoints[0]!.x,
       y: waypoints[0]!.y,
@@ -18,6 +19,7 @@ registerElement<GuardDef>({
       waypoints,
       target: waypoints.length > 1 ? 1 : 0,
       dir: 1,
+      waitLeft: 0,
       // Schläfer (M45): beginnt schlafend (awakeLeft 0) auf Wegpunkt 0.
       sleeper: def.sleeper ? { wakeRadius: def.sleeper.wakeRadius, awakeS: def.sleeper.awakeS, awakeLeft: 0 } : undefined,
     });

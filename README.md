@@ -124,8 +124,8 @@ expose it). On desktop: arrow keys/WASD roll, Space pings.
 | Wind zone / current | wind pushes, audible as gusts; a current pushes harder than you can tilt — a one-way street |
 | Checkpoint | respawn point plus one echo ping; transporter landings respawn too |
 | Echo ping | a wavefront reveals the surroundings; reflections return delayed and placed in space; limited per level, refilled by echo crystals |
-| Guard / sleeper | patrols with a pulsing hum; touch sends you back. A sleeper snores on its post until your ping wakes it |
-| Key & door | the key jingles within earshot; a tuning-fork key hums an ungpanned tone you locate by pitch. Doors take one or all of their openers |
+| Guard / sleeper | patrols a route of any length with a pulsing hum, pausing at waypoints you set; touch sends you back. A sleeper snores on its post until your ping wakes it |
+| Key & door | the key jingles within earshot; a tuning-fork key hums an ungpanned tone you locate by pitch. Doors take one or all of their openers, and can be restricted to one player — for the other one it is simply a wall |
 | Pressure plate | held, it opens the linked door — by you, your partner or a boulder |
 | Time-lock switch | opens its door for a few seconds with a tick-tock that turns frantic |
 | Sliding wall | grinds open and shut to a beat, warning tick before it closes |

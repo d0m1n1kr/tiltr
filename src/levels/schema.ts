@@ -51,6 +51,12 @@ export const guardDef = z.object({
   type: z.literal('guard'),
   /** Wegpunkte (Zellen), werden im Ping-Pong abgelaufen */
   patrol: z.array(cellCoord).min(2),
+  /** Pause JE WEGPUNKT in Sekunden (M72), Index = Wegpunkt; fehlend oder 0 =
+   *  keine Pause. Parallele Liste statt Objekt-Wegpunkte, damit jede
+   *  bestehende Def unverändert weiterlädt. Eine Pause ändert nur das
+   *  TIMING – der Riegel-Beweis (guardsProof) bleibt davon unberührt, weil er
+   *  ohnehin annimmt, der Wächter könne überall auf seiner Bahn stehen. */
+  pause: z.array(z.number().min(0).max(30)).optional(),
   /** px/s */
   speed: z.number().positive().default(90),
   r: z.number().positive().default(26),
@@ -93,6 +99,10 @@ export const doorDef = z.object({
   /** Mehrere Öffner (Schlüssel, Zeitschloss, Platte): 'any' = einer genügt,
    *  'all' = alle müssen gleichzeitig erfüllt sein (core/doors.ts). */
   require: z.enum(['any', 'all']).default('any'),
+  /** Tür nur für EINEN Spieler (M72, wie transporter.player): Für den anderen
+   *  ist sie eine WAND, die nie aufgeht – im Spiel wie im Beweis. Ohne Angabe
+   *  gilt sie für beide. Nur in Zwei-Spieler-Leveln sinnvoll. */
+  player: z.union([z.literal(1), z.literal(2)]).optional(),
 });
 
 export const gemDef = z.object({

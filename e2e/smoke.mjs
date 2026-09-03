@@ -89,6 +89,7 @@ const KNOWN_RUNS = [
   "35",
   "36",
   "37",
+  "38",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -6719,6 +6720,169 @@ if (want("37")) {
   } catch (e) {
     check(
       `Lauf 37 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 38: Tür je Spieler und Wächter-Bahn (M72). Ein Coop-Level mit einer
+// Tür, die NUR Spieler 1 passieren darf, und einem Wächter mit zwei
+// Wegpunkten. Geprüft: das Editor-Feld „Tür für" (samt Hinweis, dass es für
+// den anderen eine Wand ist), die Wegpunkt-Liste mit Pause je Punkt,
+// ＋ Wegpunkt (gerade Linie – diagonal wird abgelehnt), − letzter, und im
+// Testmodus: Spieler 1 hat die Tür, Spieler 2 eine Wand. ---
+if (want("38")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveRow = (y) => [0, 1, 2].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m72",
+      name: "Meine Tür",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 9, carve: [...carveRow(0), ...carveRow(1), ...carveRow(2)], add: [...sealRow(0)] },
+          elements: [
+            { type: "door", id: "tor1", edge: [[1, 0], "e"], player: 1 },
+            { type: "key", cell: [1, 0], opens: "tor1" },
+            { type: "guard", patrol: [[1, 2], [3, 2]], speed: 85 },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 1],
+          goal2: [3, 1],
+          bright: true,
+        },
+      ],
+    };
+    const cellPoint = (page, cx, cy) =>
+      page.evaluate(
+        ([x, y]) => {
+          const ed = window.__tiltrEd;
+          const box = document.getElementById("edCanvas").getBoundingClientRect();
+          return {
+            x: box.left + (ed.ox + (x + 0.5) * 100 * ed.scale) / ed.dpr,
+            y: box.top + (ed.oy + (y + 0.5) * 100 * ed.scale) / ed.dpr,
+          };
+        },
+        [cx, cy],
+      );
+
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+
+    // Tür auswählen: Feld „Tür für" zeigt Spieler 1 + Hinweis „ist eine Wand".
+    await page.click("#edTool-select");
+    const doorPt = await page.evaluate(() => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById("edCanvas").getBoundingClientRect();
+      return { x: box.left + (ed.ox + 200 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 50 * ed.scale) / ed.dpr };
+    });
+    await page.mouse.click(doorPt.x, doorPt.y);
+    const doorField = await until(async () =>
+      (await page.evaluate(() => ({
+        value: document.getElementById("edDoorPlayer")?.value ?? null,
+        hint: [...document.querySelectorAll("#edProps .menu-meta")].map((p) => p.textContent).join(" "),
+      }))).value !== null
+        ? await page.evaluate(() => ({
+            value: document.getElementById("edDoorPlayer")?.value,
+            hint: [...document.querySelectorAll("#edProps .menu-meta")].map((p) => p.textContent).join(" "),
+          }))
+        : null,
+    { timeout: 4000 });
+    check(
+      `Editor: Feld „Tür für" zeigt Spieler 1 und sagt, dass es für den anderen eine Wand ist (${JSON.stringify(doorField)})`,
+      doorField?.value === "1" && /Wand/.test(doorField?.hint ?? ""),
+    );
+
+    // Wächter auswählen: Bahn-Liste mit Pause je Wegpunkt.
+    const gp = await cellPoint(page, 1, 2);
+    await page.mouse.click(gp.x, gp.y);
+    const wp = await until(async () => {
+      const x = await page.evaluate(() => ({
+        p0: document.getElementById("edPause0") !== null,
+        p1: document.getElementById("edPause1") !== null,
+        p2: document.getElementById("edPause2") !== null,
+        add: document.getElementById("edWpAdd") !== null,
+      }));
+      return x.p0 && x.p1 ? x : null;
+    }, { timeout: 4000 });
+    check(`Wächter: Bahn mit zwei Wegpunkten, je ein Pausenfeld, ＋ Wegpunkt da (${JSON.stringify(wp)})`, wp !== null && wp.p2 === false && wp.add);
+
+    // Pause am zweiten Wegpunkt: 2 s landen in der Def.
+    await page.fill("#edPause1", "2");
+    await page.locator("#edPause1").dispatchEvent("change");
+    const paused = await until(async () => {
+      const p = await page.evaluate(() => window.__tiltrEd?.def.floors[0].elements.find((e) => e.type === "guard")?.pause);
+      return p && p[1] === 2 ? p : null;
+    }, { timeout: 4000 });
+    check(`Pause am Wegpunkt landet in der Def (${JSON.stringify(paused)})`, paused !== null);
+
+    // ＋ Wegpunkt: diagonal wird abgelehnt, gerade angenommen.
+    await page.click("#edWpAdd");
+    const diag = await cellPoint(page, 2, 1);
+    await page.mouse.click(diag.x, diag.y);
+    const afterDiag = await page.evaluate(() => ({
+      n: window.__tiltrEd?.def.floors[0].elements.find((e) => e.type === "guard")?.patrol.length,
+      status: document.getElementById("edStatus")?.textContent ?? "",
+    }));
+    await page.click("#edWpAdd");
+    const straight = await cellPoint(page, 0, 2);
+    await page.mouse.click(straight.x, straight.y);
+    const afterStraight = await until(async () => {
+      const p = await page.evaluate(() => window.__tiltrEd?.def.floors[0].elements.find((e) => e.type === "guard")?.patrol);
+      return p && p.length === 3 ? p : null;
+    }, { timeout: 4000 });
+    check(
+      `＋ Wegpunkt: diagonal abgelehnt (${afterDiag.n} Punkte, „${afterDiag.status.slice(0, 40)}"), gerade angenommen (${JSON.stringify(afterStraight)})`,
+      afterDiag.n === 2 && /gerade/.test(afterDiag.status) && afterStraight !== null,
+    );
+
+    // − letzter: zurück auf zwei Punkte, Pausenliste bleibt passend.
+    await page.click("#edWpDrop");
+    const dropped = await until(async () => {
+      const g = await page.evaluate(() => window.__tiltrEd?.def.floors[0].elements.find((e) => e.type === "guard"));
+      return g?.patrol.length === 2 ? g : null;
+    }, { timeout: 4000 });
+    check(
+      `− letzter nimmt den Wegpunkt weg, Pausen bleiben passend (${JSON.stringify(dropped?.patrol)}, Pausen ${JSON.stringify(dropped?.pause)})`,
+      dropped !== null && (dropped.pause?.length ?? 0) <= 2,
+    );
+
+    // Testmodus: Spieler 1 hat die Tür, für Spieler 2 ist sie eine Wand.
+    await page.click("#edTest");
+    await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(async () =>
+      (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+    const asP1 = await page.evaluate(() => ({ player: window.__tiltrMpTest?.player, doors: window.__tiltrWorld?.doors }));
+    await page.click("#swapBtn");
+    const asP2 = await until(async () => {
+      const x = await page.evaluate(() => ({ player: window.__tiltrMpTest?.player, doors: window.__tiltrWorld?.doors }));
+      return x.player === 2 ? x : null;
+    }, { timeout: 4000 });
+    check(
+      `Testmodus: Spieler 1 sieht die Tür, Spieler 2 nur eine Wand (${JSON.stringify(asP1)} → ${JSON.stringify(asP2)})`,
+      asP1.player === 1 && asP1.doors === 1 && asP2?.doors === 0,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 38 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

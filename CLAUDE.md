@@ -122,6 +122,18 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Ein-Zellen-Korridor NICHT vorbei, also werden Patrouillen abschnittsweise
   gequert – nur solange eine Patrouillenzelle für den Wächter frei bleibt.
   Neue Level mit Wächtern brauchen Ausweichbuchten oder Quer-Passagen.
+  TÜR NUR FÜR EINEN SPIELER (M72): `door.player` 1|2 – für den anderen ist sie
+  eine WAND, überall gleich: Das Element baut sie ohne `door`-Eigenschaft
+  (`ctx.player` im BuildContext), `buildFloorCells` mauert die Kante in JEDEM
+  Modell zu (auch mit `doorsOpen`). Sie klingt dann auch wie eine Wand – eine
+  Tür, die nie aufgeht, wäre ein Versprechen, das das Level nicht hält.
+  WÄCHTER-BAHN (M72): beliebig viele Wegpunkte plus `guard.pause` (parallele
+  Liste, Index = Wegpunkt, Sekunden). `Guard.waitLeft` wird VOR der Bewegung
+  abgezogen, der Rest des Schritts verfällt; ein Schläfer wartet nicht.
+  `guardsProof` bleibt unberührt – er nimmt an, der Wächter stehe überall auf
+  seiner Bahn, eine Pause ändert nur das Timing. Editor: Pausenfeld je
+  Wegpunkt, ＋/− für die Bahn, achsenparallel erzwungen (diagonal liefe durch
+  Wände).
   TÜREN MIT MEHREREN ÖFFNERN (M41): `door.require` 'any' | 'all'. Die EINE
   Türregel wohnt in `core/doors.ts` (`doorState`), im Spiel ruft NUR
   `updateDoors(now)` in app.ts sie – Schlüssel, Zeitschloss und MP-Platten

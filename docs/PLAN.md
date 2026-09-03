@@ -612,6 +612,37 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M72 „Meine Tür, meine Runde" ✓ (v3.6.0) – Tür je Spieler, Bahn mit Pausen
+
+Zwei Wünsche aus dem Levelbau.
+
+**Tür nur für einen Spieler** (`door.player`, wie `transporter.player` in M65):
+Für den anderen ist sie eine WAND – und zwar überall gleich. Im Spiel baut das
+Tür-Element für ihn eine Wand OHNE `door`-Eigenschaft (`ctx.player`, neu im
+BuildContext), damit `updateDoors` sie nie anfasst; im Beweis mauert
+`buildFloorCells` die Kante in JEDEM Modell zu, auch mit `doorsOpen`. Sie
+klingt und leuchtet damit wie eine Wand: Eine Tür, die für mich nie aufgeht,
+ist keine Tür, sondern das Ende des Gangs – alles andere wäre ein Versprechen,
+das das Level nicht hält. Editor: Feld „Tür für" (beide / Spieler 1 / 2, nur
+bei zwei Spielern) plus der Hinweis, was es für den anderen bedeutet.
+
+**Wächter-Bahn mit beliebig vielen Wegpunkten und Pausen** (`guard.pause`,
+parallele Liste zu `patrol` – so lädt jede bestehende Def unverändert): Am
+Wegpunkt hält der Wächter für seine Pause an, dann läuft er weiter
+(`Guard.waitLeft`, abgezogen VOR der Bewegung; der Rest des Schritts verfällt,
+er hält an und rutscht nicht). Ein Schläfer wartet nicht, er schläft. Der
+Riegel-Beweis bleibt unberührt: `guardsProof` nimmt ohnehin an, der Wächter
+könne überall auf seiner Bahn stehen – eine Pause ändert nur das Timing.
+Editor: Liste der Wegpunkte mit Pausenfeld je Punkt, „＋ Wegpunkt" (nächster
+Tap, achsenparallel wie beim Setzen – diagonal liefe durch Wände),
+„− letzter" (zwei bleiben), und im Overlay Nummern, Verbindungslinie und ⏸ am
+wartenden Punkt.
+
+Units: Pause-Physik in tests/physics.test.ts (ohne/mit Pause, Schläfer),
+Tür je Spieler in tests/mpLevel.test.ts (Loader baut Wand statt Tür, Beweis
+lässt den anderen nicht durch, Coop-Badge rot). E2E Lauf 38 fährt beides im
+Editor und im Testmodus (Spieler 1 sieht die Tür, Spieler 2 eine Wand).
+
 ## M71 „Warum rot?" ✓ (v3.5.0) – Beweise erklären sich und zeigen die Stelle
 
 Meldung aus dem Levelbau: „Wir haben einen Softlock. Warum?" – und genau das

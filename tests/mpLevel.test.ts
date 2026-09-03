@@ -273,3 +273,69 @@ describe('Editor: Ebene löschen mit zweitem Start/Ziel', () => {
     expect(g2).not.toEqual(f0.start2);
   });
 });
+
+// M72: Tür nur für EINEN Spieler. Für den anderen ist sie eine reine Wand –
+// im Spiel (keine `door`-Eigenschaft, updateDoors fasst sie nie an) wie im
+// Beweis (in jedem Modell zu, auch mit doorsOpen).
+describe('Tür je Spieler (M72)', () => {
+  // 4×2, obere Reihe offen, untere zugemauert: ein Korridor mit einer Tür
+  // zwischen (1,0) und (2,0), die nur Spieler 1 passieren darf. Der Schlüssel
+  // liegt vor der Tür, damit sie für Spieler 1 wirklich aufgeht.
+  const def = (player?: 1 | 2) =>
+    parseLevel({
+      id: 'custom-doorp',
+      name: 'Meine Tür',
+      players: 2,
+      mpMode: 'coop',
+      floors: [
+        {
+          size: [4, 2],
+          maze: {
+            seed: 5,
+            carve: [...carveRow(0), ...carveRow(1)],
+            add: [...sealRow(0), ...sealRow(1)],
+          },
+          elements: [
+            { type: 'door', id: 'tor1', edge: [[1, 0], 'e'], ...(player ? { player } : {}) },
+            { type: 'key', cell: [1, 0], opens: 'tor1' },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 1],
+          goal2: [3, 1],
+        },
+      ],
+    });
+
+  const doorWalls = (d: ReturnType<typeof def>, player: 1 | 2) =>
+    loadLevel(d, { player }).world.walls.filter((w) => w.door !== undefined).length;
+
+  it('Loader: Spieler 1 bekommt die Tür, Spieler 2 eine Wand', () => {
+    const d = def(1);
+    expect(doorWalls(d, 1)).toBe(1);
+    expect(doorWalls(d, 2)).toBe(0);
+    // Die Wand ist trotzdem da – nur eben ohne Türregel.
+    expect(loadLevel(d, { player: 2 }).world.walls.length).toBe(loadLevel(d, { player: 1 }).world.walls.length);
+  });
+  it('ohne Angabe gilt die Tür für beide', () => {
+    const d = def();
+    expect(doorWalls(d, 1)).toBe(1);
+    expect(doorWalls(d, 2)).toBe(1);
+  });
+  it('Beweis: Spieler 2 kommt durch eine Spieler-1-Tür nicht hindurch', () => {
+    const d = def(1);
+    const p1 = pairReachable(d, true).p1;
+    const p2 = pairReachable(d, true).p2;
+    expect(p1.has(cellKey(0, [3, 0]))).toBe(true); // Spieler 1 hat den Schlüssel
+    expect(p2.has(cellKey(0, [3, 0]))).toBe(false); // für Spieler 2 ist da eine Wand
+  });
+  it('Coop-Badge wird rot, wenn das Ziel des Gasts hinter der fremden Tür liegt', () => {
+    const d = parseLevel({
+      ...def(1),
+      floors: [{ ...def(1).floors[0]!, goal2: [3, 0], start2: [0, 0] }],
+    });
+    const coop = validateLevel(d).find((c) => c.key === 'coop')!;
+    expect(coop.ok).toBe(false);
+    expect(coop.detail).toBe('Spieler 2');
+  });
+});

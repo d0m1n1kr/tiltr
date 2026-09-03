@@ -248,8 +248,15 @@ export class World {
           }
           g.target = g.waypoints.length > 1 ? 1 : 0;
           g.dir = 1;
+          g.waitLeft = 0; // schlafend wird nicht gewartet, sondern geschlafen
           continue;
         }
+      }
+      // Pause an einem Wegpunkt (M72): erst die Uhr, dann wieder laufen. Die
+      // Wartezeit läuft mit dt (nicht mit dem Weg), deshalb VOR der Bewegung.
+      if (g.waitLeft > 0) {
+        g.waitLeft = Math.max(0, g.waitLeft - dt);
+        if (g.waitLeft > 0) continue;
       }
       let remaining = g.speed * dt;
       while (remaining > 0 && g.waypoints.length > 1) {
@@ -263,6 +270,13 @@ export class World {
           remaining -= d;
           if (g.target + g.dir < 0 || g.target + g.dir >= g.waypoints.length) g.dir = -g.dir as 1 | -1;
           g.target += g.dir;
+          // Am Wegpunkt angekommen: Hat er eine Pause, bleibt der Wächter
+          // stehen – der Rest des Schritts verfällt (er hält an, er rutscht
+          // nicht weiter).
+          if ((t.pause ?? 0) > 0) {
+            g.waitLeft = t.pause!;
+            break;
+          }
         } else {
           g.x += (dx / d) * remaining;
           g.y += (dy / d) * remaining;
