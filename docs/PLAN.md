@@ -612,6 +612,32 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M86 „Eine Nachricht" ✓ (v3.19.0)
+
+Rückfrage: „Kann ‚spreading the word' und ‚share GIF' nicht in einer Message
+sein?" Ja – und zwar besser als zwei Knöpfe, denn niemand teilt gern zweimal.
+M85 hatte sie getrennt, aus Vorsicht vor der Lektion 2.11.4 (Signal nahm bei
+einem Export den TEXT und ließ die Datei liegen). Die Lektion gilt aber für
+`title`/`text`/`url` NEBEN einer Datei – nicht für „ein Bild mit
+Bildunterschrift".
+
+Jetzt gibt es EINEN Chip mit drei Stufen, jede mit Grund:
+
+1. Kann die Plattform Dateien (`canShare({files, text})`)? Dann geht das GIF als
+   BILD raus, Werbetext und Link stehen als Bildunterschrift im `text` – der
+   Link IM Text, nicht als eigenes `url`-Feld, damit die Ziel-App ihn nicht
+   einzeln weglassen kann.
+2. Keine Dateien? Dann der Link mit `title`/`text`/`url`. Die Vorschau zeigt das
+   GIF trotzdem – dafür ist `og:image` da.
+3. Kein Web Share? Text und Link in die Zwischenablage, der Status sagt es.
+
+Gefragt wird VOR dem Laden: `canShare` prüft nur die Typen, also genügt eine
+LEERE Probe-Datei – wer keine Dateien teilen kann, lädt auch keine 700 KB GIF.
+Damit fallen `promo.gif`/`promo.gifBad` und `shareBinaryFile` weg (der zweite
+Knopf war ihre einzige Aufgabe). E2E Lauf 43 prüft alle drei Stufen einzeln,
+dazu Sprachwechsel und Überlauf – die zwei neuen Zusicherungen gegen den alten
+Stand rot gesehen.
+
 ## M85b „Der Schnitt des Promo-GIFs" ✓ (v3.18.0)
 
 Rückmeldung zum ersten GIF: „Hörtest und Galerie brauchen nicht ins Video.

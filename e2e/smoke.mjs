@@ -7497,17 +7497,18 @@ if (want("42")) {
 }
 
 
-// --- Lauf 43: Weitersagen (M85). Der Startscreen teilt die APP: Werbetext in
-// der AKTUELLEN Sprache plus die eine Adresse, und das Promo-GIF als eigene
-// Aktion (Datei UND Text zusammen nimmt iOS/Signal nicht zuverlässig, 2.11.4).
-// Geprüft: Nachricht je Sprache, Zwischenablage-Fallback ohne Web Share, das
-// GIF als Datei mit image/gif, og:image im HTML – und kein Überlauf bei 400 px. ---
+// --- Lauf 43: Weitersagen (M85/M86). EIN Knopf, EINE Nachricht: das Promo-GIF
+// als Bild, Werbetext und Link als Bildunterschrift. Drei Stufen, jede geprüft:
+// Dateien+Text (alles zusammen), nur Link (Plattform ohne Dateien – die
+// og:image-Vorschau zeigt das GIF trotzdem), Zwischenablage (kein Web Share).
+// Dazu: Werbetext in der AKTUELLEN Sprache und kein Überlauf bei 400 px. ---
 if (want("43")) {
   try {
     const page = await browser.newPage({ viewport: { width: 400, height: 900 }, locale: "de-DE" });
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(`${BASE}/?nosplash`);
     await until(async () => (await page.locator("#promoShare").count()) > 0);
+    check("Es gibt EINEN Weitersagen-Knopf, nicht zwei", (await page.locator("#promoRow .chip").count()) === 1);
 
     // Link-Vorschau: absolute Adresse, damit Messenger-Bots sie auflösen.
     const og = await page.evaluate(() => ({
@@ -7520,21 +7521,32 @@ if (want("43")) {
         og.url === "https://d0m1n1kr.github.io/tiltr/",
     );
 
-    // Web Share vorhanden: Titel, Text und URL gehen raus – auf Deutsch.
+    // Stufe 1: Plattform kann Dateien – GIF UND Text in EINER Nachricht.
     await page.evaluate(() => {
       window.__shared = null;
+      navigator.canShare = () => true;
       navigator.share = (d) => {
-        window.__shared = d;
+        window.__shared = {
+          keys: Object.keys(d),
+          n: d.files?.length ?? 0,
+          type: d.files?.[0]?.type,
+          name: d.files?.[0]?.name,
+          size: d.files?.[0]?.size,
+          text: d.text,
+        };
         return Promise.resolve();
       };
     });
     await page.click("#promoShare");
-    const de = await until(async () => await page.evaluate(() => window.__shared), { timeout: 4000 });
+    const one = await until(async () => await page.evaluate(() => window.__shared), { timeout: 8000 });
     check(
-      `Teilen schickt Text und Adresse (${JSON.stringify({ ...de, text: (de?.text ?? "").slice(0, 40) })})`,
-      de?.url === "https://d0m1n1kr.github.io/tiltr/" &&
-        /unsichtbare[sn]? Labyrinth/.test(de?.title ?? "") &&
-        /Kopfhörer/.test(de?.text ?? ""),
+      `Eine Nachricht: GIF + Text mit Link (${JSON.stringify({ ...one, text: (one?.text ?? "").slice(-42) })})`,
+      one?.n === 1 &&
+        one?.type === "image/gif" &&
+        one?.size > 10000 &&
+        JSON.stringify(one?.keys) === JSON.stringify(["files", "text"]) &&
+        /Kopfhörer/.test(one?.text ?? "") &&
+        (one?.text ?? "").endsWith("https://d0m1n1kr.github.io/tiltr/"),
     );
 
     // Sprache wechseln: derselbe Knopf teilt jetzt auf Englisch.
@@ -7542,14 +7554,26 @@ if (want("43")) {
     await until(async () => (await page.textContent("#promoShare")).includes("word"), { timeout: 4000 });
     await page.evaluate(() => (window.__shared = null));
     await page.click("#promoShare");
-    const en = await until(async () => await page.evaluate(() => window.__shared), { timeout: 4000 });
+    const en = await until(async () => await page.evaluate(() => window.__shared), { timeout: 8000 });
     check(
-      `…und in der neuen Sprache (${JSON.stringify({ title: en?.title, text: (en?.text ?? "").slice(0, 40) })})`,
-      /invisible maze/.test(en?.title ?? "") && /Headphones/.test(en?.text ?? ""),
+      `…und in der neuen Sprache (${JSON.stringify((en?.text ?? "").slice(0, 40))})`,
+      /Headphones/.test(en?.text ?? ""),
     );
 
-    // Ohne Web Share: Text + Link in die Zwischenablage, Status sagt es.
+    // Stufe 2: keine Dateien möglich → Link mit Titel/Text/URL.
     await page.click('#langRow .chip[data-lang="de"]');
+    await page.evaluate(() => {
+      window.__shared = null;
+      navigator.canShare = () => false;
+    });
+    await page.click("#promoShare");
+    const link = await until(async () => await page.evaluate(() => window.__shared), { timeout: 6000 });
+    check(
+      `Ohne Datei-Unterstützung geht der Link raus (${JSON.stringify(link?.keys)})`,
+      link !== null && link.n === 0 && JSON.stringify(link.keys) === JSON.stringify(["title", "text", "url"]),
+    );
+
+    // Stufe 3: kein Web Share → Text + Link in die Zwischenablage.
     await page.evaluate(() => {
       delete navigator.share;
       window.__clip = null;
@@ -7569,23 +7593,6 @@ if (want("43")) {
       (clip.text ?? "").endsWith("https://d0m1n1kr.github.io/tiltr/") && /kopiert/.test(clip.status ?? ""),
     );
 
-    // Das GIF geht als DATEI raus – image/gif, nicht octet-stream.
-    await page.evaluate(() => {
-      window.__gif = null;
-      navigator.canShare = () => true;
-      navigator.share = (d) => {
-        window.__gif = { n: d.files?.length ?? 0, type: d.files?.[0]?.type, name: d.files?.[0]?.name, size: d.files?.[0]?.size, keys: Object.keys(d) };
-        return Promise.resolve();
-      };
-    });
-    await page.click("#promoGif");
-    const gif = await until(async () => await page.evaluate(() => window.__gif), { timeout: 8000 });
-    check(
-      `GIF teilt als Bilddatei, ohne Text daneben (${JSON.stringify(gif)})`,
-      gif?.n === 1 && gif?.type === "image/gif" && gif?.name === "tiltr.gif" && gif?.size > 10000 &&
-        JSON.stringify(gif?.keys) === JSON.stringify(["files"]),
-    );
-
     // Und die Chip-Zeile bleibt im Menü (400 px, Regel aus v3.0.2).
     const overflow = await page.evaluate(() => {
       const row = document.getElementById("promoRow");
@@ -7593,7 +7600,7 @@ if (want("43")) {
       const right = Math.max(...[...row.children].map((c) => c.getBoundingClientRect().right));
       return Math.round(right - box.right);
     });
-    check(`Weitersagen-Chips laufen bei 400 px nicht aus dem Menü (${overflow} px)`, overflow <= 0);
+    check(`Weitersagen-Chip läuft bei 400 px nicht aus dem Menü (${overflow} px)`, overflow <= 0);
     await page.close();
   } catch (e) {
     check(

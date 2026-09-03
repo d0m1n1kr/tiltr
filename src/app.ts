@@ -1,6 +1,6 @@
 import './ui/theme.css';
 import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup, summarizeBackup, type BackupPayload } from './backup';
-import { saveTextFile, shareBinaryFile } from './ui/download';
+import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
@@ -53,7 +53,7 @@ import { setupGallery, extraEntries } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel, type TestRun, type TestStart } from './ui/editor';
 import { isShareable, validateLevel } from './levels/validate';
-import { PROMO_GIF_FILE, promoClipboard, promoShare } from './promo';
+import { PROMO_GIF_FILE, promoCaption, promoShare } from './promo';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
@@ -780,41 +780,57 @@ $('editBtn').addEventListener('click', () => {
 // Kalibrier-Countdown mit der passenden Haltungs-Ansage erneut.
 const ctlChips = [...document.querySelectorAll<HTMLButtonElement>('#controlsRow .chip')];
 
-// --- Weitersagen (M85, src/promo.ts) --------------------------------------
-// Zwei Wege, absichtlich getrennt: Der Link ist die verlässliche Einladung
-// (jeder Messenger macht daraus die og:image-Vorschau mit dem GIF), das GIF
-// selbst geht als DATEI raus – Datei UND Text zusammen nimmt iOS/Signal nicht
-// zuverlässig (Lektion 2.11.4). Ohne Web Share landet der Text in der
-// Zwischenablage bzw. das GIF im Download.
+// --- Weitersagen (M85/M86, src/promo.ts) ---------------------------------
+// EINE Nachricht, wenn die Plattform es kann: das Promo-GIF als BILD, Werbetext
+// und Link als Bildunterschrift (`text`). Der Link steht IM Text, nicht in
+// `url` – wer Datei und Text teilt, hat nur ein Textfeld, das sicher ankommt;
+// ein zusätzliches `url`/`title` lässt die Ziel-App gern weg (Lektion 2.11.4).
+// Drei Stufen, jede mit Grund:
+//   1. Dateien + Text -> alles in einer Nachricht.
+//   2. keine Dateien (oder GIF nicht ladbar) -> Link mit title/text/url; die
+//      Vorschau zeigt das GIF trotzdem, dafür ist og:image da.
+//   3. kein Web Share -> Text + Link in die Zwischenablage.
 {
   const status = $('promoStatus');
   const say = (text: string): void => {
     status.textContent = text;
     setTimeout(() => (status.textContent === text ? (status.textContent = '') : undefined), 4000);
   };
+  const gifFile = async (): Promise<File | null> => {
+    try {
+      const res = await fetch(PROMO_GIF_FILE);
+      if (!res.ok) return null;
+      return new File([await res.blob()], 'tiltr.gif', { type: 'image/gif' });
+    } catch {
+      return null;
+    }
+  };
   $('promoShare').addEventListener('click', () => {
     void (async () => {
       const share = promoShare(t('promo.title'), t('promo.text'));
+      const caption = promoCaption(share);
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       try {
-        if (navigator.share) {
-          await navigator.share(share);
+        // Erst FRAGEN, dann laden: `canShare` prüft nur die Typen, also genügt
+        // eine leere Probe-Datei – so holt niemand 700 KB GIF, dessen Plattform
+        // gar keine Dateien teilen kann.
+        const canFiles =
+          typeof nav.share === 'function' &&
+          typeof nav.canShare === 'function' &&
+          nav.canShare({ files: [new File([], 'tiltr.gif', { type: 'image/gif' })], text: caption });
+        const file = canFiles ? await gifFile() : null;
+        if (file) {
+          await nav.share!({ files: [file], text: caption });
           return;
         }
-        await navigator.clipboard.writeText(promoClipboard(share));
+        if (typeof nav.share === 'function') {
+          await nav.share(share);
+          return;
+        }
+        await navigator.clipboard.writeText(caption);
         say(t('promo.copied'));
       } catch {
-        /* abgebrochen – keine Meldung, der Nutzer weiß es */
-      }
-    })();
-  });
-  $('promoGif').addEventListener('click', () => {
-    void (async () => {
-      try {
-        const res = await fetch(PROMO_GIF_FILE);
-        if (!res.ok) throw new Error(String(res.status));
-        await shareBinaryFile('tiltr.gif', await res.blob(), 'image/gif');
-      } catch {
-        say(t('promo.gifBad'));
+        /* abgebrochen – der Nutzer weiß es, keine Meldung */
       }
     })();
   });

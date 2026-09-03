@@ -677,11 +677,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 - `src/promo.ts` + `tools/promo.mjs` – WEITERSAGEN (M85): Der Startscreen teilt
   die APP. `promoShare(title, text)` ist rein: Text aus dem Wörterbuch der
   aktuellen Sprache, Adresse aus `APP_URL` – NICHT `location.href`, sonst teilt
-  der Dev-Server einen toten Link. Zwei Chips, absichtlich getrennt: der Link
-  (Web Share, sonst Zwischenablage) und das GIF als DATEI (`shareBinaryFile`,
-  `image/gif` – als Bild, nicht als Anhang; Datei UND Text zusammen nimmt
-  iOS/Signal nicht zuverlässig, 2.11.4). `og:image` in index.html zeigt ABSOLUT
-  auf `promo.gif`, damit schon der Link die Animation trägt.
+  der Dev-Server einen toten Link. EINE Nachricht, EIN Chip (M86), drei Stufen:
+  (1) kann die Plattform Dateien, geht das GIF als BILD raus und
+  `promoCaption` (Text + Link) als Bildunterschrift im `text` – der Link IM
+  Text, nicht als eigenes `url`, sonst lässt die Ziel-App ihn weg (2.11.4 gilt
+  für Felder NEBEN einer Datei, nicht für Bild + Unterschrift); (2) keine
+  Dateien: Link mit title/text/url, die Vorschau zeigt das GIF über `og:image`;
+  (3) kein Web Share: Zwischenablage. Gefragt wird VOR dem Laden – `canShare`
+  prüft nur Typen, eine LEERE Probe-Datei genügt, sonst holt jedes Gerät 700 KB
+  umsonst.
   DAS GIF: `npm run promo` fährt die App wie tools/screenshots.mjs und schneidet
   sechs Szenen (Splash, Echo-Ping im Dunkeln, Konfetti, Galerie, Hörtest,
   Editor + Zwei-Spieler-Testmodus aus `tools/promo-level.json`, einem ECHTEN

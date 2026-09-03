@@ -31,8 +31,16 @@ export function promoShare(title: string, text: string): PromoShare {
   return { title, text, url: APP_URL };
 }
 
-/** Fallback ohne Web Share: EIN Textblock für die Zwischenablage. Der Link
- *  steht in der letzten Zeile – Messenger machen daraus die Vorschau. */
-export function promoClipboard(share: PromoShare): string {
+/**
+ * EINE Nachricht: Werbetext und Link in einem Block – als Bildunterschrift zum
+ * GIF und als Inhalt für die Zwischenablage.
+ *
+ * Warum der Link IM Text und nicht daneben (`url`)? Wer Datei UND Text teilt,
+ * hat nur ein Textfeld, das ankommt: Übergibt man zusätzlich `url` (oder
+ * `title`), entscheidet die Ziel-App, was sie davon nimmt – und lässt gern das
+ * Falsche weg (Lektion 2.11.4). Steht der Link in der letzten Textzeile, kann
+ * er nicht einzeln verloren gehen, und Messenger machen daraus die Vorschau.
+ */
+export function promoCaption(share: PromoShare): string {
   return `${share.text}\n${share.url}`;
 }

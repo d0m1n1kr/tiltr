@@ -3,7 +3,7 @@
 // wer vom Dev-Server aus teilt einen Link, den niemand öffnen kann.
 
 import { describe, expect, it } from 'vitest';
-import { APP_URL, PROMO_GIF_URL, promoClipboard, promoShare } from '../src/promo';
+import { APP_URL, PROMO_GIF_URL, promoCaption, promoShare } from '../src/promo';
 import { de } from '../src/i18n/de';
 import { en } from '../src/i18n/en';
 import { fr } from '../src/i18n/fr';
@@ -14,8 +14,11 @@ describe('promoShare', () => {
     const s = promoShare('Titel', 'Text');
     expect(s).toEqual({ title: 'Titel', text: 'Text', url: APP_URL });
   });
-  it('Zwischenablage: Text, dann der Link in der letzten Zeile', () => {
-    expect(promoClipboard(promoShare('T', 'Zwei Zeilen'))).toBe(`Zwei Zeilen\n${APP_URL}`);
+  it('EINE Nachricht: Text, dann der Link in der letzten Zeile', () => {
+    // Dieselbe Zeichenkette dient als Bildunterschrift zum GIF UND als Inhalt
+    // für die Zwischenablage – der Link kann so nicht einzeln verloren gehen.
+    expect(promoCaption(promoShare('T', 'Zwei Zeilen'))).toBe(`Zwei Zeilen\n${APP_URL}`);
+    expect(promoCaption(promoShare('T', 'x')).split('\n')).toHaveLength(2);
   });
   it('das GIF liegt neben der App (og:image, absolute Adresse)', () => {
     expect(PROMO_GIF_URL).toBe(`${APP_URL}promo.gif`);
