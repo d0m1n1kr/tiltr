@@ -348,6 +348,8 @@ export function generateDailyLevel(date: string): LevelDef {
 
   const def: LevelDef = {
     id: `daily-${date}`,
+    players: 1,
+    mpMode: 'any',
     name: 'Tages-Challenge',
     intro: `${p.label}. Ein Level für alle, jeden Tag ein neues – dein erster Zieleinlauf zählt als Tageswert.`,
     pingBudget: p.pings,

@@ -255,7 +255,13 @@ export function guardSafeReachable(def: LevelDef): Set<string> {
  * Türen öffnen nie. Optional von einer beliebigen Position aus (Softlock-
  * Beweise: der Schalter ist wieder-erreichbar, die Tür also wieder-öffenbar).
  */
-export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set(), from?: StartPos): Set<string> {
+export function coopReachable(
+  def: LevelDef,
+  bannedDoors: Set<string> = new Set(),
+  from?: StartPos,
+  opts: { plates?: boolean } = {},
+): Set<string> {
+  const plates = opts.plates ?? true;
   const openDoorIds = new Set<string>();
   // Türen mit require 'all' öffnen erst, wenn ALLE Öffner erreichbar sind
   // (core/doors.ts: alle gleichzeitig erfüllt). Reihenfolge und Timing
@@ -265,7 +271,7 @@ export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set(
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (el.type === 'door' && el.require === 'all') requireAll.add(el.id);
-      if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
+      if ((plates && el.type === 'plate') || el.type === 'key' || el.type === 'timedSwitch') {
         const list = openersOf.get(el.opens) ?? [];
         list.push({ fl, cell: el.cell });
         openersOf.set(el.opens, list);
@@ -286,6 +292,112 @@ export function coopReachable(def: LevelDef, bannedDoors: Set<string> = new Set(
     }
     if (!changed) return seen;
   }
+}
+
+/* --- Zwei Spieler (M57) ------------------------------------------------------
+   Ein Multiplayer-Level aus dem Editor hat zwei Starts (start, start2) und
+   zwei Ziele (goal, goal2) – oder je eines für beide. Das Spiel gibt jedem
+   Spieler seine EIGENE Welt: Schlüssel und Zeitschlösser wirken nur lokal,
+   DRUCKPLATTEN aber für beide (app.ts mpFrame: held = lokal ODER fern). Das
+   Modell rechnet genau das: pro Spieler ein Öffner-Fixpunkt vom eigenen
+   Start, Platten zählen, wenn IRGENDEINER der beiden sie erreicht – im Coop.
+   Im Race hilft niemand: Platten zählen gar nicht (der eigene Ball kann nicht
+   auf der Platte stehen UND durch die Tür rollen). */
+
+export interface PairReach {
+  p1: Set<string>;
+  p2: Set<string>;
+}
+
+export function pairReachable(
+  def: LevelDef,
+  coop: boolean,
+  bannedDoors: Set<string> = new Set(),
+  from?: { p1?: StartPos; p2?: StartPos },
+): PairReach {
+  const f0 = def.floors[0]!;
+  const start1: StartPos = from?.p1 ?? { floor: 0, cell: f0.start };
+  const start2: StartPos = from?.p2 ?? { floor: 0, cell: f0.start2 ?? f0.start };
+  const requireAll = new Set<string>();
+  type Opener = { fl: number; cell: readonly [number, number]; plate: boolean };
+  const openersOf = new Map<string, Opener[]>();
+  def.floors.forEach((floor, fl) => {
+    for (const el of floor.elements) {
+      if (el.type === 'door' && el.require === 'all') requireAll.add(el.id);
+      if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
+        const list = openersOf.get(el.opens) ?? [];
+        list.push({ fl, cell: el.cell, plate: el.type === 'plate' });
+        openersOf.set(el.opens, list);
+      }
+    }
+  });
+  const open = [new Set<string>(), new Set<string>()];
+  for (;;) {
+    const seen = [
+      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0] }, start1),
+      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[1] }, start2),
+    ];
+    let changed = false;
+    for (const p of [0, 1] as const) {
+      for (const [doorId, openers] of openersOf) {
+        if (bannedDoors.has(doorId) || open[p]!.has(doorId)) continue;
+        const usable = openers.filter((o) =>
+          o.plate
+            ? coop && (seen[0]!.has(cellKey(o.fl, o.cell)) || seen[1]!.has(cellKey(o.fl, o.cell)))
+            : seen[p]!.has(cellKey(o.fl, o.cell)),
+        );
+        // Im Race sind Platten für die Tür schlicht nicht da – eine Tür NUR
+        // mit Platten ist dort eine Wand ('all' zählt nur die Nicht-Platten).
+        const counted = coop ? openers : openers.filter((o) => !o.plate);
+        if (!counted.length) continue;
+        const opens = requireAll.has(doorId) ? usable.length === counted.length : usable.length > 0;
+        if (opens) {
+          open[p]!.add(doorId);
+          changed = true;
+        }
+      }
+    }
+    if (!changed) return { p1: seen[0]!, p2: seen[1]! };
+  }
+}
+
+/** Zellen-Schritte von A nach B über Ebenen im offenen Modell (Türen offen,
+ *  brüchig offen, Transporter als Sprung) – Infinity = kein Weg. Für das
+ *  weiche Badge „Wege ähnlich lang" (M57). */
+export function pathSteps(def: LevelDef, from: StartPos, to: StartPos): number {
+  const floors = def.floors.map((f) => ({
+    cells: buildFloorCells(f, { brittleOpen: true, doorsOpen: true }, def.mirror),
+    cols: f.size[0],
+    rows: f.size[1],
+    jumps: f.elements.filter((e) => e.type === 'transporter'),
+    solid: new Set(f.elements.filter((e) => e.type === 'jukebox').map((e) => `${e.cell[0]},${e.cell[1]}`)),
+  }));
+  const dist = new Map<string, number>([[cellKey(from.floor, from.cell), 0]]);
+  const queue: Array<[number, number, number]> = [[from.floor, from.cell[0], from.cell[1]]];
+  const target = cellKey(to.floor, to.cell);
+  while (queue.length) {
+    const [fl, x, y] = queue.shift()!;
+    const k = cellKey(fl, [x, y]);
+    const d = dist.get(k)!;
+    if (k === target) return d;
+    const f = floors[fl]!;
+    const c = f.cells[y * f.cols + x]!;
+    const push = (nfl: number, nx: number, ny: number): void => {
+      const t = floors[nfl]!;
+      if (nx < 0 || ny < 0 || nx >= t.cols || ny >= t.rows || t.solid.has(`${nx},${ny}`)) return;
+      const nk = cellKey(nfl, [nx, ny]);
+      if (!dist.has(nk)) {
+        dist.set(nk, d + 1);
+        queue.push([nfl, nx, ny]);
+      }
+    };
+    if (!c.n) push(fl, x, y - 1);
+    if (!c.e) push(fl, x + 1, y);
+    if (!c.s) push(fl, x, y + 1);
+    if (!c.w) push(fl, x - 1, y);
+    for (const j of f.jumps) if (j.cell[0] === x && j.cell[1] === y) push(j.target.floor, j.target.cell[0], j.target.cell[1]);
+  }
+  return Infinity;
 }
 
 // BFS-Distanzen in Zellen auf EINER Ebene im offenen, gerichteten Modell
@@ -348,11 +460,23 @@ export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
   const past = guardSafeReachable(def);
   let ok = past.has(goalKey);
   let detail = ok ? undefined : 'Ziel';
+  // Zwei Spieler (M57): Der Gast startet an start2 und braucht goal2 (wenn
+  // gesetzt) – sein eigener wächtersicherer Baum. Öffner und Transporter
+  // gelten als erreichbar, wenn EINER der beiden sie erreicht.
+  const f0 = def.floors[0]!;
+  const start2 = f0.start2;
+  const past2 = start2 ? reachable(def, { brittleOpen: true, doorsOpen: true, guardSafe: true }, { floor: 0, cell: start2 }) : past;
+  const g2 = def.floors.findIndex((f) => f.goal2);
+  if (ok && g2 >= 0 && !past2.has(cellKey(g2, def.floors[g2]!.goal2!))) {
+    ok = false;
+    detail = 'Ziel 2';
+  }
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (
         (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch' || el.type === 'transporter') &&
-        !past.has(cellKey(fl, el.cell))
+        !past.has(cellKey(fl, el.cell)) &&
+        !past2.has(cellKey(fl, el.cell))
       ) {
         ok = false;
         detail = `${el.type} E${fl + 1} (${el.cell})`;
@@ -375,7 +499,12 @@ export type CheckKey =
   | 'guards'
   | 'jukebox'
   | 'boulder'
-  | 'items';
+  | 'items'
+  // Zwei Spieler (M57): beide erreichen ihr Ziel – im Coop mit Partner-
+  // Platten, im Race ohne jede Hilfe; 'fair' ist weich (Weglängen ähnlich).
+  | 'coop'
+  | 'race'
+  | 'fair';
 
 export interface CheckResult {
   key: CheckKey;
@@ -473,10 +602,35 @@ export function validateLevel(raw: unknown): CheckResult[] {
 
   const goalFl = def.floors.findIndex((f) => f.goal);
   const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);
+  const two = def.players === 2;
+  const g2 = def.floors.findIndex((f) => f.goal2);
+  const goal2Key = g2 >= 0 ? cellKey(g2, def.floors[g2]!.goal2!) : goalKey;
+  const start2: StartPos = { floor: 0, cell: def.floors[0]!.start2 ?? def.floors[0]!.start };
 
-  // Ziel erreichbar (Öffner-Fixpunkt vom Start).
+  // Ziel erreichbar (Öffner-Fixpunkt vom Start). Bei ZWEI Spielern ersetzen
+  // 'coop'/'race' diesen Check: Dort hat jeder Spieler seinen Start, sein
+  // Ziel und seine Öffner – „vom Start 1 zum Ziel 1 mit Platten als Öffner"
+  // wäre für den Gast weder notwendig noch hinreichend.
   const fromStart = coopReachable(def);
-  push('goal', fromStart.has(goalKey));
+  if (!two) push('goal', fromStart.has(goalKey));
+
+  // Zwei Spieler (M57): Für den festen Modus EIN Badge, bei 'any' beide –
+  // die Lobby darf dann wählen, also muss beides bewiesen sein. Detail nennt
+  // den Spieler, der sein Ziel nicht erreicht.
+  const coopPair = two ? pairReachable(def, true) : null;
+  const racePair = two ? pairReachable(def, false) : null;
+  if (two && def.mpMode !== 'race') {
+    const ok1 = coopPair!.p1.has(goalKey);
+    const ok2 = coopPair!.p2.has(goal2Key);
+    push('coop', ok1 && ok2, ok1 && ok2 ? undefined : !ok1 ? 'Spieler 1' : 'Spieler 2');
+  }
+  if (two && def.mpMode !== 'coop') {
+    const ok1 = racePair!.p1.has(goalKey);
+    const ok2 = racePair!.p2.has(goal2Key);
+    push('race', ok1 && ok2, ok1 && ok2 ? undefined : !ok1 ? 'Spieler 1' : 'Spieler 2');
+  }
+  // Das Modell für die weiteren Zwei-Spieler-Checks: Coop, wenn erlaubt.
+  const pairCoop = two ? def.mpMode !== 'race' : true;
 
   // Öffner VOR ihrer Tür erreichbar – und zwar PRO TÜR, nicht pro Öffner.
   //
@@ -515,7 +669,14 @@ export function validateLevel(raw: unknown): CheckResult[] {
     if (!doorIds.has(doorId)) continue; // hängende Verknüpfung: das sagt `links`
     const keyed = openers.filter((o) => o.type !== 'plate');
     if (!keyed.length) continue; // reine Platten-Tür: Umfang wie vorher, ungeprüft
-    const withoutThisDoor = coopReachable(def, new Set([doorId]));
+    // Zwei Spieler: Ein Öffner zählt, wenn IRGENDEINER der beiden ihn ohne
+    // diese Tür erreicht (Platten nur im Coop – sonst wie oben).
+    const withoutThisDoor = two
+      ? (() => {
+          const pr = pairReachable(def, pairCoop, new Set([doorId]));
+          return new Set([...pr.p1, ...pr.p2]);
+        })()
+      : coopReachable(def, new Set([doorId]));
     // 'all': JEDER Öffner muss ohne diese Tür erreichbar sein; 'any': einer.
     const reachableOpeners = openers.filter((o) => withoutThisDoor.has(cellKey(o.fl, o.cell)));
     if (requireAllDoors.has(doorId) ? reachableOpeners.length === openers.length : reachableOpeners.length > 0) continue;
@@ -551,15 +712,40 @@ export function validateLevel(raw: unknown): CheckResult[] {
   push('timer', timerOk, timerDetail);
 
   // Kein Softlock: von JEDER erreichbaren Zelle bleibt das Ziel erreichbar.
+  // Zwei Spieler: je Spieler von jeder SEINER Zellen, der Partner steht am
+  // Start (er kann jede Platte, die er erreicht, weiter erreichen).
   let softlockOk = true;
   let softlockDetail: string | undefined;
-  for (const k of fromStart) {
+  const parse = (k: string): StartPos => {
     const [fl, xy] = k.split(':');
     const [x, y] = xy!.split(',').map(Number);
-    if (!coopReachable(def, new Set(), { floor: Number(fl), cell: [x!, y!] }).has(goalKey)) {
-      softlockOk = false;
-      softlockDetail = k;
-      break;
+    return { floor: Number(fl), cell: [x!, y!] };
+  };
+  if (two) {
+    const pair = pairCoop ? coopPair! : racePair!;
+    for (const k of pair.p1) {
+      if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }).p1.has(goalKey)) {
+        softlockOk = false;
+        softlockDetail = `Spieler 1: ${k}`;
+        break;
+      }
+    }
+    if (softlockOk) {
+      for (const k of pair.p2) {
+        if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }).p2.has(goal2Key)) {
+          softlockOk = false;
+          softlockDetail = `Spieler 2: ${k}`;
+          break;
+        }
+      }
+    }
+  } else {
+    for (const k of fromStart) {
+      if (!coopReachable(def, new Set(), parse(k)).has(goalKey)) {
+        softlockOk = false;
+        softlockDetail = k;
+        break;
+      }
     }
   }
   push('softlock', softlockOk, softlockDetail);
@@ -607,7 +793,9 @@ export function validateLevel(raw: unknown): CheckResult[] {
       // Pflichtwert des Formats (die Kugel kommt aus floors[0], loader.ts) –
       // ein Automat dort wäre grundlos rot gemeldet worden.
       if (fl === 0 && floor.start[0] === el.cell[0] && floor.start[1] === el.cell[1]) jbFail(`Start ${at(fl, el)}`);
+      if (fl === 0 && floor.start2 && floor.start2[0] === el.cell[0] && floor.start2[1] === el.cell[1]) jbFail(`Start 2 ${at(fl, el)}`);
       if (floor.goal && floor.goal[0] === el.cell[0] && floor.goal[1] === el.cell[1]) jbFail(`Ziel ${at(fl, el)}`);
+      if (floor.goal2 && floor.goal2[0] === el.cell[0] && floor.goal2[1] === el.cell[1]) jbFail(`Ziel 2 ${at(fl, el)}`);
       for (const line of patrolLines(floor)) {
         if (line.some((c) => c[0] === el.cell[0] && c[1] === el.cell[1])) jbFail(`Wächter ${at(fl, el)}`);
       }
@@ -660,10 +848,23 @@ export function validateLevel(raw: unknown): CheckResult[] {
   });
   push('items', itemsOk, itemsDetail);
 
+  // Weich (M57): Wege ähnlich lang – im Race sonst von vornherein entschieden,
+  // im Coop wartet einer nur. Toleranz: 3 Zellen oder 30 %, was größer ist.
+  if (two) {
+    const d1 = pathSteps(def, { floor: 0, cell: def.floors[0]!.start }, { floor: goalFl, cell: def.floors[goalFl]!.goal! });
+    const d2 = pathSteps(def, start2, g2 >= 0 ? { floor: g2, cell: def.floors[g2]!.goal2! } : { floor: goalFl, cell: def.floors[goalFl]!.goal! });
+    const fair = Number.isFinite(d1) && Number.isFinite(d2) && Math.abs(d1 - d2) <= Math.max(3, 0.3 * Math.max(d1, d2));
+    push('fair', fair, fair ? undefined : `${d1} ↔ ${d2}`);
+  }
+
   return checks;
 }
 
-/** Pflicht-Badges fürs Teilen/Speichern-als-fertig: alles außer 'items'. */
+/** Weiche Badges: dürfen rot sein, ohne das Teilen zu blockieren. */
+export const SOFT_CHECKS: ReadonlySet<CheckKey> = new Set<CheckKey>(['items', 'fair']);
+
+/** Pflicht-Badges fürs Teilen/Speichern-als-fertig: alles außer den weichen
+ *  ('items': Sammelziele dürfen hinter Glas liegen; 'fair': Weglängen). */
 export function isShareable(checks: CheckResult[]): boolean {
-  return checks.every((c) => c.ok || c.key === 'items');
+  return checks.every((c) => c.ok || SOFT_CHECKS.has(c.key));
 }

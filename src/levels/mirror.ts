@@ -77,6 +77,8 @@ function mirrorFloor(floor: FloorDef, axis: MirrorAxis, sizes: ReadonlyArray<rea
     elements,
     start: mc(floor.start),
     goal: floor.goal ? mc(floor.goal) : null,
+    ...(floor.start2 ? { start2: mc(floor.start2) } : {}),
+    ...(floor.goal2 ? { goal2: mc(floor.goal2) } : {}),
   };
 }
 

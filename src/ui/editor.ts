@@ -44,6 +44,10 @@ interface RawFloor {
   elements: RawEl[];
   start: [number, number];
   goal: [number, number] | null;
+  /** Zwei Spieler (M57): Start/Ziel des Gasts – optional, fehlen = wie Spieler 1. */
+  start2?: [number, number];
+  goal2?: [number, number];
+  [k: string]: unknown;
 }
 const MAX_FLOORS = 4; // Schema-Limit
 export interface RawLevel {
@@ -53,6 +57,9 @@ export interface RawLevel {
   parTimeS?: number;
   pingBudget?: number;
   floors: RawFloor[];
+  /** Zwei Spieler (M57): 2 = nur zu zweit spielbar (Lobby), mpMode wählt den Modus. */
+  players?: 1 | 2;
+  mpMode?: 'coop' | 'race' | 'any';
   [k: string]: unknown;
 }
 
@@ -205,6 +212,7 @@ export function freeCellFor(
 export function removeFloor(level: RawLevel, index: number): void {
   if (level.floors.length < 2 || !level.floors[index]) return;
   const hadGoal = level.floors[index]!.goal !== null;
+  const hadGoal2 = level.floors[index]!.goal2 !== undefined;
   level.floors.splice(index, 1);
   // Transporter aufräumen: Ziele auf die Ebene fallen weg, höhere rutschen nach.
   for (const f of level.floors) {
@@ -226,9 +234,16 @@ export function removeFloor(level: RawLevel, index: number): void {
   // Ein-Ziel-Invariante retten: das Ziel wandert notfalls auf Ebene 1 – in
   // eine FREIE Zelle, denn die Ecke kann längst belegt sein.
   if (hadGoal) f0.goal = freeCellFor(f0, [f0.size[0] - 1, f0.size[1] - 1], [f0.start]);
+  // Zwei Spieler (M57): Der zweite Start lebt nur auf Ebene 1 – ein
+  // nachgerückter `start2` wäre ein toter Wert, der plötzlich zählt: weg
+  // damit, wenn er die Zelle eines Elements trifft, sonst behalten. Das
+  // zweite Ziel wandert wie das erste in eine freie Zelle von Ebene 1.
+  const taken = (): Array<[number, number]> => [f0.start, ...(f0.goal ? [f0.goal] : []), ...(f0.start2 ? [f0.start2] : [])];
+  if (index === 0 && f0.start2) f0.start2 = freeCellFor(f0, f0.start2, [f0.start, ...(f0.goal ? [f0.goal] : [])]);
+  if (hadGoal2) f0.goal2 = freeCellFor(f0, [f0.size[0] - 1, 0], taken());
 }
 
-type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal' | 'test';
+type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal' | 'start2' | 'goal2' | 'test';
 
 /** Startpunkt für den TESTLAUF (⚑): Ebene + Zelle, an der die Vorschau die
  *  Kugel absetzt – statt am Level-Start. Kein Teil der Def (wird nicht
@@ -238,7 +253,18 @@ export interface TestStart {
   cell: [number, number];
 }
 
-/** Palette: alles außer Druckplatte (MP-only ohne Singleplayer-Semantik). */
+/** Testlauf eines Entwurfs (M57): ⚑-Start, als welcher Spieler die Vorschau
+ *  läuft (Zwei-Spieler-Level: Start/Ziel des Gasts) und ob der abwesende
+ *  Partner alle Druckplatten hält – sonst wäre eine Coop-Tür solo nie offen. */
+export interface TestRun {
+  from: TestStart | null;
+  player: 1 | 2;
+  partnerHolds: boolean;
+}
+
+/** Palette: alles außer Druckplatte – die kommt nur bei ZWEI Spielern dazu
+ *  (M57): Solo hält sie niemand, und der Beweis zählte sie trotzdem als
+ *  Öffner (coopReachable) – ein grünes Level, das keiner lösen kann. */
 const PLACEABLE = [
   'hole',
   'windZone',
@@ -274,7 +300,7 @@ export interface EditorApi {
 }
 
 export function setupEditor(opts: {
-  onTest: (def: RawLevel, from: TestStart | null) => void;
+  onTest: (def: RawLevel, run: TestRun) => void;
   onSaved: () => void;
   /** Für die Ton-Vorschau im Eigenschaften-Panel (dieselbe Klang-Signatur,
    *  die die Galerie anspielt – eine Quelle: die Element-Registry). */
@@ -367,6 +393,10 @@ export function setupEditor(opts: {
   let selEdge: Edge | null = null;
   /** ⚑ Teststart der Vorschau (null = am Level-Start). */
   let testStart: TestStart | null = null;
+  /** Zwei Spieler (M57): als wer die Vorschau läuft, und ob der Partner hält. */
+  let testPlayer: 1 | 2 = 1;
+  let partnerHolds = true;
+  const twoPlayers = (): boolean => draft?.players === 2;
   let pendingGuard: [number, number] | null = null;
   /** Transporter-Platzierung: Pad gesetzt, Ziel-Tap steht aus (Ebenenwechsel erlaubt). */
   let pendingTransporter: { floor: number; cell: [number, number] } | null = null;
@@ -664,6 +694,9 @@ export function setupEditor(opts: {
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
       selEdge,
       testStart,
+      players: draft.players ?? 1,
+      testPlayer,
+      partnerHolds,
       // Landeplätze dieser Ebene – genau das, was der Overlay-Ring zeigt.
       landings: landingsOn(draft, activeFloor),
       selected,
@@ -848,6 +881,28 @@ export function setupEditor(opts: {
       }
     }
 
+    // Zwei Spieler (M57): Start 2 (nur Ebene 1) und Ziel 2 als gestrichelte
+    // Ringe mit „2" – die Welt zeichnet nur Spieler 1 (Kugel, Zielzone).
+    const mark2 = (cell: [number, number], rgb: string, r: number): void => {
+      const cx = tx((cell[0] + 0.5) * CELL);
+      const cy = ty((cell[1] + 0.5) * CELL);
+      overlay.strokeStyle = `rgba(${rgb}, 0.9)`;
+      overlay.lineWidth = 2 * dpr;
+      overlay.setLineDash([4 * dpr, 4 * dpr]);
+      overlay.beginPath();
+      overlay.arc(cx, cy, r * CELL * s, 0, Math.PI * 2);
+      overlay.stroke();
+      overlay.setLineDash([]);
+      overlay.fillStyle = `rgba(${rgb}, 0.95)`;
+      overlay.font = `700 ${13 * dpr}px system-ui, sans-serif`;
+      overlay.textAlign = 'center';
+      overlay.fillText('2', cx, cy + 5 * dpr);
+    };
+    if (twoPlayers()) {
+      if (activeFloor === 0 && floor().start2) mark2(floor().start2!, WORLD.ballGlow, 0.22);
+      if (floor().goal2) mark2(floor().goal2!, WORLD.goal, 0.32);
+    }
+
     // ⚑ Teststart: hier setzt die Vorschau die Kugel ab (nur auf seiner Ebene)
     if (testStart && testStart.floor === activeFloor) {
       const [cx, cy] = testStart.cell;
@@ -960,6 +1015,23 @@ export function setupEditor(opts: {
         for (const f of draft.floors) f.goal = null;
         floor().goal = target.cell;
       }
+    } else if (tool === 'start2' || tool === 'goal2') {
+      // Zwei Spieler (M57): Tap setzt, Tap auf dieselbe Zelle hebt auf – dann
+      // gilt wieder Start/Ziel von Spieler 1 für beide.
+      if (target.kind !== 'cell') return;
+      const same = (c: [number, number] | undefined) => !!c && c[0] === target.cell[0] && c[1] === target.cell[1];
+      if (tool === 'start2') {
+        if (activeFloor !== 0) return flash(t('ed.startFloor1'));
+        if (same(floor().start2)) {
+          delete floor().start2;
+          flash(t('ed.start2Cleared'));
+        } else floor().start2 = target.cell;
+      } else {
+        const had = same(floor().goal2);
+        for (const f of draft.floors) delete f.goal2;
+        if (had) flash(t('ed.goal2Cleared'));
+        else floor().goal2 = target.cell;
+      }
     } else if (tool === 'place') {
       // Bestehendes Element antippen = AUSWÄHLEN statt doppelt besetzen –
       // außer ein Zwei-Tap-Ablauf (Wächter/Transporter) wartet auf Schritt 2.
@@ -1029,6 +1101,8 @@ export function setupEditor(opts: {
     const f = floor();
     if (activeFloor === 0 && f.start[0] === cell[0] && f.start[1] === cell[1]) return false;
     if (f.goal && f.goal[0] === cell[0] && f.goal[1] === cell[1]) return false;
+    if (activeFloor === 0 && f.start2 && f.start2[0] === cell[0] && f.start2[1] === cell[1]) return false;
+    if (f.goal2 && f.goal2[0] === cell[0] && f.goal2[1] === cell[1]) return false;
     return true;
   }
 
@@ -1180,6 +1254,13 @@ export function setupEditor(opts: {
       ['erase', '⌫', t('ed.tool.erase')],
       ['start', '●', t('ed.tool.start')],
       ['goal', '◎', t('ed.tool.goal')],
+      // Zwei Spieler (M57): Start und Ziel des Gasts – nur dann in der Leiste.
+      ...(twoPlayers()
+        ? ([
+            ['start2', '●²', t('ed.tool.start2')],
+            ['goal2', '◎²', t('ed.tool.goal2')],
+          ] as Array<[Tool, string, string]>)
+        : []),
       ['test', '⚑', t('ed.tool.test')],
     ];
     for (const [tl, ico, lbl] of tools) {
@@ -1188,7 +1269,7 @@ export function setupEditor(opts: {
       // Start gibt es nur auf Ebene 1. Der Knopf bleibt anklickbar und
       // ERKLÄRT sich (ein `disabled` Knopf nimmt weder Hover noch Fokus –
       // die Tooltip-Blase käme nie, und ein toter Knopf sagt nichts).
-      const off = tl === 'start' && activeFloor !== 0;
+      const off = (tl === 'start' || tl === 'start2') && activeFloor !== 0;
       b.className = 'panel ed-tile' + (tool === tl ? ' active' : '') + (off ? ' off' : '');
       const i = document.createElement('span');
       i.textContent = ico;
@@ -1226,7 +1307,10 @@ export function setupEditor(opts: {
 
     const elementsWrap = document.createElement('div');
     elementsWrap.id = 'edElements';
-    for (const type of PLACEABLE) {
+    // Druckplatte nur bei zwei Spielern (siehe PLACEABLE), hinter der Tür.
+    const placeable: string[] = [...PLACEABLE];
+    if (twoPlayers()) placeable.splice(placeable.indexOf('door') + 1, 0, 'plate');
+    for (const type of placeable) {
       const b = document.createElement('button');
       b.id = `edEl-${type}`;
       b.className = 'panel ed-tile' + (tool === 'place' && placeType === type ? ' active' : '');
@@ -1655,6 +1739,68 @@ export function setupEditor(opts: {
       field(t('ed.pings'), numInput(Number(draft.pingBudget ?? 3), 0, 9, 1, (v) => (draft!.pingBudget = v))),
     );
 
+    // Zwei Spieler (M57): Ein Zwei-Spieler-Level ist NUR zu zweit spielbar
+    // (Werkstatt: „Zu zweit" statt „Spielen"); zurück auf einen Spieler räumt
+    // Start 2, Ziel 2 und den Modus weg – ein Solo-Level trägt keine
+    // Gast-Koordinaten mit sich herum.
+    const players = selectInput(String(draft.players ?? 1), [
+      ['1', t('ed.players.1')],
+      ['2', t('ed.players.2')],
+    ], (v) => {
+      if (v === '2') {
+        draft!.players = 2;
+        draft!.mpMode ??= 'coop';
+      } else {
+        delete draft!.players;
+        delete draft!.mpMode;
+        for (const f of draft!.floors) {
+          delete f.start2;
+          delete f.goal2;
+        }
+        if (tool === 'start2' || tool === 'goal2') tool = 'select';
+        if (placeType === 'plate') placeType = 'hole';
+        testPlayer = 1;
+      }
+      renderPalette();
+      renderProps();
+      rebuild();
+    });
+    players.id = 'edPlayers';
+    propsEl.append(field(t('ed.players'), players));
+    if (twoPlayers()) {
+      const modeSel = selectInput(String(draft.mpMode ?? 'coop'), [
+        ['coop', t('ed.mpMode.coop')],
+        ['race', t('ed.mpMode.race')],
+        ['any', t('ed.mpMode.any')],
+      ], (v) => {
+        draft!.mpMode = v as 'coop' | 'race' | 'any';
+        rebuild();
+      });
+      modeSel.id = 'edMpMode';
+      propsEl.append(field(t('ed.mpMode'), modeSel));
+      const hint = document.createElement('p');
+      hint.className = 'menu-meta';
+      hint.textContent = t('ed.mpHint');
+      propsEl.append(hint);
+      // Vorschau-Optionen: als welcher Spieler, und hält der Partner die Platten?
+      const asSel = selectInput(String(testPlayer), [
+        ['1', t('ed.testAs.1')],
+        ['2', t('ed.testAs.2')],
+      ], (v) => {
+        testPlayer = v === '2' ? 2 : 1;
+      });
+      asSel.id = 'edTestAs';
+      propsEl.append(field(t('ed.testAs'), asSel));
+      const holdSel = selectInput(partnerHolds ? 'holds' : 'none', [
+        ['holds', t('ed.partner.holds')],
+        ['none', t('ed.partner.none')],
+      ], (v) => {
+        partnerHolds = v === 'holds';
+      });
+      holdSel.id = 'edPartner';
+      propsEl.append(field(t('ed.partner'), holdSel));
+    }
+
     // Ab hier gilt alles nur für die AKTIVE Ebene – Größe und Maze sind
     // Eigenschaften des Stockwerks, nicht des Levels.
     propsEl.append(scopeHead(t('ed.scope.floor', { n: activeFloor + 1 })));
@@ -1707,6 +1853,8 @@ export function setupEditor(opts: {
     f.maze.absorb = f.maze.absorb.filter(edgeInside);
     f.start = [Math.min(f.start[0], cols - 1), Math.min(f.start[1], rows - 1)];
     if (f.goal) f.goal = [Math.min(f.goal[0], cols - 1), Math.min(f.goal[1], rows - 1)];
+    if (f.start2) f.start2 = [Math.min(f.start2[0], cols - 1), Math.min(f.start2[1], rows - 1)];
+    if (f.goal2) f.goal2 = [Math.min(f.goal2[0], cols - 1), Math.min(f.goal2[1], rows - 1)];
     selected = -1;
     selEdge = null;
     fitView();
@@ -1795,7 +1943,7 @@ export function setupEditor(opts: {
     pendingGuard = null;
     // Mit dem Start-Werkzeug in der Hand auf eine tiefere Ebene wechseln:
     // Dort gibt es keinen Start zu setzen – zurück aufs Auswählen.
-    if (tool === 'start' && activeFloor !== 0) tool = 'select';
+    if ((tool === 'start' || tool === 'start2') && activeFloor !== 0) tool = 'select';
     renderFloorTabs();
     renderPalette(); // der ●-Knopf hängt an der Ebene (gedämpft ab E2)
     renderProps();
@@ -1926,7 +2074,11 @@ export function setupEditor(opts: {
     draft.name = nameInput.value.trim() || t('ed.untitled');
     // ⚑ nur, wenn die Ebene noch existiert (Ebenen können gelöscht sein).
     const from = testStart && testStart.floor < draft.floors.length ? testStart : null;
-    opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel, from);
+    opts.onTest(JSON.parse(JSON.stringify(draft)) as RawLevel, {
+      from,
+      player: twoPlayers() ? testPlayer : 1,
+      partnerHolds: twoPlayers() && partnerHolds,
+    });
   });
 
   window.addEventListener('resize', () => {
@@ -1973,6 +2125,8 @@ export function setupEditor(opts: {
       updateDrawerHandle();
       tool = 'place';
       placeType = 'hole';
+      testPlayer = 1;
+      partnerHolds = true;
       setPlaying(false);
       animT = 0;
       nameInput.value = String(draft.name ?? '');

@@ -612,6 +612,69 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M57 „Zu zweit gebaut" ✓ (v3.1.0) – Multiplayer-Level im Editor
+
+Bis 3.0.7 kannte der Multiplayer nur die eingebauten Coop-/Race-Level und den
+🎲-Generator; die Werkstatt baute ausschließlich Solo-Level (die Druckplatte
+fehlte in der Palette). Jetzt trägt ein Level `players: 1 | 2` und – bei zwei
+Spielern – `mpMode: 'coop' | 'race' | 'any'`; Ebene 1 darf einen zweiten
+Start (`start2`) haben, eine beliebige Ebene ein zweites Ziel (`goal2`).
+Fehlen sie, gelten Start und Ziel für beide.
+
+**Rollen sind fest:** Host = Spieler 1 (●/◎), Gast = Spieler 2 (●²/◎²).
+`loadLevel(def, { player })` baut die Welt FÜR EINEN Spieler: Kugel an seinem
+Start, Zielzone = sein Ziel, das andere Ziel existiert für ihn nicht (weder
+Beacon noch Zone). Default `player: 1` – jeder bestehende Aufruf ist
+unverändert.
+
+**Beweise** (validate.ts, `pairReachable`): Das Spiel gibt jedem eine eigene
+Welt – Schlüssel und Zeitschlösser wirken lokal, Druckplatten für beide
+(`mpFrame`: held = lokal ODER fern). Genau das rechnet der Fixpunkt: pro
+Spieler vom eigenen Start, Platten zählen im **Coop**, wenn IRGENDEINER sie
+erreicht; im **Race** zählen sie gar nicht (der eigene Ball kann nicht auf
+der Platte stehen UND durch die Tür). Badges: `coop`/`race` (je nach
+Modus, bei 'any' beide – die Lobby darf wählen, also muss beides bewiesen
+sein) ERSETZEN `goal`; `openers` und `softlock` rechnen mit dem Paar-Modell,
+`guards` prüft Ziel 2 von Start 2 aus; `fair` („Wege ähnlich lang", 3 Zellen
+oder 30 %) ist WEICH wie `items` (`SOFT_CHECKS`). Der Solo-Beweis wäre für
+den Gast weder notwendig noch hinreichend gewesen – deshalb Ersatz, nicht
+Ergänzung.
+
+**Editor:** Feld „Spieler" (1/2) in den Level-Eigenschaften; bei 2:
+Modus-Feld, Werkzeuge ●²/◎² (Start 2 nur Ebene 1, Tap auf dieselbe Zelle
+hebt auf), die Druckplatte in der Palette (solo bleibt sie draußen: niemand
+hielte sie, und `coopReachable` zählte sie trotzdem – grün und unlösbar),
+gestrichelte „2"-Ringe im Overlay. Zurück auf 1 räumt start2/goal2/mpMode
+weg. Vorschau: „Vorschau als" Spieler 1/2 und „Partner hält alle Platten"
+(sonst bliebe jede Coop-Tür solo zu) – `TestRun` statt nacktem ⚑-Start.
+`removeFloor` rettet auch goal2 in eine freie Zelle.
+
+**Werkstatt/Lobby:** Zwei-Spieler-Level zeigen „👥 Zu zweit" statt „▶
+Spielen" – das öffnet die Lobby mit dem Level als erster Karte
+(`#mpCustomItem`), fester Modus sperrt den anderen Chip. In Bundles zählen
+sie als übersprungen (`bundleProgress.skipped`): nie „weiter bei", nie
+gesperrt, im Kampagnen-Screen ein Tap in die Lobby. Der Host hängt die
+komplette Def an `setup` (alte Clients ignorieren das Feld); der Gast prüft
+Schema UND Pflicht-Badges – dieselbe Schranke wie beim Teilen – und sagt
+sonst „Level des Hosts ungültig". Das Intro nennt die Rolle; die
+Ergebniskarte des Gasts bietet „💾 In Werkstatt speichern" (`importRaw`,
+kollidierende ID wird frisch).
+
+E2E Lauf 33 fährt den ganzen Weg: Import → Badges → Zu zweit → Lobby →
+Gast startet auf der Platte an Start 2 und hält damit die Tür des Hosts →
+beide in ihrem Ziel → Gast speichert → Spieler-Schalter. Lektion aus dem
+ersten Lauf: BroadcastChannel überbrückt keine getrennten Playwright-
+Kontexte – Host und Gast teilen den Kontext wie in Lauf 9.
+
+**Nebenbei gefunden, weil der Gast über den echten Link beitritt:** Ein
+`#join=`-Link beim KALTSTART (jeder gescannte QR-Code in einem frischen Tab)
+warf seit dem Hash-Listener (M34) „Cannot access … before initialization" –
+`checkChallengeHash()` lief als Modul-Code VOR dem Multiplayer-Block und
+griff auf `mpPanel`/`mpCodeInput` in der TDZ zu; die App blieb schwarz. Der
+Aufruf steht jetzt hinter dem letzten Panel, Lauf 33 fährt den Link und
+zählt Seitenfehler des Gasts. Ein Tap auf den Link in der schon offenen
+App (hashchange) war nie betroffen – deshalb fiel es nicht auf.
+
 ## M56 „Rubin" ✓ (v3.0.7) – Türen in eigener Farbe
 
 Rückmeldung vom Gerät: Türen und brüchige Wände sind visuell nicht zu

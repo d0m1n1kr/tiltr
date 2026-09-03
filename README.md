@@ -64,7 +64,10 @@ automatically via GitHub Actions (tests → build → pages).
   **level bundles** (title, description, order, ID + version) that play like a
   campaign with saved progress and export/import as one file
   (three-pane layout on tablets): place elements from the full registry,
-  toggle walls, build multi-floor maps with transporters, tweak properties
+  toggle walls, build multi-floor maps with transporters, tweak properties,
+  or switch a level to **two players** (own start and goal for the guest,
+  pressure plates, co-op/race proofs as badges) and host it straight from the
+  workshop — the guest receives the level with the room and can save it
   — while the test suite's solvability proofs run live as badges (goal
   reachable, no softlock, timer fits …). Every selected element plays its
   own sound signature right in the properties panel, and ▶ animates the

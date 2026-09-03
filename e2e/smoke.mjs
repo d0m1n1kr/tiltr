@@ -84,6 +84,7 @@ const KNOWN_RUNS = [
   "30",
   "31",
   "32",
+  "33",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -5842,6 +5843,247 @@ if (want("32")) {
   } catch (e) {
     check(
       `Lauf 32 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 33: Multiplayer-Level aus dem Editor (M57). Ein Zwei-Spieler-Level
+// (Start 2 auf einer Druckplatte, Ziel 2, Tür für Spieler 1) wird importiert:
+// Badges „Coop lösbar" statt „Ziel erreichbar", Werkzeuge ●²/◎² und die
+// Platte in der Palette. „👥 Zu zweit" hebt es in die Lobby (Modus fest),
+// der Gast (eigener Kontext, eigener localStorage) bekommt die Def über
+// `setup`, startet an Start 2 auf der Platte und hält damit die Tür des
+// Hosts; beide erreichen ihr eigenes Ziel, der Gast speichert das Level in
+// seine Werkstatt (EIN Kontext wie Lauf 9 – BroadcastChannel überbrückt
+// keine getrennten Kontexte; die ID kollidiert also und wird frisch
+// vergeben, genau der importRaw-Pfad). Zum Schluss der Spieler-Schalter:
+// auf 1 verschwinden ●²/◎²/Platte und die Gast-Koordinaten, auf 2 kommen
+// die Werkzeuge zurück. ---
+if (want("33")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const pageA = await ctx.newPage(); // Host, baut das Level
+    const pageB = await ctx.newPage(); // Gast
+    for (const p of [pageA, pageB]) {
+      p.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      p.on("pageerror", (e) => errors.push(String(e)));
+    }
+    const carveRow = (y) => [0, 1, 2].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m57",
+      name: "Zwei Gänge",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 7, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          elements: [
+            { type: "door", id: "g", edge: [[1, 0], "e"] },
+            { type: "plate", cell: [0, 2], opens: "g" },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 2],
+          goal2: [3, 2],
+        },
+      ],
+    };
+
+    await pageA.goto(`${BASE}/?mpcode=TESTMP33&nosplash`);
+    await pageA.click("#workshopBtn");
+    await pageA.click("#wsImportBtn");
+    await pageA.fill("#wsImportText", JSON.stringify(def));
+    await pageA.click("#wsImportGo");
+    await until(async () => (await pageA.locator("#workshopList .ws-item").count()) > 0);
+    const card = pageA.locator("#workshopList .ws-item").last();
+    const cardText = await card.textContent();
+    check(
+      `Werkstatt-Karte: „👥 Zu zweit" statt „Spielen", Meta „2 Spieler" (${JSON.stringify(cardText.replace(/\s+/g, " ").trim().slice(0, 80))})`,
+      cardText.includes("Zu zweit") && cardText.includes("2 Spieler") && !cardText.includes("▶ Spielen"),
+    );
+
+    // Editor: Badges und Werkzeuge eines Zwei-Spieler-Levels.
+    await card.locator("button", { hasText: "✏️" }).click();
+    const badges =
+      (await until(async () => {
+        const b = await pageA.locator("#edBadges .ed-badge").allTextContents();
+        return b.length > 0 ? b : null;
+      })) ?? [];
+    const fails = await pageA.locator("#edBadges .ed-badge.fail").count();
+    check(
+      `Editor: „Coop lösbar" grün, kein „Race lösbar", kein „Ziel erreichbar", „Wege ähnlich lang" da (${badges.length} Badges, ${fails} rot: ${JSON.stringify(badges.filter((b) => b.startsWith("✗")))})`,
+      fails === 0 &&
+        badges.some((b) => /Coop lösbar/.test(b)) &&
+        !badges.some((b) => /Race lösbar/.test(b)) &&
+        !badges.some((b) => /Ziel erreichbar/.test(b)) &&
+        badges.some((b) => /Wege ähnlich lang/.test(b)),
+    );
+    const tools2 = await pageA.evaluate(() => ({
+      start2: !!document.getElementById("edTool-start2"),
+      goal2: !!document.getElementById("edTool-goal2"),
+      plate: !!document.getElementById("edEl-plate"),
+      players: window.__tiltrEd?.players,
+      mode: document.getElementById("edMpMode")?.value,
+    }));
+    check(
+      `Werkzeuge ●²/◎² und Druckplatte in der Palette, Modus-Feld „coop" (${JSON.stringify(tools2)})`,
+      tools2.start2 && tools2.goal2 && tools2.plate && tools2.players === 2 && tools2.mode === "coop",
+    );
+    await pageA.click("#edClose"); // zurück in die Werkstatt, Draft bleibt
+
+    // „Zu zweit" → Lobby mit dem eigenen Level, Modus vom Level fest.
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "Zu zweit" }).click();
+    await until(async () => !(await pageA.locator("#mp").getAttribute("class")).includes("hidden"));
+    const lobby = await pageA.evaluate(() => ({
+      custom: document.getElementById("mpCustomItem")?.textContent ?? null,
+      raceDisabled: document.querySelector('[data-mpmode="race"]')?.disabled,
+      coopActive: document.querySelector('[data-mpmode="coop"]')?.classList.contains("active"),
+      hint: document.getElementById("mpModeHint")?.textContent ?? "",
+    }));
+    check(
+      `Lobby-Auswahl: eigenes Level als erste Karte, Race gesperrt, Coop aktiv (${JSON.stringify(lobby.custom)}, race disabled=${lobby.raceDisabled})`,
+      !!lobby.custom && lobby.custom.includes("Zwei Gänge") && lobby.raceDisabled === true && lobby.coopActive === true && lobby.hint.includes("legt den Modus fest"),
+    );
+    await pageA.click("#mpCustomItem");
+    await until(async () => (await pageA.innerHTML("#mpQr")).includes("<svg"));
+    check(`Raum eröffnet (${(await pageA.textContent("#mpCode")).trim()})`, (await pageA.textContent("#mpCode")).trim() === "TESTMP33");
+
+    // Gast tritt über den QR-LINK bei (#join=… beim Kaltstart) – der Weg,
+    // den jeder gescannte Code nimmt. Bis 3.0.7 starb die App genau hier:
+    // checkChallengeHash() lief vor der Multiplayer-Initialisierung und griff
+    // auf noch nicht angelegte Konstanten (TDZ) – ReferenceError, kein Menü.
+    const errorsB = [];
+    pageB.on("pageerror", (e) => errorsB.push(String(e)));
+    await pageB.goto(`${BASE}/?nosplash#join=TESTMP33`);
+    await until(async () => (await pageB.textContent("#interTitle")).includes("Zwei Gänge"), { timeout: 8000 });
+    const joinB = await pageB.evaluate(() => ({
+      mpVisible: !document.getElementById("mp")?.classList.contains("hidden"),
+      code: document.getElementById("mpCode")?.textContent?.trim(),
+      hash: location.hash,
+    }));
+    check(
+      `Beitritt über den #join=-Link beim Kaltstart: kein Seitenfehler, Raumcode übernommen, Hash geräumt (${JSON.stringify({ ...joinB, errorsB })})`,
+      errorsB.length === 0 && joinB.code === "TESTMP33" && joinB.hash === "",
+    );
+    check(`Gast sieht das Intro des Werkstatt-Levels`, (await pageB.textContent("#interTitle")).includes("Zwei Gänge"));
+    const introA = (await pageA.textContent("#interText")).trim();
+    const introB = (await pageB.textContent("#interText")).trim();
+    check(
+      `Intro nennt die Rollen: Host „Spieler 1", Gast „Spieler 2" (A: ${JSON.stringify(introA.slice(-80))} / B: ${JSON.stringify(introB.slice(-80))})`,
+      introA.includes("Spieler 1") && introB.includes("Spieler 2") && !introB.includes("Spieler 1 ("),
+    );
+    await pageA.click("#interPrimary", { timeout: 5000 });
+    await pageB.click("#interPrimary", { timeout: 5000 });
+    await until(
+      async () =>
+        (await pageA.evaluate(() => window.__tiltrMp?.phase)) === "playing" &&
+        (await pageB.evaluate(() => window.__tiltrMp?.phase)) === "playing",
+    );
+    const mpA = await pageA.evaluate(() => ({ ...window.__tiltrMp, ball: window.__tiltrBall }));
+    const mpB = await pageB.evaluate(() => ({ ...window.__tiltrMp, ball: window.__tiltrBall }));
+    check(
+      `Rollen: Host Spieler 1 bei (50,50), Gast Spieler 2 an Start 2 (50,250), beide „custom" (${mpA.player}@${mpA.ball?.x},${mpA.ball?.y} / ${mpB.player}@${mpB.ball?.x},${mpB.ball?.y})`,
+      mpA.player === 1 &&
+        mpB.player === 2 &&
+        mpA.custom === true &&
+        mpB.custom === true &&
+        mpA.levelId === "custom-m57" &&
+        mpB.levelId === "custom-m57" &&
+        Math.abs(mpA.ball.x - 50) < 2 &&
+        Math.abs(mpA.ball.y - 50) < 2 &&
+        Math.abs(mpB.ball.x - 50) < 2 &&
+        Math.abs(mpB.ball.y - 250) < 2,
+    );
+    // Der Gast steht auf der Platte – der Host sieht sie als fern gehalten.
+    const remoteHolds =
+      (await until(async () => {
+        const h = await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []);
+        return h.includes("g") ? h : null;
+      }, { timeout: 4000 })) ?? (await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []));
+    check(`Start 2 auf der Platte hält die Tür des Hosts (remoteHolds=${JSON.stringify(remoteHolds)})`, remoteHolds.includes("g"));
+
+    // Jeder rollt in SEIN Ziel: Host durch die offene Tür nach rechts, Gast unten.
+    const finA = await holdUntil(pageA, "ArrowRight", () => pageA.evaluate(() => window.__tiltrMp?.localFinished === true), 8000);
+    check(`Host erreicht Ziel 1 durch die Tür (${finA})`, finA === true);
+    const finB = await holdUntil(pageB, "ArrowRight", () => pageB.evaluate(() => window.__tiltrMp?.localFinished === true), 8000);
+    check(`Gast erreicht Ziel 2 (${finB})`, finB === true);
+    await until(
+      async () =>
+        (await pageA.textContent("#interTitle")).includes("Gemeinsam geschafft") &&
+        (await pageB.textContent("#interTitle")).includes("Gemeinsam geschafft"),
+    );
+    const extraA = (await pageA.locator("#interExtra").getAttribute("class")).includes("hidden");
+    const extraB = (await pageB.textContent("#interExtra")).trim();
+    check(
+      `Ergebniskarte: Gast bekommt „In Werkstatt speichern", Host nicht (${JSON.stringify(extraB)}, host hidden=${extraA})`,
+      extraB.includes("In Werkstatt speichern") && extraA,
+    );
+    await pageB.click("#interExtra");
+    const savedTxt = await until(async () => {
+      const x = (await pageB.textContent("#interExtra")).trim();
+      return x.includes("Gespeichert") ? x : null;
+    }, { timeout: 2000 });
+    // Gleicher localStorage wie der Host: Das Original liegt schon da, die
+    // Kopie bekommt eine frische ID – zwei Level, das zweite mit allem dran.
+    const storeB = await pageB.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem("tiltr.workshop.v2") ?? "{}");
+      const lv = (raw.bundles ?? []).flatMap((b) => b.levels ?? []);
+      const last = lv[lv.length - 1];
+      return { n: lv.length, id: last?.id, players: last?.def?.players, name: last?.def?.name, start2: last?.def?.floors?.[0]?.start2 };
+    });
+    check(
+      `Gast hat das Level in der Werkstatt gespeichert – frische ID, Gast-Koordinaten dabei (${JSON.stringify(storeB)}, „${savedTxt}")`,
+      savedTxt !== null &&
+        storeB.n === 2 &&
+        storeB.id !== "custom-m57" &&
+        storeB.players === 2 &&
+        storeB.name === "Zwei Gänge" &&
+        JSON.stringify(storeB.start2) === "[0,2]",
+    );
+
+    // Spieler-Schalter im Editor: 1 räumt ●²/◎²/Platte und Gast-Koordinaten weg, 2 holt die Werkzeuge zurück.
+    await pageA.click("#interSecondary"); // Menü
+    await pageA.click("#workshopBtn");
+    await pageA.click("#wsResumeBtn"); // Draft von oben
+    await until(async () => !!(await pageA.evaluate(() => document.getElementById("edPlayers"))));
+    await pageA.selectOption("#edPlayers", "1");
+    const solo = await pageA.evaluate(() => ({
+      start2: !!document.getElementById("edTool-start2"),
+      plate: !!document.getElementById("edEl-plate"),
+      players: window.__tiltrEd?.players,
+      s2: window.__tiltrEd?.def?.floors?.[0]?.start2,
+      g2: window.__tiltrEd?.def?.floors?.[0]?.goal2,
+      mode: window.__tiltrEd?.def?.mpMode,
+    }));
+    check(
+      `Schalter auf 1: keine ●²/Platte mehr, start2/goal2/mpMode weg (${JSON.stringify(solo)})`,
+      !solo.start2 && !solo.plate && solo.players === 1 && solo.s2 === undefined && solo.g2 === undefined && solo.mode === undefined,
+    );
+    const soloBadges = await until(async () => {
+      const b = await pageA.locator("#edBadges .ed-badge").allTextContents();
+      return b.some((x) => /Ziel erreichbar/.test(x)) ? b : null;
+    }, { timeout: 3000 });
+    check(
+      `Solo-Badges: „Ziel erreichbar" zurück, „Coop lösbar" weg (${JSON.stringify(soloBadges)})`,
+      !!soloBadges && !soloBadges.some((x) => /Coop lösbar/.test(x)),
+    );
+    await pageA.selectOption("#edPlayers", "2");
+    const two = await pageA.evaluate(() => ({
+      start2: !!document.getElementById("edTool-start2"),
+      goal2: !!document.getElementById("edTool-goal2"),
+      plate: !!document.getElementById("edEl-plate"),
+      mode: window.__tiltrEd?.def?.mpMode,
+    }));
+    check(`Schalter auf 2: Werkzeuge und Platte zurück, Modus wieder coop (${JSON.stringify(two)})`, two.start2 && two.goal2 && two.plate && two.mode === "coop");
+
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 33 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

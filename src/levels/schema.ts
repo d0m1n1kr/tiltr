@@ -358,6 +358,13 @@ export const floorSchema = z.object({
    *  eine Wand berührt – dann blendet das Licht in zwei Sekunden aus und die
    *  Ebene ist dunkel wie jede andere. „Du kennst diesen Raum. Jetzt hör ihn." */
   dusk: z.boolean().default(false),
+  /** Zwei-Spieler-Level (M57): Start des ZWEITEN Spielers (Gast). Nur auf
+   *  Ebene 1 wirksam wie `start`; fehlt er, starten beide in `start`. */
+  start2: cellCoord.optional(),
+  /** Ziel des ZWEITEN Spielers – höchstens eines im Level, auf beliebiger
+   *  Ebene. Fehlt es, gilt `goal` für beide. Für Spieler 2 ist dann nur
+   *  DIESES Ziel die Zielzone (Spieler 1 sieht es nicht, es ist inert). */
+  goal2: cellCoord.optional(),
 });
 export type FloorDef = z.infer<typeof floorSchema>;
 
@@ -371,6 +378,11 @@ export const levelSchema = z.object({
   pingBudget: z.number().int().min(0).default(3),
   /** Ebene 0 ist die Start-Ebene; höherer Index = tiefer. */
   floors: z.array(floorSchema).min(1).max(4),
+  /** Spielerzahl (M57): 2 = Multiplayer-Level aus dem Editor – nur zu zweit
+   *  spielbar, mit optionalem zweiten Start/Ziel (floor.start2/goal2). */
+  players: z.union([z.literal(1), z.literal(2)]).default(1),
+  /** Nur bei zwei Spielern: fester Modus oder 'any' (die Lobby wählt). */
+  mpMode: z.enum(['coop', 'race', 'any']).default('any'),
   /**
    * Gesetzt von mirrorLevel (src/levels/mirror.ts): Alle Def-Koordinaten
    * sind bereits gespiegelt; Loader/Test-Helfer spiegeln zusätzlich das

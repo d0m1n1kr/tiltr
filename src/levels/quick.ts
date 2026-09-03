@@ -275,6 +275,8 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
 
   return {
     id: `quick-${preset}-${seed}`,
+    players: 1,
+    mpMode: 'any',
     name: 'Schnelles Spiel',
     pingBudget: p.pings,
     floors,

@@ -211,6 +211,28 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `boulder` ist Pflicht fürs Teilen. Abgrenzung bewusst: kein Stein-Stein,
   kein Transporter, keine Schiebewand-Zelle – hält beide Seiten klein. Neue
   Regeln IMMER in Physik UND Beweis eintragen (zwei Stellen, eine Wahrheit).
+- ZWEI-SPIELER-LEVEL M57 (v3.1.0): `players: 1 | 2`, `mpMode`, `floor.start2`
+  (nur Ebene 1), `floor.goal2` (eine Ebene). ROLLEN FEST: Host = Spieler 1,
+  Gast = Spieler 2. `loadLevel(def, { player })` baut die Welt für EINEN
+  Spieler (Kugel an seinem Start, Zielzone = sein Ziel, das andere Ziel ist
+  für ihn nicht da); Default 1, `playerRole()` in app.ts ist die eine Stelle,
+  die entscheidet (MP: mp.host; Editor-Vorschau: „Vorschau als"). Beweis:
+  `pairReachable(def, coop)` – pro Spieler eigener Öffner-Fixpunkt vom
+  eigenen Start, PLATTEN zählen im Coop, wenn einer sie erreicht, im Race gar
+  nicht (Schlüssel wirken nur lokal – so tut es auch das Spiel). Badges
+  `coop`/`race` ERSETZEN `goal` bei zwei Spielern (bei 'any' beide Pflicht),
+  `fair` ist weich (`SOFT_CHECKS`, wie `items`). Die DRUCKPLATTE steht nur
+  bei zwei Spielern in der Palette: solo hielte sie niemand, und
+  `coopReachable` zählte sie trotzdem als Öffner – ein grünes, unlösbares
+  Level. Werkstatt: „👥 Zu zweit" statt Spielen → Lobby mit `#mpCustomItem`,
+  Bundles überspringen MP-Level (`bundleProgress.skipped`). Protokoll: Host
+  hängt die Def an `setup`, der Gast prüft `validateLevel` + `isShareable`
+  vor dem Intro; Ergebniskarte des Gasts: „In Werkstatt speichern". E2E Lauf
+  33 – Host und Gast im SELBEN Kontext (BroadcastChannel überbrückt keine
+  Playwright-Kontexte), der Gast tritt über `#join=` beim KALTSTART bei:
+  `checkChallengeHash()` muss als LETZTES Modul-Statement vor der Schleife
+  laufen – module-level `const`/`let` sind vor ihrer Zeile in der TDZ, und
+  bis 3.0.7 starb jeder gescannte QR-Code im frischen Tab genau daran.
 - `src/core/occlusion.ts` – SCHALLSCHUTZWAND (`maze.absorb`, Wand mit
   `absorb`, Palette `absorb` Filz-Khaki): Der Echo-Ping deckt sie auf, aber
   sie antwortet NICHT; Klangquellen, deren Strahl vom Ball eine solche Wand

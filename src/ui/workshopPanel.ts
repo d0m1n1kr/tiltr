@@ -45,6 +45,8 @@ export interface WorkshopPanelApi {
 
 export function setupWorkshopPanel(opts: {
   onPlay: (def: RawLevel) => void;
+  /** Zwei-Spieler-Level (M57): öffnet die Lobby mit diesem Level vorgewählt. */
+  onPlayMp: (def: RawLevel) => void;
   onPlayBundle: (bundleId: string, index: number) => void;
   onEdit: (def: RawLevel) => void;
   /** Der Bestand hat sich geändert (Löschen, Duplizieren, Import) – das
@@ -162,7 +164,16 @@ export function setupWorkshopPanel(opts: {
     // Weiter dort, wo zuletzt aufgehört wurde – aber nie hinter einem noch
     // gesperrten Level (das Profil merkt sich den letzten Index).
     const last = profile.bundlePos(current.id);
-    const resume = last !== null && last < current.levels.length && prog.unlocked(last) ? last : prog.resume;
+    let resume = last !== null && last < current.levels.length && prog.unlocked(last) ? last : prog.resume;
+    // Zwei-Spieler-Level (M57) sind solo nicht spielbar: „weiter bei" nimmt
+    // das nächste Solo-Level; besteht das Bundle nur aus solchen, ruht ▶.
+    if (prog.skipped(resume)) resume = current.levels.findIndex((_, i) => !prog.skipped(i));
+    if (resume < 0) {
+      play.textContent = t('ws.bundle.playStart');
+      play.disabled = true;
+      meta.textContent = t('ws.bundle.version', { n: current.version });
+      return;
+    }
     const lvl = current.levels[resume]!;
     play.textContent = t('ws.bundle.play', { n: resume + 1, name: String(lvl.def.name ?? lvl.id) });
     play.disabled = false;
@@ -244,10 +255,18 @@ export function setupWorkshopPanel(opts: {
       return b;
     };
 
-    btn(`▶ ${t('ed.play')}`, 'btn-primary', row, () => {
-      panel.classList.add('hidden');
-      opts.onPlay(JSON.parse(JSON.stringify(level.def)) as RawLevel);
-    });
+    // Zwei Spieler (M57): kein Solo-Start – „Zu zweit" öffnet die Lobby.
+    if (level.def.players === 2) {
+      btn(t('ws.playMp'), 'btn-primary', row, () => {
+        panel.classList.add('hidden');
+        opts.onPlayMp(JSON.parse(JSON.stringify(level.def)) as RawLevel);
+      });
+    } else {
+      btn(`▶ ${t('ed.play')}`, 'btn-primary', row, () => {
+        panel.classList.add('hidden');
+        opts.onPlay(JSON.parse(JSON.stringify(level.def)) as RawLevel);
+      });
+    }
     const edit = btn(`✏️ ${t('ed.edit')}`, 'btn-ghost', row, () => {
       confirmDiscard(edit, () => {
         panel.classList.add('hidden');
@@ -344,7 +363,12 @@ export function setupWorkshopPanel(opts: {
       const meta = document.createElement('span');
       meta.className = 'ws-meta';
       const best = profile.bestFor(level.id);
-      meta.textContent = [sizeLabel, formatDate(level.updatedAt.slice(0, 10)), best !== null ? fmtTime(best) : '']
+      meta.textContent = [
+        level.def.players === 2 ? t('ws.mpMeta') : '',
+        sizeLabel,
+        formatDate(level.updatedAt.slice(0, 10)),
+        best !== null ? fmtTime(best) : '',
+      ]
         .filter(Boolean)
         .join(' · ');
       // ▲▼: Spielreihenfolge im Bundle (die Karte selbst bleibt der Ort dafür –

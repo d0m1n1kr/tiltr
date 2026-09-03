@@ -37,7 +37,8 @@ import { profile } from './profile';
 import { setupUpdates } from './ui/update';
 import { setupGallery, extraEntries } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
-import { setupEditor, type RawLevel, type TestStart } from './ui/editor';
+import { setupEditor, type RawLevel, type TestRun, type TestStart } from './ui/editor';
+import { isShareable, validateLevel } from './levels/validate';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
@@ -46,7 +47,7 @@ import { fpInitial, fpStep } from './core/fp';
 import { breathAt, breathOpenRemaining } from './core/breathing';
 import { advance, compileTune, notesAt, type CompiledTune } from './audio/chiptune';
 import { compiledById } from './music';
-import { bundleProgress, bundles, workshop } from './workshop';
+import { bundleProgress, bundles, importRaw, workshop } from './workshop';
 import { decodeLevel } from './levels/shareCodec';
 
 const HOLE_HEAR = CELL * 2; // Hörweite des Loch-Grollens
@@ -153,6 +154,9 @@ interface MpSession {
   host: boolean;
   mode: MpMode;
   level: LevelDef | null;
+  /** Level aus der Werkstatt (M57): Der Host hängt die Def an `setup`, der
+   *  Gast prüft sie und darf sie am Ende in seine Werkstatt übernehmen. */
+  custom: boolean;
   phase: 'lobby' | 'intro' | 'playing' | 'done';
   selfReady: boolean;
   peerReady: boolean;
@@ -223,6 +227,16 @@ let customDef: LevelDef | null = null;
 let customFromEditor = false;
 /** ⚑ Editor-Vorschau ab einer anderen Stelle (Ebene + Zelle) statt am Start. */
 let customFrom: TestStart | null = null;
+/** Vorschau eines Zwei-Spieler-Entwurfs (M57): als wer, und hält der Partner? */
+let customPlayer: 1 | 2 = 1;
+let customPartnerHolds = false;
+
+/** Für wen die Welt gebaut wird: Host = 1, Gast = 2; Editor-Vorschau wählt. */
+function playerRole(): 1 | 2 {
+  if (mp) return mp.host ? 1 : 2;
+  if (mode?.kind === 'custom' && customFromEditor) return customPlayer;
+  return 1;
+}
 
 // Seed aus der URL (?seed=…) macht Läufe reproduzierbar (Tests, später Daily).
 function nextSeed(): number {
@@ -456,7 +470,10 @@ function refreshCampaignList(): void {
     campaignList.append(header);
     const prog = bundleProgress(b, (id) => profile.bestFor(id));
     b.levels.forEach((lvl, i) => {
-      const unlocked = UNLOCK_ALL || prog.unlocked(i);
+      // Zwei-Spieler-Level (M57): nie gesperrt, nie Teil der Reihe – der Tap
+      // öffnet die Lobby mit diesem Level.
+      const isMp = prog.skipped(i);
+      const unlocked = isMp || UNLOCK_ALL || prog.unlocked(i);
       const item = document.createElement('button');
       item.className = 'panel level-item bundle-level' + (unlocked ? '' : ' locked');
       const name = document.createElement('span');
@@ -464,9 +481,18 @@ function refreshCampaignList(): void {
       const meta = document.createElement('span');
       meta.className = 'level-meta';
       const best = profile.bestFor(lvl.id);
-      meta.textContent = unlocked ? (best !== null ? `✓ · ${fmtTime(best)}` : '') : '🔒';
+      meta.textContent = isMp ? t('ws.mpMeta') : unlocked ? (best !== null ? `✓ · ${fmtTime(best)}` : '') : '🔒';
       item.append(name, meta);
-      if (unlocked) {
+      if (isMp) {
+        item.addEventListener('click', () => {
+          campaignPanel.classList.add('hidden');
+          try {
+            mpOpenCustom(parseLevel(lvl.def));
+          } catch {
+            /* kaputtes Level: die Werkstatt zeigt ⚠ */
+          }
+        });
+      } else if (unlocked) {
         item.addEventListener('click', () => {
           campaignPanel.classList.add('hidden');
           void startMode({ kind: 'bundle', bundleId: b.id, index: i });
@@ -598,14 +624,16 @@ quickBtn.addEventListener('click', () => void startMode({ kind: 'quick' }));
 /* --- Werkstatt: Bibliothek + Editor + Preview ------------------------------ */
 
 // Rohe Def spielen: parseLevel validiert; fromEditor blendet den ✏️-Knopf ein.
-function startCustom(raw: RawLevel, fromEditor: boolean, from: TestStart | null = null): void {
+function startCustom(raw: RawLevel, fromEditor: boolean, run: TestRun | null = null): void {
   try {
     customDef = parseLevel(raw);
   } catch {
     return; // Bibliothek zeigt kaputte Level mit ⚠, der Editor blockt Testen
   }
   customFromEditor = fromEditor;
-  customFrom = fromEditor ? from : null;
+  customFrom = fromEditor ? run?.from ?? null : null;
+  customPlayer = fromEditor ? run?.player ?? 1 : 1;
+  customPartnerHolds = fromEditor && run?.partnerHolds === true;
   $('editor').classList.add('hidden');
   $('workshop').classList.add('hidden');
   void startMode({ kind: 'custom' });
@@ -664,7 +692,7 @@ function challengeAction(def: LevelDef, seconds: number, label: string): InterAc
 
 const editorApi = setupEditor({
   audio,
-  onTest: (def, from) => startCustom(def, true, from),
+  onTest: (def, run) => startCustom(def, true, run),
   onSaved: () => {
     workshopPanel.refresh();
     refreshMenu();
@@ -673,6 +701,13 @@ const editorApi = setupEditor({
 });
 const workshopPanel = setupWorkshopPanel({
   onPlay: (def) => startCustom(def, false),
+  onPlayMp: (def) => {
+    try {
+      mpOpenCustom(parseLevel(def));
+    } catch {
+      /* Bibliothek zeigt kaputte Level mit ⚠ */
+    }
+  },
   onPlayBundle: (bundleId, index) => void startMode({ kind: 'bundle', bundleId, index }),
   onEdit: (def) => editorApi.open(def),
   onChanged: refreshMenu,
@@ -944,7 +979,7 @@ function activateFloor(index: number): void {
 }
 
 function launch(def: LevelDef): void {
-  loaded = loadLevel(def);
+  loaded = loadLevel(def, { player: playerRole() });
   // Geist-Replay: nur in Quick/Daily/Kampagne (nicht Tutorial, nicht MP) –
   // die Level-ID trägt bei Quick den Seed, der Geist erscheint also nur auf
   // exakt demselben Level.
@@ -1006,6 +1041,7 @@ function launch(def: LevelDef): void {
   updateDebugButton(editorPreview);
   homeBtn.classList.toggle('hidden', editorPreview);
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
+  if (editorPreview && customPartnerHolds) flash(t('st.partnerHolds'), 3000);
   input.calibrate();
   fpState = fpInitial();
   renderer.setFpView(fpOn());
@@ -1664,13 +1700,11 @@ function checkChallengeHash(): void {
     secondary: { label: t('daily.later'), onClick: () => undefined },
   });
 }
-checkChallengeHash();
-// Auch wenn die App SCHON OFFEN ist: Tippt man einen tiltr-Link an (PWA,
-// wiederverwendeter Tab), ändert sich nur der Hash – ohne Neuladen. Ohne
-// diesen Listener passierte dann gar nichts. (replaceState beim Aufräumen
-// feuert kein hashchange, es gibt also keine Schleife.)
-window.addEventListener('hashchange', checkChallengeHash);
-
+// Der AUFRUF steht weiter unten, HINTER dem Multiplayer-Block: Der #join=-Pfad
+// greift auf mpPanel/mpCodeInput/mpJoin zu, und module-level `const`/`let`
+// sind vor ihrer Zeile in der TDZ. Bis 3.0.7 stand der Aufruf hier – ein
+// gescannter QR-Code beim Kaltstart warf „Cannot access … before
+// initialization", die App blieb schwarz (E2E Lauf 33 fährt den Link).
 
 /* --- Multiplayer ------------------------------------------------------------ */
 
@@ -1680,17 +1714,47 @@ const mpLobby = $('mpLobby');
 const mpLevelList = $('mpLevelList');
 const mpCodeInput = $<HTMLInputElement>('mpCodeInput');
 let mpModeSel: MpMode = 'coop';
+/** Eigenes Level aus der Werkstatt (M57), in der Lobby vorgewählt. */
+let mpCustomLevel: LevelDef | null = null;
 
 const mpModeHint = (m: MpMode): string => t(m === 'coop' ? 'mp.hint.coop' : 'mp.hint.race');
+
+/** Zwei-Spieler-Level aus der Werkstatt in die Lobby heben: Der Modus folgt
+ *  dem Level (fest oder frei), das Level steht als erste Karte. */
+function mpOpenCustom(def: LevelDef): void {
+  mpCustomLevel = def;
+  if (def.mpMode !== 'any') mpModeSel = def.mpMode;
+  $('workshop').classList.add('hidden');
+  refreshMpPanel();
+  mpPanel.classList.remove('hidden');
+}
 
 function refreshMpPanel(): void {
   mpChoose.classList.remove('hidden');
   mpLobby.classList.add('hidden');
-  $('mpModeHint').textContent = mpModeHint(mpModeSel);
+  const fixedMode = mpCustomLevel && mpCustomLevel.mpMode !== 'any' ? mpCustomLevel.mpMode : null;
+  if (fixedMode) mpModeSel = fixedMode;
+  $('mpModeHint').textContent = `${mpModeHint(mpModeSel)}${fixedMode ? ` ${t('mp.modeFixed')}` : ''}`;
   for (const chip of document.querySelectorAll<HTMLButtonElement>('#mpModeRow .chip')) {
     chip.classList.toggle('active', chip.dataset.mpmode === mpModeSel);
+    chip.disabled = fixedMode !== null && chip.dataset.mpmode !== fixedMode;
   }
   mpLevelList.replaceChildren();
+  if (mpCustomLevel) {
+    const def = mpCustomLevel;
+    const item = document.createElement('button');
+    item.id = 'mpCustomItem';
+    item.className = 'panel level-item';
+    const name = document.createElement('span');
+    name.textContent = `${t('mp.custom')} · ${lvName(def)}`;
+    const meta = document.createElement('span');
+    meta.className = 'level-meta';
+    const [c, r] = def.floors[0]!.size;
+    meta.textContent = `${t('ws.mpMeta')} · ${c}×${r}`;
+    item.append(name, meta);
+    item.addEventListener('click', () => void mpHost(def, true));
+    mpLevelList.append(item);
+  }
   // Zufallslevel (wie beim Schnellen Spiel, mit Multiplayer-Elementen):
   // der Gast regeneriert es deterministisch aus der ID (mpq-<modus>-<seed>).
   const rndItem = document.createElement('button');
@@ -1736,7 +1800,7 @@ function mpJoinUrl(code: string): string {
 // Abbruch (Abbrechen/Schließen) während des Verbindens.
 let mpPending: string | null = null;
 
-async function mpHost(level: LevelDef): Promise<void> {
+async function mpHost(level: LevelDef, custom = false): Promise<void> {
   // ?mpcode=TEST… erzwingt den Raumcode (E2E: TEST-Präfix wählt den LocalTransport)
   const code = new URLSearchParams(location.search).get('mpcode')?.toUpperCase() ?? makeRoomCode();
   $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${lvName(level)}`;
@@ -1751,7 +1815,7 @@ async function mpHost(level: LevelDef): Promise<void> {
       transport.leave();
       return;
     }
-    mpInit(transport, code, true, mpModeSel, level);
+    mpInit(transport, code, true, mpModeSel, level, custom);
     $('mpLobbyStatus').textContent = t('mp.waiting');
   } catch {
     if (mpPending === code) $('mpLobbyStatus').textContent = t('mp.error');
@@ -1771,14 +1835,14 @@ async function mpJoin(code: string): Promise<void> {
       transport.leave();
       return;
     }
-    mpInit(transport, code, false, 'coop', null);
+    mpInit(transport, code, false, 'coop', null, false);
     $('mpLobbyStatus').textContent = t('mp.connecting');
   } catch {
     if (mpPending === code) $('mpLobbyStatus').textContent = t('mp.error');
   }
 }
 
-function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMode, level: LevelDef | null): void {
+function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMode, level: LevelDef | null, custom: boolean): void {
   mp?.transport.leave();
   mp = {
     transport,
@@ -1786,6 +1850,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
     host,
     mode: mpmode,
     level,
+    custom,
     phase: 'lobby',
     selfReady: false,
     peerReady: false,
@@ -1810,7 +1875,9 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
         return;
       }
       if (mp.host && mp.level) {
-        mp.transport.send('setup', { mode: mp.mode, levelId: mp.level.id });
+        // Werkstatt-Level (M57): die komplette Def reist mit – der Gast hat sie
+        // nicht. Alte Clients ignorieren das Feld und finden die ID nicht.
+        mp.transport.send('setup', { mode: mp.mode, levelId: mp.level.id, def: mp.custom ? mp.level : undefined });
         $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
       } else {
@@ -1838,10 +1905,28 @@ function mpPeerLeft(): void {
 function mpOnMessage(type: string, payload: unknown): void {
   if (!mp) return;
   if (type === 'setup') {
-    const p = payload as { mode: MpMode; levelId: string };
-    const pool = p.mode === 'coop' ? COOP_LEVELS : RACE_LEVELS;
-    // Zufallslevel stehen nicht im Pool: aus der ID deterministisch regenerieren.
-    const level = pool.find((l) => l.id === p.levelId) ?? parseMpQuickId(p.levelId);
+    const p = payload as { mode: MpMode; levelId: string; def?: unknown };
+    let level: LevelDef | null = null;
+    if (p.def !== undefined) {
+      // Werkstatt-Level des Hosts (M57): Schema UND Pflicht-Badges prüfen –
+      // dieselbe Schranke wie beim Teilen. Ein unbeweisbares Level spielt
+      // der Gast nicht; die Lobby sagt warum.
+      try {
+        const checks = validateLevel(p.def);
+        if (isShareable(checks)) level = parseLevel(p.def);
+      } catch {
+        level = null;
+      }
+      if (!level) {
+        $('mpLobbyStatus').textContent = t('mp.badLevel');
+        return;
+      }
+      mp.custom = true;
+    } else {
+      const pool = p.mode === 'coop' ? COOP_LEVELS : RACE_LEVELS;
+      // Zufallslevel stehen nicht im Pool: aus der ID deterministisch regenerieren.
+      level = pool.find((l) => l.id === p.levelId) ?? parseMpQuickId(p.levelId);
+    }
     if (!level) return;
     mp.mode = p.mode;
     mp.level = level;
@@ -1876,9 +1961,11 @@ function mpShowIntro(): void {
   mp.phase = 'intro';
   mpPanel.classList.add('hidden');
   const icon = mp.mode === 'coop' ? '🤝' : '🏁';
+  // Zwei-Spieler-Level (M57): jeder erfährt seine Rolle – Host ●, Gast ●².
+  const role = mp.level.players === 2 ? `\n${t(mp.host ? 'mp.role1' : 'mp.role2')}` : '';
   showInterstitial({
     title: `${icon} ${lvName(mp.level)}`,
-    text: `${lvIntro(mp.level) ?? ''}\n\n${mpModeHint(mp.mode)}`,
+    text: `${lvIntro(mp.level) ?? ''}\n\n${mpModeHint(mp.mode)}${role}`,
     primary: {
       label: t('mp.ready'),
       onClick: () => {
@@ -2064,11 +2151,26 @@ function mpCheckResult(): void {
     title = mine === theirs ? t('mp.draw') : won ? t('mp.raceWin') : t('mp.raceLose');
     text = t('mp.raceTimes', { you: fmtTime(mine), rival: fmtTime(theirs) });
   }
+  // Gast eines Werkstatt-Levels (M57): Level in die eigene Werkstatt holen.
+  const level = mp.level;
+  const saveAction: InterAction | undefined =
+    mp.custom && !mp.host && level
+      ? {
+          label: t('mp.saveLevel'),
+          onClick: () => {
+            const saved = importRaw(JSON.parse(JSON.stringify(level)) as Record<string, unknown>);
+            interExtra.textContent = saved ? t('mp.savedLevel') : t('ed.saveFailed');
+            workshopPanel.refresh();
+            refreshMenu();
+          },
+        }
+      : undefined;
   setTimeout(() => {
     if (!mp) return;
     showInterstitial({
       title,
       text,
+      extra: saveAction,
       primary: {
         label: t('common.again'),
         onClick: () => {
@@ -2090,6 +2192,7 @@ function mpCheckResult(): void {
 }
 
 $('mpBtn').addEventListener('click', () => {
+  mpCustomLevel = null;
   refreshMpPanel();
   mpPanel.classList.remove('hidden');
 });
@@ -2099,6 +2202,7 @@ $('mpClose').addEventListener('click', () => {
     mp = null;
   }
   mpPending = null;
+  mpCustomLevel = null;
   mpPanel.classList.add('hidden');
 });
 $('mpCancelBtn').addEventListener('click', () => {
@@ -2128,6 +2232,15 @@ $('mpScanBtn').addEventListener('click', () => {
     }
   });
 });
+
+// Links im Hash (#level=, #duel=, #join=, #daily=) – erst JETZT, da alle
+// Panels, die sie öffnen, initialisiert sind (siehe Hinweis oben).
+checkChallengeHash();
+// Auch wenn die App SCHON OFFEN ist: Tippt man einen tiltr-Link an (PWA,
+// wiederverwendeter Tab), ändert sich nur der Hash – ohne Neuladen. Ohne
+// diesen Listener passierte dann gar nichts. (replaceState beim Aufräumen
+// feuert kein hashchange, es gibt also keine Schleife.)
+window.addEventListener('hashchange', checkChallengeHash);
 
 let last = performance.now();
 function frame(now: number): void {
@@ -2457,6 +2570,13 @@ function frame(now: number): void {
       }
     }
     if (!mp) {
+      // Editor-Vorschau eines Zwei-Spieler-Levels (M57): Der abwesende
+      // Partner hält alle Druckplatten – sonst bliebe jede Coop-Tür solo zu.
+      const phantom = mode?.kind === 'custom' && customFromEditor && customPartnerHolds;
+      if (phantom) {
+        for (const f of loaded!.floors) for (const pl of f.world.plates) pl.held = true;
+        updateDoors(now);
+      }
       const allSwitches = loaded!.floors.flatMap((f) => f.world.switches);
       if (allSwitches.length) {
         let urgency = 0; // dringlichster laufender Timer (0 = keiner aktiv)
@@ -2712,6 +2832,8 @@ function frame(now: number): void {
     ? {
         phase: mp.phase,
         levelId: mp.level?.id ?? null,
+        player: mp.host ? 1 : 2,
+        custom: mp.custom,
         remote: { ...mp.remote },
         localFinished: mp.localFinished,
         goalLit: renderer.goalLit,

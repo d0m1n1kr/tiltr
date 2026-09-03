@@ -352,17 +352,22 @@ export const bundles = {
 
 /** Fortschritt im Bundle: erster Level ohne Bestzeit (alles geschafft → 0),
  *  und ob Level i freigeschaltet ist (der Vorgänger hat eine Bestzeit).
- *  Rein – `best` kommt vom Profil. */
+ *  Rein – `best` kommt vom Profil. Zwei-Spieler-Level (M57, `players: 2`)
+ *  zählen als ÜBERSPRUNGEN: Sie sind solo nicht spielbar, blockieren die
+ *  Reihe also nicht und werden nie „weiter bei" – gespielt werden sie
+ *  einzeln über „Zu zweit". */
 export function bundleProgress(
-  b: { levels: Array<{ id: string }> },
+  b: { levels: Array<{ id: string; def?: Record<string, unknown> }> },
   best: (id: string) => number | null,
-): { resume: number; done: number; unlocked: (i: number) => boolean } {
-  const doneFlags = b.levels.map((l) => best(l.id) !== null);
+): { resume: number; done: number; unlocked: (i: number) => boolean; skipped: (i: number) => boolean } {
+  const skipped = b.levels.map((l) => l.def?.players === 2);
+  const doneFlags = b.levels.map((l, i) => skipped[i] || best(l.id) !== null);
   const firstOpen = doneFlags.indexOf(false);
   return {
     resume: firstOpen === -1 ? 0 : firstOpen,
-    done: doneFlags.filter(Boolean).length,
+    done: doneFlags.filter((d, i) => d && !skipped[i]).length,
     unlocked: (i) => i === 0 || doneFlags[i - 1] === true,
+    skipped: (i) => skipped[i] === true,
   };
 }
 

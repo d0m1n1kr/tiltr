@@ -67,7 +67,10 @@ automatisch per GitHub Actions (Tests → Build → Pages).
   Stand, als Ganzes exportier-/importierbar; Level im Touch-Editor bauen (auf Tablets als
   Dreispalter): Elemente aus der kompletten Registry platzieren, Wände
   schalten, mehrstöckige Karten mit Transportern bauen, Eigenschaften
-  feilen – während die Lösbarkeits-Beweise der Testsuite live als Badges
+  feilen oder ein Level auf **zwei Spieler** stellen (eigener Start und
+  eigenes Ziel für den Gast, Druckplatten, Coop-/Race-Beweise als Badges)
+  und direkt aus der Werkstatt hosten – der Gast bekommt das Level mit dem
+  Raum und kann es speichern – während die Lösbarkeits-Beweise der Testsuite live als Badges
   mitlaufen (Ziel erreichbar, kein Softlock, Timer reicht …). Jedes gewählte
   Element spielt seine Klang-Signatur direkt im Eigenschaften-Panel, und ▶
   lässt die bewegten Teile laufen (atmende Löcher, Schiebewände,

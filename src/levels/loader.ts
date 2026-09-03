@@ -21,9 +21,18 @@ export interface LoadedFloor {
   dusk: boolean;
 }
 
+/** Für wen wird geladen (M57)? Spieler 2 (Gast) startet an `start2` und hat
+ *  `goal2` als Zielzone, wo das Level sie definiert – sonst dieselben wie
+ *  Spieler 1. Default 1: jeder bestehende Aufruf bleibt unverändert. */
+export interface LoadOptions {
+  player?: 1 | 2;
+}
+
 export interface LoadedLevel {
   def: LevelDef;
   floors: LoadedFloor[];
+  /** Für welchen Spieler die Welt gebaut wurde (Start, Zielzone). */
+  player: 1 | 2;
   /** Ebene, auf der das Ziel liegt */
   goalFloor: number;
   /** Zielposition in Weltkoordinaten (für den gedämpften Beacon auf anderen Ebenen) */
@@ -97,12 +106,33 @@ export function generatedBrittleEdges(
   return out;
 }
 
-export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
+/** Start-Zelle eines Spielers (Ebene 1). */
+export function startCellFor(def: LevelDef, player: 1 | 2): readonly [number, number] {
+  const f0 = def.floors[0]!;
+  return player === 2 && f0.start2 ? f0.start2 : f0.start;
+}
+
+/** Ziel eines Spielers: Ebene + Zelle. Spieler 2 bekommt `goal2`, wenn das
+ *  Level eines hat – sonst das gemeinsame Ziel. */
+export function goalCellFor(def: LevelDef, player: 1 | 2): { floor: number; cell: readonly [number, number] } | null {
+  if (player === 2) {
+    const fl = def.floors.findIndex((f) => f.goal2);
+    if (fl >= 0) return { floor: fl, cell: def.floors[fl]!.goal2! };
+  }
+  const fl = def.floors.findIndex((f) => f.goal);
+  return fl >= 0 ? { floor: fl, cell: def.floors[fl]!.goal! } : null;
+}
+
+export function loadLevel(defOrData: LevelDef | unknown, opts: LoadOptions = {}): LoadedLevel {
   const def = parseLevel(defOrData);
+  const player = opts.player ?? 1;
   const ball = new Ball(0, 0, BALL_R); // Position setzt die Start-Ebene unten
   const floors: LoadedFloor[] = [];
   let goalFloor = -1;
   let goalPos = { x: 0, y: 0 };
+  // Ziel DIESES Spielers: Spieler 2 bekommt goal2, wo es eines gibt.
+  const myGoal = goalCellFor(def, player);
+  let goal2Floor = -1;
 
   def.floors.forEach((floor, floorIndex) => {
     const [cols, rows] = floor.size;
@@ -148,12 +178,23 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
 
     const inBounds = (c: readonly [number, number]) => c[0] < cols && c[1] < rows;
     if (!inBounds(floor.start)) throw new Error(`Level ${def.id}: start außerhalb des Felds (Ebene ${floorIndex})`);
+    if (floor.start2 && !inBounds(floor.start2))
+      throw new Error(`Level ${def.id}: start2 außerhalb des Felds (Ebene ${floorIndex})`);
     let goal = null;
     if (floor.goal) {
       if (!inBounds(floor.goal)) throw new Error(`Level ${def.id}: goal außerhalb des Felds (Ebene ${floorIndex})`);
       if (goalFloor !== -1) throw new Error(`Level ${def.id}: mehr als ein Ziel definiert`);
       goalFloor = floorIndex;
-      goalPos = cellCenter(floor.goal, CELL);
+    }
+    if (floor.goal2) {
+      if (!inBounds(floor.goal2)) throw new Error(`Level ${def.id}: goal2 außerhalb des Felds (Ebene ${floorIndex})`);
+      if (goal2Floor !== -1) throw new Error(`Level ${def.id}: mehr als ein zweites Ziel definiert`);
+      goal2Floor = floorIndex;
+    }
+    // Die Zielzone der Welt ist das Ziel DIESES Spielers – das andere Ziel
+    // existiert für ihn nicht (weder Beacon noch Zielzone).
+    if (myGoal && myGoal.floor === floorIndex) {
+      goalPos = cellCenter(myGoal.cell, CELL);
       goal = { x: goalPos.x, y: goalPos.y, r: BALL_R * 1.4 };
     }
 
@@ -163,10 +204,11 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
   });
 
   if (goalFloor === -1) throw new Error(`Level ${def.id}: kein Ziel definiert`);
+  // Ab hier ist goalFloor die Ebene des Ziels DIESES Spielers.
+  if (myGoal) goalFloor = myGoal.floor;
 
-  // Ball auf die Start-Ebene setzen.
-  const startFloor = def.floors[0]!;
-  const start = cellCenter(startFloor.start, CELL);
+  // Ball auf die Start-Ebene setzen (Spieler 2: start2, wenn vorhanden).
+  const start = cellCenter(startCellFor(def, player), CELL);
   ball.x = start.x;
   ball.y = start.y;
 
@@ -190,6 +232,7 @@ export function loadLevel(defOrData: LevelDef | unknown): LoadedLevel {
   return {
     def,
     floors,
+    player,
     goalFloor,
     goalPos,
     pingBudget: def.pingBudget,
