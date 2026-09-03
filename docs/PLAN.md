@@ -612,6 +612,20 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M73 „Eine Karte, nicht zwei Schichten" ✓ (v3.6.1) – Erklär-Tafel als Modal
+
+Meldung mit Bild: Die Erklär-Tafel aus M71 lag DURCHSICHTIG über dem
+Eigenschaften-Griff des Phone-Editors – zwei Ebenen Text übereinander, beides
+unlesbar. Ursache: Die Tafel war eine bodennahe Karte (`inset: auto … bottom`)
+mit `.panel` (rgba 0.04) und landete genau auf dem Drawer (z 2).
+
+Jetzt ist sie ein MODAL nach dem Muster von `#interstitial`: Schirm über allem
+im Editor, darin eine opake Karte (`--bg-panel`) unten in Daumennähe, Tap
+daneben schließt. Der Titel trägt den Zustandston (✓ Teal, ⚠/✗ Bernstein), das
+Detail steht in Bernstein, „👁 Zeigen" ist ein eigener Knopf. Kein `menu-meta`
+mehr für den Erklärtext – dessen 55 % Deckkraft war der zweite Teil des
+Problems.
+
 ## M72 „Meine Tür, meine Runde" ✓ (v3.6.0) – Tür je Spieler, Bahn mit Pausen
 
 Zwei Wünsche aus dem Levelbau.

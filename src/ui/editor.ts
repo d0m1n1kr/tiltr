@@ -775,7 +775,9 @@ export function setupEditor(opts: {
   function showCheck(c: CheckResult): void {
     const soft = !c.ok && SOFT_CHECKS.has(c.key);
     const mark = c.ok ? '✓' : soft ? '⚠' : '✗';
-    $('edCheckTitle').textContent = `${mark} ${t(`ed.check.${c.key}` as keyof Dict)}`;
+    const title = $('edCheckTitle');
+    title.textContent = `${mark} ${t(`ed.check.${c.key}` as keyof Dict)}`;
+    title.className = c.ok ? 'ok' : soft ? 'warn' : 'fail';
     $('edCheckWhy').textContent = t(`ed.help.${c.key}` as keyof Dict);
     $('edCheckDetail').textContent = c.ok ? '' : checkDetailText(c);
     const showBtn = $('edCheckShow');
@@ -2419,6 +2421,11 @@ export function setupEditor(opts: {
   });
 
   $('edCheckClose').addEventListener('click', hideCheck);
+  // Tap neben die Karte schließt – ein Modal, das nur über einen Knopf
+  // wieder weggeht, fühlt sich auf dem Phone wie eine Falle an.
+  $('edCheckSheet').addEventListener('click', (e) => {
+    if (e.target === $('edCheckSheet')) hideCheck();
+  });
   $('edCheckShow').addEventListener('click', () => {
     if (checkAt) showPlace(checkAt);
   });

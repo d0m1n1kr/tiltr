@@ -543,14 +543,32 @@
       padding: 0 var(--space-3); font: 600 var(--fs-body) var(--font);
     }
     #edBadges { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+    /* Beweis-Erklärung (M71/M73): MODAL im Editor – Schirm über allem, was
+       sonst im Editor liegt (Drawer z 2), Karte OPAK und unten in Daumennähe.
+       Vorher lag sie durchsichtig über dem Eigenschaften-Griff: zwei Ebenen
+       Text übereinander, beides unlesbar. Muster wie #interstitial. */
     #edCheckSheet {
-      position: absolute; inset: auto var(--space-3) var(--space-3) var(--space-3); z-index: 6;
+      position: absolute; inset: 0; z-index: 5;
+      display: flex; align-items: flex-end; justify-content: center;
+      background: rgba(5, 7, 15, 0.72);
+      padding: var(--space-3);
+      padding-bottom: calc(var(--safe-bottom) + var(--space-4));
     }
-    #edCheckSheet .panel { display: grid; gap: var(--space-2); }
+    .ed-sheet-card {
+      width: 100%; max-width: 420px; max-height: 62vh; overflow-y: auto;
+      display: grid; gap: var(--space-3);
+      background: var(--bg-panel); border: var(--border-strong);
+      border-radius: var(--radius-xl); padding: var(--space-4);
+      box-shadow: var(--shadow-raised);
+    }
     .ed-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-    .ed-sheet-head > span { min-width: 0; font-weight: 600; }
-    #edCheckSheet .menu-meta:empty { display: none; }
-    #edCheckDetail { opacity: 0.85; }
+    .ed-sheet-head > span { min-width: 0; font-size: var(--fs-body); font-weight: 600; }
+    .ed-sheet-head > span.ok { color: var(--accent); }
+    .ed-sheet-head > span.warn, .ed-sheet-head > span.fail { color: var(--warning); }
+    #edCheckWhy { margin: 0; font-size: var(--fs-body-s); line-height: 1.5; opacity: 0.82; }
+    #edCheckDetail { margin: 0; font-size: var(--fs-body-s); color: var(--warning); }
+    #edCheckDetail:empty, #edCheckWhy:empty { display: none; }
+    #edCheckShow { justify-self: start; }
     #edHeaderBtns { display: flex; gap: var(--space-2); margin-left: auto; }
     #edStatus { min-height: 1.2em; text-align: center; }
     #edFloorRow { display: flex; align-items: center; gap: var(--space-2); }
@@ -1049,14 +1067,14 @@
   <div id="editor" class="hidden">
     <!-- Beweis-Erklärung (M71): Tippen auf ein Badge sagt, WAS geprüft wird,
          WAS zu tun ist und WO es klemmt („Zeigen" springt hin). -->
-    <div id="edCheckSheet" class="hidden">
-      <div class="panel">
+    <div id="edCheckSheet" class="hidden" role="dialog" aria-modal="true">
+      <div class="ed-sheet-card">
         <div class="ed-sheet-head">
           <span id="edCheckTitle"></span>
           <button id="edCheckClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
         </div>
-        <p id="edCheckWhy" class="menu-meta"></p>
-        <p id="edCheckDetail" class="menu-meta"></p>
+        <p id="edCheckWhy"></p>
+        <p id="edCheckDetail"></p>
         <button id="edCheckShow" class="btn btn-soft hidden" data-i18n="ed.check.show">👁 Zeigen</button>
       </div>
     </div>
