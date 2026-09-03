@@ -612,6 +612,40 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M74 „Wer hält die Platte?" ✓ (v3.7.0) – Softlock, der keiner war
+
+Meldung mit Bild: „Hier gibt es einen Softlock, der keiner ist. Die Tür zum
+Schlüssel wird über zwei Platten geöffnet, eine mit Stein und eine mit dem
+zweiten Spieler." Zwei Lücken im Modell, beide an derselben Frage – WER hält
+die Platte, während der andere durch die Tür rollt?
+
+**1. Eine Platte, auf der man selbst steht, ist kein Öffner.** `pairReachable`
+zählte im Coop JEDEN erreichbaren Öffner für beide (M59) – auch eine Platte,
+die der Spieler selbst besetzen müsste. Damit spazierte das Modell durch die
+Tür und meldete danach brav einen Softlock in einem Raum, den man in
+Wirklichkeit nie betritt. Jetzt gilt eine Platte für Spieler P nur, wenn der
+ANDERE sie erreicht (oder ein Stein sie hält, siehe 2); Schlüssel und
+Zeitschalter bleiben geteilt, denn die wirken weiter, wenn man weitergerollt
+ist. Das ist strenger als vorher und findet echte Fehler: eine Tür, deren
+einziger Öffner im eigenen Gang liegt, ist für den Spieler zu.
+
+**2. Ein Stein auf einer Platte war unsichtbar.** Der Rollstein-Beweis
+(`boulderProof`) verlangte Steine auf ALLEN Platten einer reinen Platten-Tür
+und wusste nichts vom Partner; der Paar-Beweis wusste nichts von Steinen.
+Beide Seiten reden jetzt: `BoulderProof.stonePlates` sagt, auf welchen Platten
+in einem erreichbaren Zustand ein Stein liegen kann, `boulderProof(def, start,
+heldPlates)` nimmt umgekehrt die Platten, die der Partner halten kann.
+`validateLevel` rechnet das EINMAL – je Spieler die erreichbaren Platten
+(`heldBy`), daraus die Stein-Platten aus beiden Startpunkten – und reicht
+`stonePlates` an jeden `pairReachable`-Aufruf und an den `openers`-Check
+durch. Ein Zwei-Spieler-Level mit Stein wird deshalb aus BEIDEN Starts
+durchgerechnet: Im gemeldeten Level erreicht nur Spieler 2 den Stein.
+
+Der Bericht des gemeldeten Levels geht damit von „ROT softlock / ROT boulder"
+auf grün; `tests/coopPlates.test.ts` hält beides fest – die gemeldete
+Anordnung als teilbares Level UND die Gegenprobe, dass die eigene Platte
+weiterhin nicht zählt (ohne sie wäre die neue Regel ein Gummistempel).
+
 ## M73 „Eine Karte, nicht zwei Schichten" ✓ (v3.6.1) – Erklär-Tafel als Modal
 
 Meldung mit Bild: Die Erklär-Tafel aus M71 lag DURCHSICHTIG über dem

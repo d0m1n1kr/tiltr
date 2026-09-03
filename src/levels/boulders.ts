@@ -59,6 +59,11 @@ export interface BoulderProof {
   detail?: string;
   /** Ballzelle des Softlock-Zustands – der Editor springt dorthin (M71). */
   at?: { floor: number; cell: readonly [number, number] };
+  /** Druckplatten, auf die ein Stein GESCHOBEN werden kann („fl:x,y" wie
+   *  cellKey, M74). Das braucht das Zwei-Spieler-Modell: Eine Platte, die ein
+   *  Stein hält, öffnet die Tür, ohne dass jemand darauf stehen bleibt. Fällt
+   *  hier nebenbei ab – die Zustands-BFS läuft ohnehin. */
+  stonePlates: Set<string>;
 }
 
 interface State {
@@ -93,9 +98,23 @@ function plateOnlyDoors(def: LevelDef): Map<string, { require: 'any' | 'all'; pl
   return out;
 }
 
-export function boulderProof(def: LevelDef): BoulderProof {
+/**
+ * `start` überschreibt die Startzelle auf Ebene 1 – für Zwei-Spieler-Level,
+ * in denen auch der Gast Steine schiebt (M74).
+ * `heldPlates` („fl:x,y") sind Platten, die JEMAND ANDERS halten kann (im
+ * Coop der Partner). Ohne sie wäre der Stein-Beweis in einem Zwei-Spieler-
+ * Level blind: Eine Tür über zwei Platten – eine mit Stein, eine mit dem
+ * Partner – ginge in seinem Modell nie auf, und das Level wäre rot, obwohl
+ * es zu zweit sauber aufgeht. Im Solo-Level ist die Menge leer, dort ändert
+ * sich nichts.
+ */
+export function boulderProof(
+  def: LevelDef,
+  start?: readonly [number, number],
+  heldPlates: ReadonlySet<string> = new Set(),
+): BoulderProof {
   const hasBoulder = def.floors.some((f) => f.elements.some((e) => e.type === 'boulder'));
-  if (!hasBoulder) return { goal: true, softlock: true, states: 0 };
+  if (!hasBoulder) return { goal: true, softlock: true, states: 0, stonePlates: new Set() };
 
   const plateDoors = plateOnlyDoors(def);
   const idxOf = (cols: number, c: readonly [number, number]) => c[1] * cols + c[0];
@@ -162,7 +181,7 @@ export function boulderProof(def: LevelDef): BoulderProof {
     for (const el of f.elements) if (el.type === 'boulder') stones.push(fl * 100000 + idxOf(f.size[0], el.cell));
   });
   const goalFl = def.floors.findIndex((f) => f.goal);
-  if (goalFl < 0) return { goal: false, softlock: false, states: 0, detail: 'kein Ziel' };
+  if (goalFl < 0) return { goal: false, softlock: false, states: 0, detail: 'kein Ziel', stonePlates: new Set() };
   const goalIdx = idxOf(def.floors[goalFl]!.size[0], def.floors[goalFl]!.goal!);
 
   /** Kante offen für den Ball im Zustand s (Wände, Schiebewände offen wie im
@@ -179,7 +198,8 @@ export function boulderProof(def: LevelDef): BoulderProof {
         for (const pl of fm.plates) {
           if (pl.opens !== doorId) continue;
           total++;
-          if (s.stones.includes(ffl * 100000 + pl.idx)) held++;
+          const key = `${ffl}:${pl.idx % fm.cols},${Math.floor(pl.idx / fm.cols)}`;
+          if (s.stones.includes(ffl * 100000 + pl.idx) || heldPlates.has(key)) held++;
         }
       });
       const st = doorState(
@@ -202,18 +222,33 @@ export function boulderProof(def: LevelDef): BoulderProof {
 
   const inBounds = (m: FloorModel, x: number, y: number) => x >= 0 && y >= 0 && x < m.cols && y < m.rows;
 
-  const start: State = { fl: 0, ball: idxOf(def.floors[0]!.size[0], def.floors[0]!.start), stones, filled: [] };
+  const start0: State = { fl: 0, ball: idxOf(def.floors[0]!.size[0], start ?? def.floors[0]!.start), stones, filled: [] };
   const seen = new Map<string, State>();
   const edges = new Map<string, string[]>(); // Vorwärtskanten für die Rückwärtssuche
   const goalStates: string[] = [];
-  const queue: State[] = [start];
-  seen.set(stateKey(start), start);
+  const queue: State[] = [start0];
+  seen.set(stateKey(start0), start0);
   const MAX_STATES = 60000;
+
+  // Platten, auf denen in irgendeinem erreichbaren Zustand ein Stein liegt.
+  const stonePlates = new Set<string>();
+  const plateAt = new Map<string, string>(); // "fl*100000+idx" -> "fl:x,y"
+  floors.forEach((fm, ffl) => {
+    for (const pl of fm.plates) {
+      const px = pl.idx % fm.cols;
+      const py = Math.floor(pl.idx / fm.cols);
+      plateAt.set(String(ffl * 100000 + pl.idx), `${ffl}:${px},${py}`);
+    }
+  });
 
   while (queue.length) {
     const s = queue.shift()!;
     const k = stateKey(s);
     if (s.fl === goalFl && s.ball === goalIdx) goalStates.push(k);
+    for (const st of s.stones) {
+      const key = plateAt.get(String(st));
+      if (key) stonePlates.add(key);
+    }
     const m = floors[s.fl]!;
     const x = s.ball % m.cols,
       y = Math.floor(s.ball / m.cols);
@@ -266,13 +301,13 @@ export function boulderProof(def: LevelDef): BoulderProof {
       if (!seen.has(nk)) {
         seen.set(nk, n);
         queue.push(n);
-        if (seen.size > MAX_STATES) return { goal: false, softlock: false, states: seen.size, detail: 'Zustandsraum zu groß' };
+        if (seen.size > MAX_STATES) return { goal: false, softlock: false, states: seen.size, detail: 'Zustandsraum zu groß', stonePlates };
       }
     }
     edges.set(k, outKeys);
   }
 
-  if (goalStates.length === 0) return { goal: false, softlock: false, states: seen.size, detail: 'Ziel' };
+  if (goalStates.length === 0) return { goal: false, softlock: false, states: seen.size, detail: 'Ziel', stonePlates };
 
   // Rückwärts: Von welchen Zuständen aus ist ein Ziel-Zustand erreichbar?
   const rev = new Map<string, string[]>();
@@ -297,9 +332,10 @@ export function boulderProof(def: LevelDef): BoulderProof {
         states: seen.size,
         detail: `Softlock E${s.fl + 1} (${s.ball % m.cols},${Math.floor(s.ball / m.cols)})`,
         at: { floor: s.fl, cell: [s.ball % m.cols, Math.floor(s.ball / m.cols)] },
+        stonePlates,
       };
     }
   }
-  return { goal: true, softlock: true, states: seen.size };
+  return { goal: true, softlock: true, states: seen.size, stonePlates };
 }
 

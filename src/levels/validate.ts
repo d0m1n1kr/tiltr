@@ -360,6 +360,9 @@ export function pairReachable(
   from?: { p1?: StartPos; p2?: StartPos },
   // Wände sind NICHT synchronisiert – jeder Spieler bricht in seiner Welt.
   brittle: { p1?: BrittleState; p2?: BrittleState } = {},
+  /** Platten, die ein ROLLSTEIN halten kann (M74, aus boulderProof). Sie
+   *  brauchen niemanden, der stehen bleibt. */
+  stonePlates: ReadonlySet<string> = new Set(),
 ): PairReach {
   const f0 = def.floors[0]!;
   const start1: StartPos = from?.p1 ?? { floor: 0, cell: f0.start };
@@ -387,11 +390,21 @@ export function pairReachable(
     for (const p of [0, 1] as const) {
       for (const [doorId, openers] of openersOf) {
         if (bannedDoors.has(doorId) || open[p]!.has(doorId)) continue;
-        const usable = openers.filter((o) =>
-          coop
-            ? seen[0]!.has(cellKey(o.fl, o.cell)) || seen[1]!.has(cellKey(o.fl, o.cell))
-            : !o.plate && seen[p]!.has(cellKey(o.fl, o.cell)),
-        );
+        // EINE PLATTE HÄLT, WER NICHT GLEICHZEITIG DURCH DIE TÜR ROLLT (M74):
+        // der ANDERE Spieler oder ein Rollstein. Die eigene Platte öffnet MIR
+        // die Tür nicht – sonst spaziert das Modell durch eine Tür, die es
+        // selbst zuhalten müsste, und meldet danach einen Softlock in einem
+        // Raum, den man nie betreten kann (genau die Fehlmeldung aus dem
+        // Levelbau: Tür über zwei Platten, eine mit Stein, eine mit Gast).
+        // Schlüssel und Zeitschalter bleiben geteilt (M59) – die muss niemand
+        // festhalten.
+        const other = p === 0 ? 1 : 0;
+        const usable = openers.filter((o) => {
+          const key = cellKey(o.fl, o.cell);
+          if (!coop) return !o.plate && seen[p]!.has(key);
+          if (!o.plate) return seen[0]!.has(key) || seen[1]!.has(key);
+          return seen[other]!.has(key) || stonePlates.has(key);
+        });
         // Im Race sind Platten für die Tür schlicht nicht da – eine Tür NUR
         // mit Platten ist dort eine Wand ('all' zählt nur die Nicht-Platten).
         const counted = coop ? openers : openers.filter((o) => !o.plate);
@@ -690,8 +703,32 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // Zwei Spieler (M57): Für den festen Modus EIN Badge, bei 'any' beide –
   // die Lobby darf dann wählen, also muss beides bewiesen sein. Detail nennt
   // den Spieler, der sein Ziel nicht erreicht.
-  const coopPair = two ? pairReachable(def, true) : null;
-  const racePair = two ? pairReachable(def, false) : null;
+  // Platten, die ein ROLLSTEIN halten kann (M74): fällt beim Stein-Beweis ab
+  // und ist die eine Stelle, an der die Beweise davon erfahren. EINMAL
+  // berechnet – die Softlock-Schleife ruft pairReachable pro Zelle.
+  // Welche Platten kann der PARTNER halten? Das offene Modell je Spieler
+  // reicht (dieselbe Zuversicht, mit der pairReachable im Coop die Platte des
+  // anderen zählt) – ohne das wäre der Stein-Beweis in einem Coop-Level blind.
+  const plateCells = def.floors.flatMap((f, fl) =>
+    f.elements.filter((e) => e.type === 'plate').map((e) => cellKey(fl, (e as { cell: readonly [number, number] }).cell)),
+  );
+  const heldBy = (player: 1 | 2): Set<string> => {
+    if (!two) return new Set();
+    const seen = reachable(
+      def,
+      { brittleOpen: true, doorsOpen: true, player },
+      player === 2 ? { floor: 0, cell: def.floors[0]!.start2 ?? def.floors[0]!.start } : undefined,
+    );
+    return new Set(plateCells.filter((c) => seen.has(c)));
+  };
+  const bp = boulderProof(def, undefined, heldBy(2));
+  const stonePlates = new Set(bp.stonePlates);
+  // Zwei Spieler: Der Gast schiebt auch. Dieselbe BFS von SEINEM Start aus.
+  if (two && def.floors.some((f) => f.elements.some((e) => e.type === 'boulder'))) {
+    for (const k of boulderProof(def, def.floors[0]!.start2 ?? def.floors[0]!.start, heldBy(1)).stonePlates) stonePlates.add(k);
+  }
+  const coopPair = two ? pairReachable(def, true, new Set(), undefined, {}, stonePlates) : null;
+  const racePair = two ? pairReachable(def, false, new Set(), undefined, {}, stonePlates) : null;
   if (two && def.mpMode !== 'race') {
     const ok1 = coopPair!.p1.has(goalKey);
     const ok2 = coopPair!.p2.has(goal2Key);
@@ -757,12 +794,17 @@ export function validateLevel(raw: unknown): CheckResult[] {
     // diese Tür erreicht (Platten nur im Coop – sonst wie oben).
     const withoutThisDoor = two
       ? (() => {
-          const pr = pairReachable(def, pairCoop, new Set([doorId]));
+          const pr = pairReachable(def, pairCoop, new Set([doorId]), undefined, {}, stonePlates);
           return new Set([...pr.p1, ...pr.p2]);
         })()
       : coopReachable(def, new Set([doorId]));
     // 'all': JEDER Öffner muss ohne diese Tür erreichbar sein; 'any': einer.
-    const reachableOpeners = openers.filter((o) => withoutThisDoor.has(cellKey(o.fl, o.cell)));
+    // Ein Öffner zählt, wenn ein Spieler ihn erreicht – oder wenn ein Stein
+    // die Platte halten kann (M74): Die Platte in der Steinnische ist kein
+    // toter Öffner, nur keiner für Füße.
+    const reachableOpeners = openers.filter(
+      (o) => withoutThisDoor.has(cellKey(o.fl, o.cell)) || (o.type === 'plate' && stonePlates.has(cellKey(o.fl, o.cell))),
+    );
     if (requireAllDoors.has(doorId) ? reachableOpeners.length === openers.length : reachableOpeners.length > 0) continue;
     openersOk = false;
     const o = openers.find((x) => !withoutThisDoor.has(cellKey(x.fl, x.cell))) ?? keyed[0]!;
@@ -819,10 +861,10 @@ export function validateLevel(raw: unknown): CheckResult[] {
   if (two) {
     const pair = pairCoop ? coopPair! : racePair!;
     const sealed = (w: string): BrittleState => ({ sealedBrittle: new Set([w]) });
-    const without1 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p1: sealed(w) }).p1]));
-    const without2 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p2: sealed(w) }).p2]));
+    const without1 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p1: sealed(w) }, stonePlates).p1]));
+    const without2 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p2: sealed(w) }, stonePlates).p2]));
     for (const k of pair.p1) {
-      if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }).p1.has(goalKey)) {
+      if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }, stonePlates).p1.has(goalKey)) {
         softlockOk = false;
         softlockDetail = `Spieler 1: ${k}`;
         softlockAt = placeOf(k);
@@ -831,7 +873,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
     if (softlockOk) {
       for (const k of pair.p2) {
-        if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }).p2.has(goal2Key)) {
+        if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }, stonePlates).p2.has(goal2Key)) {
           softlockOk = false;
           softlockDetail = `Spieler 2: ${k}`;
           softlockAt = placeOf(k);
@@ -938,7 +980,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
 
   // Rollstein (M47): Zustands-Beweis – Ziel mit schiebbaren Steinen
   // erreichbar UND kein erreichbarer Zustand, aus dem es das nicht mehr ist.
-  const bp = boulderProof(def);
+  // (`bp` steht oben, weil `stonePlates` daraus kommt.)
   push('boulder', bp.goal && bp.softlock, bp.detail, bp.at);
 
   // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.

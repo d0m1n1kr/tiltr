@@ -275,7 +275,18 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Nachrichten `plate`/`key`/`switch` (M59: „ich hole den Schlüssel für deine
   Tür" ist die Coop-Idee); im RACE wirken Schlüssel/Schalter lokal, Platten
   zählen gar nicht. Neue Öffner-Arten IMMER an beiden Stellen (Sync in
-  app.ts UND pairReachable) eintragen. Badges
+  app.ts UND pairReachable) eintragen.
+  WER HÄLT DIE PLATTE (M74): Eine PLATTE zählt für Spieler P nur, wenn der
+  ANDERE sie erreicht oder ein STEIN sie halten kann – auf einer Platte, die
+  P selbst besetzen müsste, kann er nicht gleichzeitig stehen und durch die
+  Tür rollen (das Modell spazierte hindurch und meldete danach einen Softlock
+  in einem Raum, den man nie betritt). Schlüssel/Zeitschalter bleiben geteilt:
+  die wirken weiter, wenn man weitergerollt ist. Steine und Paar-Beweis reden
+  seit M74 miteinander: `BoulderProof.stonePlates` sagt, welche Platten ein
+  Stein halten kann, `boulderProof(def, start, heldPlates)` nimmt umgekehrt
+  die Platten des Partners; `validateLevel` rechnet `stonePlates` EINMAL (je
+  Spieler `heldBy`, bei Steinen aus BEIDEN Starts) und reicht es an jeden
+  `pairReachable`-Aufruf und den `openers`-Check durch. Badges
   `coop`/`race` ERSETZEN `goal` bei zwei Spielern (bei 'any' beide Pflicht),
   `fair` ist weich (`SOFT_CHECKS`, wie `items`). TRANSPORTER JE SPIELER
   (M65): `transporter.player` 1|2 – der Loader baut das Pad nur in die Welt
