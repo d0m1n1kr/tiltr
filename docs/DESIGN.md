@@ -170,6 +170,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 | `.hear-cell` | Hörtest-Kompassrose: 3×3-Raster (`#hearGrid`, max. 320 px) quadratischer Ghost-Buttons – acht Richtungspfeile dort, wo die Richtung klingt (oben = vorn), Mitte (`#hearRepeat`, Akzent-Rand) wiederholt den Ping. Beschriftung als `[data-tip]`, nicht als Text: der Pfeil trägt die Richtung, die Blase den Namen |
 | `.ed-tile` | Editor-Palette: Werkzeug/Element mit Galerie-Miniatur; `.active` = Teal-Outline (ein Modus aktiv), `.off` = hier nicht anwendbar (gedämpft, aber anklickbar – der Tap erklärt den Grund; kein `disabled`, das nähme Hover UND Fokus und damit die Tooltip-Blase) |
 | `#edPlay` (+ `.active`) | Play/Pause der Editor-Vorschau im Canvas-Kopf: ▶ startet die Bewegung bewegter Elemente, ⏸ friert sie ein; aktiv trägt der Knopf die Akzentfarbe, damit am Kopf sichtbar ist, dass sich die Karte von selbst bewegt |
+| `#edElements` / `#edElementCard` | Element-Wahl auf dem Phone: MODAL wie `#edCheckSheet` – Schirm über dem Editor, darin eine opake Karte (Kopf „Elemente" + Schließen, darunter das scrollende 3-Spalten-Grid). Der Schirm MUSS über der Karte eine Fingerbreite frei lassen: Tap daneben schließt. Eine bodennahe Karte mit `max-height` wuchs auf kurzen Geräten über die Werkzeugleiste und verdeckte ihren eigenen Öffner – dann führte kein Weg zurück außer einer Auswahl (v3.8.1) |
 | `.ed-listen` |  „🔊 Anhören" im Auswahl-Kopf des Eigenschaften-Panels (`.btn-soft` wie in der Galerie): spielt die Klang-Signatur des gewählten Elements aus der Element-Registry |
 | `#backupRow` + `.btn.warn` | Footer-Zeile „💾 Sichern / 📂 Wiederherstellen" wie `#controlsRow`; `#backupStatus` (`.menu-meta`, leer = ausgeblendet) trägt Ergebnis und Zusammenfassung. Wiederherstellen ist Zwei-Tap: bewaffnet wird der Knopf Bernstein (`.btn.warn`, `--warning`) mit ⚠-Text – dieselbe Sprache wie `.mode-sub.warn` beim Draft-Verwerfen |
 | iOS-Startbildschirm | einfarbig `--bg-deep` (Spielfeld-Ton), erzeugt aus `tools/startup.mjs` – kein Logo-Splash: die Welt offenbart sich über sparsames Licht, ein heller Start wäre gegen das Spiel. `color-scheme: dark` hält auch die Browser-Leinwand vor dem ersten Paint dunkel |
@@ -320,6 +321,15 @@ einmal rot gesehen, bevor sie zählt.
 - Kein zweiter `.btn-primary` im selben Kontext.
 - Keine neuen Grautöne/Opazitäten erfinden – Skala nutzen oder erweitern.
 - Weltfarben nicht im UI zweckentfremden (Violett ist Gefahr, kein Deko).
+- Kein Overlay, das seinen eigenen Öffner verdeckt: Ein Sheet, das über die
+  Leiste wächst, aus der es kommt, ist nur noch durch eine Auswahl zu
+  verlassen. Overlays über Bedienleisten sind MODAL (Schirm + Schließen).
+- `<button>` als Grid-Kind: Es meldet seine Inhaltshöhe NICHT an die Zeile.
+  Zweizeilige Beschriftungen ragen dann in die Kachel darunter. Heilmittel
+  sind BEIDE zusammen – `min-height: max-content` an der Kachel UND
+  `grid-auto-rows: max-content` am Grid; nur eines von beiden macht es
+  schlimmer (die Kachel wächst, die Zeile nicht). Gemessen, nicht geraten:
+  E2E Lauf 12 prüft, dass kein Name seine Kachel verlässt.
 
 ## Erweitern
 

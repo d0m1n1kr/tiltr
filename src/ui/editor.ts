@@ -1511,8 +1511,36 @@ export function setupEditor(opts: {
       updateDrawerHandle();
     });
 
+    // Element-Sheet als MODAL (v3.8.1): Auf dem Phone ist `#edElements` ein
+    // SCHIRM über dem Editor, darin eine opake Karte mit Kopf („Elemente" +
+    // Schließen) und dem scrollenden Grid. Vorher war es eine bodennahe Karte
+    // mit `max-height: 60vh` – auf kurzen Geräten wuchs sie über die
+    // Werkzeugleiste und verdeckte ihren EIGENEN Öffner: Wer nichts wählen
+    // wollte, kam nicht mehr heraus. Ein Schirm hat immer einen Weg zurück
+    // (Tap daneben) und einen sichtbaren Knopf – dasselbe Muster wie die
+    // Beweis-Tafel (M73).
     const elementsWrap = document.createElement('div');
     elementsWrap.id = 'edElements';
+    elementsWrap.addEventListener('click', (e) => {
+      if (e.target === elementsWrap) closeSheet(); // Tap NEBEN die Karte
+    });
+    const elementsCard = document.createElement('div');
+    elementsCard.id = 'edElementCard';
+    const elementsHead = document.createElement('div');
+    elementsHead.id = 'edElementHead';
+    elementsHead.className = 'ed-sheet-head';
+    const headLabel = document.createElement('span');
+    headLabel.textContent = t('ed.elements');
+    const headClose = document.createElement('button');
+    headClose.id = 'edElementClose';
+    headClose.className = 'btn btn-ghost';
+    headClose.textContent = t('common.close');
+    headClose.addEventListener('click', closeSheet);
+    elementsHead.append(headLabel, headClose);
+    const elementsGrid = document.createElement('div');
+    elementsGrid.id = 'edElementGrid';
+    elementsCard.append(elementsHead, elementsGrid);
+    elementsWrap.append(elementsCard);
     // Druckplatte nur bei zwei Spielern (siehe PLACEABLE), hinter der Tür.
     const placeable: string[] = [...PLACEABLE];
     if (twoPlayers()) placeable.splice(placeable.indexOf('door') + 1, 0, 'plate');
@@ -1529,7 +1557,7 @@ export function setupEditor(opts: {
         renderPalette();
         renderProps(); // Werkzeug-Eigenschaft von ●/◎ verschwindet
       });
-      elementsWrap.append(b);
+      elementsGrid.append(b);
     }
 
     paletteEl.append(groupLabel(t('ed.tools')), toolsWrap, elBtn, groupLabel(t('ed.elements')), elementsWrap);

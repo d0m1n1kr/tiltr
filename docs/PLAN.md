@@ -612,6 +612,31 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## v3.8.1 – Element-Sheet verdeckte seinen eigenen Öffner
+
+Meldung mit Bild: „Die Element-Auswahl ist zu hoch und überlappt mit dem
+Element-Knopf. Damit kann die Auswahl nicht mehr geschlossen werden." Genau
+so war es: Das Sheet war eine bodennahe Karte (`max-height: 60vh`), und auf
+einem kurzen Gerät reichte sie bis über die Werkzeugleiste – über den Knopf,
+der sie wieder zuklappt. Wer nichts setzen wollte, saß fest.
+
+Jetzt ist es ein MODAL nach dem Muster der Beweis-Tafel (M73): Schirm über dem
+Editor, darin eine opake Karte mit Kopf („Elemente" + Schließen) und dem
+scrollenden 3-Spalten-Grid. Zwei Wege heraus, beide ohne Auswahl: der Knopf im
+Kopf und ein Tap NEBEN die Karte. Der Schirm lässt über der Karte immer eine
+Fingerbreite frei – das prüft E2E Lauf 12 mit, sonst wäre „daneben" wieder nur
+eine Behauptung.
+
+Beim Nachmessen fiel ein zweiter, älterer Fehler auf: Ein `<button>` als
+Grid-Kind meldet seine Inhaltshöhe NICHT an die Grid-Zeile. Die Zeile blieb
+bei `min-height` (44 px), und zweizeilige Namen („Zeitschloss-Schalter")
+ragten 25 px in die Kachel darunter. Heilmittel sind BEIDE zusammen:
+`min-height: max-content` an der Kachel und `grid-auto-rows: max-content` am
+Grid – nur eines von beiden macht es schlimmer (die Kachel wächst, die Zeile
+nicht, und dann überlappt sie die nächste Zeile ganz). Der Lauf prüft die
+Folge, nicht die Regel: kein Name außerhalb seiner Kachel, keine Kachel über
+der nächsten Zeile.
+
 ## M75 „Ein Weiterleiter" ✓ (v3.8.0) – Join scheitert im Mobilfunk
 
 Meldung mit Bild aus der Lobby-Diagnose (M70), und diesmal sagte sie genau,

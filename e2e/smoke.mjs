@@ -2095,11 +2095,11 @@ if (want("12")) {
       sheetCols = await page.evaluate(
         () =>
           getComputedStyle(
-            document.getElementById("edElements"),
+            document.getElementById("edElementGrid"),
           ).gridTemplateColumns.split(" ").length,
       );
       await page
-        .locator("#edElements .ed-tile", { hasText: "Glasboden" })
+        .locator("#edElementGrid .ed-tile", { hasText: "Glasboden" })
         .click();
       sheetClosed = await page.evaluate(
         () =>
@@ -2110,6 +2110,88 @@ if (want("12")) {
     check(
       `Phone: Element-Wahl als Grid-Sheet (${sheetCols} Spalten)`,
       elBtn === 1 && sheetCols >= 3 && sheetClosed,
+    );
+
+    // OHNE Auswahl wieder heraus (v3.8.1): Die alte bodennahe Karte wuchs auf
+    // kurzen Geräten über die Werkzeugleiste und verdeckte ihren eigenen
+    // Öffner – dann war das Sheet nur noch durch eine Wahl zu schließen. Der
+    // Schließen-Knopf im Kopf und ein Tap NEBEN die Karte müssen es können,
+    // und die Karte darf die Kopfzeile des Editors nicht überdecken.
+    await page.click("#edElementBtn");
+    const closable = await until(async () =>
+      page.evaluate(() => {
+        const sheet = document.getElementById("edElements");
+        const card = document.getElementById("edElementCard");
+        const close = document.getElementById("edElementClose");
+        if (!sheet || !card || !close) return null;
+        const c = card.getBoundingClientRect();
+        return {
+          open: getComputedStyle(sheet).display !== "none",
+          closeVisible: close.getBoundingClientRect().height > 0,
+          // Der Schirm MUSS über der Karte eine Fingerbreite frei lassen –
+          // sonst gibt es kein „daneben", und das war der ganze Fehler.
+          gapAbove: Math.round(c.top - sheet.getBoundingClientRect().top),
+        };
+      }),
+    );
+    await page.click("#edElementClose");
+    const closedByButton = await until(
+      async () =>
+        (await page.evaluate(
+          () => getComputedStyle(document.getElementById("edElements")).display === "none",
+        )) === true,
+    );
+    // Zweiter Weg: Tap in den Schirm oberhalb der Karte.
+    await page.click("#edElementBtn");
+    const scrim = await until(async () =>
+      page.evaluate(() => {
+        const s = document.getElementById("edElements").getBoundingClientRect();
+        const c = document.getElementById("edElementCard").getBoundingClientRect();
+        return c.top - s.top > 20 ? { x: s.left + s.width / 2, y: s.top + 10 } : null;
+      }),
+    );
+    if (scrim) await page.mouse.click(scrim.x, scrim.y);
+    const closedByScrim = await until(
+      async () =>
+        (await page.evaluate(
+          () => getComputedStyle(document.getElementById("edElements")).display === "none",
+        )) === true,
+    );
+    // Kachel-Quirk (gemessen): Ein <button> als Grid-Kind meldet seine
+    // Inhaltshöhe nicht an die Zeile – zweizeilige Namen ragten in die Kachel
+    // darunter. Geprüft wird die FOLGE: kein Text außerhalb seiner Kachel,
+    // keine Kachel über der nächsten Zeile.
+    await page.click("#edElementBtn");
+    const fit = await until(async () =>
+      page.evaluate(() => {
+        const tiles = [...document.querySelectorAll("#edElementGrid .ed-tile")];
+        if (tiles.length < 6) return null;
+        let spill = 0;
+        let overlap = 0;
+        tiles.forEach((t, i) => {
+          const r = t.getBoundingClientRect();
+          const lbl = t.lastElementChild.getBoundingClientRect();
+          spill = Math.max(spill, lbl.bottom - r.bottom);
+          const below = tiles[i + 3]; // dieselbe Spalte, nächste Zeile
+          if (below) overlap = Math.max(overlap, lbl.bottom - below.getBoundingClientRect().top);
+        });
+        return { tiles: tiles.length, spill: Math.round(spill), overlap: Math.round(overlap) };
+      }),
+    );
+    check(
+      `Phone: Elementname bleibt in seiner Kachel (${JSON.stringify(fit)})`,
+      fit !== null && fit.spill <= 0 && fit.overlap <= 0,
+    );
+    await page.click("#edElementClose");
+
+    check(
+      `Phone: Element-Sheet ist ohne Auswahl zu schließen – Knopf und Tap daneben (${JSON.stringify(closable)})`,
+      closable?.open === true &&
+        closable.closeVisible === true &&
+        closable.gapAbove >= 44 && // eine Fingerbreite (--touch-min)
+
+        closedByButton === true &&
+        closedByScrim === true,
     );
 
     // Eigenschaften-Drawer: Tap auf ein Element öffnet ihn, der Griff schließt.

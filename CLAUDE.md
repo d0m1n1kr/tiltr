@@ -206,6 +206,17 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Landeplatz ist KEIN Element: `elementAt`/`cellFree` kennen ihn nicht, die
   Zelle bleibt bebaubar. `__tiltrEd.landings`, `.edgeState(e)`, `.selEdge`
   legen das für E2E offen.
+  ELEMENT-SHEET IST MODAL (v3.8.1): Auf dem Phone ist `#edElements` ein
+  SCHIRM über dem Editor mit opaker Karte (`#edElementCard`: Kopf „Elemente"
+  + Schließen, darunter das scrollende 3-Spalten-Grid `#edElementGrid`). Als
+  bodennahe Karte mit `max-height: 60vh` wuchs es auf kurzen Geräten über die
+  Werkzeugleiste und verdeckte SEINEN EIGENEN Öffner – heraus kam man nur
+  noch durch eine Auswahl. Regel daraus: Ein Overlay über einer Bedienleiste
+  ist modal (Tap daneben + Schließen-Knopf), und der Schirm lässt über der
+  Karte eine Fingerbreite frei. Dabei gelernt: Ein `<button>` als Grid-Kind
+  meldet seine Inhaltshöhe NICHT an die Zeile – zweizeilige Namen ragten in
+  die Kachel darunter; es braucht `min-height: max-content` an der Kachel UND
+  `grid-auto-rows: max-content` am Grid (nur eines macht es schlimmer).
   ZWEI-TAP (`twoTap`/`disarm` in workshopPanel.ts): Der bewaffnete Knopf
   stellt Text und Tip in BEIDEN Pfaden zurück (Ausführen und 3-s-Ablauf) –
   vorher blieb der Bundle-Löschknopf nach dem Löschen mit dem langen Text

@@ -643,7 +643,8 @@
     #edPalette { overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); }
     #edCanvasWrap { position: relative; min-height: 0; border-radius: var(--radius-l); overflow: hidden; background: var(--bg-deep); }
     #edCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-    #edTools, #edElements { display: flex; flex-direction: column; gap: var(--space-2); }
+    #edTools, #edElements, #edElementCard, #edElementGrid { display: flex; flex-direction: column; gap: var(--space-2); }
+    #edElementHead { display: none; } /* nur im Phone-Sheet: Kopf mit Schließen */
     #edElementBtn { display: none; } /* nur Phone: öffnet das Element-Sheet */
     #edDrawer { min-height: 0; display: flex; flex-direction: column; }
     #edDrawerHead { display: none; } /* nur Phone: Griff + ✕ des Drawers */
@@ -667,19 +668,47 @@
       #edTools .ed-lbl { display: none; } /* Icons genügen, Platz gehört der Karte */
       #edElementBtn { display: flex; flex: 1; min-width: 0; }
       #edElementBtn .ed-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      /* Element-Wahl als MODAL (v3.8.1), Muster wie #edCheckSheet: Schirm über
+         dem Editor (Drawer z 2, Beweis-Tafel z 5), darin eine opake Karte in
+         Daumennähe. Die alte bodennahe Karte mit `max-height: 60vh` wuchs auf
+         kurzen Geräten über die Werkzeugleiste und verdeckte ihren eigenen
+         Öffner – ohne Weg zurück. Jetzt schließt jeder Tap neben der Karte. */
       #edElements {
-        position: absolute; z-index: 3;
-        left: var(--space-3); right: var(--space-3);
-        bottom: calc(var(--safe-bottom) + var(--space-3));
-        max-height: 60vh; overflow-y: auto;
+        position: absolute; inset: 0; z-index: 4;
         display: none;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: var(--space-2); padding: var(--space-3);
-        background: var(--bg-panel); border: var(--border-strong);
-        border-radius: var(--radius-l); box-shadow: var(--shadow-raised);
+        align-items: flex-end; justify-content: center;
+        background: rgba(5, 7, 15, 0.72);
+        padding: var(--space-3);
+        padding-bottom: calc(var(--safe-bottom) + var(--space-4));
       }
-      #editor.sheet-open #edElements { display: grid; }
+      #editor.sheet-open #edElements { display: flex; }
+      #edElementCard {
+        width: 100%; max-width: 420px; max-height: 62vh;
+        display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--space-2);
+        background: var(--bg-panel); border: var(--border-strong);
+        border-radius: var(--radius-xl); padding: var(--space-3);
+        box-shadow: var(--shadow-raised);
+      }
+      #edElementHead { display: flex; }
+      #edElementGrid {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+        /* max-content-Zeilen gehören zum Kachel-Quirk unten: erst BEIDE
+           zusammen (Kachel fragt ihre Inhaltshöhe, Zeile nimmt das Maximum)
+           halten zweizeilige Namen in ihrer Kachel. */
+        grid-auto-rows: max-content;
+        gap: var(--space-2); overflow-y: auto; min-height: 0;
+      }
       #edElements .ed-tile { flex-direction: column; text-align: center; gap: var(--space-1); padding: var(--space-2); }
+      /* KACHEL-QUIRK (gemessen, v3.8.1): Ein <button> als Grid-Kind meldet
+         seine Inhaltshöhe NICHT an die Grid-Zeile – die Zeile blieb bei
+         `min-height` (44 px), und zweizeilige Namen („Zeitschloss-Schalter")
+         ragten in die Kachel darunter. Erst `min-height: max-content` an der
+         Kachel UND `grid-auto-rows: max-content` an der Leiste räumen das
+         auf; `stretch` hält die Kacheln einer Zeile dabei gleich hoch. Nur
+         eines von beiden macht es SCHLIMMER (die Kachel wächst, die Zeile
+         nicht – dann überlappt sie die nächste). Der Inhalt (Miniatur 28 px
+         + Name) ist immer höher als --touch-min, die Fingerbreite bleibt. */
+      #edElementGrid .ed-tile { min-height: max-content; }
       #edDrawer {
         position: absolute; z-index: 2;
         left: var(--space-3); right: var(--space-3); bottom: var(--safe-bottom);
