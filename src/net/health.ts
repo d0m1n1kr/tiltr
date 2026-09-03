@@ -36,15 +36,21 @@ export function relayHealth(relays: readonly RelayState[]): RelayHealth {
  * - 'stalled': Vermittler stehen, aber nach einer halben Minute ist niemand
  *   gekommen – dann liegt es am Code, am Raum oder an einem hängenden
  *   Handshake, nicht am Netz. Der Vorschlag ist „neu verbinden".
+ * - 'blocked' (M75): Der Partner WAR da – Angebot und Antwort sind über die
+ *   Vermittler gelaufen –, aber zwischen den Geräten kam keine Strecke
+ *   zustande. Das ist keine Wartelage, sondern ein Netz, das direkte
+ *   Verbindungen verbietet (Mobilfunk-NAT, Gastnetz mit Client-Isolation).
+ *   Deshalb steht es VOR allen Zeitregeln: „warte auf Partner" wäre gelogen.
  * Die Zeit kommt von außen (Sekunden seit dem Öffnen der Lobby), damit die
  * Regel ohne Uhr testbar bleibt.
  */
-export type LobbyHint = 'connecting' | 'offline' | 'waiting' | 'stalled';
+export type LobbyHint = 'connecting' | 'offline' | 'waiting' | 'stalled' | 'blocked';
 
 export const OFFLINE_AFTER_S = 6;
 export const STALLED_AFTER_S = 35;
 
-export function lobbyHint(health: RelayHealth, waitingS: number): LobbyHint {
+export function lobbyHint(health: RelayHealth, waitingS: number, iceFailed = false): LobbyHint {
+  if (iceFailed) return 'blocked';
   // Lokaler Transport (E2E, gleiches Gerät): keine Vermittler, kein Problem.
   if (health.total === 0) return waitingS < STALLED_AFTER_S ? 'waiting' : 'stalled';
   if (health.open === 0) return waitingS < OFFLINE_AFTER_S ? 'connecting' : 'offline';

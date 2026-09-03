@@ -32,6 +32,18 @@ import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
 import { generateMpLevel, parseMpQuickId } from './levels/mpQuick';
 import { connect, makeRoomCode, type Transport } from './net/transport';
 import { lobbyHint, relayHealth } from './net/health';
+import {
+  formatIceServers,
+  hasTurn,
+  iceHosts,
+  iceVerdict,
+  loadTurnText,
+  parseIceServers,
+  saveTurnText,
+  turnServers,
+  type IceReport,
+} from './net/ice';
+import { probeIce } from './net/iceProbe';
 import { scanRoomCode } from './ui/scanner';
 import { renderSVG } from 'uqr';
 import { parseLevel, type LevelDef } from './levels/schema';
@@ -1878,19 +1890,62 @@ function refreshMpPanel(): void {
    ein: Der Host war weg, ohne es zu merken. */
 let mpLobbyAt = 0;
 let mpTick: number | null = null;
+/* ICE-SELBSTTEST (M75): Der Handshake über die Vermittler kann laufen und die
+   STRECKE trotzdem fehlen – im Mobilfunk ist das der Normalfall. Der Test
+   fragt ohne Partner, welche Kandidaten dieses Gerät überhaupt bekommt:
+   'relay' heißt „der Weiterleiter trägt". Einmal je Lobby-Öffnung, und neu
+   nach jedem Eintrag. */
+let iceReport: IceReport | null = null;
+let iceProbing = false;
+
+function iceProbeStart(): void {
+  if (iceProbing) return;
+  iceProbing = true;
+  iceReport = null;
+  void probeIce(turnServers(), { timeout: 5000 }).then((r) => {
+    iceReport = r;
+    iceProbing = false;
+    mpLobbyTick();
+  });
+}
+
+/** Die Weiterleiter DIESES Geräts (Wirte, nie Zugangsdaten). Quelle ist der
+ *  Eintrag, nicht der Transport: Was trystero bekam, steht im Protokoll. */
+function turnHosts(): string[] {
+  return iceHosts(turnServers());
+}
+
+/** Ergebnis des Selbsttests als Satz – dieselbe Aussage in Kasten und Debug. */
+function iceLine(): string {
+  if (iceProbing) return t('mp.iceTesting');
+  const verdict = iceVerdict(iceReport, hasTurn(turnServers()));
+  if (verdict === 'ok') return t('mp.iceOk', { ms: iceReport?.ms ?? 0 });
+  if (verdict === 'turnDead') return t('mp.iceDead');
+  if (verdict === 'blind') return t('mp.iceBlind');
+  if (verdict === 'noTurn') return t('mp.iceNone');
+  return '';
+}
 
 function mpLobbyTick(): void {
   if (mpLobby.classList.contains('hidden')) return;
   const info = mp?.transport.info() ?? null;
   const waitingS = (performance.now() - mpLobbyAt) / 1000;
   const health = relayHealth(info?.relays ?? []);
-  const hint = info === null ? 'connecting' : lobbyHint(health, waitingS);
+  const hint = info === null ? 'connecting' : lobbyHint(health, waitingS, info.iceFailed);
   const connected = (info?.peers.length ?? 0) > 0;
   const netStatus = $('mpNetStatus');
   const reconnect = $('mpReconnectBtn');
   // Kurze Zeile nur, wenn es etwas zu sagen gibt: Vermittler unerreichbar
   // oder es hängt. Sonst bleibt die Lobby ruhig.
-  const say = connected ? null : hint === 'offline' ? t('mp.netOffline') : hint === 'stalled' ? t('mp.netStalled') : null;
+  const say = connected
+    ? null
+    : hint === 'blocked'
+      ? t('mp.netBlocked')
+      : hint === 'offline'
+        ? t('mp.netOffline')
+        : hint === 'stalled'
+          ? t('mp.netStalled')
+          : null;
   netStatus.textContent = say ?? '';
   netStatus.classList.toggle('hidden', say === null);
   netStatus.classList.toggle('warn', say !== null);
@@ -1900,6 +1955,15 @@ function mpLobbyTick(): void {
   reconnect.classList.toggle('hidden', connected);
   const dbg = $('mpNetDebug');
   const show = debug || debugUnlocked || new URLSearchParams(location.search).has('netdebug');
+  // Der TURN-Kasten erscheint, WO er gebraucht wird: wenn die Strecke
+  // gescheitert ist (dann ist er die einzige Abhilfe) – und im Debug-Modus.
+  const turnBox = $('mpTurnBox');
+  const showTurn = !connected && (hint === 'blocked' || show);
+  if (showTurn && turnBox.classList.contains('hidden')) {
+    ($('mpTurnText') as HTMLTextAreaElement).value = loadTurnText();
+  }
+  turnBox.classList.toggle('hidden', !showTurn);
+  if (showTurn && $('mpTurnStatus').textContent === '') $('mpTurnStatus').textContent = iceLine();
   dbg.classList.toggle('hidden', !show);
   if (show) {
     const lines = info
@@ -1907,6 +1971,7 @@ function mpLobbyTick(): void {
           `${info.kind} · ich ${info.selfId.slice(0, 8)} · Raum ${mp?.code ?? '?'} · ${mp?.host ? 'Host' : 'Gast'}`,
           `Partner: ${info.peers.length ? info.peers.map((x) => x.slice(0, 8)).join(', ') : '–'} · warte ${waitingS.toFixed(0)} s · ${hint}`,
           `Vermittler ${health.open}/${health.total} offen${health.connecting ? `, ${health.connecting} im Aufbau` : ''}`,
+          `Weiterleiter: ${turnHosts().length ? turnHosts().join(', ') : '–'} · ${iceLine()}`,
           ...info.relays.map((r) => `  ${r.state === 'open' ? '✓' : r.state === 'connecting' ? '…' : '✗'} ${r.url.replace('wss://', '')}`),
           ...info.events.map((e) => `  ${(e.at / 1000).toFixed(1)}s ${e.text}`),
         ]
@@ -1920,6 +1985,7 @@ function mpShowLobby(status: string): void {
   mpLobby.classList.remove('hidden');
   $('mpLobbyStatus').textContent = status;
   mpLobbyAt = performance.now();
+  iceProbeStart();
   // Gespielt wird durch Neigen, gewartet wird mit dem Bildschirm an: Sperrt
   // das Phone in der Lobby, stirbt die Verbindung zu den Vermittlern.
   wake.want();
@@ -1936,6 +2002,8 @@ function mpHideLobby(): void {
   $('mpNetStatus').classList.add('hidden');
   $('mpReconnectBtn').classList.add('hidden');
   $('mpNetDebug').classList.add('hidden');
+  $('mpTurnBox').classList.add('hidden');
+  $('mpTurnStatus').textContent = '';
 }
 
 function mpJoinUrl(code: string): string {
@@ -2471,6 +2539,42 @@ function mpReconnect(): void {
 }
 
 $('mpReconnectBtn').addEventListener('click', mpReconnect);
+
+/* TURN eintragen (M75): Der Kasten steht in der Lobby, weil man DORT merkt,
+   dass die Strecke fehlt. Gespeichert wird auf dem Gerät – Zugangsdaten
+   gehören niemandem sonst –, danach wird mit DEMSELBEN Raumcode neu
+   verbunden, damit ein schon gescannter QR-Code gültig bleibt. */
+$('mpTurnSave').addEventListener('click', () => {
+  const field = $('mpTurnText') as HTMLTextAreaElement;
+  const parsed = parseIceServers(field.value);
+  const status = $('mpTurnStatus');
+  if (parsed === null) {
+    status.textContent = t('mp.turnBad');
+    return;
+  }
+  saveTurnText(formatIceServers(parsed));
+  status.textContent = parsed.length === 0 ? t('mp.turnCleared') : t('mp.turnSaved', { n: parsed.length });
+  field.value = formatIceServers(parsed);
+  iceProbeStart();
+  if (parsed.length > 0) mpReconnect();
+});
+$('mpTurnPaste').addEventListener('click', () => {
+  const clip = navigator.clipboard;
+  const status = $('mpTurnStatus');
+  if (!clip || typeof clip.readText !== 'function') {
+    status.textContent = t('ed.pasteFail');
+    return;
+  }
+  clip.readText().then(
+    (txt) => {
+      ($('mpTurnText') as HTMLTextAreaElement).value = txt.trim();
+      status.textContent = '';
+    },
+    () => {
+      status.textContent = t('ed.pasteFail');
+    },
+  );
+});
 
 // Zurück aus dem Hintergrund: In der Lobby sind die WebSockets zu den
 // Vermittlern dann meist tot (iOS friert die Seite ein) – ohne diesen

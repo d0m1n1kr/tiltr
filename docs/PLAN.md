@@ -612,6 +612,48 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M75 „Ein Weiterleiter" ✓ (v3.8.0) – Join scheitert im Mobilfunk
+
+Meldung mit Bild aus der Lobby-Diagnose (M70), und diesmal sagte sie genau,
+was los ist: Vermittler 7/8 offen, Partner gefunden, dann
+`16,1 s Fehler: could not connect to peer … after exchanging SDP; configure
+TURN servers`. Der Handshake lief also – die STRECKE fehlte. Das Phone hing im
+5G-Netz, und dort sitzt es hinter Carrier-NAT (CGNAT, meist symmetrisch): Beide
+Seiten kennen über STUN ihre öffentliche Adresse, aber jedes Paket dorthin
+fällt auf den Boden. Dagegen hilft kein Code, nur ein WEITERLEITER (TURN), der
+die Daten durchreicht.
+
+Einen verlässlichen kostenlosen gibt es nicht – nachgemessen in Chromium: Die
+alten offenen Relays (openrelay.metered.ca, auch staticauth, 80/443/turns)
+liefern KEINEN Relay-Kandidaten mehr. Deshalb wird TURN nicht mitgeliefert,
+sondern EINGETRAGEN, und zwar auf dem Gerät (`tiltr.turn.v1` im
+localStorage) – Zugangsdaten gehören niemandem sonst, schon gar nicht dem Repo.
+
+Drei Teile:
+
+1. **Der Weg dahin.** `turnConfig` an trystero (es KONKATENIERT die Liste auf
+   seine eingebauten STUN-Server, ersetzt sie also nicht). `src/net/ice.ts` ist
+   der reine Teil: `parseIceServers` nimmt die Zeilenform
+   `turn:wirt:3478|nutzer|passwort` UND das JSON einer Anbieter-Konsole (auch
+   mit `urls`-Liste), `formatIceServers` schreibt zurück, `iceHosts` zeigt nur
+   Wirte – das Passwort steht nie im Bild.
+2. **Der Selbsttest.** `src/net/iceProbe.ts` sammelt an einer Wegwerf-
+   Verbindung die eigenen Kandidaten; ihre Typen sind die ganze Auskunft
+   ('srflx' = STUN antwortet, 'relay' = TURN antwortet). `iceVerdict`
+   unterscheidet ok / turnDead / noTurn / blind. Ohne diese Messung ist
+   „findet sich nicht" nicht von „Zugangsdaten abgelaufen" zu trennen.
+3. **Der Klartext.** `lobbyHint` kennt 'blocked' – das Signal kommt aus dem
+   Transport (`TransportInfo.iceFailed`, gesetzt, wenn trystero den
+   SDP-Fehler meldet) und STICHT jede Zeitregel: „warte auf Partner" wäre
+   gelogen, wenn der Partner schon da war. Die Lobby sagt stattdessen, woran
+   es liegt und was hilft (gleiches WLAN – oder TURN eintragen), und zeigt
+   genau dann den Eingabekasten.
+
+Nicht gebaut: ein Datenweg über die Nostr-Relays als TURN-Ersatz. Ein
+Coop-Level schickt ~20 Positionen je Sekunde, dafür sind die Relays nicht
+gedacht (Rate-Limits, hundert Millisekunden Latenz) – es wäre kein
+Multiplayer, nur eine langsamere Enttäuschung.
+
 ## M74 „Wer hält die Platte?" ✓ (v3.7.0) – Softlock, der keiner war
 
 Meldung mit Bild: „Hier gibt es einen Softlock, der keiner ist. Die Tür zum

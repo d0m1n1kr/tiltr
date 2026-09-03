@@ -12,6 +12,17 @@ describe('relayHealth', () => {
 });
 
 describe('lobbyHint', () => {
+  it('gescheiterte Strecke sticht jede Wartelage (M75)', () => {
+    // Der Partner WAR da (SDP ausgetauscht), nur die Verbindung kam nicht
+    // zustande: „warte auf Partner" wäre gelogen, egal wie die Vermittler
+    // stehen und wie lange man wartet.
+    expect(lobbyHint(relayHealth(rs(['open', 'open'])), 1, true)).toBe('blocked');
+    expect(lobbyHint(relayHealth(rs(['closed'])), 99, true)).toBe('blocked');
+    expect(lobbyHint(relayHealth([]), 1, true)).toBe('blocked');
+    // Ohne das Signal bleibt alles wie vorher (Vorgabe false).
+    expect(lobbyHint(relayHealth(rs(['open'])), 1)).toBe('waiting');
+  });
+
   it('kein Socket offen: erst „verbinde", dann „offline"', () => {
     const h = relayHealth(rs(['connecting', 'connecting']));
     expect(lobbyHint(h, 1)).toBe('connecting');

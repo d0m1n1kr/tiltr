@@ -9,6 +9,7 @@
 //   Präfix "TEST" wählen ihn automatisch.
 
 import type { RelayState } from './health';
+import { hasTurn, iceHosts, turnServers, type IceServer } from './ice';
 
 export type MessageHandler = (type: string, payload: unknown) => void;
 export type PeerHandler = (event: 'join' | 'leave') => void;
@@ -31,6 +32,10 @@ export interface TransportInfo {
   relays: RelayState[];
   /** Peers, mit denen eine Verbindung steht */
   peers: string[];
+  /** Der Partner war da, die Strecke kam nicht zustande (M75): trystero
+   *  meldet nach dem SDP-Austausch einen Verbindungsfehler. DAS ist der
+   *  Unterschied zwischen „niemand da" und „NAT dazwischen". */
+  iceFailed: boolean;
   events: NetEvent[];
 }
 
@@ -96,6 +101,8 @@ class TrysteroTransport implements Transport {
   private peerId: string | null = null;
   private sockets: () => Record<string, WebSocket> = () => ({});
   private selfId = '?';
+  private turn: IceServer[] = [];
+  private iceFailed = false;
   private readonly t0 = Date.now();
   private readonly events: NetEvent[] = [];
 
@@ -110,16 +117,41 @@ class TrysteroTransport implements Transport {
     const self = new TrysteroTransport();
     self.sockets = getRelaySockets as () => Record<string, WebSocket>;
     self.selfId = selfId;
+    self.turn = turnServers();
     self.log(`Raum ${code} · ich ${selfId.slice(0, 8)} · ${NOSTR_RELAYS.length} Vermittler`);
+    self.log(
+      hasTurn(self.turn)
+        ? `Weiterleiter: ${iceHosts(self.turn).join(', ')}`
+        : 'kein Weiterleiter (TURN) – direkte Strecke nötig',
+    );
     // Alle 8 Relays parallel nutzen (redundancy), nicht nur eine Teilmenge:
     // Beide Seiten sprechen damit garantiert dieselben Handshake-Server an
     // (getRelays in trystero nimmt eine gesetzte url-Liste unverändert – ohne
     // sie würfelt es je Gerät eine Teilmenge, und dann finden sich zwei
     // Spieler nur, wenn sich die Teilmengen überschneiden).
+    // `turnConfig` HÄNGT AN die eingebauten STUN-Server (trystero
+    // konkateniert), ersetzt sie also nicht – wer TURN einträgt, verliert
+    // nichts.
     self.room = joinRoom(
-      { appId: APP_ID, relayConfig: { urls: NOSTR_RELAYS, redundancy: NOSTR_RELAYS.length } },
+      {
+        appId: APP_ID,
+        relayConfig: { urls: NOSTR_RELAYS, redundancy: NOSTR_RELAYS.length },
+        turnConfig: self.turn,
+      },
       code,
-      { onJoinError: (e: { error: string }) => self.log(`Fehler: ${e.error}`) },
+      {
+        onJoinError: (e: { error: string }) => {
+          // Der eine Fehler, der eine eigene Antwort braucht: Angebot und
+          // Antwort waren durch, die Strecke nicht. Ohne TURN ist das im
+          // Mobilfunk der Normalfall, nicht ein Ausrutscher.
+          if (/exchanging SDP/i.test(e.error)) {
+            self.iceFailed = true;
+            self.log('Partner gefunden, aber keine Strecke (NAT) – TURN nötig');
+            return;
+          }
+          self.log(`Fehler: ${e.error}`);
+        },
+      },
     ) as unknown as TrysteroRoom;
     self.action = self.room.makeAction<{ t: string; p: unknown }>('msg');
     self.action.onMessage = (data, ctx) => {
@@ -132,6 +164,7 @@ class TrysteroTransport implements Transport {
     self.room.onPeerJoin = (peerId) => {
       if (self.peerId === null) {
         self.peerId = peerId;
+        self.iceFailed = false;
         self.log(`Partner da: ${peerId.slice(0, 8)}`);
         self.peerCb('join');
       } else {
@@ -170,6 +203,7 @@ class TrysteroTransport implements Transport {
       selfId: this.selfId,
       relays,
       peers: this.peerId === null ? [] : [this.peerId],
+      iceFailed: this.iceFailed,
       events: [...this.events],
     };
   }
@@ -253,6 +287,7 @@ class LocalTransport implements Transport {
       selfId: this.uid,
       relays: [],
       peers: this.peerUid === null ? [] : [this.peerUid],
+      iceFailed: false,
       events: [],
     };
   }

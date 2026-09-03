@@ -64,7 +64,13 @@ Pages).
   can keep holding plates for the straggler. Lost connections get a
   10-second reconnect window; the lobby keeps the screen awake, says when no
   signaling relay is reachable, and can rebuild the connection (**🔄
-  Reconnect**) without changing the room code.
+  Reconnect**) without changing the room code. If a network forbids direct
+  connections altogether — mobile data behind carrier NAT, guest Wi-Fi with
+  client isolation — the handshake succeeds and the media path never opens;
+  the lobby says so instead of waiting forever and offers a **TURN relay**
+  field (`turn:host:3478|user|password`, or your provider's JSON). It is
+  stored on the device only, and a built-in self-test reports whether that
+  relay actually answers.
 - **🛠 Workshop** — a touch-first level editor (three panes on tablets).
   Place any element from the registry, toggle walls and wall variants,
   build multi-floor maps with transporters, and watch the solvability

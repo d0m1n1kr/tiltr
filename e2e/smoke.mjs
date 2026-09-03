@@ -90,6 +90,7 @@ const KNOWN_RUNS = [
   "36",
   "37",
   "38",
+  "39",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -6884,6 +6885,77 @@ if (want("38")) {
   } catch (e) {
     check(
       `Lauf 38 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 39: TURN in der Lobby (M75). Der Handshake über die Vermittler kann
+// laufen und die STRECKE trotzdem fehlen (Mobilfunk-NAT) – dagegen hilft nur
+// ein Weiterleiter, und der wird auf dem GERÄT eingetragen, nicht im Repo.
+// Geprüft: Der Kasten steht im Debug-Modus in der Lobby, Unfug wird abgelehnt
+// (nichts gespeichert), eine gültige Zeile landet im localStorage und in der
+// Diagnose-Zeile – OHNE Passwort –, der Raumcode bleibt beim Neuverbinden,
+// und ein geleertes Feld löscht den Eintrag wieder. ---
+if (want("39")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 420, height: 900 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?mpcode=TESTTURN39&netdebug&nosplash`);
+    await page.click("#mpBtn");
+    await page.locator("#mpLevelList button").first().click();
+    const boxUp = await until(async () => !(await page.locator("#mpTurnBox").getAttribute("class")).includes("hidden"));
+    check(`Lobby zeigt den TURN-Kasten im Debug-Modus (${JSON.stringify(boxUp)})`, boxUp === true);
+
+    // Unfug wird abgelehnt – und NICHT gespeichert.
+    await page.fill("#mpTurnText", "example.com:3478|bob|geheim");
+    await page.click("#mpTurnSave");
+    const bad = await until(async () => {
+      const txt = (await page.textContent("#mpTurnStatus")) ?? "";
+      return txt.includes("Nicht verstanden") ? txt : null;
+    });
+    const stored0 = await page.evaluate(() => localStorage.getItem("tiltr.turn.v1"));
+    check(
+      `Unfug wird abgelehnt und nicht abgelegt (${JSON.stringify(bad)}, gespeichert=${JSON.stringify(stored0)})`,
+      bad !== null && stored0 === null,
+    );
+
+    // Gültige Zeile: gespeichert, in der Diagnose sichtbar, Raumcode bleibt.
+    await page.fill("#mpTurnText", "turn:beispiel.de:3478|bob|geheim");
+    await page.click("#mpTurnSave");
+    const saved = await until(async () => {
+      const status = (await page.textContent("#mpTurnStatus")) ?? "";
+      const dbg = (await page.textContent("#mpNetDebug")) ?? "";
+      const store = await page.evaluate(() => localStorage.getItem("tiltr.turn.v1"));
+      return status.includes("gespeichert") && dbg.includes("beispiel.de:3478") ? { status, dbg, store } : null;
+    }, { timeout: 8000 });
+    const code = (await page.textContent("#mpCode")).trim();
+    check(
+      `Weiterleiter gespeichert und in der Diagnose sichtbar (${JSON.stringify(saved?.status)}, Raum ${code})`,
+      saved !== null && saved.store === "turn:beispiel.de:3478|bob|geheim" && code === "TESTTURN39",
+    );
+    // Das Passwort steht NIE im Bild – nur der Wirt.
+    const shown = ((await page.textContent("#mpNetDebug")) ?? "") + ((await page.textContent("#mpTurnStatus")) ?? "");
+    check(
+      `Die Diagnose zeigt den Wirt, nie das Passwort (${JSON.stringify(/Weiterleiter: [^\n]*/.exec(shown)?.[0] ?? "")})`,
+      !shown.includes("geheim"),
+    );
+
+    // Leeres Feld löscht den Eintrag.
+    await page.fill("#mpTurnText", "");
+    await page.click("#mpTurnSave");
+    const cleared = await until(async () => {
+      const txt = (await page.textContent("#mpTurnStatus")) ?? "";
+      const store = await page.evaluate(() => localStorage.getItem("tiltr.turn.v1"));
+      return txt.includes("gelöscht") && store === null ? txt : null;
+    });
+    check(`Leeres Feld löscht den Eintrag (${JSON.stringify(cleared)})`, cleared !== null);
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 39 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

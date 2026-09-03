@@ -628,7 +628,13 @@
     .world-header > span { min-width: 0; }
     /* Rückmeldung im Knopf darf die Zeile nicht sprengen: schrumpfen statt umbrechen. */
     .world-header .btn { font-weight: 400; opacity: 1; flex: 0 1 auto; min-width: 0; white-space: nowrap; }
-    #wsImportText {
+    /* TURN-Kasten der Lobby (M75): eigene ZEILE unter der Diagnose – ein
+       mehrzeiliges Feld gehört nicht in eine Flex-Zeile neben Knöpfe. */
+    #mpTurnBox { justify-self: stretch; text-align: left; display: grid; gap: var(--space-2); }
+    /* Bricht die Knopfzeile auf dem Phone um, dehnen sich beide Knöpfe auf die
+       ganze Breite – zwei verschieden breite Knöpfe untereinander sind fransig. */
+    #mpTurnBox .ws-actions > .btn { flex: 1 1 auto; }
+    #wsImportText, #mpTurnText {
       background: var(--bg-panel); border: var(--border-strong); color: var(--text);
       border-radius: var(--radius-m); padding: var(--space-2);
       font: 500 var(--fs-small) ui-monospace, monospace; resize: vertical;
@@ -985,6 +991,15 @@
         <p id="mpLobbyStatus" class="menu-meta"></p>
         <p id="mpNetStatus" class="menu-meta hidden"></p>
         <button id="mpReconnectBtn" class="btn btn-soft hidden" data-i18n="mp.reconnect">🔄 Neu verbinden</button>
+        <div id="mpTurnBox" class="panel hidden">
+          <p class="menu-meta" data-i18n="mp.turnWhy">TURN-Server eintragen</p>
+          <textarea id="mpTurnText" rows="2" data-i18n-ph="mp.turnPh" spellcheck="false" autocapitalize="off"></textarea>
+          <div class="ws-actions">
+            <button id="mpTurnPaste" class="btn btn-ghost" data-i18n="ed.importPaste">📋 Einfügen</button>
+            <button id="mpTurnSave" class="btn btn-primary" data-i18n="mp.turnSave">Speichern</button>
+          </div>
+          <p id="mpTurnStatus" class="menu-meta"></p>
+        </div>
         <pre id="mpNetDebug" class="hidden"></pre>
         <button id="mpCancelBtn" class="btn btn-ghost" data-i18n="common.cancel">Abbrechen</button>
       </div>

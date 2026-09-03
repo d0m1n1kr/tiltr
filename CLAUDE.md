@@ -436,8 +436,26 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   DEMSELBEN Raumcode neu auf – automatisch nach Hintergrund/`online`. Ein
   neuer Code würde einen schon gescannten QR entwerten. `?netdebug` zeigt
   alles; ein ignorierter dritter Peer steht im Protokoll (Zombie aus einer
-  alten Sitzung). Ohne TURN-Server bleibt ein Gastnetz mit Client-Isolation
-  unspielbar – dann sind die Relays ✓ und der Partner kommt nie.
+  alten Sitzung).
+  WEITERLEITER (TURN, M75): Der Handshake kann laufen und die STRECKE fehlen –
+  im Mobilfunk (Carrier-NAT, symmetrisch) und im Gastnetz mit Client-Isolation
+  ist das der Normalfall, nicht ein Ausrutscher: Die Relays sind ✓, der
+  Partner wird gefunden, und trystero meldet `could not connect to peer …
+  after exchanging SDP`. Der Transport setzt daraufhin `iceFailed`, und
+  `lobbyHint` gibt 'blocked' zurück – VOR jeder Zeitregel, denn „warte auf
+  Partner" wäre gelogen. Einen verlässlichen kostenlosen TURN gibt es nicht
+  (die alten offenen Relays sind nachgemessen tot), deshalb wird er
+  EINGETRAGEN und liegt auf dem GERÄT (`tiltr.turn.v1`), nie im Repo:
+  `src/net/ice.ts` ist der reine Teil (`parseIceServers` nimmt Zeilenform
+  `turn:wirt:3478|nutzer|passwort` UND Anbieter-JSON, `iceHosts` zeigt nur
+  Wirte – Passwörter gehören nie ins Bild), `turnConfig` hängt die Liste an
+  trysteros eingebaute STUN-Server AN (es konkateniert, ersetzt nicht).
+  `src/net/iceProbe.ts` ist der Selbsttest OHNE Partner: Die Kandidatentypen
+  sind die ganze Auskunft ('srflx' = STUN antwortet, 'relay' = TURN
+  antwortet), `iceVerdict` unterscheidet ok/turnDead/noTurn/blind. Wer am Netz
+  schraubt, MISST erst hier – sonst ist „sie finden sich nicht" nicht von
+  „Zugangsdaten abgelaufen" zu trennen. KEIN Datenweg über die Nostr-Relays
+  als TURN-Ersatz: 20 Positionen je Sekunde sind dort nicht vorgesehen.
 - `src/ui/confetti.ts` – Sieges-Konfetti: reines, geseedetes Partikelmodell
   (`spawnConfetti`/`stepConfetti`, Units in tests/confetti.test.ts) plus
   eigene Canvas-Ebene zwischen Spielfeld und Panels, angetrieben von der

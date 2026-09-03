@@ -66,7 +66,13 @@ GitHub Pages).
   Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein
   10-Sekunden-Fenster; die Lobby hält den Bildschirm wach, sagt es, wenn kein
   Vermittler erreichbar ist, und baut die Verbindung auf Wunsch neu auf
-  (**🔄 Neu verbinden**) – der Raumcode bleibt.
+  (**🔄 Neu verbinden**) – der Raumcode bleibt. Verbietet ein Netz direkte
+  Verbindungen ganz – Mobilfunk hinter Carrier-NAT, Gastnetz mit
+  Client-Isolation –, gelingt der Handshake und die Strecke nie; die Lobby
+  sagt das statt weiterzuwarten und bietet ein Feld für einen
+  **Weiterleiter (TURN)** an (`turn:wirt:3478|nutzer|passwort` oder das JSON
+  des Anbieters). Der Eintrag bleibt auf dem Gerät, und ein Selbsttest sagt,
+  ob dieser Weiterleiter wirklich antwortet.
 - **🛠 Werkstatt** – ein Touch-Editor für eigene Level (auf Tablets als
   Dreispalter). Elemente aus der ganzen Registry setzen, Wände und
   Wand-Varianten schalten, mehrstöckige Karten mit Transportern bauen –
