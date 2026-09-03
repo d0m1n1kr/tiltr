@@ -83,7 +83,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `Wall.hpSide`, `brittleBreakable` in core/brittle.ts entscheidet den
   Treffer, der Beweis lässt die Wand zu und legt eine GERICHTETE Kante von
   der Bruchseite (`brittlePassage`) – wie Strömungen. Variante/Wand entfernen
-  nimmt die Seite mit (`sideDrop` im Editor).
+  nimmt die Seite mit (`sideDrop` im Editor). GEBROCHEN BLEIBT GEBROCHEN
+  (M68): Der Softlock-Beweis rechnet mit Wandzustand – `brokenBrittle`
+  (offen) / `sealedBrittle` (keine Kante) in `CellConfig`, Schlüssel
+  `brittleKey(fl, edge)`. Eine Zelle, die man ohne die Wand nicht erreicht,
+  hat sie gebrochen; von dort ist sie offen. Erreicht man sie auch anders
+  (Strömung), gilt die Wand als zu – echter Softlock. Wände sind im MP nicht
+  synchronisiert: `pairReachable` nimmt den Zustand je Spieler.
   Es gibt KEIN „Glas abseits"-Badge mehr (M39): Glas hält EINE Überfahrt aus
   und wird dann zum Loch – an dessen Rand kommt man mit Gefühl vorbei, ein
   Pflichtweg über Glas ist Schwierigkeit, kein Riegel. Auch der SOG-ANKER ist

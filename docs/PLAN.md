@@ -612,6 +612,30 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M68 „Gebrochen bleibt gebrochen" ✓ (v3.2.2) – Softlock-Beweis kennt den Wandzustand
+
+Meldung aus dem Levelbau: Eine Tasche, die man nur durch eine einseitig
+brüchige Wand betritt, stand als Softlock rot – obwohl die Wand, wenn man
+drinnen steht, gebrochen und in beide Richtungen offen ist. Das M66-Modell
+kannte nur „steht, gerichtete Kante von der Bruchseite"; von jeder Zelle aus
+galt die Wand als intakt. Konservativ, aber falsch: Ein Badge, das ein
+spielbares Level unteilbar macht, ist ein Fehler (dritte Lektion nach M32
+Anker und M39 Glas).
+
+Modell jetzt mit ZUSTAND, ohne Zustands-BFS: `CellConfig.brokenBrittle`
+(Wand offen wie beidseitig) und `sealedBrittle` (Wand ohne Kante,
+unzerbrechlich), Schlüssel `brittleKey(fl, edge)`. Der Softlock-Beweis
+fragt pro einseitiger Wand W einmal „was erreicht man OHNE W zu brechen?"
+(sealed) – jede Zelle, die dort fehlt, erreicht man nur durch W, also ist W
+dort gebrochen. Von so einer Zelle rechnet der Beweis mit `brokenBrittle`.
+Eine Zelle, die man auch anders erreicht (Strömung, Transporter), kann man
+mit intakter Wand betreten – dort bleibt die Wand zu, und führt nur sie
+hinaus, ist das ein ECHTER Softlock (Unit: Tasche mit zweitem Eingang per
+Strömung bleibt rot). Zwei Spieler: Wände sind nicht synchronisiert, jeder
+bricht in seiner Welt – `pairReachable` nimmt den Zustand je Spieler.
+`buildFloorCells` bekommt die Ebene als vierten Parameter (nur für die
+Schlüssel; alle alten Aufrufer bleiben). Units in tests/brittleTorch.test.ts.
+
 ## M67 „Im Nebel unhörbar" ✓ (v3.2.1) – Horcher hören niemanden im Nebel
 
 Wunsch aus dem Levelbau: Wer im Nebel rollt, soll für Horcher unhörbar sein.

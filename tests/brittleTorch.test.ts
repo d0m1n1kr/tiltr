@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../src/levels/schema';
 import { loadLevel } from '../src/levels/loader';
 import { brittleBreakable, brittlePassage, hitSide, sideFitsEdge } from '../src/core/brittle';
-import { cellKey, isShareable, reachable, SOFT_CHECKS, validateLevel } from '../src/levels/validate';
+import { brittleKey, cellKey, isShareable, reachable, SOFT_CHECKS, validateLevel } from '../src/levels/validate';
 import { mirrorLevel } from '../src/levels/mirror';
 import { brittleSideOf, setBrittleSide, setEdgeVariant, toggleEdge, type MazeEdits } from '../src/ui/editor';
 
@@ -154,5 +154,64 @@ describe('Editor-Helfer', () => {
     expect(brittleSideOf(m, [[0, 0], 'e'])).toBeUndefined();
     setBrittleSide(m, [[0, 0], 'e'], 'w');
     expect(m.brittleSide).toHaveLength(1);
+  });
+});
+
+// M68: Einseitig brüchige Wände mit ZUSTAND im Softlock-Beweis. Wer eine
+// Zelle nur durch die Wand erreicht, hat sie gebrochen – von dort ist sie
+// offen. Wer sie auch anders erreicht (Strömung), steht womöglich vor der
+// intakten Wand: echter Softlock.
+describe('Softlock mit einseitig brüchiger Wand (M68)', () => {
+  // 4×2 offen; Wand zwischen (1,0) und (2,0) bricht von links (Zelle 1 aus).
+  // Tasche = rechte Hälfte (2,0),(3,0),(2,1),(3,1); Kante (1,1)-e trennt unten.
+  const pocket = (second: 'sealed' | 'current', players: 1 | 2 = 1) =>
+    parseLevel({
+      id: 'p',
+      name: 'p',
+      ...(players === 2 ? { players: 2, mpMode: 'coop' } : {}),
+      floors: [
+        {
+          size: [4, 2],
+          maze: {
+            seed: 1,
+            carve: carveAll(4, 2).filter(([[x, y], d]) => !(x === 1 && d === 'e' && (y === 0 || second === 'sealed'))),
+            add: [[[1, 0], 'e'], ...(second === 'sealed' ? [[[1, 1], 'e'] as [[number, number], 'e']] : [])],
+            brittle: [[[1, 0], 'e']],
+            brittleSide: [[[[1, 0], 'e'], 'w']],
+          },
+          elements: second === 'current' ? [{ type: 'current', cell: [1, 1], dir: 'e' }] : [],
+          start: [0, 0],
+          goal: [1, 0],
+          ...(players === 2 ? { start2: [0, 1], goal2: [0, 0] } : {}),
+        },
+      ],
+    });
+  const badge = (def: ReturnType<typeof pocket>, key: string) => validateLevel(def).find((c) => c.key === key)!;
+
+  it('Tasche nur durch die Wand erreichbar: die Wand ist dort gebrochen, kein Softlock', () => {
+    const def = pocket('sealed');
+    expect(reachable(def, { brittleOpen: true, doorsOpen: true }).has(cellKey(0, [3, 1]))).toBe(true);
+    expect(badge(def, 'softlock').ok).toBe(true);
+    expect(isShareable(validateLevel(def))).toBe(true);
+  });
+  it('Tasche auch per Strömung erreichbar: dort steht die Wand womöglich noch – Softlock', () => {
+    const def = pocket('current');
+    const sl = badge(def, 'softlock');
+    expect(sl.ok).toBe(false);
+    // Gemeldet wird die erste verlorene Zelle: die Strömungszelle selbst oder die Tasche.
+    expect(['0:1,1', '0:2,0', '0:3,0', '0:2,1', '0:3,1']).toContain(sl.detail);
+  });
+  it('brokenBrittle öffnet die Wand in beide Richtungen, sealedBrittle nimmt die Kante', () => {
+    const def = pocket('sealed');
+    const w = brittleKey(0, [[1, 0], 'e']);
+    const back = { floor: 0, cell: [2, 0] as [number, number] };
+    expect(reachable(def, { brittleOpen: true, doorsOpen: true }, back).has(cellKey(0, [1, 0]))).toBe(false);
+    expect(reachable(def, { brittleOpen: true, doorsOpen: true, brokenBrittle: new Set([w]) }, back).has(cellKey(0, [1, 0]))).toBe(true);
+    expect(reachable(def, { brittleOpen: true, doorsOpen: true, sealedBrittle: new Set([w]) }).has(cellKey(0, [2, 0]))).toBe(false);
+  });
+  it('zwei Spieler: jeder bricht in seiner Welt – Tasche für beide kein Softlock', () => {
+    const def = pocket('sealed', 2);
+    expect(badge(def, 'softlock').ok).toBe(true);
+    expect(badge(def, 'coop').ok).toBe(true);
   });
 });

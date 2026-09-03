@@ -56,6 +56,17 @@ export interface CellConfig {
   /** Zwei Spieler (M65): nur Transporter zählen, die es für DIESEN Spieler
    *  gibt (`transporter.player` fehlt oder passt). Ohne Angabe: alle. */
   player?: 1 | 2;
+  /**
+   * Einseitig brüchige Wände mit ZUSTAND (M68). Normalfall (beide Mengen
+   * leer): die Wand steht, von der Bruchseite führt eine gerichtete Kante
+   * hindurch. `brokenBrittle`: diese Wände sind schon GEBROCHEN – offen in
+   * beide Richtungen, wie eine beidseitig brüchige. `sealedBrittle`: diese
+   * Wände gelten als UNZERBRECHLICH (keine Kante) – damit fragt der
+   * Softlock-Beweis „erreicht man diese Zelle auch OHNE die Wand zu
+   * brechen?". Schlüssel: `brittleKey(fl, edge)`.
+   */
+  brokenBrittle?: Set<string>;
+  sealedBrittle?: Set<string>;
 }
 
 export interface StartPos {
@@ -65,7 +76,12 @@ export interface StartPos {
 
 const OPPOSITE = { n: 's', s: 'n', e: 'w', w: 'e' } as const;
 
-export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: LevelDef['mirror']): Cell[] {
+/** Schlüssel einer einseitig brüchigen Wand für `brokenBrittle`/`sealedBrittle`. */
+export const brittleKey = (fl: number, edge: readonly [readonly [number, number], string]) =>
+  `${fl}:${edge[0][0]},${edge[0][1]},${edge[1]}`;
+
+/** `fl` braucht nur, wer `brokenBrittle` übergibt (Schlüssel tragen die Ebene). */
+export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: LevelDef['mirror'], fl = 0): Cell[] {
   const [cols, rows] = floor.size;
   let cells = generateMaze(cols, rows, mulberry32(floor.maze.seed));
   // Wie der Loader: Rauschen spiegeln, Def-Koordinaten sind schon gespiegelt.
@@ -74,10 +90,12 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: Level
   for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
   if (cfg.brittleOpen) {
     // Einseitig brüchige Wände (M66) bleiben hier ZU – `reachable` macht aus
-    // ihnen eine gerichtete Kante von der Bruchseite her.
+    // ihnen eine gerichtete Kante von der Bruchseite her. Schon GEBROCHENE
+    // (M68, `brokenBrittle`) sind offen wie beidseitige.
     const oneWay = new Set(floor.maze.brittleSide.map(([[[x, y], d]]) => `${x},${y},${d}`));
     for (const [[x, y], dir] of floor.maze.brittle) {
-      if (!oneWay.has(`${x},${y},${dir}`)) setWall(cells, cols, rows, x, y, dir, false);
+      if (!oneWay.has(`${x},${y},${dir}`) || cfg.brokenBrittle?.has(brittleKey(fl, [[x, y], dir])))
+        setWall(cells, cols, rows, x, y, dir, false);
     }
   }
   if (!cfg.doorsOpen) {
@@ -162,7 +180,7 @@ function guardEdges(
 
 export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<string> {
   const floors = def.floors.map((f, fi) => {
-    const cells = buildFloorCells(f, cfg, def.mirror);
+    const cells = buildFloorCells(f, cfg, def.mirror, fi);
     const guards = cfg.guardSafe ? guardEdges(f, cells) : null;
     return {
     cells,
@@ -173,10 +191,11 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
         .filter((e): e is TransporterDef => e.type === 'transporter' && (cfg.player === undefined || elementForPlayer(e, cfg.player)))
         .map((t) => ({ from: t.cell as readonly [number, number], toFloor: t.target.floor, toCell: t.target.cell as readonly [number, number] })),
       ...(guards?.edges ?? []).map((e) => ({ from: e.from, toFloor: fi, toCell: e.to, guardEdge: true })),
-      // Einseitig brüchig (M66): nur von der Bruchseite hindurch – danach ist
-      // die Wand weg, aber wer drüben ankommt, hat die Bruchseite schon.
+      // Einseitig brüchig (M66): nur von der Bruchseite hindurch. Gebrochene
+      // sind oben schon offen, versiegelte (M68) bekommen keine Kante.
       ...(cfg.brittleOpen
         ? f.maze.brittleSide
+            .filter(([edge]) => !cfg.brokenBrittle?.has(brittleKey(fi, edge)) && !cfg.sealedBrittle?.has(brittleKey(fi, edge)))
             .map(([edge, side]) => brittlePassage(edge, side))
             .filter(({ from, to }) => from[0] >= 0 && from[1] >= 0 && to[0] < f.size[0] && to[1] < f.size[1])
             .map(({ from, to }) => ({ from: from as readonly [number, number], toFloor: fi, toCell: to as readonly [number, number] }))
@@ -272,11 +291,14 @@ export function guardSafeReachable(def: LevelDef): Set<string> {
  * Türen öffnen nie. Optional von einer beliebigen Position aus (Softlock-
  * Beweise: der Schalter ist wieder-erreichbar, die Tür also wieder-öffenbar).
  */
+/** Zustand einseitig brüchiger Wände für einen Beweis (siehe CellConfig). */
+export type BrittleState = Pick<CellConfig, 'brokenBrittle' | 'sealedBrittle'>;
+
 export function coopReachable(
   def: LevelDef,
   bannedDoors: Set<string> = new Set(),
   from?: StartPos,
-  opts: { plates?: boolean } = {},
+  opts: { plates?: boolean; brittle?: BrittleState } = {},
 ): Set<string> {
   const plates = opts.plates ?? true;
   const openDoorIds = new Set<string>();
@@ -296,7 +318,7 @@ export function coopReachable(
     }
   });
   for (;;) {
-    const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds }, from);
+    const seen = reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds, ...opts.brittle }, from);
     let changed = false;
     for (const [doorId, openers] of openersOf) {
       if (bannedDoors.has(doorId) || openDoorIds.has(doorId)) continue;
@@ -333,6 +355,8 @@ export function pairReachable(
   coop: boolean,
   bannedDoors: Set<string> = new Set(),
   from?: { p1?: StartPos; p2?: StartPos },
+  // Wände sind NICHT synchronisiert – jeder Spieler bricht in seiner Welt.
+  brittle: { p1?: BrittleState; p2?: BrittleState } = {},
 ): PairReach {
   const f0 = def.floors[0]!;
   const start1: StartPos = from?.p1 ?? { floor: 0, cell: f0.start };
@@ -353,8 +377,8 @@ export function pairReachable(
   const open = [new Set<string>(), new Set<string>()];
   for (;;) {
     const seen = [
-      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0], player: 1 }, start1),
-      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[1], player: 2 }, start2),
+      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0], player: 1, ...brittle.p1 }, start1),
+      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[1], player: 2, ...brittle.p2 }, start2),
     ];
     let changed = false;
     for (const p of [0, 1] as const) {
@@ -734,6 +758,11 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // Kein Softlock: von JEDER erreichbaren Zelle bleibt das Ziel erreichbar.
   // Zwei Spieler: je Spieler von jeder SEINER Zellen, der Partner steht am
   // Start (er kann jede Platte, die er erreicht, weiter erreichen).
+  // EINSEITIG BRÜCHIGE WÄNDE (M68): Wer eine Zelle NUR durch so eine Wand
+  // erreichen kann, hat sie gebrochen – von dort ist sie offen, in beide
+  // Richtungen. Eine Zelle, die man auch OHNE den Bruch erreicht (Strömung,
+  // Transporter), kann man mit intakter Wand betreten: Dort gilt sie als zu,
+  // und wenn nur die Wand hinausführt, ist das ein echter Softlock.
   let softlockOk = true;
   let softlockDetail: string | undefined;
   const parse = (k: string): StartPos => {
@@ -741,10 +770,18 @@ export function validateLevel(raw: unknown): CheckResult[] {
     const [x, y] = xy!.split(',').map(Number);
     return { floor: Number(fl), cell: [x!, y!] };
   };
+  const oneWayWalls = def.floors.flatMap((f, fl) => f.maze.brittleSide.map(([edge]) => brittleKey(fl, edge)));
+  /** Wände, die an Zelle k sicher gebrochen sind: k ist ohne sie unerreichbar. */
+  const brokenAt = (k: string, without: Map<string, Set<string>>): BrittleState => ({
+    brokenBrittle: new Set(oneWayWalls.filter((w) => !without.get(w)!.has(k))),
+  });
   if (two) {
     const pair = pairCoop ? coopPair! : racePair!;
+    const sealed = (w: string): BrittleState => ({ sealedBrittle: new Set([w]) });
+    const without1 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p1: sealed(w) }).p1]));
+    const without2 = new Map(oneWayWalls.map((w) => [w, pairReachable(def, pairCoop, new Set(), undefined, { p2: sealed(w) }).p2]));
     for (const k of pair.p1) {
-      if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }).p1.has(goalKey)) {
+      if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }).p1.has(goalKey)) {
         softlockOk = false;
         softlockDetail = `Spieler 1: ${k}`;
         break;
@@ -752,7 +789,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
     if (softlockOk) {
       for (const k of pair.p2) {
-        if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }).p2.has(goal2Key)) {
+        if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }).p2.has(goal2Key)) {
           softlockOk = false;
           softlockDetail = `Spieler 2: ${k}`;
           break;
@@ -760,8 +797,11 @@ export function validateLevel(raw: unknown): CheckResult[] {
       }
     }
   } else {
+    const without = new Map(
+      oneWayWalls.map((w) => [w, coopReachable(def, new Set(), undefined, { brittle: { sealedBrittle: new Set([w]) } })]),
+    );
     for (const k of fromStart) {
-      if (!coopReachable(def, new Set(), parse(k)).has(goalKey)) {
+      if (!coopReachable(def, new Set(), parse(k), { brittle: brokenAt(k, without) }).has(goalKey)) {
         softlockOk = false;
         softlockDetail = k;
         break;
