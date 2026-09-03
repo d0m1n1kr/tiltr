@@ -337,6 +337,19 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `boulder` ist Pflicht fürs Teilen. Abgrenzung bewusst: kein Stein-Stein,
   kein Transporter, keine Schiebewand-Zelle – hält beide Seiten klein. Neue
   Regeln IMMER in Physik UND Beweis eintragen (zwei Stellen, eine Wahrheit).
+  ZU ZWEIT ROLLT ER FÜR BEIDE (M84): Die Nachricht `boulder` ({f, i, d})
+  überträgt den STOSS, nicht die Position – `World.pushBoulderAt(i, dir)`
+  wendet dieselbe Regel an („Zielzelle frei?"), Loch/Eis/Platte folgen daraus.
+  Eine ferngesteuerte Position wäre falsch: Wände sind im MP nicht
+  synchronisiert (M68), sie könnte den Stein in eine Wand setzen. Gesendet wird
+  NUR der Ball-Stoß (`startBoulderMove(…, sync)` markiert ihn im Ereignis, das
+  `i`/`dir` trägt); die Eis-Fortsetzung macht die Physik drüben selbst, sonst
+  rollt der Stein dort zwei Zellen. `advanceBoulders(dt)` treibt Steine in
+  Welten weiter, die die Schleife nicht schrittet (`advanceIdleWorlds`, ihre
+  Klang-Ereignisse werden dort verworfen) – eine Platte kann eine Tür ÜBER
+  Ebenen öffnen. Im echten Netz zählt für die Tür nur die EIGENE Welt, im
+  Testmodus sammelt `collectOpeners` beide: Wer die Übertragung prüfen will,
+  schaut auf die Steinzellen je Seite (E2E Lauf 42), nicht auf die Tür.
 - ZWEI-SPIELER-LEVEL M57 (v3.1.0): `players: 1 | 2`, `mpMode`, `floor.start2`
   (nur Ebene 1), `floor.goal2` (eine Ebene). ROLLEN FEST: Host = Spieler 1,
   Gast = Spieler 2. `loadLevel(def, { player })` baut die Welt für EINEN

@@ -93,6 +93,7 @@ const KNOWN_RUNS = [
   "39",
   "40",
   "41",
+  "42",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -7378,6 +7379,117 @@ if (want("41")) {
   } catch (e) {
     check(
       `Lauf 41 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+
+// --- Lauf 42: Stein zu zweit (M84). Aus dem Levelbau: „Wenn Blöcke (Steine)
+// bewegt werden, soll das bei beiden Spielern der Fall sein." Jeder Spieler hat
+// eine EIGENE Welt – ohne Übertragung blieb der Stein drüben stehen, und eine
+// Platte, die er hier hält, hielt dort nichts (die Tür ging nur bei einem auf).
+// Übertragen wird der STOSS, nicht die Position. Fixture: Stein und Platte in
+// Spieler 1s Reihe, die Platte öffnet die Tür vor Spieler 2s Ziel. ---
+if (want("42")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveRow = (y) => [0, 1, 2, 3, 4].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3, 4, 5].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m84",
+      name: "Stein zu zweit",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [6, 3],
+          maze: { seed: 9, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          elements: [
+            { type: "boulder", cell: [2, 0] },
+            // Platte am Korridor-ENDE (Lektion aus Lauf 31): sonst schiebt der
+            // rollende Ball den Stein über sie hinaus.
+            { type: "plate", cell: [5, 0], opens: "tor" },
+            // Die Tür steht in Spieler 2s Reihe: Sie geht nur auf, wenn der
+            // Stein AUCH in seiner Welt auf der Platte liegt.
+            { type: "door", id: "tor", edge: [[2, 2], "e"] },
+          ],
+          start: [0, 0],
+          goal: [4, 0],
+          start2: [0, 2],
+          goal2: [5, 2],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    await page.click("#edTest");
+    await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+    const before = await page.evaluate(() => ({
+      boulders: window.__tiltrMpTest?.boulders,
+      plate: window.__tiltrMpTest?.plateBoulder,
+    }));
+    check(
+      `Vorher steht der Stein in beiden Welten in (2,0), Platte frei (${JSON.stringify(before)})`,
+      before.boulders?.[0]?.[0] === "2,0" && before.boulders?.[1]?.[0] === "2,0" &&
+        before.plate?.[0] === 0 && before.plate?.[1] === 0,
+    );
+
+    // Spieler 1 schiebt den Stein auf die Platte – er muss DRÜBEN mitrollen.
+    await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.plateBoulder[0])) > 0,
+      15000,
+    );
+    const pushed = await until(async () => {
+      const v = await page.evaluate(() => ({
+        boulders: window.__tiltrMpTest?.boulders,
+        plate: window.__tiltrMpTest?.plateBoulder,
+        open: window.__tiltrWorld?.doorsOpen,
+        ball: Math.round(window.__tiltrMpTest?.balls[0].x ?? 0),
+      }));
+      return v.boulders?.[1]?.[0] === "5,0" ? v : null;
+    }, { timeout: 8000 });
+    check(
+      `Der Stein rollt in BEIDEN Welten auf die Platte (${JSON.stringify(pushed)})`,
+      pushed !== null && pushed.boulders[0][0] === "5,0" && pushed.plate[0] === 1 && pushed.plate[1] === 1,
+    );
+
+    // Und damit steht Spieler 2s Tür offen – vorher war sie in seiner Welt zu.
+    await page.click("#swapBtn");
+    await until(async () => (await page.evaluate(() => window.__tiltrMpTest?.player)) === 2, { timeout: 4000 });
+    const guest = await until(async () => {
+      const v = await page.evaluate(() => window.__tiltrWorld?.doorsOpen);
+      return v?.includes("tor") ? v : null;
+    }, { timeout: 6000 });
+    check(
+      // Im TESTMODUS sammelt updateDoors die Öffner aus BEIDEN Welten – diese
+      // Zusicherung prüft also den Zustand, nicht die Übertragung (die steht
+      // im Check darüber). Im echten Netz zählt nur die eigene Welt: dort
+      // öffnete die Tür des Gastes vor M84 gar nicht.
+      `Die Tür des Gastes steht offen, der Stein hält die Platte (${JSON.stringify(guest)})`,
+      guest !== null,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 42 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

@@ -132,3 +132,46 @@ describe('Rollstein – Beweis', () => {
     expect(p.states).toBeGreaterThan(6);
   });
 });
+
+// M84 – ZU ZWEIT ROLLT ER FÜR BEIDE: Im Multiplayer hat jeder Spieler seine
+// EIGENE Welt; der Stein, den der Partner schiebt, blieb hier stehen – und
+// eine Platte, die er drüben hielt, hielt hier nichts. Übertragen wird der
+// STOSS (Index + Richtung), nicht die Position: Dieselbe Regel entscheidet auf
+// beiden Seiten, ob die Zielzelle frei ist.
+describe('Rollstein über das Netz (M84)', () => {
+  it('der eigene Ball-Stoß meldet Index und Richtung (nur der, nicht die Eis-Fortsetzung)', () => {
+    const { world } = loadLevel(corridor([{ type: 'boulder', cell: [2, 0] }]));
+    world.ball.x = 150; // dicht vor dem Stein, wie in den Physik-Units
+    roll(world, 400);
+    const rolls = world.consumeBoulderEvents().filter((e) => e.kind === 'roll');
+    expect(rolls.length).toBeGreaterThan(0);
+    expect(rolls[0]!.i).toBe(0);
+    expect(rolls[0]!.dir).toEqual([1, 0]);
+  });
+  it('pushBoulderAt schiebt ihn eine Zelle – und hält die Platte darunter', () => {
+    const { world } = loadLevel(
+      corridor([
+        { type: 'boulder', cell: [2, 0] },
+        { type: 'plate', cell: [3, 0], opens: 'tor' },
+        { type: 'door', id: 'tor', edge: [[0, 0], 's'] },
+      ]),
+    );
+    const st = world.boulders[0]!;
+    const plate = world.plates[0]!;
+    expect(plate.boulder).toBeFalsy();
+    expect(world.pushBoulderAt(0, [1, 0])).toBe(true);
+    // Ohne eigenen Ballschritt rollt er über advanceBoulders zu Ende.
+    for (let i = 0; i < 60; i++) world.advanceBoulders(1 / 60);
+    expect(st.cell).toEqual([3, 0]);
+    expect(plate.boulder).toBe(true);
+    expect(doorState([{ kind: 'plate', satisfied: plate.boulder === true }], 'any').open).toBe(true);
+  });
+  it('gegen eine Wand bewegt er sich nicht – und ein rollender Stein nimmt keinen zweiten Stoß', () => {
+    const { world } = loadLevel(corridor([{ type: 'boulder', cell: [5, 0] }]));
+    // (6,0) liegt außerhalb: dieselbe Regel wie beim eigenen Stoß greift.
+    expect(world.pushBoulderAt(0, [1, 0])).toBe(false);
+    expect(world.pushBoulderAt(0, [-1, 0])).toBe(true);
+    expect(world.pushBoulderAt(0, [-1, 0])).toBe(false); // rollt noch
+    expect(world.pushBoulderAt(7, [1, 0])).toBe(false); // gibt es nicht
+  });
+});

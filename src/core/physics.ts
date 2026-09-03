@@ -65,7 +65,7 @@ export class World {
   /** Dauer eines Zellen-Rollens in Sekunden */
   boulderRollS = 0.35;
   /** Steine, die in diesem Schritt losgerollt / angekommen / versunken sind (Klang) */
-  boulderEvents: Array<{ kind: 'roll' | 'stop' | 'sink' | 'plate'; x: number; y: number }> = [];
+  boulderEvents: Array<{ kind: 'roll' | 'stop' | 'sink' | 'plate'; x: number; y: number; i?: number; dir?: [number, number] }> = [];
   anchors: Anchor[] = [];
   glass: GlassPlate[] = [];
   keys: Key[] = [];
@@ -414,19 +414,61 @@ export class World {
       if (hit.impact < this.pushSpeed) continue;
       // Stoßrichtung = entgegen der Kollisionsnormalen, auf die Achse gerundet.
       const dir: [number, number] = Math.abs(hit.nx) > Math.abs(hit.ny) ? [hit.nx > 0 ? -1 : 1, 0] : [0, hit.ny > 0 ? -1 : 1];
-      if (this.boulderCellFree(st.cell[0] + dir[0], st.cell[1] + dir[1], cell, st)) this.startBoulderMove(st, dir, cell);
+      if (this.boulderCellFree(st.cell[0] + dir[0], st.cell[1] + dir[1], cell, st)) this.startBoulderMove(st, dir, cell, true);
     }
   }
 
-  private startBoulderMove(st: Boulder, dir: [number, number], cell: number): void {
+  /** `sync`: Dieser Stoß kam vom BALL und gehört im Multiplayer übertragen
+   *  (M84) – die Fortsetzung auf Eis nicht: Die macht die Physik auf der
+   *  anderen Seite selbst, sonst rollt der Stein dort zwei Zellen. */
+  private startBoulderMove(st: Boulder, dir: [number, number], cell: number, sync = false): void {
     const toX = (st.cell[0] + dir[0] + 0.5) * cell;
     const toY = (st.cell[1] + dir[1] + 0.5) * cell;
     st.move = { fromX: st.x, fromY: st.y, toX, toY, t: 0, dir };
-    this.boulderEvents.push({ kind: 'roll', x: st.x, y: st.y });
+    this.boulderEvents.push({
+      kind: 'roll',
+      x: st.x,
+      y: st.y,
+      ...(sync ? { i: this.boulders.indexOf(st), dir } : {}),
+    });
   }
 
-  /** Stein-Ereignisse seit dem letzten Aufruf (für den Klang). */
-  consumeBoulderEvents(): Array<{ kind: 'roll' | 'stop' | 'sink' | 'plate'; x: number; y: number }> {
+  /**
+   * STEIN VON AUSSEN ANSTOSSEN (M84): Im Multiplayer schiebt der Partner ihn
+   * in SEINER Welt – ohne Übertragung bliebe er hier stehen, und eine Platte,
+   * die er drüben hält, hielte hier nichts. Übertragen wird der STOSS
+   * (Index + Richtung), nicht die Position: Dieselbe Regel entscheidet auf
+   * beiden Seiten, ob die Zielzelle frei ist – eine ferngesteuerte Position
+   * könnte den Stein in eine Wand setzen, die nur einer gebrochen hat (Wände
+   * sind im MP nicht synchronisiert, M68). Loch füllen, Eis und Platte folgen
+   * daraus wie beim eigenen Stoß.
+   */
+  pushBoulderAt(index: number, dir: [number, number]): boolean {
+    const st = this.boulders[index];
+    if (!st || st.sunk || st.move) return false;
+    const cell = st.size / 0.72;
+    if (!this.boulderCellFree(st.cell[0] + dir[0], st.cell[1] + dir[1], cell, st)) return false;
+    this.startBoulderMove(st, dir, cell);
+    return true;
+  }
+
+  /** Steine weiterrollen lassen OHNE eigenen Ballschritt: für Welten, die die
+   *  Spielschleife nicht schrittet (andere Ebene, ruhende Seite im
+   *  MP-Testmodus). Stoßen kann dort niemand – die ruhende Kugel erreicht
+   *  `pushSpeed` nicht. */
+  advanceBoulders(dt: number): void {
+    this.updateBoulders(dt);
+  }
+
+  /** Stein-Ereignisse seit dem letzten Aufruf (für den Klang; ein 'roll' aus
+   *  einem BALL-Stoß trägt Index und Richtung für die MP-Nachricht, M84). */
+  consumeBoulderEvents(): Array<{
+    kind: 'roll' | 'stop' | 'sink' | 'plate';
+    x: number;
+    y: number;
+    i?: number;
+    dir?: [number, number];
+  }> {
     const e = this.boulderEvents;
     this.boulderEvents = [];
     return e;

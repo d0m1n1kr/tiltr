@@ -612,6 +612,39 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M84 „Zu zweit rollt der Stein für beide" ✓ (v3.16.0)
+
+Direkt nach M83, dieselbe Klasse: „Wenn Blöcke (Steine) bewegt werden, soll das
+bei beiden Spielern der Fall sein." Jeder Spieler hat eine eigene Welt, also
+auch seinen eigenen Rollstein – der Stein, den der Partner schob, blieb hier
+stehen. Schlimmer als beim Läuten: Eine Platte, die er drüben mit dem Stein
+hielt, hielt HIER nichts, denn im echten Netz zählt für die Tür nur die eigene
+Welt (`collectOpeners` sieht lokal nur eine). Ein Coop-Rätsel „du legst den
+Stein auf die Platte, ich gehe durch" war damit unspielbar.
+
+Übertragen wird der STOSS, nicht die Position: Nachricht `boulder`
+({f, i, d} = Ebene, Stein-Index, Richtung), Empfang über
+`World.pushBoulderAt(i, dir)` – dieselbe Regel („ist die Zielzelle frei?")
+entscheidet auf beiden Seiten, und Loch füllen, Eis-Fortsetzung und Platte
+folgen daraus wie beim eigenen Stoß. Eine ferngesteuerte POSITION wäre
+verlockend, aber falsch: Wände sind im MP nicht synchronisiert (M68), also
+könnte sie den Stein in eine Wand setzen, die nur einer gebrochen hat. Gesendet
+wird nur der BALL-Stoß (`startBoulderMove(…, sync)` markiert ihn im Ereignis);
+die Fortsetzung auf Eis macht die Physik drüben selbst, sonst rollte der Stein
+dort zwei Zellen.
+
+Dazu, wie bei der Glocke, das Weiterlaufen: `advanceBoulders(dt)` für Welten,
+die die Schleife nicht schrittet (andere Ebene, ruhende Seite im MP-Testmodus –
+eine Platte kann eine Tür ÜBER Ebenen öffnen), und ihre Klang-Ereignisse werden
+dort verworfen (`advanceIdleWorlds`, aus `decayIdleBells` gewachsen): derselbe
+Stein klingt schon in der eigenen Welt.
+
+E2E Lauf 42 „Stein zu zweit": Stein und Platte in Spieler 1s Reihe, die Tür in
+Spieler 2s Reihe – geprüft wird, dass der Stein in BEIDEN Welten auf (5,0)
+liegt und beide Platten halten (einmal rot gesehen: nur die eigene Welt).
+Fixture-Lektion aus Lauf 31 wiederholt: Die Platte gehört ans Korridor-ENDE,
+sonst schiebt der rollende Ball den Stein über sie hinaus.
+
 ## M83 „Zu zweit läutet sie für beide" ✓ (v3.15.0)
 
 Wunsch aus dem Levelbau: „Das Läuten der Glocke soll im Multiplayer auch beim

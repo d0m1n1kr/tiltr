@@ -445,6 +445,7 @@ export const de = {
   'mp.partnerKey': 'Partner hat einen Schlüssel geholt!',
   'mp.partnerSwitch': 'Partner hat einen Schalter gedrückt!',
   'mp.partnerBell': '🔔 Partner läutet die Glocke – die Horcher gehen hin!',
+  'mp.partnerBoulder': '🪨 Partner schiebt den Stein!',
   'mp.hint.race': 'Gegeneinander: identisches Level, wer zuerst im Ziel ist, gewinnt. Ein schwacher Schein zeigt den Gegner.',
   'mp.pickLevel': 'Level wählen = Raum eröffnen',
   'mp.orJoin': 'Oder einem Raum beitreten',

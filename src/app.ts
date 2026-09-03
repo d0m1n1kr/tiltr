@@ -2192,6 +2192,12 @@ function mpOnMessage(type: string, payload: unknown): void {
       }
       updateDoors(performance.now());
     }
+  } else if (type === 'boulder') {
+    // Stein des Partners (M84): derselbe Stoß in meiner Welt. Klang und
+    // Platte kommen aus der eigenen Physik (consumeBoulderEvents im Frame),
+    // deshalb hier nur die Meldung – und nur, wenn er sich wirklich bewegt.
+    const p = payload as { f: number; i: number; d: [number, number] };
+    if (loaded?.floors[p.f]?.world.pushBoulderAt(p.i, p.d)) flash(t('mp.partnerBoulder'));
   } else if (type === 'bell') {
     // Coop UND Race (M83): Die Glocke ist Ablenkung, keine Progression – sie
     // wirkt in beiden Modi, wie die Platten. Gehört wird sie aus ihrer
@@ -2423,6 +2429,11 @@ function mpTestFrame(now: number, dt: number): void {
   // sonst sieht man im Testmodus nicht, was das Läuten beim Partner tut.
   otherWorld.advanceBells(dt);
   otherWorld.advanceListeners(dt);
+  // Der Stein drüben rollt zu Ende und legt sich auf seine Platte (M84).
+  // Seine Klang-Ereignisse gehören NICHT hierher: derselbe Stein klingt
+  // schon in der eigenen Welt.
+  otherWorld.advanceBoulders(dt);
+  otherWorld.consumeBoulderEvents();
   const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.id));
   for (const id of held) if (!mpTest.held.has(id)) audio.plate(true);
   for (const id of mpTest.held) if (!held.has(id)) audio.plate(false);
@@ -2433,20 +2444,24 @@ function mpTestFrame(now: number, dt: number): void {
 }
 
 /**
- * NACHKLANG LÄUFT ÜBERALL WEITER (M83): Die Spielschleife schrittet nur die
+ * LEERLAUF-WELTEN LAUFEN WEITER (M83/M84): Die Spielschleife schrittet nur die
  * Welt der AKTIVEN Ebene. Eine Glocke, die der Partner auf einer anderen Ebene
  * angeschlagen hat, bliebe dort sonst stehen und lockte beim Betreten die
  * Horcher zu einem Läuten von vor einer Minute. Die aktive Welt zählt ihre
  * Glocken selbst herunter (`step`), im Testmodus die ruhende Seite über
  * `mpTestFrame`.
  */
-function decayIdleBells(dt: number): void {
+function advanceIdleWorlds(dt: number): void {
   const sides = mpTest ? mpTest.sides.map((sd) => sd.loaded) : loaded ? [loaded] : [];
   for (const side of sides) {
     side.floors.forEach((f, fl) => {
       if (side === loaded && fl === activeFloor) return;
       if (mpTest && side !== loaded && fl === mpTestOther().floor) return;
       f.world.advanceBells(dt);
+      // Ein Stein, den der Partner auf einer anderen Ebene angestoßen hat,
+      // muss dort ankommen: Seine Platte kann eine Tür ÜBER Ebenen öffnen.
+      f.world.advanceBoulders(dt);
+      f.world.consumeBoulderEvents();
     });
   }
 }
@@ -2736,7 +2751,17 @@ function frame(now: number): void {
     for (const ev of world.consumeBoulderEvents()) {
       const dx = ev.x - world.ball.x,
         dy = ev.y - world.ball.y;
-      if (ev.kind === 'roll') audio.boulderRoll(dx, dy);
+      if (ev.kind === 'roll') {
+        audio.boulderRoll(dx, dy);
+        // ZU ZWEIT ROLLT ER FÜR BEIDE (M84): Übertragen wird der STOSS, nicht
+        // die Position – dieselbe Regel entscheidet drüben, ob die Zielzelle
+        // frei ist. Die Fortsetzung auf Eis trägt kein `i`, die macht die
+        // Physik dort selbst.
+        if (ev.i !== undefined && ev.dir) {
+          if (mp) mp.transport.send('boulder', { f: activeFloor, i: ev.i, d: ev.dir });
+          if (mpTest) mpTestOther().loaded.floors[activeFloor]?.world.pushBoulderAt(ev.i, ev.dir);
+        }
+      }
       else if (ev.kind === 'stop') audio.boulderStop(dx, dy);
       else if (ev.kind === 'sink') {
         audio.boulderSink(dx, dy);
@@ -3107,7 +3132,7 @@ function frame(now: number): void {
 
     if (mp && mp.phase === 'playing' && !disconnected) mpFrame(now);
     if (mpTest) mpTestFrame(now, dt);
-    decayIdleBells(dt);
+    advanceIdleWorlds(dt);
     if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
       if (remaining <= 0) {
@@ -3330,6 +3355,13 @@ function frame(now: number): void {
         // Klingt die Glocke in BEIDEN Welten (M83)? Und laufen die Horcher
         // drüben hin? Beides muss von außen prüfbar sein.
         ringing: mpTest.sides.map((sd) => sd.loaded.floors[sd.floor]!.world.bells.filter((b) => b.ringLeft > 0).length),
+        // Stehen die Steine in BEIDEN Welten gleich (M84)?
+        boulders: mpTest.sides.map((sd) =>
+          sd.loaded.floors[sd.floor]!.world.boulders.filter((st) => !st.sunk).map((st) => `${st.cell[0]},${st.cell[1]}`),
+        ),
+        plateBoulder: mpTest.sides.map(
+          (sd) => sd.loaded.floors[sd.floor]!.world.plates.filter((pl) => pl.boulder).length,
+        ),
         listeners: mpTest.sides.map((sd) =>
           sd.loaded.floors[sd.floor]!.world.listeners.map((l) => ({ x: Math.round(l.x), y: Math.round(l.y) })),
         ),

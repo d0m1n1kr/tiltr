@@ -441,6 +441,7 @@ export const es: Dict = {
   'mp.partnerKey': '¡Tu compañero ha cogido una llave!',
   'mp.partnerSwitch': '¡Tu compañero ha pulsado un interruptor!',
   'mp.partnerBell': '🔔 Tu compañero toca la campana: ¡los oyentes van hacia allí!',
+  'mp.partnerBoulder': '🪨 ¡Tu compañero empuja la piedra!',
   'mp.hint.race': 'Uno contra otro: mismo nivel, gana quien llegue primero. Un leve resplandor muestra al rival.',
   'mp.pickLevel': 'Elegir nivel = abrir sala',
   'mp.orJoin': 'O únete a una sala',
