@@ -992,18 +992,43 @@ export function validateLevel(raw: unknown): CheckResult[] {
    * eine Einzelprobe, WELCHE Tür), sonst ob das Ziel überhaupt auf dieser
    * Ebene liegt (Transporter ohne Rückweg).
    */
+  /**
+   * BRUCHSEITE VERKEHRT (M81)? Der häufigste Baufehler bei einer einseitig
+   * brüchigen Wand: Sie ist als Rückweg gedacht, bricht aber nur von der
+   * anderen Seite – dann führt die gerichtete Kante hinein statt hinaus. Der
+   * Bericht nannte dann die TÜR, durch die man hereinkam, und der Bauende
+   * schaute auf die Wand, die er ja gerade dafür gesetzt hatte. Also wird
+   * gefragt: Würde diese Wand, GEDREHT, den Rückweg öffnen?
+   */
+  const flippedSideHint = (
+    latchedHere: ReadonlySet<string>,
+    reach: (open: ReadonlySet<string>, alt: LevelDef) => boolean,
+  ): string | undefined => {
+    for (const [fi, f] of def.floors.entries()) {
+      for (const [i, [edge, side]] of f.maze.brittleSide.entries()) {
+        const alt = JSON.parse(JSON.stringify(def)) as LevelDef;
+        alt.floors[fi]!.maze.brittleSide[i]![1] = OPPOSITE[side];
+        if (reach(latchedHere, alt))
+          return `die brüchige Wand bei Ebene ${fi + 1}, Zelle ${edge[0][0]}/${edge[0][1]} bricht nur von der anderen Seite`;
+      }
+    }
+    return undefined;
+  };
   const nameCause = (
     k: string,
     goal: string,
     latchedHere: ReadonlySet<string>,
-    reach: (open: ReadonlySet<string>) => boolean,
+    reach: (open: ReadonlySet<string>, alt?: LevelDef) => boolean,
   ): string => {
+    const flipped = flippedSideHint(latchedHere, (open, alt) => reach(open, alt));
     if (doorIds.size && reach(new Set([...latchedHere, ...doorIds]))) {
       for (const d of doorIds) {
-        if (reach(new Set([...latchedHere, d]))) return `Tür ${d} fällt hinter dir zu`;
+        if (reach(new Set([...latchedHere, d])))
+          return flipped ? `Tür ${d} fällt hinter dir zu; ${flipped}` : `Tür ${d} fällt hinter dir zu`;
       }
-      return 'Türen fallen hinter dir zu';
+      return flipped ? `Türen fallen hinter dir zu; ${flipped}` : 'Türen fallen hinter dir zu';
     }
+    if (flipped) return flipped;
     const here = placeOf(k);
     if (here.floor !== placeOf(goal).floor) return `von Ebene ${here.floor + 1} führt kein Weg zurück (Transporter?)`;
     return 'kein Rückweg (Einbahn-Strömung oder brüchige Wand)';
@@ -1016,8 +1041,8 @@ export function validateLevel(raw: unknown): CheckResult[] {
     brittleHere: { p1?: BrittleState; p2?: BrittleState },
   ): string => {
     const from = p === 'p1' ? { p1: parse(k) } : { p2: parse(k) };
-    return nameCause(k, goal, latchedHere, (open) =>
-      pairReachable(def, pairCoop, new Set(), from, brittleHere, stonePlates, open)[p].has(goal),
+    return nameCause(k, goal, latchedHere, (open, alt = def) =>
+      pairReachable(alt, pairCoop, new Set(), from, brittleHere, stonePlates, open)[p].has(goal),
     );
   };
   if (two) {
@@ -1070,8 +1095,8 @@ export function validateLevel(raw: unknown): CheckResult[] {
       const brittleHere = brokenAt(k, without);
       if (!coopReachable(def, new Set(), parse(k), { brittle: brittleHere, latched: latchedHere }).has(goalKey)) {
         softlockOk = false;
-        softlockDetail = `${k} – ${nameCause(k, goalKey, latchedHere, (open) =>
-          coopReachable(def, new Set(), parse(k), { brittle: brittleHere, latched: open }).has(goalKey),
+        softlockDetail = `${k} – ${nameCause(k, goalKey, latchedHere, (open, alt = def) =>
+          coopReachable(alt, new Set(), parse(k), { brittle: brittleHere, latched: open }).has(goalKey),
         )}`;
         softlockAt = placeOf(k);
         break;

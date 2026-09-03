@@ -612,6 +612,30 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M81 „Die Bruchseite zeigt in die falsche Richtung" ✓ (v3.13.0)
+
+Rückmeldung zum M79-Bericht: „Nach Tor 2 gibt es eine Wand (halb brüchig), mit
+der man zurückkommt." Der Beweis KANN das – nachgebaut als Unit: eine Tasche,
+hinein nur durch die Tür, hinaus durch eine einseitig brüchige Wand, deren
+Bruchseite in die Tasche zeigt: alles grün. Dreht man die Seite nach außen, ist
+es ein echter Softlock, denn dann führt die gerichtete Kante HINEIN statt
+hinaus.
+
+Genau das war die Lücke im Bericht: Er nannte die TÜR („Tür tor2 fällt hinter
+dir zu") – wahr, aber der Bauende schaut auf die Wand, die er gerade als
+Rückweg gesetzt hat, und sieht keinen Widerspruch. Also fragt `nameCause` jetzt
+zusätzlich: Würde diese Wand, GEDREHT, den Rückweg öffnen? Wenn ja, steht das
+im Satz: „Tür tor2 fällt hinter dir zu; die brüchige Wand bei Ebene 1, Zelle
+1/1 bricht nur von der anderen Seite." Eine Probe je einseitig brüchiger Wand,
+nur für die EINE gemeldete Zelle – der Beweis wird nicht teurer. Ohne solche
+Wand bleibt der Satz kurz (Gegenprobe als Unit), und der alte M68-Fall
+(Tasche auch per Strömung erreichbar) sagt jetzt dasselbe genauer.
+
+Dazu die Vorbeugung im Editor: Unter „Bricht von" steht, sobald eine Seite
+gewählt ist, WELCHE gemeint ist – die Seite, auf der der BALL steht (der Keil
+zeigt sie), als Rückweg also die Seite, auf der man eingeschlossen ist. Ein
+Feld mit vier Himmelsrichtungen ohne Bezugspunkt ist eine Münze, die man wirft.
+
 ## M80 „Ein rotes Level kommt aus dem Gerät heraus" ✓ (v3.12.0)
 
 Aus dem Levelbau, direkt nach M79: „Zur Analyse wäre es gut, wenn man Level mit

@@ -201,7 +201,8 @@ describe('Softlock mit einseitig brüchiger Wand (M68)', () => {
     // Gemeldet wird die erste verlorene Zelle: die Strömungszelle selbst oder
     // die Tasche – seit M79 mit dem Grund dahinter.
     expect(['0:1,1', '0:2,0', '0:3,0', '0:2,1', '0:3,1']).toContain(sl.detail?.split(' – ')[0]);
-    expect(sl.detail).toContain('kein Rückweg');
+    // Seit M81 nennt der Satz die Wand selbst: Gedreht wäre sie der Ausweg.
+    expect(sl.detail).toContain('bricht nur von der anderen Seite');
   });
   it('brokenBrittle öffnet die Wand in beide Richtungen, sealedBrittle nimmt die Kante', () => {
     const def = pocket('sealed');
@@ -215,5 +216,63 @@ describe('Softlock mit einseitig brüchiger Wand (M68)', () => {
     const def = pocket('sealed', 2);
     expect(badge(def, 'softlock').ok).toBe(true);
     expect(badge(def, 'coop').ok).toBe(true);
+  });
+});
+
+// M81: Eine einseitig brüchige Wand ALS RÜCKWEG hinter einer Tür. Das Modell
+// kann das – aber nur, wenn die Bruchseite dorthin zeigt, wo man
+// eingeschlossen ist. Verkehrt eingetragen führt sie hinein statt hinaus, und
+// der Bericht nannte dann die Tür, durch die man hereinkam.
+describe('Rückweg durch eine einseitig brüchige Wand (M81)', () => {
+  const badge = (def: ReturnType<typeof parseLevel>, key: string) =>
+    validateLevel(def).find((c) => c.key === key)!;
+  // Tasche {(2,0),(2,1)}: hinein NUR durch tor2 bei ((1,0),'e'), hinaus durch
+  // die brüchige Wand ((1,1),'e'). Start (0,0), Ziel (0,1), Schlüssel (1,0).
+  const pocketBack = (side: 'w' | 'e') =>
+    parseLevel({
+      id: 'x',
+      name: 'x',
+      floors: [
+        {
+          size: [3, 2],
+          maze: {
+            seed: 1,
+            carve: carveAll(3, 2),
+            add: [[[1, 1], 'e']],
+            brittle: [[[1, 1], 'e']],
+            brittleSide: [[[[1, 1], 'e'], side]],
+          },
+          elements: [
+            { type: 'door', id: 'tor2', edge: [[1, 0], 'e'] },
+            { type: 'key', cell: [1, 0], opens: 'tor2' },
+          ],
+          start: [0, 0],
+          goal: [0, 1],
+        },
+      ],
+    });
+  it("Bruchseite zur Tasche hin ('e'): der Rückweg zählt, alles grün", () => {
+    const def = pocketBack('e');
+    expect(badge(def, 'softlock').ok).toBe(true);
+    expect(isShareable(validateLevel(def))).toBe(true);
+  });
+  it("Bruchseite nach außen ('w'): echter Softlock – und der Bericht nennt die WAND", () => {
+    const sl = badge(pocketBack('w'), 'softlock');
+    expect(sl.ok).toBe(false);
+    // Die Tür bleibt der Riegel (durch sie kam man herein), aber der Satz sagt
+    // jetzt auch, was der Bauende eigentlich gemeint hat.
+    expect(sl.detail).toContain('Tür tor2 fällt hinter dir zu');
+    expect(sl.detail).toContain('Ebene 1, Zelle 1/1 bricht nur von der anderen Seite');
+  });
+  it('ohne brüchige Wand bleibt der Satz kurz (kein Hinweis aus dem Nichts)', () => {
+    const def = pocketBack('e');
+    const plain = parseLevel({
+      ...def,
+      floors: [{ ...def.floors[0]!, maze: { ...def.floors[0]!.maze, brittle: [], brittleSide: [] } }],
+    });
+    const sl = badge(plain, 'softlock');
+    expect(sl.ok).toBe(false);
+    expect(sl.detail).toContain('Tür tor2 fällt hinter dir zu');
+    expect(sl.detail).not.toContain('bricht nur');
   });
 });

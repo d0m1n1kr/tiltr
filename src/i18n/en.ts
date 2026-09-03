@@ -273,6 +273,7 @@ export const en: Dict = {
   'el.torch.title': 'Torch',
   'el.torch.desc': 'A circle of light in the dark: walls, holes and elements within its reach are visible without a ping. It makes no sound – light is its whole message. No effect on the ball.',
   'ed.f.brittleSide': 'Breaks from',
+  'ed.brittleSideHint': 'This is the side the BALL is on – the wedge marks it. As a way back it belongs on the side where you are locked in.',
   'ed.side.both': 'both sides',
   'ed.side.w': 'left',
   'ed.side.e': 'right',

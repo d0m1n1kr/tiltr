@@ -177,6 +177,15 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   gemeldete Zelle – alle Türen offen ⇒ Einzelprobe je Tür („Tür X fällt hinter
   dir zu"), sonst andere Ebene ⇒ „von Ebene N führt kein Weg zurück
   (Transporter?)", sonst „kein Rückweg (Einbahn-Strömung oder brüchige Wand)".
+  BRUCHSEITE VERKEHRT (M81): Zusätzlich probiert `nameCause` jede einseitig
+  brüchige Wand GEDREHT – öffnet das den Rückweg, sagt der Satz „die brüchige
+  Wand bei Ebene N, Zelle x/y bricht nur von der anderen Seite" (angehängt an
+  die Tür-Ursache, denn beides ist wahr). Das ist der häufigste Baufehler: Die
+  Wand ist als Rückweg gedacht, ihre gerichtete Kante führt aber hinein. Im
+  Editor steht deshalb unter „Bricht von" (`ed.brittleSideHint`), dass die
+  Seite die des BALLS ist – als Rückweg die Seite, auf der man eingeschlossen
+  ist. Der Beweis selbst konnte den Rückweg schon immer (Units in
+  tests/brittleTorch.test.ts, „Rückweg durch eine einseitig brüchige Wand").
   WICHTIG: HORCHER und WÄCHTER kommen im Softlock-Beweis NICHT vor
   (`patrolLines` sammelt nur `guard`, und die Softlock-Abfragen laufen ohne
   `guardSafe`) – ein Bericht, der nur den Ort nennt, verleitet zur falschen

@@ -277,6 +277,7 @@ export const de = {
   'el.torch.title': 'Fackel',
   'el.torch.desc': 'Ein Lichtkreis im Dunkeln: Wände, Löcher und Elemente in ihrer Reichweite sind zu sehen, ohne Ping. Sie hat keinen Klang – Licht ist ihre ganze Botschaft. Kein Einfluss auf den Ball.',
   'ed.f.brittleSide': 'Bricht von',
+  'ed.brittleSideHint': 'Gemeint ist die Seite, auf der der BALL steht – der Keil zeigt sie. Als Rückweg gehört sie dorthin, wo man eingeschlossen ist.',
   'ed.side.both': 'beiden Seiten',
   'ed.side.w': 'links',
   'ed.side.e': 'rechts',

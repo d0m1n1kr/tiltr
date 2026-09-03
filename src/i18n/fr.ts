@@ -273,6 +273,7 @@ export const fr: Dict = {
   'el.torch.title': 'Torche',
   'el.torch.desc': 'Un cercle de lumière dans le noir : murs, trous et éléments à sa portée sont visibles sans ping. Elle ne fait aucun bruit – la lumière est tout son message. Aucun effet sur la bille.',
   'ed.f.brittleSide': 'Se brise depuis',
+  'ed.brittleSideHint': 'Il s’agit du côté où se trouve la BILLE – le coin l’indique. Comme voie de retour, il doit être du côté où l’on est enfermé.',
   'ed.side.both': 'les deux côtés',
   'ed.side.w': 'la gauche',
   'ed.side.e': 'la droite',

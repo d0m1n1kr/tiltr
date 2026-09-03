@@ -273,6 +273,7 @@ export const es: Dict = {
   'el.torch.title': 'Antorcha',
   'el.torch.desc': 'Un círculo de luz en la oscuridad: paredes, agujeros y elementos a su alcance se ven sin ping. No suena: la luz es todo su mensaje. Sin efecto sobre la bola.',
   'ed.f.brittleSide': 'Se rompe desde',
+  'ed.brittleSideHint': 'Es el lado donde está la BOLA – la cuña lo marca. Como vía de vuelta, va en el lado donde te quedas encerrado.',
   'ed.side.both': 'ambos lados',
   'ed.side.w': 'la izquierda',
   'ed.side.e': 'la derecha',

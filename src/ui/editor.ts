@@ -1819,6 +1819,16 @@ export function setupEditor(opts: {
           });
           sideSel.id = 'edBrittleSide';
           propsEl.append(field(t('ed.f.brittleSide'), sideSel));
+          // Welche Seite ist gemeint? Die, auf der der BALL steht – als
+          // Rückweg also die Seite, auf der man eingeschlossen ist. Verkehrt
+          // eingetragen führt die Wand hinein statt hinaus; der
+          // Softlock-Bericht sagt das seit M81, hier steht es vorher.
+          if (cur) {
+            const sideHint = document.createElement('p');
+            sideHint.className = 'menu-meta';
+            sideHint.textContent = t('ed.brittleSideHint');
+            propsEl.append(sideHint);
+          }
         }
         const hint = document.createElement('p');
         hint.className = 'menu-meta';
