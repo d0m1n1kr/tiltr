@@ -3122,6 +3122,9 @@ function frame(now: number): void {
     mirrors: world.walls.filter((w) => w.mirror).length,
     forks: world.keys.filter((k) => k.voice === 'fork').length,
     keysCollected: world.keys.filter((k) => k.collected).length,
+    // Offene Türen dieser Ebene (E2E: „im Testmodus sind Türen NICHT immer
+    // offen" – eine Platte hält nur, solange wirklich jemand darauf steht).
+    doorsOpen: world.walls.filter((w) => w.door?.open === true).map((w) => w.door!.id),
     transporters: world.transporters.length,
     torches: world.torches.length,
     brittleSided: world.walls.filter((w) => w.hpSide !== undefined).length,
@@ -3149,6 +3152,9 @@ function frame(now: number): void {
   (window as unknown as { __tiltrGhost?: unknown }).__tiltrGhost = ghost
     ? { time: ghost.time, active: ghostPos !== null }
     : null;
+  // Neigung offenlegen: „warum rollt die Kugel von allein?" ist ohne diesen
+  // Wert Raten – die Neigung schwingt nach dem Loslassen aus (Glättung).
+  (window as unknown as { __tiltrTilt?: unknown }).__tiltrTilt = { x: input.tilt.x, y: input.tilt.y };
   (window as unknown as { __tiltrMpTest?: unknown }).__tiltrMpTest = mpTest
     ? {
         player: mpTest.active + 1,
@@ -3157,7 +3163,7 @@ function frame(now: number): void {
         buddySolid: renderer.buddySolid,
         held: [...mpTest.held],
         done: mpTest.sides.map((sd) => sd.done),
-        balls: mpTest.sides.map((sd) => ({ x: sd.loaded.world.ball.x, y: sd.loaded.world.ball.y, floor: sd.floor })),
+        balls: mpTest.sides.map((sd) => ({ x: sd.loaded.world.ball.x, y: sd.loaded.world.ball.y, vx: sd.loaded.world.ball.vx, vy: sd.loaded.world.ball.vy, floor: sd.floor })),
       }
     : null;
   (window as unknown as { __tiltrMp?: unknown }).__tiltrMp = mp

@@ -612,6 +612,41 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M71 „Warum rot?" ✓ (v3.5.0) – Beweise erklären sich und zeigen die Stelle
+
+Meldung aus dem Levelbau: „Wir haben einen Softlock. Warum?" – und genau das
+sagte der Editor nicht. Ein rotes Badge war eine Sackgasse: ein Wort, ein
+Kreuz, und im `title`-Attribut ein technisches Detail, das auf dem Phone
+niemand sieht.
+
+Jetzt ist jedes Badge ein KNOPF. Tippen öffnet eine Tafel mit drei Dingen:
+was der Beweis prüft und was ein Rot bedeutet (`ed.help.<key>`, ×4 Sprachen,
+je Check ein Satzpaar – beim Softlock zum Beispiel die drei üblichen
+Ursachen: Transporter in eine Ebene ohne Rückweg, Einbahn-Strömung, Tür, die
+wieder zufällt), das Detail in KLARTEXT („Ebene 2, Zelle 0/0" statt „1:0,0"),
+und – wo der Beweis den Ort kennt – „👁 Zeigen": Ebenenwechsel, Zelle
+hervorgehoben (bernsteinfarbener Rahmen, bis man das Feld anfasst), Ansicht
+mittig darauf.
+
+Dafür trägt der Prüfbericht den Ort im Modell, nicht im Text: `CheckResult.at`
+(`Place` = Ebene + Zelle in Def-Koordinaten, also genau die, die der Editor
+zeichnet) wird von softlock, openers, timer, links, items, jukebox, guards,
+boulder und coop/race gefüllt. `guardsProof` und `boulderProof` liefern ihn
+mit; der technische Detailtext bleibt daneben stehen, aber Zellschlüssel
+werden herausgefiltert – sie stehen ja schon als Klartext da.
+
+Nebenbei bestätigt: Die Türen im MP-Testmodus folgen seit M69 den echten
+Öffnern (der Phantom-Partner, der ALLE Platten hielt, ist weg). E2E Lauf 35
+hält das jetzt fest, indem es beide Zustände AKTIV herstellt: auf die Platte
+rollen öffnet die Tür, wegrollen schließt sie. Die Momentaufnahme direkt nach
+dem Wechsel wäre ein Flake gewesen – die Neigung schwingt aus, die Kugel
+rollt noch ein paar Pixel weiter (deshalb legt `__tiltrTilt` die Neigung offen:
+„warum rollt sie von allein?" war ohne diesen Wert Raten).
+
+E2E Lauf 37: Ein Level mit einem Transporter in eine Ebene ohne Rückweg ist
+rot, die Tafel erklärt und nennt „Ebene 2, Zelle 0/0", „Zeigen" springt hin;
+ein grünes Badge erklärt sich ohne Ort.
+
 ## M70 „Wer vermittelt hier?" ✓ (v3.4.0) – Lobby-Diagnose, Wake Lock, Neuverbinden
 
 Meldung: „Multiplayer joinen geht manchmal nicht, gleiches WLAN, ging schon."

@@ -76,6 +76,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Öffner-Fixpunkt, Softlock, Timer, links, guards, jukebox): EINE Quelle der
   Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
   Live-Badges des Editors. Modell-Änderungen nur hier.
+  JEDES BADGE ERKLÄRT SICH (M71): Der Bericht trägt neben `detail` (technisch)
+  ein `at?: Place` (Ebene + Zelle in DEF-Koordinaten) – der Editor macht daraus
+  Klartext („Ebene 2, Zelle 0/0") und „👁 Zeigen" (Ebenenwechsel, Zelle
+  hervorgehoben, Ansicht mittig). Wer einen Check ergänzt, füllt `at`, wenn der
+  Beweis den Ort kennt, und schreibt `ed.help.<key>` in ALLE vier Wörterbücher
+  (was geprüft wird + was ein Rot bedeutet) – sonst steht der Nutzer wieder
+  vor einem Kreuz ohne Erklärung.
   'timer' ist seit M66 WEICH (`SOFT_CHECKS`, wie 'items' und 'fair'): Die
   2,5×-Ideallinie ist eine Schätzung, ein knapper Timer ist Schwierigkeit –
   weiche Badges zeigen ⚠ statt ✗ und blockieren das Teilen nicht.

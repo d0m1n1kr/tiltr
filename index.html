@@ -543,6 +543,14 @@
       padding: 0 var(--space-3); font: 600 var(--fs-body) var(--font);
     }
     #edBadges { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+    #edCheckSheet {
+      position: absolute; inset: auto var(--space-3) var(--space-3) var(--space-3); z-index: 6;
+    }
+    #edCheckSheet .panel { display: grid; gap: var(--space-2); }
+    .ed-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+    .ed-sheet-head > span { min-width: 0; font-weight: 600; }
+    #edCheckSheet .menu-meta:empty { display: none; }
+    #edCheckDetail { opacity: 0.85; }
     #edHeaderBtns { display: flex; gap: var(--space-2); margin-left: auto; }
     #edStatus { min-height: 1.2em; text-align: center; }
     #edFloorRow { display: flex; align-items: center; gap: var(--space-2); }
@@ -701,7 +709,14 @@
       border-top: var(--border-subtle);
     }
     .ed-scope.first { margin-top: 0; padding-top: 0; border-top: none; }
-    .ed-badge { font-size: var(--fs-caption); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); }
+    /* Badge ist ein KNOPF (M71): Tippen erklärt den Beweis und zeigt, wo es
+       klemmt. Deshalb Zeiger, eigener Fokusring, aber optisch die alte Pille. */
+    .ed-badge {
+      font-size: var(--fs-caption); padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--accent); color: var(--accent);
+      background: none; font-family: inherit; cursor: pointer;
+    }
+    .ed-badge:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
     .ed-badge.fail { border-color: var(--warning); color: var(--warning); }
     .ed-badge.warn { border-color: var(--warning); color: var(--warning); border-style: dashed; }
     .ed-field { display: grid; gap: var(--space-1); }
@@ -1032,6 +1047,19 @@
   <!-- Editor: Tablet-first-Dreispalter (Palette / Canvas / Eigenschaften);
        unter 900px werden daraus Leisten (Layout: theme.css). -->
   <div id="editor" class="hidden">
+    <!-- Beweis-Erklärung (M71): Tippen auf ein Badge sagt, WAS geprüft wird,
+         WAS zu tun ist und WO es klemmt („Zeigen" springt hin). -->
+    <div id="edCheckSheet" class="hidden">
+      <div class="panel">
+        <div class="ed-sheet-head">
+          <span id="edCheckTitle"></span>
+          <button id="edCheckClose" class="btn btn-ghost" data-i18n="common.close">Schließen</button>
+        </div>
+        <p id="edCheckWhy" class="menu-meta"></p>
+        <p id="edCheckDetail" class="menu-meta"></p>
+        <button id="edCheckShow" class="btn btn-soft hidden" data-i18n="ed.check.show">👁 Zeigen</button>
+      </div>
+    </div>
     <header id="edHeader">
       <button id="edClose" class="btn btn-ghost tip-below" data-i18n-tip="ed.back">‹</button>
       <input id="edName" type="text" maxlength="40" autocomplete="off" spellcheck="false" data-i18n-ph="ed.namePh">

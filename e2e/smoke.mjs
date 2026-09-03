@@ -88,6 +88,7 @@ const KNOWN_RUNS = [
   "34",
   "35",
   "36",
+  "37",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -6458,7 +6459,7 @@ if (want("35")) {
 
     // Wechsel per Taste „p": Spieler 2 ist am Zug, Spieler 1 friert ein.
     const frozenAt = (await page.evaluate(() => window.__tiltrMpTest)).balls[0];
-    await page.keyboard.press("p");
+    await page.click("#swapBtn");
     const t1 = await until(async () => {
       const x = await page.evaluate(() => window.__tiltrMpTest);
       return x?.player === 2 ? x : null;
@@ -6466,11 +6467,40 @@ if (want("35")) {
     await page.waitForTimeout(600); // eingefroren heißt: bleibt auch liegen
     const t1b = await page.evaluate(() => window.__tiltrMpTest);
     check(
-      `Taste „p" wechselt auf Spieler 2; Spieler 1 bleibt eingefroren stehen (${JSON.stringify(t1b?.balls[0])} vs ${JSON.stringify(frozenAt)}, Kachel=${JSON.stringify((await page.textContent("#swapBtn")).trim())})`,
+      `👥 wechselt auf Spieler 2; Spieler 1 bleibt eingefroren und ohne Schwung stehen (${JSON.stringify(t1b?.balls[0])} vs ${JSON.stringify(frozenAt)}, Kachel=${JSON.stringify((await page.textContent("#swapBtn")).trim())})`,
       t1?.player === 2 &&
         Math.abs(t1b.balls[0].x - frozenAt.x) < 2 &&
         Math.abs(t1b.balls[0].y - frozenAt.y) < 2 &&
+        t1b.balls[0].vx === 0 &&
+        t1b.balls[0].vy === 0 &&
         (await page.textContent("#swapBtn")).trim() === "👥2",
+    );
+
+    // Türen sind im Testmodus NICHT immer offen (der Phantom-Partner, der alle
+    // Platten hielt, ist weg): Auf die Platte rollen öffnet „g", wegrollen
+    // schließt sie wieder. Beide Zustände werden AKTIV hergestellt – eine
+    // Momentaufnahme nach dem Wechsel wäre ein Flake, weil die Neigung
+    // ausschwingt und die Kugel noch ein paar Pixel rollt.
+    const onPlate = await holdUntil(
+      page,
+      "ArrowLeft",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.held.includes("g"))) === true,
+      8000,
+    );
+    const openNow = await page.evaluate(() => window.__tiltrWorld?.doorsOpen);
+    const offPlate = await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.held.length)) === 0,
+      8000,
+    );
+    const closedNow = await until(async () => {
+      const o = await page.evaluate(() => window.__tiltrWorld?.doorsOpen);
+      return o && !o.includes("g") ? o : null;
+    }, { timeout: 3000 });
+    check(
+      `Platte betreten öffnet Tür „g", verlassen schließt sie wieder (offen: ${JSON.stringify(openNow)}, danach: ${JSON.stringify(closedNow)})`,
+      onPlate === true && openNow?.includes("g") === true && offPlate === true && closedNow !== null,
     );
 
     // Spieler 2: Seine Tür „k" ist offen, weil SPIELER 1 den Schlüssel geholt
@@ -6574,6 +6604,121 @@ if (want("36")) {
   } catch (e) {
     check(
       `Lauf 36 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 37: Beweis-Tafel im Editor (M71). Ein rotes Badge ohne Erklärung
+// ist eine Sackgasse: Jetzt ist jedes Badge ein KNOPF, der sagt, was der
+// Beweis prüft, und – wo der Beweis den Ort kennt – „👁 Zeigen" anbietet.
+// Fixture: Ein Transporter auf Ebene 2, von der es keinen Rückweg gibt, das
+// Ziel liegt aber auf Ebene 1 → „Kein Softlock" rot mit Ort auf Ebene 2.
+// Geprüft: Erklärung da, Ort in Klartext, Zeigen wechselt die Ebene und
+// hebt die Zelle hervor; ein grünes Badge erklärt sich ohne Ort. ---
+if (want("37")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveAll = (cols, rows) => {
+      const out = [];
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols; x++) {
+          if (x < cols - 1) out.push([[x, y], "e"]);
+          if (y < rows - 1) out.push([[x, y], "s"]);
+        }
+      return out;
+    };
+    const def = {
+      id: "custom-m71",
+      name: "Falle",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: {
+            seed: 3,
+            carve: carveAll(4, 3).filter(([[x, y], d]) => !(x === 2 && y === 0 && d === "e")),
+            add: [[[2, 0], "e"]],
+          },
+          elements: [{ type: "transporter", cell: [1, 0], target: { floor: 1, cell: [0, 0] } }],
+          start: [0, 0],
+          goal: [2, 0],
+        },
+        { size: [3, 3], maze: { seed: 4, carve: carveAll(3, 3), add: [] }, elements: [], start: [0, 0], goal: null },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    const badges = await until(async () => {
+      const b = await page.locator("#edBadges .ed-badge.fail").allTextContents();
+      return b.length ? b : null;
+    }, { timeout: 6000 });
+    check(`Fixture ist wie gedacht rot: genau „Kein Softlock" (${JSON.stringify(badges)})`, badges?.length === 1 && /Softlock/.test(badges[0]));
+
+    // Badge antippen: Erklärung + Ort in Klartext + „Zeigen".
+    await page.locator("#edBadges .ed-badge.fail").first().click();
+    const sheet = await until(async () => {
+      const open = !(await page.locator("#edCheckSheet").getAttribute("class")).includes("hidden");
+      return open
+        ? await page.evaluate(() => ({
+            title: document.getElementById("edCheckTitle")?.textContent ?? "",
+            why: document.getElementById("edCheckWhy")?.textContent ?? "",
+            detail: document.getElementById("edCheckDetail")?.textContent ?? "",
+            show: !document.getElementById("edCheckShow")?.classList.contains("hidden"),
+          }))
+        : null;
+    }, { timeout: 4000 });
+    check(
+      `Tafel erklärt den Beweis und nennt den Ort (${JSON.stringify(sheet)})`,
+      sheet !== null &&
+        /Softlock/.test(sheet.title) &&
+        sheet.why.length > 40 &&
+        /Ebene 2, Zelle \d+\/\d+/.test(sheet.detail) &&
+        sheet.show === true,
+    );
+
+    // „Zeigen": Ebene 2 wird aktiv, die Zelle ist hervorgehoben.
+    await page.click("#edCheckShow");
+    const shown = await until(async () => {
+      const ed = await page.evaluate(() => ({ floor: window.__tiltrEd?.activeFloor, hl: window.__tiltrEd?.highlight }));
+      return ed.hl ? ed : null;
+    }, { timeout: 4000 });
+    const sheetClosed = (await page.locator("#edCheckSheet").getAttribute("class")).includes("hidden");
+    check(
+      `„Zeigen" springt auf die Ebene und hebt die Zelle hervor, Tafel geht zu (${JSON.stringify(shown)}, zu=${sheetClosed})`,
+      shown?.floor === 1 && shown?.hl?.floor === 1 && sheetClosed,
+    );
+
+    // Ein grünes Badge erklärt sich auch – aber ohne Ort und ohne „Zeigen".
+    await page.locator("#edBadges .ed-badge:not(.fail):not(.warn)").first().click();
+    const green = await until(async () => {
+      const open = !(await page.locator("#edCheckSheet").getAttribute("class")).includes("hidden");
+      return open
+        ? await page.evaluate(() => ({
+            title: document.getElementById("edCheckTitle")?.textContent ?? "",
+            why: document.getElementById("edCheckWhy")?.textContent ?? "",
+            detail: document.getElementById("edCheckDetail")?.textContent ?? "",
+            show: !document.getElementById("edCheckShow")?.classList.contains("hidden"),
+          }))
+        : null;
+    }, { timeout: 4000 });
+    check(
+      `Grünes Badge: Erklärung ja, Ort und „Zeigen" nein (${JSON.stringify(green)})`,
+      green !== null && green.title.startsWith("✓") && green.why.length > 40 && green.detail === "" && green.show === false,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 37 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

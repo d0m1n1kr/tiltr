@@ -496,7 +496,7 @@ export function directedDistances(
  * setzt Wächter zufällig und muss danach prüfen, ob sie einen Gang versiegelt
  * haben (siehe src/levels/daily.ts). Ein Beweis, zwei Aufrufer.
  */
-export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
+export function guardsProof(def: LevelDef): { ok: boolean; detail?: string; at?: Place } {
   const goalFl = def.floors.findIndex((f) => f.goal);
   if (goalFl < 0) return { ok: false, detail: 'kein Ziel' };
   const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);
@@ -504,6 +504,7 @@ export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
   const past = two ? reachable(def, { brittleOpen: true, doorsOpen: true, guardSafe: true, player: 1 }) : guardSafeReachable(def);
   let ok = past.has(goalKey);
   let detail = ok ? undefined : 'Ziel';
+  let at: Place | undefined = ok ? undefined : { floor: goalFl, cell: def.floors[goalFl]!.goal! };
   // Zwei Spieler (M57/M65): Der Gast startet an start2, braucht goal2 (wenn
   // gesetzt) und hat nur SEINE Transporter – sein eigener wächtersicherer
   // Baum. Öffner gelten als erreichbar, wenn EINER der beiden sie erreicht.
@@ -515,6 +516,7 @@ export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
   if (ok && g2 >= 0 && !past2.has(cellKey(g2, def.floors[g2]!.goal2!))) {
     ok = false;
     detail = 'Ziel 2';
+    at = { floor: g2, cell: def.floors[g2]!.goal2! };
   }
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
@@ -524,10 +526,11 @@ export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
       if (!sets.some((s) => s.has(cellKey(fl, el.cell)))) {
         ok = false;
         detail = `${el.type} E${fl + 1} (${el.cell})`;
+        at = { floor: fl, cell: el.cell };
       }
     }
   });
-  return { ok, detail };
+  return { ok, detail, at };
 }
 
 /* --- Level-Prüfbericht (Editor-Badges; die Testsuite nutzt die Bausteine
@@ -550,11 +553,21 @@ export type CheckKey =
   | 'race'
   | 'fair';
 
+/** Stelle im Level, auf die sich ein Prüfergebnis bezieht (Def-Koordinaten –
+ *  genau die, die der Editor zeichnet). */
+export interface Place {
+  floor: number;
+  cell: readonly [number, number];
+}
+
 export interface CheckResult {
   key: CheckKey;
   ok: boolean;
   /** technisches Detail (Zelle, Fehlermeldung) – die UI übersetzt den key */
   detail?: string;
+  /** WO es klemmt, wenn der Beweis das weiß: Der Editor springt dorthin
+   *  („Zeigen") und hebt die Zelle hervor. Ohne Ort bleibt es beim Text. */
+  at?: Place;
 }
 
 const MAX_SPEED = 900; // World.maxSpeed; Zelle = 100 px
@@ -613,7 +626,14 @@ export function validateLevel(raw: unknown): CheckResult[] {
     return [{ key: 'load', ok: false, detail: e instanceof Error ? e.message : String(e) }];
   }
   const checks: CheckResult[] = [{ key: 'load', ok: true }];
-  const push = (key: CheckKey, ok: boolean, detail?: string) => checks.push({ key, ok, detail });
+  const push = (key: CheckKey, ok: boolean, detail?: string, at?: Place) => checks.push({ key, ok, detail, at });
+  /** „2:3,5" (cellKey) zurück in eine Stelle – der Softlock-Beweis rechnet
+   *  mit diesen Schlüsseln, die UI will Ebene und Zelle. */
+  const placeOf = (k: string): Place => {
+    const [fl, xy] = k.split(':');
+    const [x, y] = xy!.split(',').map(Number);
+    return { floor: Number(fl), cell: [x!, y!] };
+  };
 
   // Verknüpfungen vollständig: Jeder Öffner zeigt auf eine existierende Tür
   // (ebenenübergreifend), jede Tür hat mindestens einen Öffner. Der Loader
@@ -623,26 +643,32 @@ export function validateLevel(raw: unknown): CheckResult[] {
   const opensUsed = new Set<string>();
   let linksOk = true;
   let linksDetail: string | undefined;
+  let linksAt: Place | undefined;
   for (const floor of def.floors) {
     for (const el of floor.elements) if (el.type === 'door') doorIds.add(el.id);
   }
-  for (const floor of def.floors) {
+  def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch') continue;
       opensUsed.add(el.opens);
       if (!doorIds.has(el.opens)) {
         linksOk = false;
         linksDetail = `${el.type} → Tür „${el.opens}" fehlt`;
+        linksAt = { floor: fl, cell: el.cell };
       }
     }
-  }
+  });
   for (const id of doorIds) {
     if (!opensUsed.has(id)) {
       linksOk = false;
       linksDetail = `Tür „${id}" ohne Öffner`;
+      def.floors.forEach((floor, fl) => {
+        const door = floor.elements.find((e) => e.type === 'door' && e.id === id);
+        if (door && door.type === 'door') linksAt = { floor: fl, cell: door.edge[0] };
+      });
     }
   }
-  push('links', linksOk, linksDetail);
+  push('links', linksOk, linksDetail, linksAt);
 
   const goalFl = def.floors.findIndex((f) => f.goal);
   const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);
@@ -666,12 +692,22 @@ export function validateLevel(raw: unknown): CheckResult[] {
   if (two && def.mpMode !== 'race') {
     const ok1 = coopPair!.p1.has(goalKey);
     const ok2 = coopPair!.p2.has(goal2Key);
-    push('coop', ok1 && ok2, ok1 && ok2 ? undefined : !ok1 ? 'Spieler 1' : 'Spieler 2');
+    push(
+      'coop',
+      ok1 && ok2,
+      ok1 && ok2 ? undefined : !ok1 ? 'Spieler 1' : 'Spieler 2',
+      ok1 && ok2 ? undefined : !ok1 ? { floor: 0, cell: def.floors[0]!.start } : start2,
+    );
   }
   if (two && def.mpMode !== 'coop') {
     const ok1 = racePair!.p1.has(goalKey);
     const ok2 = racePair!.p2.has(goal2Key);
-    push('race', ok1 && ok2, ok1 && ok2 ? undefined : !ok1 ? 'Spieler 1' : 'Spieler 2');
+    push(
+      'race',
+      ok1 && ok2,
+      ok1 && ok2 ? undefined : !ok1 ? 'Spieler 1' : 'Spieler 2',
+      ok1 && ok2 ? undefined : !ok1 ? { floor: 0, cell: def.floors[0]!.start } : start2,
+    );
   }
   // Das Modell für die weiteren Zwei-Spieler-Checks: Coop, wenn erlaubt.
   const pairCoop = two ? def.mpMode !== 'race' : true;
@@ -691,6 +727,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // ein Riegel.
   let openersOk = true;
   let openersDetail: string | undefined;
+  let openersAt: Place | undefined;
   // GEPRÜFT werden nur Türen mit Schlüssel/Zeitschloss – genau der Umfang von
   // vorher. ERFÜLLEN darf sie jeder Öffner, Platte eingeschlossen: Eine Tür
   // mit Schlüssel drinnen und Platte draußen geht im Coop auf. Beides
@@ -727,12 +764,14 @@ export function validateLevel(raw: unknown): CheckResult[] {
     openersOk = false;
     const o = openers.find((x) => !withoutThisDoor.has(cellKey(x.fl, x.cell))) ?? keyed[0]!;
     openersDetail ??= `${doorId}: ${o.type} E${o.fl + 1} (${o.cell})`;
+    openersAt ??= { floor: o.fl, cell: o.cell };
   }
-  push('openers', openersOk, openersDetail);
+  push('openers', openersOk, openersDetail, openersAt);
 
   // Zeitschloss-Timer reicht (2,5×-Sicherheitsfaktor auf die Ideallinie).
   let timerOk = true;
   let timerDetail: string | undefined;
+  let timerAt: Place | undefined;
   def.floors.forEach((floor, swFl) => {
     for (const el of floor.elements) {
       if (el.type !== 'timedSwitch') continue;
@@ -742,6 +781,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
       if (!doors.length) {
         timerOk = false;
         timerDetail = `${el.opens}: Tür fehlt`;
+        timerAt = { floor: swFl, cell: el.cell };
         continue;
       }
       for (const { door, fl } of doors) {
@@ -749,11 +789,12 @@ export function validateLevel(raw: unknown): CheckResult[] {
         if (steps === Infinity || timerSeconds(steps, hops) > el.durationS) {
           timerOk = false;
           timerDetail = `${el.opens}: ${el.durationS}s`;
+          timerAt = { floor: swFl, cell: el.cell };
         }
       }
     }
   });
-  push('timer', timerOk, timerDetail);
+  push('timer', timerOk, timerDetail, timerAt);
 
   // Kein Softlock: von JEDER erreichbaren Zelle bleibt das Ziel erreichbar.
   // Zwei Spieler: je Spieler von jeder SEINER Zellen, der Partner steht am
@@ -765,11 +806,8 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // und wenn nur die Wand hinausführt, ist das ein echter Softlock.
   let softlockOk = true;
   let softlockDetail: string | undefined;
-  const parse = (k: string): StartPos => {
-    const [fl, xy] = k.split(':');
-    const [x, y] = xy!.split(',').map(Number);
-    return { floor: Number(fl), cell: [x!, y!] };
-  };
+  let softlockAt: Place | undefined;
+  const parse = (k: string): StartPos => placeOf(k);
   const oneWayWalls = def.floors.flatMap((f, fl) => f.maze.brittleSide.map(([edge]) => brittleKey(fl, edge)));
   /** Wände, die an Zelle k sicher gebrochen sind: k ist ohne sie unerreichbar. */
   const brokenAt = (k: string, without: Map<string, Set<string>>): BrittleState => ({
@@ -784,6 +822,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
       if (!pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }).p1.has(goalKey)) {
         softlockOk = false;
         softlockDetail = `Spieler 1: ${k}`;
+        softlockAt = placeOf(k);
         break;
       }
     }
@@ -792,6 +831,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
         if (!pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }).p2.has(goal2Key)) {
           softlockOk = false;
           softlockDetail = `Spieler 2: ${k}`;
+          softlockAt = placeOf(k);
           break;
         }
       }
@@ -804,11 +844,12 @@ export function validateLevel(raw: unknown): CheckResult[] {
       if (!coopReachable(def, new Set(), parse(k), { brittle: brokenAt(k, without) }).has(goalKey)) {
         softlockOk = false;
         softlockDetail = k;
+        softlockAt = placeOf(k);
         break;
       }
     }
   }
-  push('softlock', softlockOk, softlockDetail);
+  push('softlock', softlockOk, softlockDetail, softlockAt);
   // Kein „Glas abseits"-Badge mehr (M39): Glas hält EINE Überfahrt aus und
   // wird dann zum Loch – an dessen Rand kommt man mit Gefühl vorbei. Ein
   // Pflichtweg über Glas ist also Schwierigkeit, kein Riegel. Das Flag
@@ -817,7 +858,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
 
   // Wächter sind keine Riegel (Beweis siehe guardsProof).
   const guards = guardsProof(def);
-  push('guards', guards.ok, guards.detail);
+  push('guards', guards.ok, guards.detail, guards.at);
 
   // Beide letzten Checks arbeiten im offenen Modell (Türen offen, brüchige
   // Wände zählen als Durchgang) – EIN BFS für beide.
@@ -841,7 +882,9 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // Der ERSTE Grund bleibt stehen, nicht der letzte: Ein Automat auf dem Ziel
   // versiegelt zwangsläufig auch den Pflichtweg – dann ist „Ziel" die
   // Ursache und „im Pflichtweg" nur die Folge.
-  const jbFail = (detail: string) => {
+  let jbAt: Place | undefined;
+  const jbFail = (detail: string, place?: Place) => {
+    jbAt ??= place;
     jbOk = false;
     jbDetail ??= detail;
   };
@@ -852,12 +895,12 @@ export function validateLevel(raw: unknown): CheckResult[] {
       // Start zählt nur auf EBENE 1: Auf tieferen Ebenen ist `start` ein toter
       // Pflichtwert des Formats (die Kugel kommt aus floors[0], loader.ts) –
       // ein Automat dort wäre grundlos rot gemeldet worden.
-      if (fl === 0 && floor.start[0] === el.cell[0] && floor.start[1] === el.cell[1]) jbFail(`Start ${at(fl, el)}`);
-      if (fl === 0 && floor.start2 && floor.start2[0] === el.cell[0] && floor.start2[1] === el.cell[1]) jbFail(`Start 2 ${at(fl, el)}`);
-      if (floor.goal && floor.goal[0] === el.cell[0] && floor.goal[1] === el.cell[1]) jbFail(`Ziel ${at(fl, el)}`);
-      if (floor.goal2 && floor.goal2[0] === el.cell[0] && floor.goal2[1] === el.cell[1]) jbFail(`Ziel 2 ${at(fl, el)}`);
+      if (fl === 0 && floor.start[0] === el.cell[0] && floor.start[1] === el.cell[1]) jbFail(`Start ${at(fl, el)}`, { floor: fl, cell: el.cell });
+      if (fl === 0 && floor.start2 && floor.start2[0] === el.cell[0] && floor.start2[1] === el.cell[1]) jbFail(`Start 2 ${at(fl, el)}`, { floor: fl, cell: el.cell });
+      if (floor.goal && floor.goal[0] === el.cell[0] && floor.goal[1] === el.cell[1]) jbFail(`Ziel ${at(fl, el)}`, { floor: fl, cell: el.cell });
+      if (floor.goal2 && floor.goal2[0] === el.cell[0] && floor.goal2[1] === el.cell[1]) jbFail(`Ziel 2 ${at(fl, el)}`, { floor: fl, cell: el.cell });
       for (const line of patrolLines(floor)) {
-        if (line.some((c) => c[0] === el.cell[0] && c[1] === el.cell[1])) jbFail(`Wächter ${at(fl, el)}`);
+        if (line.some((c) => c[0] === el.cell[0] && c[1] === el.cell[1])) jbFail(`Wächter ${at(fl, el)}`, { floor: fl, cell: el.cell });
       }
       for (const entry of el.playlist) {
         if (typeof entry === 'string' && !MUSIC_IDS.includes(entry)) jbFail(`Titel „${entry}" unbekannt`);
@@ -874,7 +917,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
         if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || c[dir]) return false;
         return open.has(cellKey(fl, [nx, ny]));
       });
-      if (!reachableNeighbour) jbFail(`unerreichbar ${at(fl, el)}`);
+      if (!reachableNeighbour) jbFail(`unerreichbar ${at(fl, el)}`, { floor: fl, cell: el.cell });
     }
     // Versiegelt einer den Pflichtweg? Erst global prüfen (ein BFS), dann den
     // Schuldigen einzeln suchen – so kostet der Normalfall nichts.
@@ -883,30 +926,32 @@ export function validateLevel(raw: unknown): CheckResult[] {
       for (const { fl, el } of jukes) {
         const one = new Set([cellKey(fl, el.cell)]);
         if (reachable(def, { brittleOpen: true, doorsOpen: true, openJukeboxCells: one }).has(goalKey))
-          jbFail(`im Pflichtweg ${at(fl, el)}`);
+          jbFail(`im Pflichtweg ${at(fl, el)}`, { floor: fl, cell: el.cell });
       }
       if (jbOk) jbFail('im Pflichtweg');
     }
   }
-  push('jukebox', jbOk, jbDetail);
+  push('jukebox', jbOk, jbDetail, jbAt);
 
   // Rollstein (M47): Zustands-Beweis – Ziel mit schiebbaren Steinen
   // erreichbar UND kein erreichbarer Zustand, aus dem es das nicht mehr ist.
   const bp = boulderProof(def);
-  push('boulder', bp.goal && bp.softlock, bp.detail);
+  push('boulder', bp.goal && bp.softlock, bp.detail, bp.at);
 
   // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.
   let itemsOk = true;
   let itemsDetail: string | undefined;
+  let itemsAt: Place | undefined;
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if ((el.type === 'gem' || el.type === 'echoCrystal') && !open.has(cellKey(fl, el.cell))) {
         itemsOk = false;
         itemsDetail = `${el.type} E${fl + 1} (${el.cell})`;
+        itemsAt = { floor: fl, cell: el.cell };
       }
     }
   });
-  push('items', itemsOk, itemsDetail);
+  push('items', itemsOk, itemsDetail, itemsAt);
 
   // Weich (M57): Wege ähnlich lang – im Race sonst von vornherein entschieden,
   // im Coop wartet einer nur. Toleranz: 3 Zellen oder 30 %, was größer ist.

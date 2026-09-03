@@ -448,6 +448,9 @@ export function setupEditor(opts: {
   let tool: Tool = 'place';
   let placeType: string = 'hole';
   let activeFloor = 0;
+  /** „Zeigen" aus der Beweis-Tafel: hervorgehobene Zelle (M71). */
+  let highlight: { floor: number; cell: [number, number] } | null = null;
+  let checkAt: { floor: number; cell: readonly [number, number] } | null = null;
   let selected = -1; // Index in floor.elements (der AKTIVEN Ebene)
   /** Ausgewählte WANDKANTE (Auswählen-Werkzeug auf eine Wand ohne Element):
    *  Eigenschaften = Variante. Schließt `selected` aus und umgekehrt. */
@@ -738,14 +741,61 @@ export function setupEditor(opts: {
   function renderBadges(): void {
     badgesEl.replaceChildren();
     for (const c of checks) {
-      const b = document.createElement('span');
+      // Badge ist ein KNOPF (M71): Ein rotes Zeichen ohne Erklärung ist eine
+      // Sackgasse – Tippen sagt, was geprüft wird, was zu tun ist, und wo.
+      const b = document.createElement('button');
       // Weiche Badges (SOFT_CHECKS) warnen nur: ⚠ statt ✗, gestrichelt.
       const soft = !c.ok && SOFT_CHECKS.has(c.key);
       b.className = 'ed-badge' + (c.ok ? '' : soft ? ' warn' : ' fail');
       b.textContent = `${c.ok ? '✓' : soft ? '⚠' : '✗'} ${t(`ed.check.${c.key}` as keyof Dict)}`;
-      if (c.detail) b.title = c.detail;
+      b.dataset.check = c.key;
+      b.title = t('ed.check.tapHelp');
+      b.addEventListener('click', () => showCheck(c));
       badgesEl.append(b);
     }
+  }
+
+  /** Ort eines Befunds in Worten: „Ebene 2, Zelle 3/5". Zellschlüssel
+   *  („2:3,5") aus dem technischen Detail fallen dann weg – sie stehen ja
+   *  schon in Klartext da. */
+  function checkDetailText(c: CheckResult): string {
+    const tech = (c.detail ?? '')
+      .replace(/\b\d+:\d+,\d+\b/g, '')
+      .replace(/[:·]\s*$/, '')
+      .trim();
+    const place = c.at ? t('ed.check.at', { f: c.at.floor + 1, x: c.at.cell[0], y: c.at.cell[1] }) : '';
+    return [place, tech].filter(Boolean).join(' · ');
+  }
+
+  /** Erklär-Tafel zu einem Beweis: Zustand, was er prüft, wo es klemmt. */
+  function showCheck(c: CheckResult): void {
+    const soft = !c.ok && SOFT_CHECKS.has(c.key);
+    const mark = c.ok ? '✓' : soft ? '⚠' : '✗';
+    $('edCheckTitle').textContent = `${mark} ${t(`ed.check.${c.key}` as keyof Dict)}`;
+    $('edCheckWhy').textContent = t(`ed.help.${c.key}` as keyof Dict);
+    $('edCheckDetail').textContent = c.ok ? '' : checkDetailText(c);
+    const showBtn = $('edCheckShow');
+    showBtn.classList.toggle('hidden', !c.at || c.at.floor >= (draft?.floors.length ?? 0));
+    checkAt = c.at ?? null;
+    $('edCheckSheet').classList.remove('hidden');
+  }
+
+  function hideCheck(): void {
+    $('edCheckSheet').classList.add('hidden');
+  }
+
+  /** „Zeigen": auf die Ebene wechseln, die Zelle hervorheben und mittig
+   *  bringen. Die Hervorhebung bleibt, bis man das Feld anfasst. */
+  function showPlace(place: { floor: number; cell: readonly [number, number] }): void {
+    if (!draft || place.floor >= draft.floors.length) return;
+    hideCheck();
+    if (place.floor !== activeFloor) switchFloor(place.floor);
+    highlight = { floor: place.floor, cell: [place.cell[0], place.cell[1]] };
+    const rect = canvas.getBoundingClientRect();
+    const dpr = renderer.dpr;
+    view.ox = (rect.width * dpr) / 2 - (place.cell[0] + 0.5) * CELL * view.scale;
+    view.oy = (rect.height * dpr) / 2 - (place.cell[1] + 0.5) * CELL * view.scale;
+    paint();
   }
 
   function paint(): void {
@@ -767,6 +817,7 @@ export function setupEditor(opts: {
       // Sichtbarer Kantenzustand (E2E: Wand an/aus, Variante über Eigenschaften).
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
       selEdge,
+      highlight,
       testStart,
       players: draft.players ?? 1,
       testPlayer,
@@ -938,6 +989,19 @@ export function setupEditor(opts: {
         overlay.textAlign = 'center';
         overlay.fillText(`←E${ld.from + 1}`, cx, ty(ld.cell[1] * CELL) - 4 * dpr);
       }
+    }
+
+    // „Zeigen" aus der Beweis-Tafel (M71): die genannte Zelle hervorheben,
+    // bis man das Feld wieder anfasst. Bernstein wie jede Warnung.
+    if (highlight && highlight.floor === activeFloor) {
+      const [hx, hy] = highlight.cell;
+      overlay.strokeStyle = 'rgba(255, 176, 96, 0.95)';
+      overlay.fillStyle = 'rgba(255, 176, 96, 0.16)';
+      overlay.lineWidth = 2 * dpr;
+      overlay.setLineDash([6 * dpr, 4 * dpr]);
+      overlay.fillRect(tx(hx * CELL), ty(hy * CELL), CELL * s, CELL * s);
+      overlay.strokeRect(tx(hx * CELL), ty(hy * CELL), CELL * s, CELL * s);
+      overlay.setLineDash([]);
     }
 
     // 🔗 wartet: Quelle golden gestrichelt markieren
@@ -2017,6 +2081,7 @@ export function setupEditor(opts: {
   };
 
   canvas.addEventListener('pointerdown', (ev) => {
+    highlight = null; // wer das Feld anfasst, braucht die Markierung nicht mehr
     canvas.setPointerCapture(ev.pointerId);
     const p = toCanvas(ev);
     pointers.set(ev.pointerId, { ...p, startX: p.x, startY: p.y });
@@ -2212,6 +2277,11 @@ export function setupEditor(opts: {
     opts.onSaved();
   });
 
+  $('edCheckClose').addEventListener('click', hideCheck);
+  $('edCheckShow').addEventListener('click', () => {
+    if (checkAt) showPlace(checkAt);
+  });
+
   $('edTest').addEventListener('click', () => {
     if (!draft || loadError) return;
     setPlaying(false); // der Testlauf hat seine eigene Zeit
@@ -2257,6 +2327,8 @@ export function setupEditor(opts: {
       draft = JSON.parse(JSON.stringify(def)) as RawLevel;
       normalizeDraft();
       activeFloor = 0;
+      highlight = null;
+      hideCheck();
       selected = -1;
       selEdge = null;
       pendingGuard = null;

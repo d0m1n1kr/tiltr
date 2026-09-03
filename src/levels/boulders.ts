@@ -57,6 +57,8 @@ export interface BoulderProof {
   /** Anzahl erreichbarer Zustände (Debug/Test) */
   states: number;
   detail?: string;
+  /** Ballzelle des Softlock-Zustands – der Editor springt dorthin (M71). */
+  at?: { floor: number; cell: readonly [number, number] };
 }
 
 interface State {
@@ -294,6 +296,7 @@ export function boulderProof(def: LevelDef): BoulderProof {
         softlock: false,
         states: seen.size,
         detail: `Softlock E${s.fl + 1} (${s.ball % m.cols},${Math.floor(s.ball / m.cols)})`,
+        at: { floor: s.fl, cell: [s.ball % m.cols, Math.floor(s.ball / m.cols)] },
       };
     }
   }
