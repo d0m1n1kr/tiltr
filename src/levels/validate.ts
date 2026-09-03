@@ -429,6 +429,18 @@ export function pairReachable(
   /** Türen mit „bleibt offen", die schon eingerastet SIND (M78): Sie öffnen
    *  in BEIDEN Welten, denn die Tür ist physisch offen. */
   latched: ReadonlySet<string> = new Set(),
+  /**
+   * DER PARTNER IST MITGEKOMMEN (M82): Zellen, die ein Spieler schon
+   * erreichen KONNTE, gelten weiter als für ihn erreichbar – zusätzlich zu
+   * dem, was er von seiner hier gesetzten Position aus schafft. Der
+   * Softlock-Beweis setzt einen Spieler mitten ins Level, und der Partner
+   * stand bisher wieder am START; in einem Level mit gemeinsamer
+   * Choreografie (Zeitschalter für die Tür des anderen, Tür mit zwei
+   * Platten) ist das unmöglich: Wer die Tür passiert hat, war dabei. Ohne
+   * diese Saat meldet das Modell einen Softlock, der nur in einem Zustand
+   * existiert, den das Level nie einnimmt.
+   */
+  reachSeed: { p1?: ReadonlySet<string>; p2?: ReadonlySet<string> } = {},
 ): PairReach {
   const f0 = def.floors[0]!;
   const start1: StartPos = from?.p1 ?? { floor: 0, cell: f0.start };
@@ -458,7 +470,10 @@ export function pairReachable(
     const seen = [
       reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0], player: 1, ...brittle.p1 }, start1),
       reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[1], player: 2, ...brittle.p2 }, start2),
-    ];
+    ].map((r, i) => {
+      const seed = i === 0 ? reachSeed.p1 : reachSeed.p2;
+      return seed ? new Set([...r, ...seed]) : r;
+    });
     let changed = false;
     for (const p of [0, 1] as const) {
       for (const [doorId, openers] of openersOf) {
@@ -1039,10 +1054,11 @@ export function validateLevel(raw: unknown): CheckResult[] {
     goal: string,
     latchedHere: ReadonlySet<string>,
     brittleHere: { p1?: BrittleState; p2?: BrittleState },
+    seed: { p1?: ReadonlySet<string>; p2?: ReadonlySet<string> },
   ): string => {
     const from = p === 'p1' ? { p1: parse(k) } : { p2: parse(k) };
     return nameCause(k, goal, latchedHere, (open, alt = def) =>
-      pairReachable(alt, pairCoop, new Set(), from, brittleHere, stonePlates, open)[p].has(goal),
+      pairReachable(alt, pairCoop, new Set(), from, brittleHere, stonePlates, open, seed)[p].has(goal),
     );
   };
   if (two) {
@@ -1057,15 +1073,26 @@ export function validateLevel(raw: unknown): CheckResult[] {
     );
     const noLatch1 = new Map([...noLatch].map(([d, r]) => [d, r.p1]));
     const noLatch2 = new Map([...noLatch].map(([d, r]) => [d, r.p2]));
+    // Der Partner ist mitgekommen (M82): Er steht nicht wieder am Start,
+    // sondern kann alles erreichen, was er im vollen Lauf erreichen konnte.
+    const seed1 = { p2: pair.p2 };
+    const seed2 = { p1: pair.p1 };
     for (const k of pair.p1) {
       const latchedHere = latchedAt(k, noLatch1);
       if (
-        !pairReachable(def, pairCoop, new Set(), { p1: parse(k) }, { p1: brokenAt(k, without1) }, stonePlates, latchedHere).p1.has(
-          goalKey,
-        )
+        !pairReachable(
+          def,
+          pairCoop,
+          new Set(),
+          { p1: parse(k) },
+          { p1: brokenAt(k, without1) },
+          stonePlates,
+          latchedHere,
+          seed1,
+        ).p1.has(goalKey)
       ) {
         softlockOk = false;
-        softlockDetail = `Spieler 1: ${k} – ${softlockCause(k, 'p1', goalKey, latchedHere, { p1: brokenAt(k, without1) })}`;
+        softlockDetail = `Spieler 1: ${k} – ${softlockCause(k, 'p1', goalKey, latchedHere, { p1: brokenAt(k, without1) }, seed1)}`;
         softlockAt = placeOf(k);
         break;
       }
@@ -1074,12 +1101,19 @@ export function validateLevel(raw: unknown): CheckResult[] {
       for (const k of pair.p2) {
         const latchedHere = latchedAt(k, noLatch2);
         if (
-          !pairReachable(def, pairCoop, new Set(), { p2: parse(k) }, { p2: brokenAt(k, without2) }, stonePlates, latchedHere).p2.has(
-            goal2Key,
-          )
+          !pairReachable(
+            def,
+            pairCoop,
+            new Set(),
+            { p2: parse(k) },
+            { p2: brokenAt(k, without2) },
+            stonePlates,
+            latchedHere,
+            seed2,
+          ).p2.has(goal2Key)
         ) {
           softlockOk = false;
-          softlockDetail = `Spieler 2: ${k} – ${softlockCause(k, 'p2', goal2Key, latchedHere, { p2: brokenAt(k, without2) })}`;
+          softlockDetail = `Spieler 2: ${k} – ${softlockCause(k, 'p2', goal2Key, latchedHere, { p2: brokenAt(k, without2) }, seed2)}`;
           softlockAt = placeOf(k);
           break;
         }

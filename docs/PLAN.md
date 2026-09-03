@@ -612,6 +612,38 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M82 „Der Partner ist mitgekommen" ✓ (v3.14.0)
+
+Am GETEILTEN Level geprüft (das ist neu seit M80 möglich – Diagnose-Link, dann
+`validateLevel` direkt darauf): Ein Coop-Level über vier Ebenen, Badges bis auf
+den Softlock grün, gemeldet war „Ebene 2, Zelle 0/0 · Spieler 1: Tür tor2 fällt
+hinter dir zu". Die Karte erklärt es: Auf Ebene 1 stehen ZWEI Zeitschalter
+gekreuzt – Spieler 1s Schalter öffnet Spieler 2s Tür und umgekehrt –, dann zieht
+jeder über seinen eigenen Transporter weiter, und auf Ebene 3 braucht Spieler 1
+eine Tür, deren vier Platten nur zu zweit (plus zwei Steine) zu halten sind.
+
+Der Softlock-Beweis setzt für jede Zelle den einen Spieler DORTHIN und den
+Partner an seinen START. Genau das ist in so einem Level ein Zustand, den das
+Level nie einnimmt: Spieler 1 kann Ebene 2 gar nicht erreicht haben, ohne dass
+Spieler 2 seinen Schalter gedrückt hat und selbst weitergerollt ist (die Tür
+davor hält nur, wer zu zweit auf zwei Platten steht). Am Start festgenagelt
+kommt der Partner nirgendwohin – sein Schalter liegt ja beim anderen –, also
+öffnet die Platten-Tür nie, und der Beweis meldet einen Riegel.
+
+Die Regel dagegen ist dieselbe wie „gebrochen bleibt gebrochen" (M68) und
+„eingerastet bleibt eingerastet" (M78), nur für die POSITION des Partners:
+FORTSCHRITT IST MONOTON. `pairReachable` nimmt dafür eine Saat
+(`reachSeed`), die Softlock-Schleife gibt dem Partner seine Reichweite aus dem
+VOLLEN Lauf mit – er steht also irgendwo auf seinem Weg, nicht wieder am
+Anfang. Was er nie erreicht, hält er weiterhin nicht (M74 bleibt: die Platte,
+auf der man selbst stehen müsste, öffnet einem die Tür nicht), und eine echte
+Einbahn bleibt eine Falle (Gegenproben als Units: Platte auf der eigenen Seite
+⇒ `coop` rot; Tasche hinter einer Strömung ⇒ `softlock` rot).
+
+Das gemeldete Level ist damit grün und teilbar; übrig bleibt das WEICHE
+`timer`-Badge („torA: 8s" bzw. im Original „tor3: 2s") – ein knapper Sprint ist
+Schwierigkeit, kein Fehler.
+
 ## M81 „Die Bruchseite zeigt in die falsche Richtung" ✓ (v3.13.0)
 
 Rückmeldung zum M79-Bericht: „Nach Tor 2 gibt es eine Wand (halb brüchig), mit

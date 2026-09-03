@@ -365,3 +365,100 @@ describe('Softlock-Bericht nennt den Grund (M79)', () => {
     expect(sl?.detail).toContain('von Ebene 2 führt kein Weg zurück');
   });
 });
+
+// M82 – „Der Partner ist mitgekommen". Aus dem Levelbau, gegen ein GETEILTES
+// Level geprüft: Zwei gekreuzte Zeitschalter (jeder öffnet die Tür des
+// ANDEREN), dann zieht jeder über seinen Transporter weiter, und auf der
+// nächsten Ebene hält Spieler 2 die Platte für Spieler 1s Tür. Der
+// Softlock-Beweis setzte den Partner dabei wieder auf seinen START – und dort
+// kommt er nicht weg, weil sein Schalter drüben bei Spieler 1 liegt. Ergebnis
+// war ein Softlock, der nur in einem Zustand existiert, den das Level nie
+// einnimmt (Spieler 1 kann die Tür gar nicht passiert haben, ohne dass
+// Spieler 2 seinen Schalter drückte).
+describe('Gemeinsame Choreografie: der Partner steht nicht wieder am Start (M82)', () => {
+  const crossed = (plateCell: [number, number]) =>
+    parseLevel({
+      id: 'custom-cross',
+      name: 'Gekreuzte Schalter',
+      players: 2,
+      mpMode: 'coop',
+      floors: [
+        {
+          // E1: Reihe 0 = Spieler 1, Reihe 1 = Spieler 2, dazwischen zu.
+          // Jeder Schalter öffnet die Tür des ANDEREN.
+          size: [5, 2],
+          maze: { seed: 3, carve: carveAll(5, 2), add: sealRow0(5) },
+          elements: [
+            { type: 'timedSwitch', cell: [1, 0], opens: 'torB', durationS: 8 },
+            { type: 'timedSwitch', cell: [1, 1], opens: 'torA', durationS: 8 },
+            { type: 'door', id: 'torA', edge: [[1, 0], 'e'] },
+            { type: 'door', id: 'torB', edge: [[1, 1], 'e'] },
+            { type: 'transporter', cell: [4, 0], target: { floor: 1, cell: [0, 0] }, player: 1 },
+            { type: 'transporter', cell: [4, 1], target: { floor: 1, cell: [0, 1] }, player: 2 },
+          ],
+          start: [0, 0],
+          start2: [0, 1],
+          // Ziele liegen auf E2 – hier keins (goal ist Pflichtfeld, nullable).
+          goal: null,
+        },
+        {
+          // E2: Spieler 1 muss durch torC, gehalten wird die Platte von
+          // Spieler 2 – der ist per Transporter nachgekommen.
+          size: [4, 2],
+          maze: { seed: 4, carve: carveAll(4, 2), add: sealRow0(4) },
+          elements: [
+            { type: 'door', id: 'torC', edge: [[1, 0], 'e'] },
+            { type: 'plate', cell: plateCell, opens: 'torC' },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          goal2: [3, 1],
+        },
+      ],
+    });
+  const badge = (def: ReturnType<typeof parseLevel>, key: string) =>
+    validateLevel(def).find((c) => c.key === key)!;
+
+  it('Platte auf Spieler 2s Seite: lösbar UND kein Softlock', () => {
+    const def = crossed([1, 1]);
+    expect(badge(def, 'coop').ok).toBe(true);
+    expect(badge(def, 'softlock').ok).toBe(true);
+    expect(isShareable(validateLevel(def))).toBe(true);
+  });
+  it('Gegenprobe: Platte auf Spieler 1s EIGENER Seite – niemand hält sie (M74)', () => {
+    // Die Saat macht den Partner nicht allgegenwärtig: Was er nie erreicht,
+    // hält er auch nicht. Dann kommt Spieler 1 nicht durch torC.
+    const def = crossed([2, 0]);
+    expect(badge(def, 'coop').ok).toBe(false);
+  });
+});
+
+// Und eine echte Falle bleibt eine Falle: hinter einer Strömung gibt es kein
+// Zurück (anders als bei einer brüchigen Wand, die GEBROCHEN bleibt, M68) –
+// daran ändert die Partner-Saat nichts.
+describe('Echte Falle trotz Partner-Saat (M82)', () => {
+  const trap = parseLevel({
+    id: 'custom-trap',
+    name: 'Einbahn in die Tasche',
+    players: 2,
+    mpMode: 'coop',
+    floors: [
+      {
+        size: [5, 3],
+        maze: { seed: 7, carve: carveAll(5, 3), add: sealRow0(5) },
+        // Reihe 0 gehört Spieler 1: (3,0) strömt nach OSTEN, also kommt aus
+        // (4,0) niemand mehr zurück – das Ziel liegt bei (2,0).
+        elements: [{ type: 'current', cell: [3, 0], dir: 'e' }],
+        start: [0, 0],
+        goal: [2, 0],
+        start2: [0, 1],
+        goal2: [4, 2],
+      },
+    ],
+  });
+  it('Tasche hinter einer Strömung: Softlock bleibt rot', () => {
+    const sl = validateLevel(trap).find((c) => c.key === 'softlock')!;
+    expect(sl.ok).toBe(false);
+    expect(sl.detail).toContain('Spieler 1');
+  });
+});

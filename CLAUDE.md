@@ -166,6 +166,16 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   das"); die Prüfung steht VOR dem Ausstieg für reine Platten-Türen, sonst
   bliebe der häufigste Fall stumm. Bei einer latchenden Tür zählt auch die
   EIGENE Platte als Öffner – M74 gilt nur für Türen, die wieder zufallen.
+  DER PARTNER IST MITGEKOMMEN (M82, dritte Fassung derselben Regel:
+  FORTSCHRITT IST MONOTON): Der Softlock-Beweis setzt einen Spieler mitten ins
+  Level und hielt den Partner an seinem START – unmöglich in einem Level mit
+  gemeinsamer Choreografie (gekreuzte Zeitschalter, Tür mit zwei Platten): Wer
+  die Tür passiert hat, war zu zweit dort. `pairReachable` nimmt deshalb eine
+  Saat `reachSeed` ({p1,p2}), und die Softlock-Schleife gibt dem Partner seine
+  Reichweite aus dem VOLLEN Lauf mit (`seed1`/`seed2`); die Ursachen-Probe
+  bekommt dieselbe Saat, sonst widerspricht der Satz dem Befund. Was der
+  Partner NIE erreicht, hält er weiter nicht (M74 gilt), und eine echte Einbahn
+  (Strömung) bleibt eine Falle – Gegenproben in tests/coopPlates.test.ts.
   EINGERASTET BLEIBT EINGERASTET (M78, wie M68 für Wände): Der Softlock-Beweis
   setzt je Zelle neu an – bei einer latchenden Tür wäre „kannst du sie von
   DORT öffnen?" die falsche Frage. Wer eine Zelle NUR durch sie erreicht, hat
