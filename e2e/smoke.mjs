@@ -94,6 +94,7 @@ const KNOWN_RUNS = [
   "40",
   "41",
   "42",
+  "43",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -7490,6 +7491,113 @@ if (want("42")) {
   } catch (e) {
     check(
       `Lauf 42 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+
+// --- Lauf 43: Weitersagen (M85). Der Startscreen teilt die APP: Werbetext in
+// der AKTUELLEN Sprache plus die eine Adresse, und das Promo-GIF als eigene
+// Aktion (Datei UND Text zusammen nimmt iOS/Signal nicht zuverlässig, 2.11.4).
+// Geprüft: Nachricht je Sprache, Zwischenablage-Fallback ohne Web Share, das
+// GIF als Datei mit image/gif, og:image im HTML – und kein Überlauf bei 400 px. ---
+if (want("43")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 900 }, locale: "de-DE" });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?nosplash`);
+    await until(async () => (await page.locator("#promoShare").count()) > 0);
+
+    // Link-Vorschau: absolute Adresse, damit Messenger-Bots sie auflösen.
+    const og = await page.evaluate(() => ({
+      image: document.querySelector('meta[property="og:image"]')?.getAttribute("content"),
+      url: document.querySelector('meta[property="og:url"]')?.getAttribute("content"),
+    }));
+    check(
+      `og:image zeigt auf das Promo-GIF (${JSON.stringify(og)})`,
+      og.image === "https://d0m1n1kr.github.io/tiltr/promo.gif" &&
+        og.url === "https://d0m1n1kr.github.io/tiltr/",
+    );
+
+    // Web Share vorhanden: Titel, Text und URL gehen raus – auf Deutsch.
+    await page.evaluate(() => {
+      window.__shared = null;
+      navigator.share = (d) => {
+        window.__shared = d;
+        return Promise.resolve();
+      };
+    });
+    await page.click("#promoShare");
+    const de = await until(async () => await page.evaluate(() => window.__shared), { timeout: 4000 });
+    check(
+      `Teilen schickt Text und Adresse (${JSON.stringify({ ...de, text: (de?.text ?? "").slice(0, 40) })})`,
+      de?.url === "https://d0m1n1kr.github.io/tiltr/" &&
+        /unsichtbare[sn]? Labyrinth/.test(de?.title ?? "") &&
+        /Kopfhörer/.test(de?.text ?? ""),
+    );
+
+    // Sprache wechseln: derselbe Knopf teilt jetzt auf Englisch.
+    await page.click('#langRow .chip[data-lang="en"]');
+    await until(async () => (await page.textContent("#promoShare")).includes("word"), { timeout: 4000 });
+    await page.evaluate(() => (window.__shared = null));
+    await page.click("#promoShare");
+    const en = await until(async () => await page.evaluate(() => window.__shared), { timeout: 4000 });
+    check(
+      `…und in der neuen Sprache (${JSON.stringify({ title: en?.title, text: (en?.text ?? "").slice(0, 40) })})`,
+      /invisible maze/.test(en?.title ?? "") && /Headphones/.test(en?.text ?? ""),
+    );
+
+    // Ohne Web Share: Text + Link in die Zwischenablage, Status sagt es.
+    await page.click('#langRow .chip[data-lang="de"]');
+    await page.evaluate(() => {
+      delete navigator.share;
+      window.__clip = null;
+      navigator.clipboard.writeText = (s) => {
+        window.__clip = s;
+        return Promise.resolve();
+      };
+    });
+    await page.click("#promoShare");
+    const clip = await until(
+      async () =>
+        await page.evaluate(() => ({ text: window.__clip, status: document.getElementById("promoStatus")?.textContent })),
+      { timeout: 4000 },
+    );
+    check(
+      `Ohne Web Share: kopiert und gesagt (${JSON.stringify({ ...clip, text: (clip.text ?? "").slice(-40) })})`,
+      (clip.text ?? "").endsWith("https://d0m1n1kr.github.io/tiltr/") && /kopiert/.test(clip.status ?? ""),
+    );
+
+    // Das GIF geht als DATEI raus – image/gif, nicht octet-stream.
+    await page.evaluate(() => {
+      window.__gif = null;
+      navigator.canShare = () => true;
+      navigator.share = (d) => {
+        window.__gif = { n: d.files?.length ?? 0, type: d.files?.[0]?.type, name: d.files?.[0]?.name, size: d.files?.[0]?.size, keys: Object.keys(d) };
+        return Promise.resolve();
+      };
+    });
+    await page.click("#promoGif");
+    const gif = await until(async () => await page.evaluate(() => window.__gif), { timeout: 8000 });
+    check(
+      `GIF teilt als Bilddatei, ohne Text daneben (${JSON.stringify(gif)})`,
+      gif?.n === 1 && gif?.type === "image/gif" && gif?.name === "tiltr.gif" && gif?.size > 10000 &&
+        JSON.stringify(gif?.keys) === JSON.stringify(["files"]),
+    );
+
+    // Und die Chip-Zeile bleibt im Menü (400 px, Regel aus v3.0.2).
+    const overflow = await page.evaluate(() => {
+      const row = document.getElementById("promoRow");
+      const box = row.getBoundingClientRect();
+      const right = Math.max(...[...row.children].map((c) => c.getBoundingClientRect().right));
+      return Math.round(right - box.right);
+    });
+    check(`Weitersagen-Chips laufen bei 400 px nicht aus dem Menü (${overflow} px)`, overflow <= 0);
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 43 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

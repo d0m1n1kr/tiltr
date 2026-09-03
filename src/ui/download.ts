@@ -50,3 +50,32 @@ export async function saveTextFile(
   URL.revokeObjectURL(a.href);
   return "download";
 }
+
+/**
+ * Eine BINÄRDATEI teilen (M85: das Promo-GIF), sonst herunterladen. Wie
+ * `saveTextFile`, aber mit echtem Typ: Ein GIF als octet-stream käme in
+ * Messengern als Anhang an, nicht als Bild – und genau als Bild soll es
+ * ankommen. Auch hier KEIN title/text neben der Datei (2.11.4).
+ */
+export async function shareBinaryFile(
+  name: string,
+  blob: Blob,
+  type: string,
+): Promise<"share" | "download"> {
+  const file = new File([blob], name, { type });
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && nav.share) {
+    try {
+      await nav.share({ files: [file] });
+      return "share";
+    } catch {
+      /* abgebrochen – dann eben Download */
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  return "download";
+}

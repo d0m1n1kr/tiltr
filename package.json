@@ -1,6 +1,6 @@
 {
   "name": "tiltr",
-  "version": "3.16.0",
+  "version": "3.17.0",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
@@ -14,16 +14,19 @@
     "test:watch": "vitest",
     "e2e": "node e2e/parallel.mjs",
     "e2e:serial": "node e2e/smoke.mjs",
+    "promo": "node tools/promo.mjs",
     "screenshots": "node tools/screenshots.mjs",
     "lint": "eslint src tests",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"e2e/**/*.mjs\" \"*.{ts,json,md}\""
   },
   "devDependencies": {
     "eslint": "^9.0.0",
+    "gifenc": "^1.0.3",
     "playwright": "^1.45.0",
     "prettier": "^3.0.0",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.0.0",
+    "upng-js": "^2.1.0",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.0.0",
     "vitest": "^3.0.0"

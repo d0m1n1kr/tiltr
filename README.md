@@ -10,7 +10,11 @@ ping reaches. Best played with headphones, eyes half closed.
 
 **▶ Play now: https://d0m1n1kr.github.io/tiltr/** — installable as an app,
 works offline. Every push deploys automatically (tests → build → GitHub
-Pages).
+Pages). The start screen has a **📣 Spread the word** button that shares this
+link with a short pitch in your language; the animation below is what a link
+preview shows.
+
+<p align="center"><img src="public/promo.gif" width="220" alt="Screencast: splash, echo ping in the dark, confetti, gallery, hearing test, editor"></p>
 
 | Splash | Menu | Echo ping | Campaign |
 |---|---|---|---|

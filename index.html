@@ -6,6 +6,16 @@
   <title>tiltr</title>
   <meta name="description" content="Steuere einen Ball per Neigung durch ein unsichtbares Labyrinth – die Welt offenbart sich durch Klang, Vibration und Licht.">
   <meta name="theme-color" content="#0b1020">
+  <!-- Link-Vorschau (M85): Wer den Weitersagen-Link teilt, soll im Messenger
+       das Promo-GIF sehen. og:image MUSS absolut sein (Vorschau-Bots kennen
+       den Kontext nicht) – die eine Adresse steht auch in src/promo.ts. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="tiltr">
+  <meta property="og:title" content="tiltr – das unsichtbare Labyrinth">
+  <meta property="og:description" content="Ein Ball, ein unsichtbares Labyrinth: Du hörst die Wände, statt sie zu sehen. Kopfhörer auf, Handy neigen – der Echo-Ping zeigt dir den Weg.">
+  <meta property="og:url" content="https://d0m1n1kr.github.io/tiltr/">
+  <meta property="og:image" content="https://d0m1n1kr.github.io/tiltr/promo.gif">
+  <meta name="twitter:card" content="summary_large_image">
   <!-- Vor dem ersten Paint gehört die Leinwand dem Browser: ohne color-scheme
        ist sie WEISS. Mit „dark" ist sie dunkel – der zweite Teil des iOS-
        Weißblitzes (der erste ist der System-Startbildschirm, tools/startup.mjs). -->
@@ -316,6 +326,10 @@
        auf dem Phone 5 px aus dem Menü. */
     #backupRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
     #backupStatus:empty { display: none; }
+    /* Weitersagen (M85): zwei Chips, gleiche Regel wie oben – umbrechen, nicht
+       aus dem Menü laufen (E2E misst den Überlauf bei 400 px). */
+    #promoRow { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+    #promoStatus:empty { display: none; }
     /* Footer einzeilig ab Tablet: Name, Steuerung und Sprache nebeneinander –
        der ganze Startscreen muss auf ein Querformat-Tablet OHNE Scrollen
        passen (der E2E-Tablet-Lauf misst genau das). Steht NACH der
@@ -917,6 +931,14 @@
         <button class="btn chip" data-ctl="fp" data-i18n="ctl.fp">🧭 First Person</button>
         <button id="tutBrightBtn" class="btn chip" data-i18n="ctl.tutBright">💡 Tutorial hell</button>
       </div>
+      <!-- Weitersagen (M85): Teilt die APP – Werbetext in der aktuellen Sprache
+           plus die eine Adresse; das GIF geht als eigene Aktion raus, weil
+           Messenger Datei UND Text nicht zuverlässig zusammen nehmen (2.11.4). -->
+      <div id="promoRow">
+        <button id="promoShare" class="btn chip" data-i18n="promo.share">📣 App weitersagen</button>
+        <button id="promoGif" class="btn chip" data-i18n="promo.gif">🎞 GIF teilen</button>
+      </div>
+      <p id="promoStatus" class="menu-meta"></p>
       <div id="langRow">
         <button class="btn chip" data-lang="de">DE</button>
         <button class="btn chip" data-lang="en">EN</button>

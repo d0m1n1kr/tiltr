@@ -665,6 +665,22 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   ist `--bg-deep`; E2E-Lauf 26 prüft Tag ↔ Bildgröße ↔ Token. Zweiter Teil des
   Weißblitzes: WebKits Leinwand vor dem ersten Paint – `color-scheme: dark`
   (Meta + :root). Neues Gerät ⇒ ein Eintrag in DEVICES.
+- `src/promo.ts` + `tools/promo.mjs` – WEITERSAGEN (M85): Der Startscreen teilt
+  die APP. `promoShare(title, text)` ist rein: Text aus dem Wörterbuch der
+  aktuellen Sprache, Adresse aus `APP_URL` – NICHT `location.href`, sonst teilt
+  der Dev-Server einen toten Link. Zwei Chips, absichtlich getrennt: der Link
+  (Web Share, sonst Zwischenablage) und das GIF als DATEI (`shareBinaryFile`,
+  `image/gif` – als Bild, nicht als Anhang; Datei UND Text zusammen nimmt
+  iOS/Signal nicht zuverlässig, 2.11.4). `og:image` in index.html zeigt ABSOLUT
+  auf `promo.gif`, damit schon der Link die Animation trägt.
+  DAS GIF: `npm run promo` fährt die App wie tools/screenshots.mjs und schneidet
+  sechs Szenen (Splash, Echo-Ping im Dunkeln, Konfetti, Galerie, Hörtest,
+  Editor). Ohne ffmpeg entsteht es in JS: Screenshots → Box-Filter auf ein
+  Viertel → EINE 256er-Palette (gifenc, MIT; upng-js dekodiert). Bildzeiten
+  GEMESSEN (feste Delays liefen zu schnell), Verkleinern ERST NACH der Aufnahme
+  (sonst halbiert das Dekodieren die Bildrate). Es liegt in `public/` und ist
+  damit NICHT vorgecacht (`globPatterns` kennt kein gif) – 700 KB gehören nicht
+  in den Offline-Cache. Neue Oberfläche im GIF ⇒ Szene dort ergänzen.
 - `src/ui/download.ts` – `saveTextFile(name, text, kind)`: Web Share mit
   DATEI, wenn möglich, sonst Download. ZWEI Sorten, am Signal-Test auf iOS
   gelernt: 'text' (`text/plain`) fügt Signal als NACHRICHT ein (nutzt niemand

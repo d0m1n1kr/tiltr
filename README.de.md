@@ -11,7 +11,11 @@ halb geschlossenen Augen.
 
 **▶ Jetzt spielen: https://d0m1n1kr.github.io/tiltr/** – als App
 installierbar, läuft offline. Jeder Push deployt automatisch (Tests → Build →
-GitHub Pages).
+GitHub Pages). Der Startscreen hat einen Knopf **📣 App weitersagen**: Er teilt
+diesen Link mit einem kurzen Werbetext in der eingestellten Sprache – die
+Animation unten ist das, was die Link-Vorschau zeigt.
+
+<p align="center"><img src="public/promo.gif" width="220" alt="Screencast: Splash, Echo-Ping im Dunkeln, Konfetti, Galerie, Hörtest, Editor"></p>
 
 | Splash | Menü | Echo-Ping | Kampagne |
 |---|---|---|---|

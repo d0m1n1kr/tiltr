@@ -612,6 +612,44 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M85 „Weitersagen" ✓ (v3.17.0)
+
+Wunsch: „Ich hätte gerne einen Promo-Share-Link im Home-Screen. Zum Teilen der
+App. Mit Promo-Text (in der aktuellen Sprache) und einem Promo-GIF. Produziere
+das GIF als Screencast der App, geschnitten mit Impressionen, die den Charakter
+des Spiels wiedergeben."
+
+**Der Knopf.** Im Menü-Footer stehen zwei Chips: 📣 App weitersagen teilt
+`{title, text, url}` über Web Share – Werbetext aus dem Wörterbuch der
+AKTUELLEN Sprache, Adresse aus EINER Konstante (`APP_URL` in src/promo.ts,
+rein und mit Units). Nicht `location.href`: Wer vom Dev-Server oder einer
+Vorschau aus teilt, verschickte sonst einen Link, den niemand öffnen kann. Ohne
+Web Share landet „Text + Link" in der Zwischenablage und der Status sagt es.
+🎞 GIF teilen schickt die Datei – GETRENNT, weil iOS/Signal Datei UND Text
+nicht zuverlässig zusammen nehmen (Lektion 2.11.4); dafür `shareBinaryFile` in
+ui/download.ts mit ECHTEM Typ (`image/gif`, nicht octet-stream: als Bild soll
+es ankommen, nicht als Anhang).
+
+**Die Vorschau.** `og:image` zeigt absolut auf `promo.gif` – Vorschau-Bots
+kennen keinen Kontext. Damit trägt schon der reine Link die Animation.
+
+**Das GIF.** `tools/promo.mjs` (npm run promo) fährt die App wie
+tools/screenshots.mjs (vite preview, vorinstalliertes Chromium) und nimmt sechs
+Szenen auf: Splash mit Einfahrt, Dunkelheit + Echo-Ping, Sieg mit Konfetti,
+Element-Galerie, Hörtest-Kompass, Editor mit Badges. Es gibt hier KEIN ffmpeg,
+also entsteht das GIF in JS: PNG-Screenshots → Box-Filter auf ein Viertel
+(195×422) → EINE 256er-Palette (gifenc, MIT) über eine Stichprobe aller Bilder.
+Zwei Details, die den Unterschied machen: Die Bildzeiten sind GEMESSEN (ein
+Screenshot dauert 30–80 ms, feste Delays liefen zu schnell), und verkleinert
+wird ERST NACH der Aufnahme – mitten im Screencast halbierte das Dekodieren die
+Bildrate, die Kugel ruckelte. Ergebnis: 105 Bilder, 13,7 s, ~700 KB.
+Das GIF liegt in `public/` und ist damit NICHT im Precache der PWA
+(`globPatterns` kennt kein gif) – offline soll die App klein bleiben.
+
+E2E Lauf 43 prüft die Nachricht in zwei Sprachen, den Zwischenablage-Fallback,
+das GIF als `image/gif` OHNE Text daneben, `og:image` und dass die Chip-Zeile
+bei 400 px nicht aus dem Menü läuft.
+
 ## M84 „Zu zweit rollt der Stein für beide" ✓ (v3.16.0)
 
 Direkt nach M83, dieselbe Klasse: „Wenn Blöcke (Steine) bewegt werden, soll das

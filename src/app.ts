@@ -1,6 +1,6 @@
 import './ui/theme.css';
 import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup, summarizeBackup, type BackupPayload } from './backup';
-import { saveTextFile } from './ui/download';
+import { saveTextFile, shareBinaryFile } from './ui/download';
 import { CELL } from './core/constants';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
@@ -53,6 +53,7 @@ import { setupGallery, extraEntries } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel, type TestRun, type TestStart } from './ui/editor';
 import { isShareable, validateLevel } from './levels/validate';
+import { PROMO_GIF_FILE, promoClipboard, promoShare } from './promo';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
@@ -778,6 +779,46 @@ $('editBtn').addEventListener('click', () => {
 // Der Wechsel wirkt ab dem nächsten Start – dort läuft dann auch der
 // Kalibrier-Countdown mit der passenden Haltungs-Ansage erneut.
 const ctlChips = [...document.querySelectorAll<HTMLButtonElement>('#controlsRow .chip')];
+
+// --- Weitersagen (M85, src/promo.ts) --------------------------------------
+// Zwei Wege, absichtlich getrennt: Der Link ist die verlässliche Einladung
+// (jeder Messenger macht daraus die og:image-Vorschau mit dem GIF), das GIF
+// selbst geht als DATEI raus – Datei UND Text zusammen nimmt iOS/Signal nicht
+// zuverlässig (Lektion 2.11.4). Ohne Web Share landet der Text in der
+// Zwischenablage bzw. das GIF im Download.
+{
+  const status = $('promoStatus');
+  const say = (text: string): void => {
+    status.textContent = text;
+    setTimeout(() => (status.textContent === text ? (status.textContent = '') : undefined), 4000);
+  };
+  $('promoShare').addEventListener('click', () => {
+    void (async () => {
+      const share = promoShare(t('promo.title'), t('promo.text'));
+      try {
+        if (navigator.share) {
+          await navigator.share(share);
+          return;
+        }
+        await navigator.clipboard.writeText(promoClipboard(share));
+        say(t('promo.copied'));
+      } catch {
+        /* abgebrochen – keine Meldung, der Nutzer weiß es */
+      }
+    })();
+  });
+  $('promoGif').addEventListener('click', () => {
+    void (async () => {
+      try {
+        const res = await fetch(PROMO_GIF_FILE);
+        if (!res.ok) throw new Error(String(res.status));
+        await shareBinaryFile('tiltr.gif', await res.blob(), 'image/gif');
+      } catch {
+        say(t('promo.gifBad'));
+      }
+    })();
+  });
+}
 
 // --- Backup & Restore (src/backup.ts) -------------------------------------
 // Sichern: Datei per Web Share (iOS: „In Dateien sichern") oder Download.
