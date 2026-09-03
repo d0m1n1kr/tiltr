@@ -32,6 +32,9 @@ export const WORLD = {
    *  Ball – Rot ist die einzige Ballfarbe, die im Bild noch frei ist (Wächter-
    *  Rot ist ein Streifen, kein Ball) und liest sich nicht als das eigene Teal. */
   partner: '255, 96, 110',
+  /** Fackel (M66): warmes Kerzenlicht – heller und gelber als Brüchig-
+   *  Bernstein, blasser als Schlüssel-Gold: Licht, kein Ding. */
+  torch: '255, 226, 160',
   /** Schiebewand: helles Stein-Perlgrau – Wand, die sich bewegt */
   slider: '235, 224, 200',
   /** Strömung: Chartreuse – gerichteter, unüberwindbarer Fluss */

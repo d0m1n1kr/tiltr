@@ -337,7 +337,7 @@ export function generateDailyLevel(date: string): LevelDef {
 
     floors.push({
       size: [cols, rows] as [number, number],
-      maze: { seed: mazeSeed, carve: [], add: [], brittle: [], absorb: [], mirrors: [], brittleChance: p.brittleChance, brittleHits: 3 },
+      maze: { seed: mazeSeed, carve: [], add: [], brittle: [], brittleSide: [], absorb: [], mirrors: [], brittleChance: p.brittleChance, brittleHits: 3 },
       elements,
       start: landing,
       goal: isLast ? exit : null,

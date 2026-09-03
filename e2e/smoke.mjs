@@ -85,6 +85,7 @@ const KNOWN_RUNS = [
   "31",
   "32",
   "33",
+  "34",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -6243,6 +6244,94 @@ if (want("33")) {
   } catch (e) {
     check(
       `Lauf 33 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 34: Einseitig brüchig, weicher Timer, Fackel (M66). Ein Level mit
+// einer brüchigen Wand, die nur von links bricht, einer Fackel und einem zu
+// kurzen Zeitschalter: Das Timer-Badge WARNT (⚠, gestrichelt) statt zu
+// blockieren – teilbar bleibt es. Die Wand zeigt in den Eigenschaften „Bricht
+// von: links", „beide Seiten" räumt den Eintrag. Die Vorschau hat eine Fackel
+// und eine einseitige Wand in der Welt. ---
+if (want("34")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?nosplash`);
+    const carve = [];
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 5; x++) {
+      if (x < 4) carve.push([[x, y], "e"]);
+      if (y < 2) carve.push([[x, y], "s"]);
+    }
+    const def = {
+      id: "custom-m66",
+      name: "Fackelgang",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [5, 3],
+          maze: { seed: 3, carve, add: [[[1, 0], "e"]], brittle: [[[1, 0], "e"]], brittleSide: [[[[1, 0], "e"], "w"]] },
+          elements: [
+            { type: "torch", cell: [3, 1], r: 160 },
+            { type: "door", id: "d", edge: [[3, 2], "e"] },
+            { type: "timedSwitch", cell: [0, 2], opens: "d", durationS: 1 },
+          ],
+          start: [0, 0],
+          goal: [4, 2],
+        },
+      ],
+    };
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator('#workshopList .ws-item[data-level-id="custom-m66"]').count()) > 0);
+    await page.locator('#workshopList .ws-item[data-level-id="custom-m66"]').locator("button", { hasText: "✏️" }).click();
+    const badges = await until(async () => {
+      const b = await page.locator("#edBadges .ed-badge").allTextContents();
+      return b.length > 0 ? b : null;
+    });
+    const timerBadge = await page.evaluate(() => {
+      const el = [...document.querySelectorAll("#edBadges .ed-badge")].find((b) => /Timer/.test(b.textContent));
+      return el ? { text: el.textContent, warn: el.classList.contains("warn"), fail: el.classList.contains("fail") } : null;
+    });
+    const shareable = await page.evaluate(() => window.__tiltrEd?.shareable);
+    check(
+      `Timer zu kurz WARNT (⚠, .warn) statt zu blockieren – Level bleibt teilbar (${JSON.stringify(timerBadge)}, shareable=${shareable}, ${badges.length} Badges)`,
+      !!timerBadge && timerBadge.warn && !timerBadge.fail && timerBadge.text.startsWith("⚠") && shareable === true,
+    );
+
+    // Wand auswählen: Kante zwischen (1,0) und (2,0) liegt bei x=200.
+    await page.click("#edTool-select");
+    const pt = await page.evaluate(() => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById("edCanvas").getBoundingClientRect();
+      return { x: box.left + (ed.ox + 200 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 50 * ed.scale) / ed.dpr };
+    });
+    await page.mouse.click(pt.x, pt.y);
+    const sideField = await until(async () => (await page.evaluate(() => document.getElementById("edBrittleSide")?.value)) ?? null, { timeout: 3000 });
+    await page.selectOption("#edBrittleSide", "both");
+    const afterBoth = await page.evaluate(() => window.__tiltrEd?.brittleSide);
+    await page.selectOption("#edBrittleSide", "w");
+    const afterW = await page.evaluate(() => window.__tiltrEd?.def?.floors?.[0]?.maze?.brittleSide);
+    check(
+      `Brüchige Wand: „Bricht von: links" im Panel, „beide Seiten" räumt den Eintrag, zurück setzt ihn (${sideField} → ${afterBoth} → ${JSON.stringify(afterW)})`,
+      sideField === "w" && afterBoth === 0 && JSON.stringify(afterW) === JSON.stringify([[[[1, 0], "e"], "w"]]),
+    );
+
+    // Vorschau: Fackel und einseitige Wand sind in der Welt.
+    await page.click("#edTest");
+    const w = await until(async () => {
+      const x = await page.evaluate(() => window.__tiltrWorld);
+      return x && x.torches !== undefined ? x : null;
+    }, { timeout: 6000 });
+    check(`Vorschau: Fackel in der Welt, eine einseitig brüchige Wand (torches=${w?.torches}, brittleSided=${w?.brittleSided})`, w?.torches === 1 && w?.brittleSided === 1);
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 34 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

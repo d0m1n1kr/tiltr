@@ -8,6 +8,7 @@ import { Ball, World } from '../core/physics';
 import { mulberry32 } from '../core/rng';
 import type { Wall } from '../core/types';
 import { buildElements } from '../elements';
+import { sideFitsEdge } from '../core/brittle';
 import { cellCenter } from '../elements/registry';
 import { parseLevel, type LevelDef } from './schema';
 
@@ -170,6 +171,16 @@ export function loadLevel(defOrData: LevelDef | unknown, opts: LoadOptions = {})
       }
     };
     edgeWall(floor.maze.brittle, 'brüchig', (w) => (w.hp = floor.maze.brittleHits));
+    // Einseitig brüchig (M66): Die Kante muss brüchig sein, die Seite zur
+    // Wandlage passen (senkrecht: w/e, waagerecht: n/s).
+    for (const [edge, side] of floor.maze.brittleSide) {
+      if (!sideFitsEdge(edge, side))
+        throw new Error(`Level ${def.id}: brittleSide (${edge[0]},${edge[1]}) – Seite ${side} passt nicht zur Wandlage`);
+      edgeWall([edge], 'einseitig brüchig', (w) => {
+        if (w.hp === undefined) throw new Error(`Level ${def.id}: brittleSide (${edge[0]},${edge[1]}) ist nicht in brittle`);
+        w.hpSide = side;
+      });
+    }
     edgeWall(floor.maze.absorb, 'schallschützend', (w) => (w.absorb = true));
     edgeWall(floor.maze.mirrors, 'spiegelnd', (w) => (w.mirror = true));
 

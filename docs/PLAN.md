@@ -612,6 +612,28 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M66 „Von dieser Seite" ✓ (v3.2.0) – einseitig brüchig, weicher Timer, Fackel
+
+Drei Wünsche aus dem Levelbau. **Einseitig brüchig:** `maze.brittleSide`
+listet Kanten aus `brittle` mit der Seite, von der sie brechen ('w'/'e' bei
+senkrechten, 'n'/'s' bei waagerechten Wänden; Default ohne Eintrag =
+beidseitig). Loader setzt `Wall.hpSide`, app.ts fragt `brittleBreakable`
+(core/brittle.ts, rein): von der falschen Seite ist sie eine gewöhnliche
+Wand. Der Beweis lässt sie im offenen Modell ZU und ergänzt eine GERICHTETE
+Kante von der Bruchseite (`brittlePassage`) – wer drüben ankommt, hatte die
+Bruchseite schon. Renderer zeichnet einen Keil auf der Bruchseite, sobald die
+Wand sichtbar ist (im Editor immer); das Panel der Wand bekommt „Bricht von"
+(beide / links / rechts bzw. oben / unten), Variante wechseln oder Wand
+entfernen nimmt die Seite mit. **Timer weich:** 'timer' steht in
+`SOFT_CHECKS` – die 2,5×-Ideallinie ist eine Schätzung, ein knapper Timer
+ist Schwierigkeit; weiche Badges zeigen ⚠ und gestrichelten Rand statt ✗.
+**Fackel:** Element `torch` (Zelle, Radius) – das einzige Element OHNE Klang,
+mit Absicht: Licht ist die Information. Renderer: `torchGain(x, y)` hebt
+Wände, Löcher, Checkpoints und alle aufdeckbaren Objekte im Radius linear
+ins Licht, Flamme und Lichtkreis sind immer sichtbar. Kein Physik-Einfluss,
+kein Beweis-Einfluss. Units (Seitenlogik, Loader, Beweis, Editor-Helfer,
+Spiegelung), E2E Lauf 34.
+
 ## M65 „Deine Tür, mein Pad" ✓ (v3.1.8) – Transporter nur für einen Spieler
 
 Wunsch: In Zwei-Spieler-Leveln soll ein Transporter wahlweise nur einem

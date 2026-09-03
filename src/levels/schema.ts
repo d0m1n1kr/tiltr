@@ -219,6 +219,15 @@ export const glassDef = z.object({
   type: z.literal('glass'),
 });
 
+/** Fackel (M66): macht in ihrem Radius HELL – das einzige Element ohne
+ *  Klang, denn Licht ist hier die Information. Kein Physik-Einfluss. */
+export const torchDef = z.object({
+  ...base,
+  type: z.literal('torch'),
+  /** Lichtradius in Welteinheiten (Zelle = 100) */
+  r: z.number().positive().default(160),
+});
+
 /* --- Jukebox (M27) ---------------------------------------------------------
    Ein Playlist-Eintrag hat ZWEI Formen: eine Titel-ID aus src/music/ oder
    ein im Level EINGEBETTETER Titel. Das ist keine Bequemlichkeit, sondern die
@@ -299,6 +308,7 @@ export const elementDef = z.discriminatedUnion('type', [
   bellDef,
   roamingHoleDef,
   boulderDef,
+  torchDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -324,6 +334,7 @@ export type ReverbZoneDef = z.infer<typeof reverbZoneDef>;
 export type BellDef = z.infer<typeof bellDef>;
 export type RoamingHoleDef = z.infer<typeof roamingHoleDef>;
 export type BoulderDef = z.infer<typeof boulderDef>;
+export type TorchDef = z.infer<typeof torchDef>;
 export type JukeboxDef = z.infer<typeof jukeboxDef>;
 export type TuneDef = z.infer<typeof tuneSchema>;
 export type PlaylistEntry = z.infer<typeof playlistEntry>;
@@ -339,6 +350,11 @@ export const floorSchema = z.object({
     add: z.array(wallEdge).default([]),
     /** Gezielt brüchige Wandkanten (müssen existieren) */
     brittle: z.array(wallEdge).default([]),
+    /** Einseitig brüchig (M66): Kante aus `brittle` plus die SEITE, von der sie
+     *  bricht – als Richtung vom Wandmittelpunkt zur Zelle des Angreifers
+     *  ('w'/'e' bei senkrechten, 'n'/'s' bei waagerechten Wänden). Fehlt eine
+     *  Kante hier, bricht sie von beiden Seiten. */
+    brittleSide: z.array(z.tuple([wallEdge, wallDir])).default([]),
     /** Schallschutzwände: Wandkanten, die den Ping verschlucken und Klang
      *  dahinter abschirmen. Wie `brittle` muss die Wand existieren. */
     absorb: z.array(wallEdge).default([]),

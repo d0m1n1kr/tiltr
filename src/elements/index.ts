@@ -24,6 +24,7 @@ import './bell';
 import './reverbZone';
 import './roamingHole';
 import './boulder';
+import './torch';
 
 export { buildElements, galleryEntries, registerElement } from './registry';
 export type { BuildContext, ElementModule, GalleryEntry } from './registry';

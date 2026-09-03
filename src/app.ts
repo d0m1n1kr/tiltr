@@ -4,6 +4,7 @@ import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { doorState, type OpenerState } from './core/doors';
+import { brittleBreakable } from './core/brittle';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
 import type { Ball } from './core/physics';
@@ -2376,7 +2377,8 @@ function frame(now: number): void {
         if (box) skipJukebox(box, intensity, now);
       }
       // Brüchige Wand: knirscht bei kräftigen Treffern, stürzt irgendwann ein.
-      if (wall.hp !== undefined && intensity > 0.2) {
+      // Einseitig (M66): von der falschen Seite ist sie eine gewöhnliche Wand.
+      if (wall.hp !== undefined && intensity > 0.2 && brittleBreakable(wall, world.ball.x, world.ball.y)) {
         wall.hp--;
         wall.cracked = true;
         if (wall.hp <= 0) {
@@ -2880,6 +2882,8 @@ function frame(now: number): void {
     forks: world.keys.filter((k) => k.voice === 'fork').length,
     keysCollected: world.keys.filter((k) => k.collected).length,
     transporters: world.transporters.length,
+    torches: world.torches.length,
+    brittleSided: world.walls.filter((w) => w.hpSide !== undefined).length,
     bright: bright(),
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,

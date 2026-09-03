@@ -242,6 +242,15 @@ export class Renderer {
       oy = this.offsetY;
     const tx = (x: number) => ox + x * s;
     const ty = (y: number) => oy + y * s;
+    // Fackeln (M66): Licht 0–1 an einem Weltpunkt – linear zum Rand hin aus.
+    const torchGain = (x: number, y: number): number => {
+      let g = 0;
+      for (const tch of world.torches) {
+        const d = Math.hypot(tch.x - x, tch.y - y);
+        if (d < tch.r) g = Math.max(g, 1 - d / tch.r);
+      }
+      return g;
+    };
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -281,14 +290,15 @@ export class Renderer {
       let a = 0;
       if (w.litFrom && now < w.litFrom) a = 0;
       else if (w.litUntil && w.litUntil > now) a = Math.min(1, (w.litUntil - now) / 1200) * 0.9;
-      return Math.max(a, spotAlpha(wallType(w), 0.55));
+      return Math.max(a, spotAlpha(wallType(w), 0.55), 0.55 * torchGain(w.x + w.w / 2, w.y + w.h / 2));
     };
     // Aufdeckbare Objekte: sichtbar bei Debug/Reveal oder nach Ping (litFrom/litUntil).
-    const revealAlpha = (o: { litFrom?: number; litUntil?: number }, base: number, type?: string): number => {
+    const revealAlpha = (o: { litFrom?: number; litUntil?: number; x?: number; y?: number }, base: number, type?: string): number => {
       if (debug || revealAll) return base * gain;
       let a = 0;
       if (o.litFrom && now < o.litFrom) a = 0;
       else if (o.litUntil && o.litUntil > now) a = Math.min(1, (o.litUntil - now) / 1200) * base;
+      if (o.x !== undefined && o.y !== undefined) a = Math.max(a, base * torchGain(o.x, o.y));
       return type ? Math.max(a, spotAlpha(type, base)) : a;
     };
     for (const w of world.walls) {
@@ -332,6 +342,60 @@ export class Renderer {
     ctx.fillStyle = WORLD.bgDeep;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.globalCompositeOperation = 'source-over';
+
+    // Einseitig brüchig (M66): ein kleiner Keil auf der Bruchseite, sichtbar,
+    // wann immer die Wand sichtbar ist – im Editor also immer.
+    for (const w of world.walls) {
+      if (w.hpSide === undefined || w.door?.open) continue;
+      const a = wallAlpha(w);
+      if (a <= 0.03) continue;
+      const cx = w.x + w.w / 2;
+      const cy = w.y + w.h / 2;
+      const off = 16;
+      const dx = w.hpSide === 'w' ? -off : w.hpSide === 'e' ? off : 0;
+      const dy = w.hpSide === 'n' ? -off : w.hpSide === 's' ? off : 0;
+      const px = tx(cx + dx);
+      const py = ty(cy + dy);
+      const k = 6 * s;
+      ctx.fillStyle = `rgba(${WORLD.brittle}, ${Math.min(1, a * 1.6)})`;
+      ctx.beginPath();
+      // Spitze zeigt zur Wand (entgegen der Seite).
+      ctx.moveTo(px - dx * 0.35 * s, py - dy * 0.35 * s);
+      ctx.lineTo(px + (dy !== 0 ? k : 0) + (dx !== 0 ? dx * 0.2 * s : 0), py + (dx !== 0 ? k : 0) + (dy !== 0 ? dy * 0.2 * s : 0));
+      ctx.lineTo(px - (dy !== 0 ? k : 0) + (dx !== 0 ? dx * 0.2 * s : 0), py - (dx !== 0 ? k : 0) + (dy !== 0 ? dy * 0.2 * s : 0));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Fackeln (M66): Lichtkreis und Flamme – immer sichtbar, sie SIND Licht.
+    for (const tch of world.torches) {
+      const px = tx(tch.x);
+      const py = ty(tch.y);
+      const glow = ctx.createRadialGradient(px, py, 0, px, py, tch.r * s);
+      glow.addColorStop(0, `rgba(${WORLD.torch}, 0.16)`);
+      glow.addColorStop(1, `rgba(${WORLD.torch}, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(px, py, tch.r * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (debug || revealAll) {
+        ctx.strokeStyle = `rgba(${WORLD.torch}, ${0.25 * gain})`;
+        ctx.lineWidth = 1 * this.dpr;
+        ctx.setLineDash([4 * this.dpr, 6 * this.dpr]);
+        ctx.beginPath();
+        ctx.arc(px, py, tch.r * s, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const flick = 0.85 + 0.15 * Math.sin(now / 90 + tch.x);
+      const fh = 14 * s * flick;
+      ctx.fillStyle = `rgba(${WORLD.torch}, 0.95)`;
+      ctx.beginPath();
+      ctx.moveTo(px, py - fh);
+      ctx.quadraticCurveTo(px + 7 * s, py - fh * 0.15, px, py + 6 * s);
+      ctx.quadraticCurveTo(px - 7 * s, py - fh * 0.15, px, py - fh);
+      ctx.fill();
+    }
 
     // Wind- und Strömungszonen: nur bei Debug/Reveal (oder im Aufleuchten),
     // Fläche mit Richtungspfeil.
@@ -400,7 +464,7 @@ export class Renderer {
       let alpha = 0;
       if (debug || revealAll) alpha = (cp.reached ? 0.7 : 0.4) * gain;
       else if (cp.litUntil && cp.litUntil > now) alpha = Math.min(1, (cp.litUntil - now) / 2000);
-      alpha = Math.max(alpha, spotAlpha('checkpoint', 0.4));
+      alpha = Math.max(alpha, spotAlpha('checkpoint', 0.4), 0.4 * torchGain(cp.x, cp.y));
       if (alpha <= 0.01) continue;
       ctx.strokeStyle = `rgba(${WORLD.checkpoint}, ${alpha})`;
       ctx.lineWidth = 3 * this.dpr;
@@ -466,7 +530,7 @@ export class Renderer {
       if (debug || revealAll) alpha = 0.8 * gain;
       else if (hole.litFrom && now < hole.litFrom) alpha = 0;
       else if (hole.litUntil && hole.litUntil > now) alpha = Math.min(1, (hole.litUntil - now) / 1500);
-      alpha = Math.max(alpha, spotAlpha(hole.roam ? 'roamingHole' : 'hole', 0.8));
+      alpha = Math.max(alpha, spotAlpha(hole.roam ? 'roamingHole' : 'hole', 0.8), 0.8 * torchGain(hole.x, hole.y));
       if (alpha <= 0.01) continue;
       // Wanderloch (M46): im Debug/Reveal die Strecke wie beim Wächter.
       if (hole.roam && (debug || revealAll)) {

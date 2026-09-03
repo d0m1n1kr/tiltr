@@ -16,6 +16,7 @@ import { mulberry32 } from '../core/rng';
 import { elementForPlayer, loadLevel } from './loader';
 import { parseLevel, type DoorDef, type FloorDef, type JukeboxDef, type LevelDef, type TransporterDef } from './schema';
 import { boulderProof } from './boulders';
+import { brittlePassage } from '../core/brittle';
 
 export interface CellConfig {
   brittleOpen: boolean;
@@ -72,7 +73,12 @@ export function buildFloorCells(floor: FloorDef, cfg: CellConfig, mirror?: Level
   for (const [[x, y], dir] of floor.maze.carve) setWall(cells, cols, rows, x, y, dir, false);
   for (const [[x, y], dir] of floor.maze.add) setWall(cells, cols, rows, x, y, dir, true);
   if (cfg.brittleOpen) {
-    for (const [[x, y], dir] of floor.maze.brittle) setWall(cells, cols, rows, x, y, dir, false);
+    // Einseitig brüchige Wände (M66) bleiben hier ZU – `reachable` macht aus
+    // ihnen eine gerichtete Kante von der Bruchseite her.
+    const oneWay = new Set(floor.maze.brittleSide.map(([[[x, y], d]]) => `${x},${y},${d}`));
+    for (const [[x, y], dir] of floor.maze.brittle) {
+      if (!oneWay.has(`${x},${y},${dir}`)) setWall(cells, cols, rows, x, y, dir, false);
+    }
   }
   if (!cfg.doorsOpen) {
     for (const el of floor.elements) {
@@ -167,6 +173,14 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
         .filter((e): e is TransporterDef => e.type === 'transporter' && (cfg.player === undefined || elementForPlayer(e, cfg.player)))
         .map((t) => ({ from: t.cell as readonly [number, number], toFloor: t.target.floor, toCell: t.target.cell as readonly [number, number] })),
       ...(guards?.edges ?? []).map((e) => ({ from: e.from, toFloor: fi, toCell: e.to, guardEdge: true })),
+      // Einseitig brüchig (M66): nur von der Bruchseite hindurch – danach ist
+      // die Wand weg, aber wer drüben ankommt, hat die Bruchseite schon.
+      ...(cfg.brittleOpen
+        ? f.maze.brittleSide
+            .map(([edge, side]) => brittlePassage(edge, side))
+            .filter(({ from, to }) => from[0] >= 0 && from[1] >= 0 && to[0] < f.size[0] && to[1] < f.size[1])
+            .map(({ from, to }) => ({ from: from as readonly [number, number], toFloor: fi, toCell: to as readonly [number, number] }))
+        : []),
     ],
     // Strömungszelle -> Fließrichtung (konservativ: nur diese Kante hinaus)
     currents: new Map(
@@ -866,8 +880,10 @@ export function validateLevel(raw: unknown): CheckResult[] {
   return checks;
 }
 
-/** Weiche Badges: dürfen rot sein, ohne das Teilen zu blockieren. */
-export const SOFT_CHECKS: ReadonlySet<CheckKey> = new Set<CheckKey>(['items', 'fair']);
+/** Weiche Badges: dürfen rot sein, ohne das Teilen zu blockieren. 'timer'
+ *  (M66) ist eine WARNUNG: Die 2,5×-Ideallinie ist eine Schätzung, ein
+ *  knapper Timer ist Schwierigkeit, kein Riegel. */
+export const SOFT_CHECKS: ReadonlySet<CheckKey> = new Set<CheckKey>(['items', 'fair', 'timer']);
 
 /** Pflicht-Badges fürs Teilen/Speichern-als-fertig: alles außer den weichen
  *  ('items': Sammelziele dürfen hinter Glas liegen; 'fair': Weglängen). */

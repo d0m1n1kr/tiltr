@@ -12,6 +12,9 @@ export interface Wall {
   h: number;
   /** Rest-Treffer einer brüchigen Wand; undefined = massiv */
   hp?: number;
+  /** Einseitig brüchig (M66): bricht nur bei Treffern von dieser Seite
+   *  (Seite des Balls relativ zur Wand); undefined = beidseitig. */
+  hpSide?: 'n' | 'e' | 's' | 'w';
   cracked?: boolean;
   /** Schallschutzwand: verschluckt den Echo-Ping, schirmt Klang dahinter ab
    *  (core/occlusion.ts), Rempler klingt gedämpft. */
@@ -212,6 +215,13 @@ export interface Listener {
 }
 
 /** Nebelzone: dämpft ALLE Klänge (globaler Lowpass) – kein Physik-Einfluss. */
+/** Fackel (M66): Lichtkreis ohne Klang und ohne Physik. */
+export interface Torch {
+  x: number;
+  y: number;
+  r: number;
+}
+
 export interface FogZone {
   x: number;
   y: number;

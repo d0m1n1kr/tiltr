@@ -15,7 +15,7 @@ import { Renderer } from '../render/renderer';
 import { WORLD } from '../render/palette';
 import { loadLevel, type LoadedLevel } from '../levels/loader';
 import { parseLevel } from '../levels/schema';
-import { validateLevel, isShareable, buildFloorCells, type CheckResult } from '../levels/validate';
+import { validateLevel, isShareable, buildFloorCells, SOFT_CHECKS, type CheckResult } from '../levels/validate';
 import { encodeLevel, SHARE_WARN_BYTES } from '../levels/shareCodec';
 import { galleryEntries } from '../elements';
 import { extraEntries } from './gallery';
@@ -41,7 +41,18 @@ interface RawEl {
 }
 interface RawFloor {
   size: [number, number];
-  maze: { seed: number; carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[]; mirrors: Edge[]; [k: string]: unknown };
+  maze: {
+    seed: number;
+    carve: Edge[];
+    add: Edge[];
+    brittle: Edge[];
+    /** Einseitig brüchig (M66); optional, weil Roh-Defs es weglassen dürfen –
+     *  normalizeDraft füllt auf, die Helfer unten tolerieren das Fehlen. */
+    brittleSide?: Array<[Edge, Dir]>;
+    absorb: Edge[];
+    mirrors: Edge[];
+    [k: string]: unknown;
+  };
   elements: RawEl[];
   start: [number, number];
   goal: [number, number] | null;
@@ -108,7 +119,22 @@ const edgeDrop = (list: Edge[], e: Edge) => {
 
 export type EdgeState = 'open' | 'wall' | 'brittle' | 'absorb' | 'mirror';
 export type WallVariant = 'solid' | 'brittle' | 'absorb' | 'mirror';
-export type MazeEdits = { carve: Edge[]; add: Edge[]; brittle: Edge[]; absorb: Edge[]; mirrors: Edge[] };
+export type MazeEdits = { carve: Edge[]; add: Edge[]; brittle: Edge[]; brittleSide?: Array<[Edge, Dir]>; absorb: Edge[]; mirrors: Edge[] };
+const sideDrop = (list: Array<[Edge, Dir]> | undefined, e: Edge) => {
+  if (!list) return;
+  const i = list.findIndex(([x]) => edgeKey(x) === edgeKey(e));
+  if (i !== -1) list.splice(i, 1);
+};
+/** Bruchseite einer einseitig brüchigen Kante (M66), undefined = beidseitig. */
+export function brittleSideOf(maze: MazeEdits, e: Edge): Dir | undefined {
+  return maze.brittleSide?.find(([x]) => edgeKey(x) === edgeKey(e))?.[1];
+}
+/** Bruchseite setzen (undefined = beidseitig). Nur sinnvoll auf brüchigen Kanten. */
+export function setBrittleSide(maze: MazeEdits, e: Edge, side: Dir | undefined): void {
+  maze.brittleSide ??= [];
+  sideDrop(maze.brittleSide, e);
+  if (side) maze.brittleSide.push([e, side]);
+}
 
 /** Sichtbarer Zustand einer Kante: Variante, wenn gelistet; sonst offen/Wand
  *  nach dem AKTUELLEN Maze (Seed + Edits). */
@@ -132,6 +158,7 @@ export function toggleEdge(maze: MazeEdits, e: Edge, open: boolean, seedOpen: bo
   edgeDrop(maze.carve, e);
   edgeDrop(maze.add, e);
   edgeDrop(maze.brittle, e);
+  sideDrop(maze.brittleSide, e);
   edgeDrop(maze.absorb, e);
   edgeDrop(maze.mirrors, e);
   if (open) {
@@ -150,6 +177,7 @@ export function setEdgeVariant(maze: MazeEdits, e: Edge, v: WallVariant): void {
   edgeDrop(maze.brittle, e);
   edgeDrop(maze.absorb, e);
   edgeDrop(maze.mirrors, e);
+  if (v !== 'brittle') sideDrop(maze.brittleSide, e); // Seite gehört zur brüchigen Wand
   if (v === 'brittle') maze.brittle.push(e);
   if (v === 'absorb') maze.absorb.push(e);
   if (v === 'mirror') maze.mirrors.push(e);
@@ -319,6 +347,7 @@ const PLACEABLE = [
   'reverbZone',
   'roamingHole',
   'boulder',
+  'torch',
   'transporter',
   'jukebox',
 ] as const;
@@ -460,10 +489,11 @@ export function setupEditor(opts: {
     if (!draft) return;
     draft.floors ??= [];
     for (const f of draft.floors) {
-      f.maze ??= { seed: 1, carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
+      f.maze ??= { seed: 1, carve: [], add: [], brittle: [], brittleSide: [], absorb: [], mirrors: [] };
       f.maze.carve ??= [];
       f.maze.add ??= [];
       f.maze.brittle ??= [];
+      f.maze.brittleSide ??= [];
       f.maze.absorb ??= [];
       f.maze.mirrors ??= [];
       f.elements ??= [];
@@ -710,8 +740,10 @@ export function setupEditor(opts: {
     badgesEl.replaceChildren();
     for (const c of checks) {
       const b = document.createElement('span');
-      b.className = 'ed-badge' + (c.ok ? '' : ' fail');
-      b.textContent = `${c.ok ? '✓' : '✗'} ${t(`ed.check.${c.key}` as keyof Dict)}`;
+      // Weiche Badges (SOFT_CHECKS) warnen nur: ⚠ statt ✗, gestrichelt.
+      const soft = !c.ok && SOFT_CHECKS.has(c.key);
+      b.className = 'ed-badge' + (c.ok ? '' : soft ? ' warn' : ' fail');
+      b.textContent = `${c.ok ? '✓' : soft ? '⚠' : '✗'} ${t(`ed.check.${c.key}` as keyof Dict)}`;
       if (c.detail) b.title = c.detail;
       badgesEl.append(b);
     }
@@ -731,6 +763,7 @@ export function setupEditor(opts: {
       carve: floor().maze.carve.length,
       add: floor().maze.add.length,
       brittle: floor().maze.brittle.length,
+      brittleSide: floor().maze.brittleSide?.length ?? 0,
       absorb: floor().maze.absorb.length,
       // Sichtbarer Kantenzustand (E2E: Wand an/aus, Variante über Eigenschaften).
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
@@ -1174,6 +1207,7 @@ export function setupEditor(opts: {
       dropFromList(m.carve, target.edge!);
       dropFromList(m.add, target.edge!);
       dropFromList(m.brittle, target.edge!);
+      sideDrop(m.brittleSide, target.edge!);
       dropFromList(m.absorb, target.edge!);
       if (selEdge && edgeKey(selEdge) === edgeKey(target.edge!)) selEdge = null;
     }
@@ -1188,6 +1222,7 @@ export function setupEditor(opts: {
       if (!edgeOpen(e)) {
         dropFromList(floor().maze.add, e);
         dropFromList(floor().maze.brittle, e);
+        sideDrop(floor().maze.brittleSide, e);
         dropFromList(floor().maze.absorb, e);
         if (!inList(floor().maze.carve, e)) floor().maze.carve.push(e);
       }
@@ -1595,6 +1630,20 @@ export function setupEditor(opts: {
         });
         sel.id = 'edWallVariant';
         propsEl.append(field(t('ed.f.variant'), sel));
+        // Einseitig brüchig (M66): von welcher Seite bricht die Wand?
+        if (state === 'brittle') {
+          const vertical = e[1] === 'e';
+          const sides: Array<[string, string]> = vertical
+            ? [['w', t('ed.side.w')], ['e', t('ed.side.e')]]
+            : [['n', t('ed.side.n')], ['s', t('ed.side.s')]];
+          const cur = brittleSideOf(f.maze, e);
+          const sideSel = selectInput(cur ?? 'both', [['both', t('ed.side.both')], ...sides], (v) => {
+            setBrittleSide(f.maze, e, v === 'both' ? undefined : (v as Dir));
+            rebuild();
+          });
+          sideSel.id = 'edBrittleSide';
+          propsEl.append(field(t('ed.f.brittleSide'), sideSel));
+        }
         const hint = document.createElement('p');
         hint.className = 'menu-meta';
         hint.textContent = t('ed.wallHint');
@@ -1781,6 +1830,10 @@ export function setupEditor(opts: {
         propsEl.append(field(t('ed.f.playlist'), playlistField(el)));
         num(t('ed.f.volume'), 'volume', 0, 1, 0.1);
       }
+      if (el.type === 'torch') {
+        if (el.r === undefined) el.r = 160;
+        num(t('ed.f.radius'), 'r', 60, 400, 20);
+      }
       if (el.type === 'anchor') {
         if (el.r === undefined) el.r = 120;
         if (el.force === undefined) el.force = 2000;
@@ -1945,6 +1998,7 @@ export function setupEditor(opts: {
     f.maze.carve = f.maze.carve.filter(edgeInside);
     f.maze.add = f.maze.add.filter(edgeInside);
     f.maze.brittle = f.maze.brittle.filter(edgeInside);
+    f.maze.brittleSide = (f.maze.brittleSide ?? []).filter(([e]) => edgeInside(e));
     f.maze.absorb = f.maze.absorb.filter(edgeInside);
     f.start = [Math.min(f.start[0], cols - 1), Math.min(f.start[1], rows - 1)];
     if (f.goal) f.goal = [Math.min(f.goal[0], cols - 1), Math.min(f.goal[1], rows - 1)];
@@ -2066,7 +2120,7 @@ export function setupEditor(opts: {
         const cur = floor();
         draft!.floors.push({
           size: [...cur.size] as [number, number],
-          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [], absorb: [], mirrors: [] },
+          maze: { seed: Math.floor(Math.random() * 0x7fffffff), carve: [], add: [], brittle: [], brittleSide: [], absorb: [], mirrors: [] },
           elements: [],
           start: [0, 0],
           goal: null,

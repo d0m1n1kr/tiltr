@@ -28,6 +28,7 @@ import type {
   Wall,
   WallHit,
   WindZone,
+  Torch,
 } from './types';
 import { ABSORB_GAIN, shielded } from './occlusion';
 
@@ -52,6 +53,7 @@ export class World {
   guards: Guard[] = [];
   listeners: Listener[] = [];
   fogZones: FogZone[] = [];
+  torches: Torch[] = [];
   ice: IcePatch[] = [];
   crystals: Collectible[] = [];
   hourglasses: Hourglass[] = [];

@@ -85,7 +85,9 @@ Wind Hellblau, Herzschlag Rot (`255, 110, 130`), Wächter Rot (`255, 92, 92`),
 Schlüssel und Druckplatte Gold (`255, 214, 90`), Tür Rubin (`232, 84, 128`
 – „verschlossen"; bis 3.0.6 ebenfalls Gold und im Echo-Alpha nicht vom
 Brüchig-Bernstein zu unterscheiden), Gem Eisblau (`190, 240, 255`),
-Transporter/Portal Magenta (`240, 130, 230`), Partner-BALL Rot (`255, 96,
+Transporter/Portal Magenta (`240, 130, 230`), Fackel Kerzenlicht (`255, 226,
+160` – heller und gelber als Brüchig-Bernstein, blasser als Schlüssel-Gold:
+Licht, kein Ding; M66), Partner-BALL Rot (`255, 96,
 110` – nur im Coop auf hellen Ebenen, M62: dort sieht man alles, ein Schein
 wäre vage; Rot ist die einzige Ballfarbe, die noch frei ist), Partner-SCHEIN Silberblau
 (`210, 225, 255` – auch der Geist der eigenen Bestzeit, nur blasser; zwei

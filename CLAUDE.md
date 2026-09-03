@@ -76,6 +76,14 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Öffner-Fixpunkt, Softlock, Timer, links, guards, jukebox): EINE Quelle der
   Wahrheit für Testsuite (tests/helpers.ts re-exportiert) UND die
   Live-Badges des Editors. Modell-Änderungen nur hier.
+  'timer' ist seit M66 WEICH (`SOFT_CHECKS`, wie 'items' und 'fair'): Die
+  2,5×-Ideallinie ist eine Schätzung, ein knapper Timer ist Schwierigkeit –
+  weiche Badges zeigen ⚠ statt ✗ und blockieren das Teilen nicht.
+  EINSEITIG BRÜCHIG (M66): `maze.brittleSide` = Kante aus `brittle` + Seite;
+  `Wall.hpSide`, `brittleBreakable` in core/brittle.ts entscheidet den
+  Treffer, der Beweis lässt die Wand zu und legt eine GERICHTETE Kante von
+  der Bruchseite (`brittlePassage`) – wie Strömungen. Variante/Wand entfernen
+  nimmt die Seite mit (`sideDrop` im Editor).
   Es gibt KEIN „Glas abseits"-Badge mehr (M39): Glas hält EINE Überfahrt aus
   und wird dann zum Loch – an dessen Rand kommt man mit Gefühl vorbei, ein
   Pflichtweg über Glas ist Schwierigkeit, kein Riegel. Auch der SOG-ANKER ist
@@ -342,7 +350,11 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   auf Plausibilität (Start/Ziel, maxSpeed, Transporter) – kein Anti-Cheat,
   ein Filter gegen kaputte Tokens. Duell-Läufe schreiben NICHTS mit.
 - Audio ist das Leitmedium: Jedes Element hat eine eindeutige, räumlich
-  ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound.
+  ortbare Klang-Signatur (HRTF-PannerNodes). Kein Element ohne Sound – mit
+  EINER Ausnahme: die FACKEL (M66, `torch`) ist Licht und nur Licht; ein Ton
+  stiftete eine zweite Bedeutung. Renderer: `torchGain(x, y)` in draw() hebt
+  alles Aufdeckbare im Radius ins Licht (Wände, Löcher, Checkpoints,
+  revealAlpha); wer ein neues gezeichnetes Objekt einführt, hängt es dort an.
   Jede Reflexion des Echo-Pings hat einen BREITBANDIGEN Anschlag (kurzer
   Rausch-Transient, Band um 2,6 kHz) vor dem tonalen Körper: Ein fast
   reiner Ton um 1 kHz ist der schlechteste Reiz fürs Ortungsgehör
