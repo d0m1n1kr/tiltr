@@ -612,6 +612,27 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M85b „Der Schnitt des Promo-GIFs" ✓ (v3.18.0)
+
+Rückmeldung zum ersten GIF: „Hörtest und Galerie brauchen nicht ins Video.
+Kannst du Sequenzen aus meinem Level nehmen, das ich oben geschickt hatte?"
+Beides berechtigt: Galerie und Hörtest sind Screens voller TEXT, und Text liest
+sich in 195 px nicht – ein Promo verkauft sich über Bewegung. Das Coop-Level
+des Autors dagegen zeigt in einem Bild, was man mit dem Editor wirklich baut.
+
+Neuer Schnitt (`tools/promo.mjs`, `npm run promo`): Splash mit Einfahrt →
+Dunkelheit plus Echo-Ping → Sieg mit Konfetti → dasselbe echte Level im EDITOR
+(Live-Badges: Lädt, Verknüpfungen, Coop lösbar, Öffner vor Tür) → im
+Zwei-Spieler-TESTMODUS: rollen, pingen, dann 👥 Seitenwechsel, wobei der
+Ruhende als roter Partner im Bild bleibt (M62) und die Wächter weiterlaufen.
+Das Level liegt als `tools/promo-level.json` daneben (aus dem Diagnose-Link
+dekodiert, ID auf `promo-coop` gesetzt) – ein Zufallslevel wäre beliebig, dieses
+ist gebaut.
+
+Ergebnis: 108 Bilder, 14,2 s, 710 KB – dieselbe Größenordnung wie vorher,
+obwohl zwei Szenen dazukamen (die Text-Screens waren teuer: viele Farben, wenig
+Bewegung).
+
 ## M84b „Der Stein wirkte auf der falschen Ebene" ✓ (v3.17.1)
 
 Meldung direkt nach M84: „Der Stein wirkt jetzt auf der falschen Ebene.

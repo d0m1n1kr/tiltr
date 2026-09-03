@@ -684,7 +684,10 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   auf `promo.gif`, damit schon der Link die Animation trägt.
   DAS GIF: `npm run promo` fährt die App wie tools/screenshots.mjs und schneidet
   sechs Szenen (Splash, Echo-Ping im Dunkeln, Konfetti, Galerie, Hörtest,
-  Editor). Ohne ffmpeg entsteht es in JS: Screenshots → Box-Filter auf ein
+  Editor + Zwei-Spieler-Testmodus aus `tools/promo-level.json`, einem ECHTEN
+  Coop-Level des Autors). KEINE Text-Screens (Galerie, Hörtest): In 195 px
+  liest sich Text nicht, ein Promo verkauft sich über Bewegung (v3.18.0).
+  Ohne ffmpeg entsteht es in JS: Screenshots → Box-Filter auf ein
   Viertel → EINE 256er-Palette (gifenc, MIT; upng-js dekodiert). Bildzeiten
   GEMESSEN (feste Delays liefen zu schnell), Verkleinern ERST NACH der Aufnahme
   (sonst halbiert das Dekodieren die Bildrate). Es liegt in `public/` und ist

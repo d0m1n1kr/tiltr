@@ -15,7 +15,7 @@ GitHub Pages). Der Startscreen hat einen Knopf **📣 App weitersagen**: Er teil
 diesen Link mit einem kurzen Werbetext in der eingestellten Sprache – die
 Animation unten ist das, was die Link-Vorschau zeigt.
 
-<p align="center"><img src="public/promo.gif" width="220" alt="Screencast: Splash, Echo-Ping im Dunkeln, Konfetti, Galerie, Hörtest, Editor"></p>
+<p align="center"><img src="public/promo.gif" width="220" alt="Screencast: Splash, Echo-Ping im Dunkeln, Konfetti, ein echtes Werkstatt-Level im Editor und im Zwei-Spieler-Testmodus"></p>
 
 | Splash | Menü | Echo-Ping | Kampagne |
 |---|---|---|---|

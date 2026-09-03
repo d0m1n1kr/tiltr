@@ -1,8 +1,12 @@
 // PROMO-GIF (M85): Ein Screencast der App, geschnitten zu Impressionen, die den
-// CHARAKTER zeigen – Dunkelheit, Echo-Ping, Konfetti, Werkstatt. Läuft gegen den
-// GEBAUTEN Stand (vite preview) mit derselben Mechanik wie tools/screenshots.mjs
-// und e2e/smoke.mjs: Vite direkt starten, vorinstalliertes Chromium, ?nosplash
-// bzw. ?unlock wo nötig.
+// CHARAKTER zeigen – Dunkelheit, Echo-Ping, Konfetti, und ein ECHTES Level aus
+// der Werkstatt (tools/promo-level.json, ein Coop-Level des Autors: Editor mit
+// Badges, dann der Zwei-Spieler-Testmodus mit Partner-Kugel und Seitenwechsel).
+// Galerie und Hörtest sind absichtlich NICHT drin: Screens voller Text lesen
+// sich in 195 px nicht, und das Spiel verkauft sich über Bewegung (v3.18.0).
+// Läuft gegen den GEBAUTEN Stand (vite preview) mit derselben Mechanik wie
+// tools/screenshots.mjs und e2e/smoke.mjs: Vite direkt starten, vorinstalliertes
+// Chromium, ?nosplash bzw. ?unlock wo nötig.
 //
 // Es gibt in dieser Umgebung KEIN ffmpeg: Die Bilder kommen als PNG aus
 // Playwright, werden sofort verkleinert (Speicher! ein 780×1688-Bild sind 5 MB
@@ -18,6 +22,12 @@ import UPNG from 'upng-js';
 // gifenc ist CommonJS – ESM sieht nur den Default-Export.
 import gifenc from 'gifenc';
 const { GIFEncoder, quantize, applyPalette } = gifenc;
+import { readFileSync } from 'node:fs';
+
+/** Ein echtes Coop-Level aus der Werkstatt des Autors – vier Ebenen, gekreuzte
+ *  Zeitschalter, Platten-Seitenwechsel, Glocken, Horcher, Fackeln. Besser als
+ *  ein Zufallslevel: Es zeigt, was man mit dem Editor wirklich baut. */
+const COOP_LEVEL = JSON.parse(readFileSync(new URL('./promo-level.json', import.meta.url), 'utf8'));
 
 const PORT = 8767;
 const BASE = `http://localhost:${PORT}`;
@@ -115,7 +125,7 @@ const phone = () => browser.newContext({ viewport: { width: 390, height: 844 }, 
   const ctx = await phone();
   const page = await ctx.newPage();
   await page.goto(`${BASE}/`);
-  await rec(page, 3600);
+  await rec(page, 2900);
   cut();
   await ctx.close();
 }
@@ -151,47 +161,53 @@ const phone = () => browser.newContext({ viewport: { width: 390, height: 844 }, 
   await page.keyboard.down('ArrowRight');
   await until(async () => (await page.evaluate(() => window.__tiltrConfetti?.count ?? 0)) > 0, 12000);
   await page.keyboard.up('ArrowRight');
-  await rec(page, 1600);
+  await rec(page, 1300);
   cut();
   await ctx.close();
 }
 
-// 4) Galerie: jedes Element mit Klang-Signatur – die Vielfalt in einem Bild.
-{
-  const ctx = await phone();
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/?nosplash`);
-  await page.click('#galleryLink');
-  await sleep(400);
-  await rec(page, 500);
-  await page.evaluate(() => document.getElementById('galleryList')?.scrollBy({ top: 420, behavior: 'smooth' }));
-  await rec(page, 900);
-  cut();
-  await ctx.close();
-}
-
-// 5) Hörtest: acht Richtungen, eine Kompassrose – das Ohr wird geschult.
-{
-  const ctx = await phone();
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/?nosplash`);
-  await page.click('#hearingBtn');
-  await sleep(500);
-  await rec(page, 900);
-  cut();
-  await ctx.close();
-}
-
-// 6) Werkstatt: eigene Level, Lösbarkeits-Badges live.
+// 4) Ein echtes Level: Editor mit Live-Badges – so entsteht ein Level.
+// 5) …und derselbe Entwurf im Zwei-Spieler-Testmodus: zwei Kugeln, Platten,
+// Wächter, 👥 wechselt die Seite (der Ruhende ist der Partner im Bild).
 {
   const ctx = await phone();
   const page = await ctx.newPage();
   await page.goto(`${BASE}/?nosplash`);
   await page.click('#workshopBtn');
-  await page.click('#wsNewRandomBtn');
+  await page.click('#wsImportBtn');
+  await page.fill('#wsImportText', JSON.stringify(COOP_LEVEL));
+  await page.click('#wsImportGo');
+  await until(async () => (await page.locator('#workshopList .ws-item').count()) > 0, 10000);
+  await page.locator('#workshopList .ws-item').last().locator('button', { hasText: '✏️' }).click();
   await until(async () => (await page.locator('#edBadges .ed-badge').count()) > 0, 10000);
-  await sleep(400);
-  await rec(page, 1200);
+  await sleep(500);
+  await rec(page, 900);
+  cut();
+
+  await page.click('#edTest');
+  await until(async () => await page.evaluate(() => window.__tiltrMpTest), 20000);
+  await until(
+    async () => (await page.evaluate(() => document.getElementById('interstitial')?.classList.contains('hidden'))) === true,
+    8000,
+  );
+  await page.keyboard.down('ArrowRight');
+  await rec(page, 900);
+  await page.keyboard.press('Space');
+  await rec(page, 700);
+  await page.keyboard.up('ArrowRight');
+  await page.keyboard.down('ArrowDown');
+  await rec(page, 600);
+  await page.keyboard.up('ArrowDown');
+  cut(200);
+  // Seitenwechsel: jetzt rollt Spieler 2, Spieler 1 liegt als Partner da.
+  await page.click('#swapBtn');
+  await until(async () => (await page.evaluate(() => window.__tiltrMpTest?.player)) === 2, 4000);
+  await page.keyboard.down('ArrowLeft');
+  await rec(page, 800);
+  await page.keyboard.up('ArrowLeft');
+  await page.keyboard.down('ArrowDown');
+  await rec(page, 700);
+  await page.keyboard.up('ArrowDown');
   cut(600);
   await ctx.close();
 }

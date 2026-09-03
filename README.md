@@ -14,7 +14,7 @@ Pages). The start screen has a **📣 Spread the word** button that shares this
 link with a short pitch in your language; the animation below is what a link
 preview shows.
 
-<p align="center"><img src="public/promo.gif" width="220" alt="Screencast: splash, echo ping in the dark, confetti, gallery, hearing test, editor"></p>
+<p align="center"><img src="public/promo.gif" width="220" alt="Screencast: splash, echo ping in the dark, confetti, a real workshop level in the editor and in two-player test mode"></p>
 
 | Splash | Menu | Echo ping | Campaign |
 |---|---|---|---|
