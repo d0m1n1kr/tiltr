@@ -62,7 +62,9 @@ Pages).
   room. Your partner is a faint shimmer in the dark and a solid red ball on
   bright floors. Reaching the goal stops your clock, not your ball, so you
   can keep holding plates for the straggler. Lost connections get a
-  10-second reconnect window.
+  10-second reconnect window; the lobby keeps the screen awake, says when no
+  signaling relay is reachable, and can rebuild the connection (**🔄
+  Reconnect**) without changing the room code.
 - **🛠 Workshop** — a touch-first level editor (three panes on tablets).
   Place any element from the registry, toggle walls and wall variants,
   build multi-floor maps with transporters, and watch the solvability
@@ -160,7 +162,8 @@ npm run screenshots  # regenerate docs/screenshots/ from the built app
 
 URL parameters: `?seed=…` makes runs reproducible, `?unlock` opens all
 campaign levels, `?nosplash` skips the splash, `?debug` enables the debug
-view and sensor diagnostics, `?mpcode=TEST…` forces a room code onto the local
+view and sensor diagnostics, `?netdebug` shows the multiplayer lobby's relay
+diagnostics, `?mpcode=TEST…` forces a room code onto the local
 `BroadcastChannel` transport (multiplayer without network).
 
 Testing philosophy: every level ships with a solvability proof (BFS across

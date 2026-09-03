@@ -612,6 +612,49 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M70 „Wer vermittelt hier?" ✓ (v3.4.0) – Lobby-Diagnose, Wake Lock, Neuverbinden
+
+Meldung: „Multiplayer joinen geht manchmal nicht, gleiches WLAN, ging schon."
+Nachgesehen und die Frage „nutzen beide dieselben Handshake-Server?" geklärt:
+JA. `getRelays` in trystero nimmt eine gesetzte `relayConfig.urls`-Liste
+UNVERÄNDERT – beide Seiten sprechen alle acht Nostr-Relays an, keine
+gewürfelte Teilmenge (ohne die Liste würfelt trystero je Gerät eine, und dann
+finden sich zwei Spieler nur bei Überschneidung; das war hier nie der Fall).
+Also lagen die Ursachen anderswo, und die eigentliche Lücke war: MAN SAH
+NICHTS. `connect()` liefert ein Raum-Objekt, ohne dass ein einziger Relay
+antwortet – die Lobby sagte trotzdem „warte auf Partner".
+
+Drei Dinge, in der Reihenfolge ihrer Wahrscheinlichkeit:
+
+1. **Wake Lock in der Lobby.** Gewartet wurde mit ungesperrtem Bildschirm nur
+   im Spiel (`wake.want()` beim Levelstart), in der Lobby nicht. Sperrt das
+   Phone, friert iOS die Seite ein: Die WebSockets zu den Vermittlern sterben,
+   der Host steht in einem Raum, in dem er selbst nicht mehr ist. Jetzt hält
+   `mpShowLobby()` den Bildschirm wach.
+2. **Neuaufbau statt Warten.** Kommt die Seite aus dem Hintergrund zurück
+   (oder das Netz wieder), baut trystero die Sockets erst nach bis zu einer
+   Minute Backoff neu auf. `mpReconnect()` macht es sofort – automatisch nach
+   >3 s im Hintergrund ohne Partner und bei `online`, und von Hand über
+   „🔄 Neu verbinden" (die ganze Wartezeit sichtbar). WICHTIG: mit DEMSELBEN
+   Raumcode (`mpHost(level, custom, keepCode)`) – ein neuer Code hätte den
+   schon gescannten QR entwertet.
+3. **Diagnose.** `Transport.info()` (Art, eigene Peer-ID, Relay-Zustände,
+   Peers, Ereignis-Protokoll) plus `src/net/health.ts` (rein, mit Units):
+   `relayHealth` zählt, `lobbyHint` entscheidet zwischen „verbinde",
+   „offline" (kein Relay offen, obwohl Zeit war → Netz/VPN/Firewall),
+   „warte" und „hängt" (Relays stehen, nach 35 s niemand da → Code prüfen
+   oder neu verbinden). Die kurze Warnzeile erscheint nur in diesen Fällen;
+   `?netdebug` (oder der Debug-Modus) zeigt die volle Liste: welcher Relay
+   offen ist, wer im Raum ist, und was passiert ist. Ins Protokoll geht auch
+   ein IGNORIERTER dritter Peer – ein Zombie aus einer alten Sitzung erklärt
+   genau die Sorte Fehler, die nicht am Netz liegt.
+
+Was damit NICHT behoben ist (und im Protokoll sichtbar wird): WLANs mit
+Client-Isolation (Gastnetz) verbieten die direkte P2P-Strecke, und ohne
+eigenen TURN-Server gibt es keinen Umweg – dann stehen die Vermittler auf ✓,
+der Partner erscheint aber nie. E2E Lauf 36 prüft Diagnose, Wake Lock und das
+Neuverbinden mit gleichbleibendem Raumcode.
+
 ## M69 „Beide Kugeln, abwechselnd" ✓ (v3.3.0) – MP-Testmodus im Editor
 
 Wunsch aus dem Levelbau: Ein Zwei-Spieler-Level allein testen können, mit

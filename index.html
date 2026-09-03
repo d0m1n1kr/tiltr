@@ -463,6 +463,15 @@
       text-align: center;
     }
     #mpLobby { display: grid; gap: var(--space-3); justify-items: center; text-align: center; }
+    /* Netz-Diagnose der Lobby (M70): „sie finden sich nicht" braucht eine
+       Auskunft über die Vermittler – kurz für alle, ausführlich im Debug. */
+    #mpNetStatus.warn { color: var(--warning); }
+    #mpNetDebug {
+      justify-self: stretch; text-align: left; margin: 0; max-height: 34vh; overflow: auto;
+      background: var(--bg-panel); border: var(--border-subtle); border-radius: var(--radius-m);
+      padding: var(--space-2); color: var(--text); opacity: 0.7;
+      font: 500 var(--fs-small) ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
+    }
     #mpLobby h3 { font-size: var(--fs-body); }
     #mpQr { width: min(60vw, 260px); background: white; border-radius: var(--radius-l); padding: var(--space-3); }
     #mpQr svg { display: block; width: 100%; height: auto; }
@@ -941,6 +950,9 @@
         <p id="mpCode" class="mp-code"></p>
         <button id="mpShareBtn" class="btn btn-soft" data-i18n="mp.share">📨 Einladung teilen</button>
         <p id="mpLobbyStatus" class="menu-meta"></p>
+        <p id="mpNetStatus" class="menu-meta hidden"></p>
+        <button id="mpReconnectBtn" class="btn btn-soft hidden" data-i18n="mp.reconnect">🔄 Neu verbinden</button>
+        <pre id="mpNetDebug" class="hidden"></pre>
         <button id="mpCancelBtn" class="btn btn-ghost" data-i18n="common.cancel">Abbrechen</button>
       </div>
     </div>

@@ -390,6 +390,24 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `window.__tiltrPing` legt offen, WAS das Ohr bekommen hat (Chirp-Gain,
   Position und Breitband-Anteil jeder Reflexion).
 
+- `src/net/transport.ts` + `src/net/health.ts` – MULTIPLAYER-NETZ: trystero
+  über eine FESTE Liste von 8 Nostr-Relays. Die Liste MUSS gesetzt bleiben:
+  `getRelays` in trystero nimmt `relayConfig.urls` unverändert, ohne sie
+  würfelt jedes Gerät eine Teilmenge – zwei Spieler finden sich dann nur bei
+  Überschneidung. `Transport.info()` ist die Auskunft für die Diagnose (Art,
+  eigene Peer-ID, Relay-Zustände, Peers, Ereignis-Protokoll); `health.ts` ist
+  rein: `relayHealth` zählt, `lobbyHint` entscheidet zwischen verbinde /
+  offline / warte / hängt (M70). WICHTIG für jede Lobby-Änderung: `connect()`
+  liefert einen Raum, OHNE dass ein Relay antwortet – „warte auf Partner"
+  allein ist eine Lüge. In der Lobby läuft deshalb ein Ticker
+  (`mpLobbyTick`, 500 ms), der Bildschirm bleibt WACH (sonst sterben die
+  WebSockets beim Sperren – das war die häufigste Ursache für „findet sich
+  nicht"), und „🔄 Neu verbinden" (`mpReconnect`) baut dieselbe Rolle mit
+  DEMSELBEN Raumcode neu auf – automatisch nach Hintergrund/`online`. Ein
+  neuer Code würde einen schon gescannten QR entwerten. `?netdebug` zeigt
+  alles; ein ignorierter dritter Peer steht im Protokoll (Zombie aus einer
+  alten Sitzung). Ohne TURN-Server bleibt ein Gastnetz mit Client-Isolation
+  unspielbar – dann sind die Relays ✓ und der Partner kommt nie.
 - `src/ui/confetti.ts` – Sieges-Konfetti: reines, geseedetes Partikelmodell
   (`spawnConfetti`/`stepConfetti`, Units in tests/confetti.test.ts) plus
   eigene Canvas-Ebene zwischen Spielfeld und Panels, angetrieben von der

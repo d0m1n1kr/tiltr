@@ -441,6 +441,9 @@ export const es: Dict = {
   'mp.random': 'Nivel aleatorio',
   'mp.error': 'Fallo de conexión: inténtalo de nuevo.',
   'mp.share': '📨 Compartir invitación',
+  'mp.reconnect': '🔄 Reconectar',
+  'mp.netOffline': '⚠ Ningún relé accesible – ¿otra red, VPN o cortafuegos?',
+  'mp.netStalled': '⚠ No ha venido nadie. Revisa el código – o reconecta.',
   'mp.shareText': 'Juega a tiltr conmigo: «{level}», sala {code}. Toca el enlace para unirte:',
   'mp.shareCopied': '✓ Invitación copiada',
 

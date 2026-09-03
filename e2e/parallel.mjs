@@ -17,6 +17,7 @@ import { cpus } from "node:os";
 const PORT = 8765;
 const BASE = `http://localhost:${PORT}`;
 const WEIGHT = {
+  36: 14,
   35: 20,
   34: 8,
   33: 26,

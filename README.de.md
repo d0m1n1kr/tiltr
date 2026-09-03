@@ -64,7 +64,9 @@ GitHub Pages).
   Dunkeln ein blasser Schein und auf hellen Ebenen ein fester roter Ball.
   Der Zieleinlauf stoppt die Uhr, nicht die Kugel – im Coop hält man so dem
   Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein
-  10-Sekunden-Fenster.
+  10-Sekunden-Fenster; die Lobby hält den Bildschirm wach, sagt es, wenn kein
+  Vermittler erreichbar ist, und baut die Verbindung auf Wunsch neu auf
+  (**🔄 Neu verbinden**) – der Raumcode bleibt.
 - **🛠 Werkstatt** – ein Touch-Editor für eigene Level (auf Tablets als
   Dreispalter). Elemente aus der ganzen Registry setzen, Wände und
   Wand-Varianten schalten, mehrstöckige Karten mit Transportern bauen –
@@ -163,7 +165,8 @@ npm run screenshots  # docs/screenshots/ aus dem gebauten Stand erzeugen
 
 URL-Parameter: `?seed=…` macht Läufe reproduzierbar, `?unlock` öffnet alle
 Kampagnen-Level, `?nosplash` überspringt den Splash, `?debug` schaltet
-Debug-Ansicht und Sensor-Diagnose frei, `?mpcode=TEST…` erzwingt einen
+Debug-Ansicht und Sensor-Diagnose frei, `?netdebug` zeigt die
+Vermittler-Diagnose der Multiplayer-Lobby, `?mpcode=TEST…` erzwingt einen
 Raumcode auf dem lokalen `BroadcastChannel`-Transport (Multiplayer ohne Netz).
 
 Test-Philosophie: Jedes Level kommt mit Lösbarkeits-Beweis (BFS über Ebenen,

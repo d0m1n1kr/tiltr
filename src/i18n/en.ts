@@ -441,6 +441,9 @@ export const en: Dict = {
   'mp.random': 'Random level',
   'mp.error': 'Connection failed – please try again.',
   'mp.share': '📨 Share invite',
+  'mp.reconnect': '🔄 Reconnect',
+  'mp.netOffline': '⚠ No signaling relay reachable – other network, VPN or firewall?',
+  'mp.netStalled': '⚠ Nobody showed up. Check the code – or reconnect.',
   'mp.shareText': 'Play tiltr with me – “{level}”, room {code}. Tap the link to join:',
   'mp.shareCopied': '✓ Invite copied',
 

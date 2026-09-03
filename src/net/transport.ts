@@ -8,14 +8,39 @@
 //   für E2E-Tests und lokales Entwickeln ohne Netz. Raumcodes mit dem
 //   Präfix "TEST" wählen ihn automatisch.
 
+import type { RelayState } from './health';
+
 export type MessageHandler = (type: string, payload: unknown) => void;
 export type PeerHandler = (event: 'join' | 'leave') => void;
+
+/** Ein Ereignis der Netzschicht für die Diagnose (Lobby-Debug, M70). */
+export interface NetEvent {
+  /** ms seit dem Verbinden */
+  at: number;
+  text: string;
+}
+
+/** Was die Netzschicht über sich sagt – Grundlage der Lobby-Diagnose (M70).
+ *  „Sie finden sich nicht" ist ohne DIESE Auskunft nicht zu unterscheiden von
+ *  „kein Vermittler erreichbar", „falscher Raum" oder „Partner ist weg". */
+export interface TransportInfo {
+  kind: 'nostr' | 'local';
+  /** eigene Peer-ID (trystero selfId) – im Log des Partners wiederzufinden */
+  selfId: string;
+  /** Handshake-Server: beide Seiten nutzen DIESELBE feste Liste */
+  relays: RelayState[];
+  /** Peers, mit denen eine Verbindung steht */
+  peers: string[];
+  events: NetEvent[];
+}
 
 export interface Transport {
   send(type: string, payload: unknown): void;
   onMessage(cb: MessageHandler): void;
   onPeer(cb: PeerHandler): void;
   leave(): void;
+  /** Momentaufnahme für die Diagnose (kein Zustand, nur Auskunft). */
+  info(): TransportInfo;
 }
 
 // 8 etablierte, seit Jahren stabile Nostr-Relays für den WebRTC-Handshake.
@@ -69,33 +94,84 @@ class TrysteroTransport implements Transport {
   private room!: TrysteroRoom;
   /** 2-Spieler-Raum: nur der erste Peer zählt, weitere werden ignoriert. */
   private peerId: string | null = null;
+  private sockets: () => Record<string, WebSocket> = () => ({});
+  private selfId = '?';
+  private readonly t0 = Date.now();
+  private readonly events: NetEvent[] = [];
+
+  private log(text: string): void {
+    this.events.push({ at: Date.now() - this.t0, text });
+    // Ein Ringpuffer: Die Diagnose will die letzten Ereignisse, keine Chronik.
+    if (this.events.length > 60) this.events.splice(0, this.events.length - 60);
+  }
 
   static async create(code: string): Promise<TrysteroTransport> {
-    const { joinRoom } = await import('trystero/nostr');
+    const { joinRoom, getRelaySockets, selfId } = await import('trystero/nostr');
     const self = new TrysteroTransport();
-    // Alle 8 Relays parallel nutzen (redundancy), nicht nur eine Teilmenge.
+    self.sockets = getRelaySockets as () => Record<string, WebSocket>;
+    self.selfId = selfId;
+    self.log(`Raum ${code} · ich ${selfId.slice(0, 8)} · ${NOSTR_RELAYS.length} Vermittler`);
+    // Alle 8 Relays parallel nutzen (redundancy), nicht nur eine Teilmenge:
+    // Beide Seiten sprechen damit garantiert dieselben Handshake-Server an
+    // (getRelays in trystero nimmt eine gesetzte url-Liste unverändert – ohne
+    // sie würfelt es je Gerät eine Teilmenge, und dann finden sich zwei
+    // Spieler nur, wenn sich die Teilmengen überschneiden).
     self.room = joinRoom(
       { appId: APP_ID, relayConfig: { urls: NOSTR_RELAYS, redundancy: NOSTR_RELAYS.length } },
       code,
+      { onJoinError: (e: { error: string }) => self.log(`Fehler: ${e.error}`) },
     ) as unknown as TrysteroRoom;
     self.action = self.room.makeAction<{ t: string; p: unknown }>('msg');
     self.action.onMessage = (data, ctx) => {
-      if (self.peerId !== null && ctx.peerId !== self.peerId) return;
+      if (self.peerId !== null && ctx.peerId !== self.peerId) {
+        self.log(`Nachricht von fremdem Peer ${ctx.peerId.slice(0, 8)} verworfen`);
+        return;
+      }
       self.messageCb(data.t, data.p);
     };
     self.room.onPeerJoin = (peerId) => {
       if (self.peerId === null) {
         self.peerId = peerId;
+        self.log(`Partner da: ${peerId.slice(0, 8)}`);
         self.peerCb('join');
+      } else {
+        // Dritter im Raum – oder ein Zombie aus einer alten Sitzung. Beides
+        // wird ignoriert, aber es steht im Log: Genau das erklärt ein
+        // „der Partner kommt nicht durch", das nicht am Netz liegt.
+        self.log(`weiterer Peer ${peerId.slice(0, 8)} ignoriert (Raum ist voll)`);
       }
     };
     self.room.onPeerLeave = (peerId) => {
       if (peerId === self.peerId) {
         self.peerId = null;
+        self.log(`Partner weg: ${peerId.slice(0, 8)}`);
         self.peerCb('leave');
-      }
+      } else self.log(`fremder Peer weg: ${peerId.slice(0, 8)}`);
     };
     return self;
+  }
+
+  info(): TransportInfo {
+    const map = this.sockets();
+    const states: Record<number, RelayState['state']> = {
+      [WebSocket.CONNECTING]: 'connecting',
+      [WebSocket.OPEN]: 'open',
+      [WebSocket.CLOSING]: 'closing',
+      [WebSocket.CLOSED]: 'closed',
+    };
+    // Ein Relay, zu dem trystero (noch) keinen Socket hält, gilt als zu –
+    // sonst sähe eine Liste mit einem einzigen Eintrag gesund aus.
+    const relays: RelayState[] = NOSTR_RELAYS.map((url) => ({
+      url,
+      state: map[url] ? (states[map[url]!.readyState] ?? 'closed') : 'closed',
+    }));
+    return {
+      kind: 'nostr',
+      selfId: this.selfId,
+      relays,
+      peers: this.peerId === null ? [] : [this.peerId],
+      events: [...this.events],
+    };
   }
 
   send(type: string, payload: unknown): void {
@@ -170,5 +246,14 @@ class LocalTransport implements Transport {
     this.post('@bye', null);
     this.closed = true;
     this.channel.close();
+  }
+  info(): TransportInfo {
+    return {
+      kind: 'local',
+      selfId: this.uid,
+      relays: [],
+      peers: this.peerUid === null ? [] : [this.peerUid],
+      events: [],
+    };
   }
 }

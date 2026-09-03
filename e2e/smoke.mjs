@@ -87,6 +87,7 @@ const KNOWN_RUNS = [
   "33",
   "34",
   "35",
+  "36",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -6500,6 +6501,79 @@ if (want("35")) {
   } catch (e) {
     check(
       `Lauf 35 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 36: Lobby-Diagnose und Neuverbinden (M70). „Sie finden sich
+// manchmal nicht" war blind: connect() liefert einen Raum, ohne dass ein
+// Handshake-Server antwortet – die Lobby sagte trotzdem „warte auf Partner".
+// Jetzt tickt sie: ?netdebug zeigt Transport, Raum, Rolle, Vermittler und das
+// Ereignis-Protokoll; der Bildschirm bleibt in der Lobby wach (ohne Wake Lock
+// sperrt das Phone und die WebSockets sterben); „🔄 Neu verbinden" baut
+// dieselbe Rolle mit DEMSELBEN Raumcode neu auf (ein neuer Code hätte den
+// schon gescannten QR entwertet) – danach tritt der Gast noch bei. ---
+if (want("36")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 420, height: 900 }, locale: "de-DE" });
+    const host = await ctx.newPage();
+    const guest = await ctx.newPage();
+    for (const p of [host, guest]) {
+      p.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      p.on("pageerror", (e) => errors.push(String(e)));
+    }
+    await host.goto(`${BASE}/?mpcode=TESTNET36&netdebug&nosplash`);
+    await host.click("#mpBtn");
+    await host.locator("#mpLevelList button").first().click();
+    await until(async () => !(await host.locator("#mpLobby").getAttribute("class")).includes("hidden"));
+    const dbg = await until(async () => {
+      const txt = await host.textContent("#mpNetDebug");
+      return txt && txt.includes("Raum") ? txt : null;
+    }, { timeout: 6000 });
+    check(
+      `Lobby-Diagnose (?netdebug): Transport, Raum, Rolle, Vermittler-Zeile (${JSON.stringify((dbg ?? "").split("\n").slice(0, 3).join(" | "))})`,
+      /local/.test(dbg ?? "") && /TESTNET36/.test(dbg ?? "") && /Host/.test(dbg ?? "") && /Vermittler 0\/0/.test(dbg ?? "") && /Partner: –/.test(dbg ?? ""),
+    );
+    // Wach bleiben, solange die Lobby offen ist – sonst sperrt das Phone.
+    const wake = await host.evaluate(() => window.__tiltrWake);
+    check(`In der Lobby ist die Bildschirmsperre angefordert (${JSON.stringify(wake)})`, wake?.wanted === true);
+    // Keine Fehlermeldung, solange nichts schiefgeht; „Neu verbinden" steht da.
+    const quiet = await host.evaluate(() => ({
+      warn: !document.getElementById("mpNetStatus")?.classList.contains("hidden"),
+      reconnect: !document.getElementById("mpReconnectBtn")?.classList.contains("hidden"),
+    }));
+    check(`Ruhige Lobby: keine Warnung, aber „Neu verbinden" ist erreichbar (${JSON.stringify(quiet)})`, !quiet.warn && quiet.reconnect);
+
+    // Neu verbinden behält den Raumcode (der QR ist schon unterwegs).
+    await host.click("#mpReconnectBtn");
+    const again = await until(async () => {
+      const txt = await host.textContent("#mpNetDebug");
+      return txt && txt.includes("TESTNET36") && (await host.textContent("#mpCode")).trim() === "TESTNET36" ? txt : null;
+    }, { timeout: 6000 });
+    check(
+      `„Neu verbinden": derselbe Raum, wieder Host, Lobby bleibt (${JSON.stringify((again ?? "").split("\n")[0])})`,
+      again !== null && !(await host.locator("#mpLobby").getAttribute("class")).includes("hidden"),
+    );
+
+    // Und der Gast findet den neu aufgebauten Raum.
+    await guest.goto(`${BASE}/?mpcode=TESTNET36&netdebug&nosplash#join=TESTNET36`);
+    const paired = await until(async () => {
+      const h = await host.textContent("#mpNetDebug");
+      const g = await guest.textContent("#mpNetDebug");
+      return h && g && !/Partner: –/.test(h) && !/Partner: –/.test(g) ? { h, g } : null;
+    }, { timeout: 15000 });
+    check(
+      `Gast tritt dem neu aufgebauten Raum bei – beide Seiten sehen den Partner (${JSON.stringify(
+        (paired?.h ?? "").split("\n")[1],
+      )})`,
+      paired !== null,
+    );
+    await host.close();
+    await guest.close();
+  } catch (e) {
+    check(
+      `Lauf 36 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

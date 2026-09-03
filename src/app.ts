@@ -31,6 +31,7 @@ import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
 import { COOP_LEVELS, RACE_LEVELS } from './levels/multiplayer';
 import { generateMpLevel, parseMpQuickId } from './levels/mpQuick';
 import { connect, makeRoomCode, type Transport } from './net/transport';
+import { lobbyHint, relayHealth } from './net/health';
 import { scanRoomCode } from './ui/scanner';
 import { renderSVG } from 'uqr';
 import { parseLevel, type LevelDef } from './levels/schema';
@@ -1812,6 +1813,7 @@ function mpOpenCustom(def: LevelDef): void {
 function refreshMpPanel(): void {
   mpChoose.classList.remove('hidden');
   mpLobby.classList.add('hidden');
+  mpHideLobby();
   const fixedMode = mpCustomLevel && mpCustomLevel.mpMode !== 'any' ? mpCustomLevel.mpMode : null;
   if (fixedMode) mpModeSel = fixedMode;
   $('mpModeHint').textContent = `${mpModeHint(mpModeSel)}${fixedMode ? ` ${t('mp.modeFixed')}` : ''}`;
@@ -1865,10 +1867,75 @@ function refreshMpPanel(): void {
   });
 }
 
+/* --- Lobby-Diagnose (M70) ---------------------------------------------------
+   „Sie finden sich manchmal nicht" war bis jetzt nicht zu unterscheiden von
+   „kein Vermittler erreichbar", „falscher Raum" oder „Partner schläft":
+   `connect()` liefert ein Raum-Objekt, ohne dass ein einziger Handshake-Server
+   antworten muss – die Lobby sagte trotzdem „warte auf Partner". Jetzt tickt
+   sie: Sie fragt den Transport (info()), entscheidet über `lobbyHint` und
+   sagt, was los ist. Der WAKE LOCK gehört ebenfalls hierher – ohne ihn sperrt
+   das Phone beim Warten den Bildschirm, und mit ihm schlafen die WebSockets
+   ein: Der Host war weg, ohne es zu merken. */
+let mpLobbyAt = 0;
+let mpTick: number | null = null;
+
+function mpLobbyTick(): void {
+  if (mpLobby.classList.contains('hidden')) return;
+  const info = mp?.transport.info() ?? null;
+  const waitingS = (performance.now() - mpLobbyAt) / 1000;
+  const health = relayHealth(info?.relays ?? []);
+  const hint = info === null ? 'connecting' : lobbyHint(health, waitingS);
+  const connected = (info?.peers.length ?? 0) > 0;
+  const netStatus = $('mpNetStatus');
+  const reconnect = $('mpReconnectBtn');
+  // Kurze Zeile nur, wenn es etwas zu sagen gibt: Vermittler unerreichbar
+  // oder es hängt. Sonst bleibt die Lobby ruhig.
+  const say = connected ? null : hint === 'offline' ? t('mp.netOffline') : hint === 'stalled' ? t('mp.netStalled') : null;
+  netStatus.textContent = say ?? '';
+  netStatus.classList.toggle('hidden', say === null);
+  netStatus.classList.toggle('warn', say !== null);
+  // „Neu verbinden" steht die ganze Wartezeit da (nicht erst im Alarmfall):
+  // Wer vor einem stummen QR-Code steht, soll etwas tun können, ohne die
+  // Lobby zu verlassen – der Raumcode bleibt derselbe.
+  reconnect.classList.toggle('hidden', connected);
+  const dbg = $('mpNetDebug');
+  const show = debug || debugUnlocked || new URLSearchParams(location.search).has('netdebug');
+  dbg.classList.toggle('hidden', !show);
+  if (show) {
+    const lines = info
+      ? [
+          `${info.kind} · ich ${info.selfId.slice(0, 8)} · Raum ${mp?.code ?? '?'} · ${mp?.host ? 'Host' : 'Gast'}`,
+          `Partner: ${info.peers.length ? info.peers.map((x) => x.slice(0, 8)).join(', ') : '–'} · warte ${waitingS.toFixed(0)} s · ${hint}`,
+          `Vermittler ${health.open}/${health.total} offen${health.connecting ? `, ${health.connecting} im Aufbau` : ''}`,
+          ...info.relays.map((r) => `  ${r.state === 'open' ? '✓' : r.state === 'connecting' ? '…' : '✗'} ${r.url.replace('wss://', '')}`),
+          ...info.events.map((e) => `  ${(e.at / 1000).toFixed(1)}s ${e.text}`),
+        ]
+      : [t('mp.connecting')];
+    dbg.textContent = lines.join('\n');
+  }
+}
+
 function mpShowLobby(status: string): void {
   mpChoose.classList.add('hidden');
   mpLobby.classList.remove('hidden');
   $('mpLobbyStatus').textContent = status;
+  mpLobbyAt = performance.now();
+  // Gespielt wird durch Neigen, gewartet wird mit dem Bildschirm an: Sperrt
+  // das Phone in der Lobby, stirbt die Verbindung zu den Vermittlern.
+  wake.want();
+  if (mpTick === null) mpTick = window.setInterval(mpLobbyTick, 500);
+  mpLobbyTick();
+}
+
+/** Lobby verlassen: Ticker aus, Diagnose-Zeilen zurücksetzen. */
+function mpHideLobby(): void {
+  if (mpTick !== null) {
+    clearInterval(mpTick);
+    mpTick = null;
+  }
+  $('mpNetStatus').classList.add('hidden');
+  $('mpReconnectBtn').classList.add('hidden');
+  $('mpNetDebug').classList.add('hidden');
 }
 
 function mpJoinUrl(code: string): string {
@@ -1880,9 +1947,11 @@ function mpJoinUrl(code: string): string {
 // Abbruch (Abbrechen/Schließen) während des Verbindens.
 let mpPending: string | null = null;
 
-async function mpHost(level: LevelDef, custom = false): Promise<void> {
-  // ?mpcode=TEST… erzwingt den Raumcode (E2E: TEST-Präfix wählt den LocalTransport)
-  const code = new URLSearchParams(location.search).get('mpcode')?.toUpperCase() ?? makeRoomCode();
+async function mpHost(level: LevelDef, custom = false, keepCode?: string): Promise<void> {
+  // ?mpcode=TEST… erzwingt den Raumcode (E2E: TEST-Präfix wählt den LocalTransport).
+  // `keepCode` ist das Neuverbinden: Der Gast hat den QR-Code schon – ein
+  // neuer Raum würde ihn ins Leere schicken.
+  const code = keepCode ?? new URLSearchParams(location.search).get('mpcode')?.toUpperCase() ?? makeRoomCode();
   $('mpLobbyTitle').textContent = `${mpModeSel === 'coop' ? '🤝' : '🏁'} ${lvName(level)}`;
   $('mpQr').innerHTML = renderSVG(mpJoinUrl(code));
   $('mpQr').classList.remove('hidden');
@@ -2387,6 +2456,40 @@ $('mpClose').addEventListener('click', () => {
   mpCustomLevel = null;
   mpPanel.classList.add('hidden');
 });
+/** Neu verbinden: dieselbe Rolle, DERSELBE Raumcode – frische Sockets.
+ *  Nötig, weil ein Socket, der im Hintergrund gestorben ist, von trystero
+ *  erst nach bis zu einer Minute Backoff wiederkommt; und weil ein Zombie-Peer
+ *  aus einer alten Sitzung so verschwindet. */
+function mpReconnect(): void {
+  if (!mp || mp.phase !== 'lobby') return;
+  const { host, code, level, custom } = mp;
+  mpPending = null;
+  mp.transport.leave();
+  mp = null;
+  if (host && level) void mpHost(level, custom, code);
+  else void mpJoin(code);
+}
+
+$('mpReconnectBtn').addEventListener('click', mpReconnect);
+
+// Zurück aus dem Hintergrund: In der Lobby sind die WebSockets zu den
+// Vermittlern dann meist tot (iOS friert die Seite ein) – ohne diesen
+// Neuaufbau wartet man vor einem Raum, in dem man selbst nicht mehr steht.
+let mpHiddenAt: number | null = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') {
+    mpHiddenAt = performance.now();
+    return;
+  }
+  const away = mpHiddenAt === null ? 0 : (performance.now() - mpHiddenAt) / 1000;
+  mpHiddenAt = null;
+  if (away > 3 && mp?.phase === 'lobby' && mp.transport.info().peers.length === 0) mpReconnect();
+});
+// Netz war weg (Tunnel, WLAN-Wechsel): dasselbe Argument.
+window.addEventListener('online', () => {
+  if (mp?.phase === 'lobby' && mp.transport.info().peers.length === 0) mpReconnect();
+});
+
 $('mpCancelBtn').addEventListener('click', () => {
   mpPending = null;
   mp?.transport.leave();

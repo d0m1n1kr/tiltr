@@ -445,6 +445,9 @@ export const de = {
   'mp.random': 'Zufallslevel',
   'mp.error': 'Verbindung fehlgeschlagen – bitte nochmal versuchen.',
   'mp.share': '📨 Einladung teilen',
+  'mp.reconnect': '🔄 Neu verbinden',
+  'mp.netOffline': '⚠ Kein Vermittler erreichbar – anderes Netz, VPN oder Firewall?',
+  'mp.netStalled': '⚠ Niemand gekommen. Code prüfen – oder neu verbinden.',
   'mp.shareText': 'Spiel tiltr mit mir – „{level}", Raum {code}. Link antippen und beitreten:',
   'mp.shareCopied': '✓ Einladung kopiert',
 
