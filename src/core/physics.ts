@@ -302,7 +302,10 @@ export class World {
       // kommt das Rollen nur gedämpft an – dieselbe Regel wie für jede andere
       // Klangquelle (occlusion.ts), nur in Gegenrichtung. Hinter der Wand darf
       // man also rollen, solange man nicht rast.
-      const heardSpeed = shielded(this.walls, b.x, b.y, l.x, l.y) ? b.speed * ABSORB_GAIN : b.speed;
+      // Nebel (M67): Wer IM Nebel rollt, ist für Horcher unhörbar – der Nebel
+      // nimmt nicht nur dir die Ohren, er verschluckt auch dein Rollen. Deckung
+      // wie die Schallschutzwand, nur vollständig.
+      const heardSpeed = this.inFog() ? 0 : shielded(this.walls, b.x, b.y, l.x, l.y) ? b.speed * ABSORB_GAIN : b.speed;
       const moving = heardSpeed > this.listenerWakeSpeed;
       const target = moving ? b : l.home;
       // Jagd skaliert mit der gehörten Rollgeschwindigkeit; Rückzug mit halber Kraft.
@@ -465,6 +468,12 @@ export class World {
   }
 
   /** Liegt der Ballmittelpunkt gerade in einem Hallraum? */
+  /** Steht der Ball in einer Nebelzone? (Klang-Dämpfung UND Horcher-Deckung, M67) */
+  inFog(): boolean {
+    const b = this.ball;
+    return this.fogZones.some((z) => b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h);
+  }
+
   inReverb(): boolean {
     const b = this.ball;
     return this.reverbZones.some((z) => b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h);

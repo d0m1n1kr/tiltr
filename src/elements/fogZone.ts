@@ -16,7 +16,7 @@ registerElement<FogZoneDef>({
   gallery: {
     title: 'Nebelzone',
     description:
-      'Im Nebel klingt ALLES wie durch Watte – Wände, Gefahren, sogar der Sonar des Ziels. Er schiebt nicht und verschluckt nicht, aber er nimmt dir die Ohren. Präg dir den Kurs ein, bevor du eintauchst.',
+      'Im Nebel klingt ALLES wie durch Watte – Wände, Gefahren, sogar der Sonar des Ziels. Er schiebt nicht und verschluckt nicht, aber er nimmt dir die Ohren – und den Horchern: Wer im Nebel rollt, wird nicht gehört. Präg dir den Kurs ein, bevor du eintauchst.',
     draw(ctx, w, h) {
       for (const [dx, dy, r, a] of [
         [0.32, 0.5, 0.24, 0.5],

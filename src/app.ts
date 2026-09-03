@@ -2468,9 +2468,7 @@ function frame(now: number): void {
     const listenerDanger = listenerClose * (0.25 + 0.75 * activity);
 
     // Nebel: im Kern klingt alles wie durch Watte (ein Lowpass hinter dem Master).
-    const b0 = world.ball;
-    const inFog = world.fogZones.some((z) => b0.x > z.x && b0.x < z.x + z.w && b0.y > z.y && b0.y < z.y + z.h);
-    audio.setFog(inFog ? 1 : 0);
+    audio.setFog(world.inFog() ? 1 : 0);
     // Hallraum (M46): Nachhall an, solange der Ball in der Zone ist.
     audio.setReverb(world.inReverb() ? 1 : 0);
 

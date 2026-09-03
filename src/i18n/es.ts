@@ -513,7 +513,7 @@ export const es: Dict = {
     'Te caza mientras ruedas – te oye incluso a través de los muros. Si te quedas quieto, pierde tu rastro y se retira. Firma: un olfateo crepitante que crece con tu propia velocidad. El silencio es tu camuflaje.',
   'el.fogZone.title': 'Zona de niebla',
   'el.fogZone.desc':
-    'En la niebla TODO suena como a través de algodón – muros, peligros, incluso el sonar de la meta. No empuja ni traga, pero te quita los oídos. Memoriza el rumbo antes de sumergirte.',
+    'En la niebla TODO suena como a través de algodón – muros, peligros, incluso el sonar de la meta. No empuja ni traga, pero te quita los oídos – y a los escuchas los suyos: quien rueda dentro de la niebla no es oído. Memoriza el rumbo antes de sumergirte.',
   'el.ice.title': 'Placa de hielo',
   'el.ice.desc':
     'Liso como un espejo: una vez en marcha, sigues deslizándote – frenar se vuelve pesado, girar impreciso. Firma: un zumbido cristalino bajo la bola que crece con la velocidad. Planea el impulso antes de tomarlo.',

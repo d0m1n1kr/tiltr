@@ -42,6 +42,50 @@ function listenerShift(absorb: boolean, speed: number): number {
   return x0 - l.x; // > 0: der Horcher kommt dem Ball entgegen
 }
 
+// Nebel (M67): Wer IM Nebel rollt, ist für Horcher unhörbar – auch rasend.
+function fogLevel() {
+  return parseLevel({
+    id: 'cover-fog',
+    name: 'Nebel',
+    pingBudget: 0,
+    floors: [
+      {
+        size: [3, 2],
+        maze: { seed: 1, carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[0, 0], 's']] },
+        elements: [
+          { type: 'fogZone', cell: [0, 0] },
+          { type: 'listener', cell: [2, 0], speed: 90 },
+        ],
+        start: [0, 0],
+        goal: [0, 1],
+      },
+    ],
+  });
+}
+
+describe('Nebel-Deckung (M67)', () => {
+  it('im Nebel hört der Horcher auch lautes Rollen nicht', () => {
+    const { world } = loadLevel(fogLevel());
+    const l = world.listeners[0]!;
+    const x0 = l.x;
+    world.ball.vx = 300;
+    // Ball bleibt in der Nebelzelle (0,0): wenige Schritte, Wand rechts bei x=100 fängt ihn.
+    for (let i = 0; i < 4; i++) world.step(1 / 60, { x: 0, y: 0 });
+    expect(world.inFog()).toBe(true);
+    expect(x0 - l.x).toBeCloseTo(0, 3);
+  });
+  it('… außerhalb des Nebels jagt er wieder', () => {
+    const { world } = loadLevel(fogLevel());
+    world.ball.x = 150; // Zelle (1,0), kein Nebel
+    const l = world.listeners[0]!;
+    const x0 = l.x;
+    world.ball.vx = 300;
+    for (let i = 0; i < 4; i++) world.step(1 / 60, { x: 0, y: 0 });
+    expect(world.inFog()).toBe(false);
+    expect(x0 - l.x).toBeGreaterThan(0.5);
+  });
+});
+
 describe('Horcher-Deckung (M43)', () => {
   it('ohne Schallschutz hört der Horcher durch die Wand (wie bisher)', () => {
     expect(listenerShift(false, 100)).toBeGreaterThan(1);

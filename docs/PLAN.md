@@ -612,6 +612,18 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M67 „Im Nebel unhörbar" ✓ (v3.2.1) – Horcher hören niemanden im Nebel
+
+Wunsch aus dem Levelbau: Wer im Nebel rollt, soll für Horcher unhörbar sein.
+Bis jetzt nahm der Nebel nur DIR die Ohren (Lowpass auf dem Master); die
+Horcher hörten dein Rollen ungedämpft. Jetzt ist die Nebelzone vollständige
+Deckung: `World.updateListeners` setzt die gehörte Geschwindigkeit auf 0,
+solange `inFog()` gilt (neue Methode, app.ts nutzt sie auch für den Klang –
+eine Stelle für „steht der Ball im Nebel"). Gleiche Klasse wie die
+Schallschutzwand (M43), nur ganz statt gedämpft. Galerie-Text der Nebelzone
+sagt es (×4), Units in tests/listenerCover.test.ts. Beweis unberührt:
+Horcher sind kein Riegel.
+
 ## M66 „Von dieser Seite" ✓ (v3.2.0) – einseitig brüchig, weicher Timer, Fackel
 
 Drei Wünsche aus dem Levelbau. **Einseitig brüchig:** `maze.brittleSide`

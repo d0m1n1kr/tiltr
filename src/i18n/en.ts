@@ -513,7 +513,7 @@ export const en: Dict = {
     'Hunts you while you roll – it hears you even through walls. Stand still and it loses your trail and withdraws. Signature: sniffing and crackling that swells with your own rolling speed. Silence is your camouflage.',
   'el.fogZone.title': 'Fog zone',
   'el.fogZone.desc':
-    'In the fog EVERYTHING sounds like it is wrapped in cotton – walls, dangers, even the goal sonar. It does not push and does not swallow, but it takes your ears. Memorize your course before you dive in.',
+    'In the fog EVERYTHING sounds like it is wrapped in cotton – walls, dangers, even the goal sonar. It does not push and does not swallow, but it takes your ears – and the listeners’: whoever rolls inside the fog is not heard. Memorize your course before you dive in.',
   'el.ice.title': 'Ice patch',
   'el.ice.desc':
     'Mirror-smooth: once you get rolling, you keep gliding – braking turns sluggish, steering mushy. Signature: a crystalline whirring under the ball that swells with speed. Plan your momentum before you take it.',

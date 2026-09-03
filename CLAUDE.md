@@ -315,7 +315,9 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Lehr-Reihenfolge fest. Kampagnen-Regeln aus dem Review (tests/campaign):
   Par-Band 1,2–2,6 s je ZELLE (nicht nach dem Rückgrat schätzen), Ping-Budget
   je Welt konstant (3/4/4/3). Horcher hören abgeschirmt (`shielded` in
-  `updateListeners`, ABSORB_GAIN) – Deckung ist eine Schleich-Mechanik.
+  `updateListeners`, ABSORB_GAIN) – Deckung ist eine Schleich-Mechanik; im
+  NEBEL hören sie gar nichts (M67, `World.inFog()` – dieselbe Methode speist
+  den Nebel-Lowpass in app.ts).
 - WELT 5 „Trugbild" (M48, `defs5` in campaign.ts): sieben Level aus den
   vorher ungenutzten Bausteinen (helle Ebene, Echo-Spiegel, Schallschutz,
   Kristall, Glocke, Hallraum, Stimmgabel, Glas, Tür 'all' über Ebenen,

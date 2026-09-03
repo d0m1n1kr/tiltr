@@ -517,7 +517,7 @@ export const de = {
     'Jagt dich, solange du rollst – er hört dich sogar durch Wände. Stehst du still, verliert er die Spur und zieht sich zurück. Signatur: Schnüffeln und Knistern, das mit deiner eigenen Rollgeschwindigkeit anschwillt. Stille ist deine Tarnung.',
   'el.fogZone.title': 'Nebelzone',
   'el.fogZone.desc':
-    'Im Nebel klingt ALLES wie durch Watte – Wände, Gefahren, sogar der Sonar des Ziels. Er schiebt nicht und verschluckt nicht, aber er nimmt dir die Ohren. Präg dir den Kurs ein, bevor du eintauchst.',
+    'Im Nebel klingt ALLES wie durch Watte – Wände, Gefahren, sogar der Sonar des Ziels. Er schiebt nicht und verschluckt nicht, aber er nimmt dir die Ohren – und den Horchern: Wer im Nebel rollt, wird nicht gehört. Präg dir den Kurs ein, bevor du eintauchst.',
   'el.ice.title': 'Eisfläche',
   'el.ice.desc':
     'Spiegelglatt: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Signatur: kristallines Sirren unter dem Ball, das mit dem Tempo anschwillt. Plane den Schwung, bevor du ihn nimmst.',

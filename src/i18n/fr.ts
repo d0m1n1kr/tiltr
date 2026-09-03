@@ -513,7 +513,7 @@ export const fr: Dict = {
     'Il te traque tant que tu roules – il t’entend même à travers les murs. Immobile, tu lui fais perdre ta trace et il se retire. Signature : un reniflement crépitant qui enfle avec ta propre vitesse. Le silence est ton camouflage.',
   'el.fogZone.title': 'Zone de brume',
   'el.fogZone.desc':
-    'Dans la brume, TOUT sonne comme à travers de la ouate – les murs, les dangers, même le sonar de l’arrivée. Elle ne pousse pas et n’avale pas, mais elle te prend les oreilles. Mémorise ton cap avant d’y plonger.',
+    'Dans la brume, TOUT sonne comme à travers de la ouate – les murs, les dangers, même le sonar de l’arrivée. Elle ne pousse pas et n’avale pas, mais elle te prend les oreilles – et celles des guetteurs : qui roule dans la brume n’est pas entendu. Mémorise ton cap avant d’y plonger.',
   'el.ice.title': 'Plaque de glace',
   'el.ice.desc':
     'Lisse comme un miroir : une fois lancé, tu continues de glisser – freiner devient laborieux, diriger devient flou. Signature : un sifflement cristallin sous la bille, qui enfle avec la vitesse. Prépare ton élan avant de le prendre.',
