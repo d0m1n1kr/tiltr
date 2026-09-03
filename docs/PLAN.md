@@ -612,6 +612,32 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M79 „Der Softlock sagt, WER ihn verursacht" ✓ (v3.11.0)
+
+Meldung aus dem Levelbau: „Weiterer Softlock: er denkt, ein Horcher ist im Weg,
+der aber vom anderen Spieler weggelockt werden kann." Der Beweis denkt das
+nicht – HORCHER KOMMEN IN IHM GAR NICHT VOR (`patrolLines` sammelt nur
+`guard`, und der Softlock-Beweis rechnet nicht einmal mit Wächtern). Aber der
+Bericht nannte nur den ORT: „Ebene 1, Zelle 3/5 · Spieler 1". Wer dort einen
+Horcher stehen sieht, hält den für den Riegel – der Bericht hat ihn dazu
+verleitet.
+
+Jetzt nennt er den Übeltäter. `nameCause(k, ziel, latched, reach)` fragt in
+dieser Reihenfolge: Bestünde mit ALLEN Türen offen ein Rückweg? Dann sagt eine
+Einzelprobe je Tür, WELCHE es ist („Tür tor1 fällt hinter dir zu"). Sonst: Liegt
+das Ziel auf einer anderen Ebene? Dann „von Ebene 3 führt kein Weg zurück
+(Transporter?)". Sonst bleibt „kein Rückweg (Einbahn-Strömung oder brüchige
+Wand)". Die Probe läuft NUR für die eine gemeldete Zelle – der Beweis selbst
+wird nicht teurer. Beide Pfade nutzen sie (zwei Spieler über `pairReachable`,
+Einzelspieler über `coopReachable`); die force-open-Saat ist dieselbe wie bei
+den eingerasteten Türen aus M78.
+
+Dazu die Erklär-Tafel (`ed.help.softlock`, alle vier Sprachen): Sie sagt jetzt,
+WAS der Beweis rechnet – Wände, Türen, Strömungen, Transporter – und dass
+Horcher und Wächter hier NIE der Grund sind (Wächter haben ihr eigenes Badge).
+Ein Bericht, der zur falschen Ursache verleitet, ist so teuer wie ein falscher
+Bericht.
+
 ## M78 „Eingerastet bleibt eingerastet" ✓ (v3.10.1)
 
 Meldung direkt nach M77: „Jetzt ist nur noch ein Softlock da, der nicht

@@ -198,8 +198,10 @@ describe('Softlock mit einseitig brüchiger Wand (M68)', () => {
     const def = pocket('current');
     const sl = badge(def, 'softlock');
     expect(sl.ok).toBe(false);
-    // Gemeldet wird die erste verlorene Zelle: die Strömungszelle selbst oder die Tasche.
-    expect(['0:1,1', '0:2,0', '0:3,0', '0:2,1', '0:3,1']).toContain(sl.detail);
+    // Gemeldet wird die erste verlorene Zelle: die Strömungszelle selbst oder
+    // die Tasche – seit M79 mit dem Grund dahinter.
+    expect(['0:1,1', '0:2,0', '0:3,0', '0:2,1', '0:3,1']).toContain(sl.detail?.split(' – ')[0]);
+    expect(sl.detail).toContain('kein Rückweg');
   });
   it('brokenBrittle öffnet die Wand in beide Richtungen, sealedBrittle nimmt die Kante', () => {
     const def = pocket('sealed');

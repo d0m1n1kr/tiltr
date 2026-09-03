@@ -303,3 +303,65 @@ describe('Softlock hinter einer Tür, die offen bleibt (M78)', () => {
     expect(rep.find((c) => c.key === 'softlock')?.ok).toBe(false);
   });
 });
+
+// M79 – DER SOFTLOCK SAGT, WER IHN VERURSACHT: Meldung aus dem Levelbau
+// („er denkt, ein Horcher ist im Weg, der aber weggelockt werden kann") –
+// der Bericht nannte nur die ZELLE, und wer dort einen Horcher stehen sieht,
+// hält den für den Riegel. Horcher und Wächter kommen in diesem Beweis gar
+// nicht vor; gerechnet wird mit Wänden, Türen, Strömungen und Transportern.
+// Also nennt der Bericht den Übeltäter.
+describe('Softlock-Bericht nennt den Grund (M79)', () => {
+  it('Tür, die hinter dir zufällt: der Bericht nennt sie beim Namen', () => {
+    const rep = validateLevel(returnTrip(false /* kein latch */));
+    // Ohne latch geht diese Tür nie auf – für den GRUND-Test braucht es eine,
+    // die aufgeht und wieder zufällt: eine Platte, die der Partner hält.
+    expect(rep.find((c) => c.key === 'softlock')?.ok).toBe(true);
+    const oneWay = parseLevel({
+      id: 'custom-shut',
+      name: 'Zufallende Tür',
+      players: 2,
+      mpMode: 'coop',
+      floors: [
+        {
+          size: [6, 2],
+          maze: oneRow(6),
+          elements: [
+            { type: 'door', id: 'tor', edge: [[2, 0], 'e'] },
+            // Die Platte liegt HINTER der Tür: Spieler 2 hält sie, Spieler 1
+            // rollt durch – und steht dann auf der falschen Seite, wenn sein
+            // Ziel davor liegt und der Partner losgeht.
+            { type: 'plate', cell: [4, 0], opens: 'tor' },
+            { type: 'current', cell: [3, 0], dir: 'e', force: 3400 },
+          ],
+          start: [0, 0],
+          goal: [1, 0],
+          start2: [5, 0],
+          goal2: [4, 0],
+        },
+      ],
+    });
+    const sl = validateLevel(oneWay).find((c) => c.key === 'softlock');
+    expect(sl?.ok).toBe(false);
+    expect(sl?.detail).toMatch(/Tür tor fällt hinter dir zu|kein Rückweg|Ebene/);
+  });
+
+  it('Transporter ohne Rückweg: der Bericht nennt die Ebene', () => {
+    const trap = parseLevel({
+      id: 'custom-oneway',
+      name: 'Einbahn-Transporter',
+      floors: [
+        {
+          size: [4, 2],
+          maze: oneRow(4),
+          elements: [{ type: 'transporter', cell: [2, 0], target: { floor: 1, cell: [0, 0] } }],
+          start: [0, 0],
+          goal: [3, 0],
+        },
+        { size: [2, 2], maze: { seed: 5 }, elements: [], start: [0, 0], goal: null },
+      ],
+    });
+    const sl = validateLevel(trap).find((c) => c.key === 'softlock');
+    expect(sl?.ok).toBe(false);
+    expect(sl?.detail).toContain('von Ebene 2 führt kein Weg zurück');
+  });
+});

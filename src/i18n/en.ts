@@ -287,7 +287,7 @@ export const en: Dict = {
   'ed.help.goal': 'With all doors open, a path leads from start to goal. Red: there is no path at all – usually a sealed edge or a transporter with no way back.',
   'ed.help.openers': 'Per door: if THIS door never opens, is at least one of its openers still reachable? Red means the key sits behind the door it opens.',
   'ed.help.timer': 'The time switch stays open long enough for the way to its door (with a safety factor). A warning only: a tight timer is difficulty, not a lock.',
-  'ed.help.softlock': 'From EVERY reachable spot the goal stays reachable. Red: from the named cell you can no longer get there – typically a transporter into a floor with no way back, a one-way current, or a door that falls shut again.',
+  'ed.help.softlock': 'From EVERY reachable spot the goal stays reachable. Red: from the named cell you can no longer get there, and the report names the reason – a door that falls shut behind you, a transporter into a floor with no way back, a one-way current or a brittle wall. Only walls, doors, currents and transporters count here: listeners and guards are NEVER the reason (guards have their own badge).',
   'ed.help.guards': 'Every guard can be passed: one cell of its patrol must stay free while you slip by. Red: it seals the corridor – add a bay or a crossing passage.',
   'ed.help.items': 'Gems, crystals and hourglasses are reachable. A warning only – an unreachable collectible costs the third star but locks nothing.',
   'ed.help.jukebox': 'The jukebox is a solid box: it must not sit on start, goal or a patrol, must be bumpable, and must not block a required path.',

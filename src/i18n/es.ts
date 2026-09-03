@@ -287,7 +287,7 @@ export const es: Dict = {
   'ed.help.goal': 'Con todas las puertas abiertas hay camino de la salida a la meta. En rojo: no hay camino – suele ser un borde tapiado o un teletransporte sin vuelta.',
   'ed.help.openers': 'Por puerta: si ESTA puerta no se abre nunca, ¿queda accesible al menos uno de sus abridores? En rojo: la llave está detrás de la puerta que abre.',
   'ed.help.timer': 'El interruptor temporizado aguanta el camino hasta su puerta (con margen). Solo advertencia: un temporizador justo es dificultad, no un cerrojo.',
-  'ed.help.softlock': 'Desde CADA celda alcanzable la meta sigue siendo alcanzable. En rojo: desde la celda indicada ya no se llega – típico: un teletransporte a una planta sin vuelta, una corriente de un solo sentido o una puerta que se cierra.',
+  'ed.help.softlock': 'Desde CADA celda alcanzable la meta sigue siendo alcanzable. En rojo: desde la celda indicada ya no se llega, y el informe dice por qué – una puerta que se cierra detrás de ti, un teletransporte a una planta sin vuelta, una corriente de un solo sentido o un muro quebradizo. Aquí solo cuentan muros, puertas, corrientes y teletransportes: los oyentes y los guardias NUNCA son la causa (los guardias tienen su propia insignia).',
   'ed.help.guards': 'Se puede pasar a cada guardia: una celda de su patrulla debe quedar libre. En rojo: sella el pasillo – añade un hueco o un paso transversal.',
   'ed.help.items': 'Gemas, cristales y relojes de arena son accesibles. Solo advertencia: un coleccionable inaccesible cuesta la tercera estrella, nada más.',
   'ed.help.jukebox': 'La máquina es un bloque macizo: no puede estar en la salida, la meta ni una patrulla, debe poder golpearse y no bloquear un camino obligado.',

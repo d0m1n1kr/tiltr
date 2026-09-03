@@ -982,6 +982,44 @@ export function validateLevel(raw: unknown): CheckResult[] {
   /** Türen, die an Zelle k sicher eingerastet sind (je Spieler-Reichweite). */
   const latchedAt = (k: string, without: Map<string, Set<string>>): Set<string> =>
     new Set(latchIds.filter((d) => !without.get(d)!.has(k)));
+
+  /**
+   * WARUM kommt man von hier nicht zurück (M79)? Der Ort allein reicht nicht:
+   * Wer an der gemeldeten Zelle einen Horcher oder Wächter stehen sieht, hält
+   * DEN für den Riegel – dabei rechnet dieser Beweis nur mit Wänden, Türen,
+   * Strömungen und Transportern. Also nennt der Bericht den Übeltäter: Erst
+   * wird gefragt, ob mit allen Türen offen ein Rückweg bestünde (dann sagt
+   * eine Einzelprobe, WELCHE Tür), sonst ob das Ziel überhaupt auf dieser
+   * Ebene liegt (Transporter ohne Rückweg).
+   */
+  const nameCause = (
+    k: string,
+    goal: string,
+    latchedHere: ReadonlySet<string>,
+    reach: (open: ReadonlySet<string>) => boolean,
+  ): string => {
+    if (doorIds.size && reach(new Set([...latchedHere, ...doorIds]))) {
+      for (const d of doorIds) {
+        if (reach(new Set([...latchedHere, d]))) return `Tür ${d} fällt hinter dir zu`;
+      }
+      return 'Türen fallen hinter dir zu';
+    }
+    const here = placeOf(k);
+    if (here.floor !== placeOf(goal).floor) return `von Ebene ${here.floor + 1} führt kein Weg zurück (Transporter?)`;
+    return 'kein Rückweg (Einbahn-Strömung oder brüchige Wand)';
+  };
+  const softlockCause = (
+    k: string,
+    p: 'p1' | 'p2',
+    goal: string,
+    latchedHere: ReadonlySet<string>,
+    brittleHere: { p1?: BrittleState; p2?: BrittleState },
+  ): string => {
+    const from = p === 'p1' ? { p1: parse(k) } : { p2: parse(k) };
+    return nameCause(k, goal, latchedHere, (open) =>
+      pairReachable(def, pairCoop, new Set(), from, brittleHere, stonePlates, open)[p].has(goal),
+    );
+  };
   if (two) {
     const pair = pairCoop ? coopPair! : racePair!;
     const sealed = (w: string): BrittleState => ({ sealedBrittle: new Set([w]) });
@@ -1002,7 +1040,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
         )
       ) {
         softlockOk = false;
-        softlockDetail = `Spieler 1: ${k}`;
+        softlockDetail = `Spieler 1: ${k} – ${softlockCause(k, 'p1', goalKey, latchedHere, { p1: brokenAt(k, without1) })}`;
         softlockAt = placeOf(k);
         break;
       }
@@ -1016,7 +1054,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
           )
         ) {
           softlockOk = false;
-          softlockDetail = `Spieler 2: ${k}`;
+          softlockDetail = `Spieler 2: ${k} – ${softlockCause(k, 'p2', goal2Key, latchedHere, { p2: brokenAt(k, without2) })}`;
           softlockAt = placeOf(k);
           break;
         }
@@ -1028,14 +1066,13 @@ export function validateLevel(raw: unknown): CheckResult[] {
     );
     const noLatch = new Map(latchIds.map((d) => [d, coopReachable(def, new Set([d]))]));
     for (const k of fromStart) {
-      if (
-        !coopReachable(def, new Set(), parse(k), {
-          brittle: brokenAt(k, without),
-          latched: latchedAt(k, noLatch),
-        }).has(goalKey)
-      ) {
+      const latchedHere = latchedAt(k, noLatch);
+      const brittleHere = brokenAt(k, without);
+      if (!coopReachable(def, new Set(), parse(k), { brittle: brittleHere, latched: latchedHere }).has(goalKey)) {
         softlockOk = false;
-        softlockDetail = k;
+        softlockDetail = `${k} – ${nameCause(k, goalKey, latchedHere, (open) =>
+          coopReachable(def, new Set(), parse(k), { brittle: brittleHere, latched: open }).has(goalKey),
+        )}`;
         softlockAt = placeOf(k);
         break;
       }
