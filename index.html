@@ -654,6 +654,14 @@
     .ed-selhead { display: flex; align-items: center; gap: var(--space-2); }
     .ed-selhead canvas { width: 44px; height: 28px; border-radius: var(--radius-s); flex-shrink: 0; }
     #edProps { overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); flex: 1; min-height: 0; }
+    /* SCROLLEN, NICHT SCHRUMPFEN (v3.9.0): In einer Flex-Spalte, deren Inhalt
+       höher ist als der Kasten, schrumpfen die Kinder – und ein Kind mit
+       eigenem `min-height` (`.menu-meta`: 1.2em) fällt auf EINE Zeile
+       zusammen, während sein Text sichtbar darüber hinausläuft. Der
+       überlaufende Text nimmt dann die Klicks des Knopfes darunter an
+       (gemessen: elementFromPoint traf den Hinweistext statt „⌫ Element
+       löschen"). Deshalb schrumpft hier kein Kind; der Kasten scrollt. */
+    #edProps > * { flex-shrink: 0; }
     @media (max-width: 899px) {
       /* Phone: das SPIELFELD dominiert. Oben nur eine kompakte Leiste
          (Werkzeug-Icons + Element-Button); die Element-Auswahl ist ein

@@ -91,6 +91,7 @@ const KNOWN_RUNS = [
   "37",
   "38",
   "39",
+  "40",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -1019,17 +1020,20 @@ if (want("9")) {
     const ballB = () => pageB.evaluate(() => window.__tiltrBall);
     await holdUntil(pageB, "ArrowRight", async () => (await ballB())?.x > 500);
     await holdUntil(pageB, "ArrowDown", async () => (await ballB())?.y > 400); // die Tür stoppt ihn in [5,4]
+    // Gehalten wird JE PLATTE (M76: „Ebene:Spalte,Zeile"), nicht je Tür –
+    // über die Tür-ID hätte eine Platte ihre Geschwister mitgehalten.
+    const plateB = "0:4,4";
     await holdUntil(pageB, "ArrowLeft", async () =>
-      (await pageB.evaluate(() => window.__tiltrMp?.localHolds ?? [])).includes("g1"),
+      (await pageB.evaluate(() => window.__tiltrMp?.localHolds ?? [])).includes(plateB),
     );
     const holdsB = await pageB.evaluate(() => window.__tiltrMp?.localHolds ?? []);
     const remoteHoldsA = await until(async () => {
       const h = await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []);
-      return h.includes("g1") ? h : null;
+      return h.includes(plateB) ? h : null;
     });
     check(
       `B hält die Platte, A's Tür ist offen (${JSON.stringify(holdsB)})`,
-      holdsB.includes("g1") && remoteHoldsA.includes("g1"),
+      holdsB.includes(plateB) && remoteHoldsA.includes(plateB),
     );
 
     const litBefore = await pageA.evaluate(() => window.__tiltrMp?.goalLit);
@@ -1094,12 +1098,13 @@ if (want("9")) {
 
     // A rollt zurück ins Ziel und hält dort wieder die innere Platte – genau das
     // war mit eingefrorenem Ball unmöglich (Coop-Deadlock für den Nachzügler).
+    const plateA = "0:5,5"; // die innere Platte im Ziel von A
     await holdUntil(pageA, "ArrowDown", async () =>
-      (await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? [])).includes("g1"), 5000);
+      (await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? [])).includes(plateA), 5000);
     const holdsAafter = await pageA.evaluate(() => window.__tiltrMp?.localHolds ?? []);
     check(
       `A verlässt die Platte und hält sie wieder (weg=${JSON.stringify(holdsAaway)}, zurück=${JSON.stringify(holdsAafter)})`,
-      holdsAaway.length === 0 && holdsAafter.includes("g1"),
+      holdsAaway.length === 0 && holdsAafter.includes(plateA),
     );
 
     // B verlässt die Platte – die Tür bleibt offen, weil A im Ziel die innere hält.
@@ -6211,9 +6216,12 @@ if (want("33")) {
     const remoteHolds =
       (await until(async () => {
         const h = await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []);
-        return h.includes("g") ? h : null;
+        return h.includes("0:0,2") ? h : null; // je PLATTE (M76), nicht je Tür
       }, { timeout: 4000 })) ?? (await pageA.evaluate(() => window.__tiltrMp?.remoteHolds ?? []));
-    check(`Start 2 auf der Platte hält die Tür des Hosts (remoteHolds=${JSON.stringify(remoteHolds)})`, remoteHolds.includes("g"));
+    check(
+      `Start 2 auf der Platte hält die Tür des Hosts (remoteHolds=${JSON.stringify(remoteHolds)})`,
+      remoteHolds.includes("0:0,2"),
+    );
 
     // Jeder rollt in SEIN Ziel: Host durch die offene Tür nach rechts, Gast unten.
     const finA = await holdUntil(pageA, "ArrowRight", () => pageA.evaluate(() => window.__tiltrMp?.localFinished === true), 8000);
@@ -6513,7 +6521,10 @@ if (want("35")) {
       (await page.textContent("#swapBtn")).trim() === "👥1" && t0?.buddySolid === true,
     );
     // Die Platte hält, wer WIRKLICH darauf steht: der ruhende Spieler 2.
-    check(`Platte „g" gilt als gehalten – vom ruhenden Spieler 2 (${JSON.stringify(t0?.held)})`, t0?.held.includes("g"));
+    check(
+      `Platte (0,2) gilt als gehalten – vom ruhenden Spieler 2 (${JSON.stringify(t0?.held)})`,
+      t0?.held.includes("0:0,2"),
+    );
 
     // Also ist die Tür von Spieler 1 offen: durch und den Schlüssel holen.
     const gotKey = await holdUntil(
@@ -6569,7 +6580,7 @@ if (want("35")) {
     const onPlate = await holdUntil(
       page,
       "ArrowLeft",
-      async () => (await page.evaluate(() => window.__tiltrMpTest?.held.includes("g"))) === true,
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.held.includes("0:0,2"))) === true,
       8000,
     );
     const openNow = await page.evaluate(() => window.__tiltrWorld?.doorsOpen);
@@ -7038,6 +7049,123 @@ if (want("39")) {
   } catch (e) {
     check(
       `Lauf 39 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 40: Platten und Türregel im Testmodus (M76). Zwei Fragen aus dem
+// Levelbau: „Bleibt eine Tür offen, wenn die Schalter sie geöffnet haben?"
+// (nein – Platte und Zeitschalter halten sie nur, solange sie erfüllt sind;
+// seit M76 je Tür einstellbar) und der Fehler dahinter: Der Halte-Zustand lief
+// über die TÜR-ID, also hielt eine Platte ihre Geschwister mit – ein 'all' ging
+// mit EINER Kugel auf. Fixture: Tür „g" braucht ZWEI Platten (eine bei jedem
+// Spieler) und trägt „bleibt offen"; Tür „h" hat eine Platte und schließt
+// wieder. Geprüft: eine Platte allein öffnet „g" NICHT, mit beiden geht sie auf
+// und bleibt offen (Platte los, Tür offen), „h" fällt hinter dem Gast zu. ---
+if (want("40")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveRow = (y) => [0, 1, 2].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m76",
+      name: "Zwei Platten",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 7, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          elements: [
+            { type: "door", id: "g", edge: [[2, 0], "e"], require: "all", latch: true },
+            { type: "plate", cell: [2, 0], opens: "g" },
+            { type: "plate", cell: [0, 2], opens: "g" },
+            { type: "door", id: "h", edge: [[2, 2], "e"] },
+            { type: "plate", cell: [1, 2], opens: "h" },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 2],
+          goal2: [3, 2],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    await page.click("#edTest");
+    await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+
+    // Der Gast steht auf SEINER Platte – das ist EINE von zwei Bedingungen.
+    const one = await until(async () => {
+      const x = await page.evaluate(() => ({
+        held: window.__tiltrWorld?.platesHeld,
+        open: window.__tiltrWorld?.doorsOpen,
+      }));
+      return x.held?.length === 1 ? x : null;
+    }, { timeout: 6000 });
+    check(
+      `Eine Platte gehalten, „g" braucht zwei – Tür bleibt zu (${JSON.stringify(one)})`,
+      one !== null && one.held.includes("0:0,2") && !one.held.includes("0:2,0") && !one.open.includes("g"),
+    );
+
+    // Spieler 1 rollt auf SEINE Platte: jetzt sind beide gehalten, „g" geht
+    // auf – und bleibt offen (latch), auch wenn er weiterrollt.
+    const inGoal = await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.done[0])) === true,
+      15000,
+    );
+    const latched = await page.evaluate(() => ({
+      held: window.__tiltrWorld?.platesHeld,
+      open: window.__tiltrWorld?.doorsOpen,
+      latch: window.__tiltrWorld?.doorsLatched,
+    }));
+    check(
+      `Beide Platten öffnen „g", und sie BLEIBT offen (${JSON.stringify(latched)})`,
+      inGoal === true && latched.open.includes("g") && latched.latch.includes("g") && !latched.held.includes("0:2,0"),
+    );
+
+    // Seite 2: Der Gast verlässt seine Platte – „g" bleibt trotzdem offen.
+    // Auf dem Weg überfährt er die Platte von „h": Die Tür geht auf und
+    // hinter ihm wieder ZU (kein latch), er bleibt davor liegen.
+    await page.click("#swapBtn");
+    await until(async () => (await page.evaluate(() => window.__tiltrMpTest?.player)) === 2, { timeout: 4000 });
+    await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.balls[1].x)) > 200,
+      15000,
+    );
+    const shut = await page.evaluate(() => ({
+      held: window.__tiltrWorld?.platesHeld,
+      open: window.__tiltrWorld?.doorsOpen,
+      x: Math.round(window.__tiltrMpTest?.balls[1].x),
+    }));
+    check(
+      `„h" schließt hinter dem Gast wieder, „g" bleibt offen (${JSON.stringify(shut)})`,
+      shut.held.length === 0 && shut.open.includes("g") && !shut.open.includes("h") && shut.x < 300,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 40 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

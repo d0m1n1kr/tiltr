@@ -24,8 +24,10 @@ export interface Wall {
    *  Kollision und Beweis: normale Wand. */
   mirror?: boolean;
   /** Verschlossene Tür. Schlüssel entfernen sie dauerhaft; Coop-Türen
-   *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird. */
-  door?: { id: string; open?: boolean; require?: 'any' | 'all' };
+   *  stehen offen, solange eine verknüpfte Druckplatte gehalten wird –
+   *  ES SEI DENN `latch` (M76): dann bleibt sie offen, sobald die Bedingung
+   *  EINMAL erfüllt war (`latched` ist der Laufzeit-Zustand dazu). */
+  door?: { id: string; open?: boolean; require?: 'any' | 'all'; latch?: boolean; latched?: boolean };
   /** Schiebewand: öffnet/schließt zyklisch (openness 1 = Lücke, passierbar).
    *  lastState/nextTick sind Laufzeit-Zustand der Klang-Steuerung. */
   slide?: {
@@ -167,6 +169,12 @@ export interface Plate {
   x: number;
   y: number;
   r: number;
+  /** Diese EINE Platte – „Ebene:Spalte,Zeile" (M76). Der Halte-Zustand wird
+   *  je PLATTE geführt, nicht je Tür: Zwei Platten derselben Tür sind zwei
+   *  Bedingungen ('all'), und im Multiplayer muss die Nachricht sagen, WELCHE
+   *  gehalten wird. Vorher hieß der Schlüssel `opens` – dann öffnete eine
+   *  Platte alle ihre Geschwister mit. */
+  id: string;
   /** Tür-ID, die diese Druckplatte (solange gehalten) öffnet */
   opens: string;
   /** wird gerade von einem Spieler gehalten (lokal ODER remote) */

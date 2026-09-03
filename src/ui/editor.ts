@@ -1992,6 +1992,27 @@ export function setupEditor(opts: {
         });
         req.id = 'edDoorRequire';
         propsEl.append(field(t('ed.f.require'), req));
+        // Nach dem Öffnen (M76): Platte/Schalter halten die Tür nur, solange
+        // sie erfüllt sind – „bleibt offen" macht das Aufgehen endgültig.
+        // Schlüssel öffnen ohnehin dauerhaft; das steht als Hinweis dabei,
+        // damit niemand die Einstellung für einen Schlüssel sucht.
+        const latch = selectInput(el.latch === true ? 'stay' : 'close', [
+          ['close', t('ed.latch.close')],
+          ['stay', t('ed.latch.stay')],
+        ], (v) => {
+          if (v === 'stay') el.latch = true;
+          else delete el.latch;
+          rebuild();
+          paint();
+        });
+        latch.id = 'edDoorLatch';
+        propsEl.append(field(t('ed.f.latch'), latch));
+        if (el.latch === true) {
+          const latchHint = document.createElement('p');
+          latchHint.className = 'menu-meta';
+          latchHint.textContent = t('ed.latchHint');
+          propsEl.append(latchHint);
+        }
         // Tür nur für einen Spieler (M72). Für den anderen ist sie eine WAND –
         // das steht als Hinweis dabei, sonst sucht er später den Öffner.
         if (twoPlayers()) {

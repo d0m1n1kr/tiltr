@@ -10,7 +10,16 @@ registerElement<PlateDef>({
 
   build(def, ctx) {
     const p = cellCenter(def.cell, ctx.cell);
-    ctx.world.plates.push({ x: p.x, y: p.y, r: def.r, opens: def.opens, held: false });
+    // Die Platte trägt ihre eigene Kennung (Ebene + Zelle): Der Halte-Zustand
+    // wird je PLATTE geführt und im Multiplayer je Platte verschickt (M76).
+    ctx.world.plates.push({
+      x: p.x,
+      y: p.y,
+      r: def.r,
+      id: `${ctx.floorIndex}:${def.cell[0]},${def.cell[1]}`,
+      opens: def.opens,
+      held: false,
+    });
   },
 
   gallery: {

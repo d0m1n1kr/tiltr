@@ -612,6 +612,57 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M76 „Eine Platte ist eine Platte" ✓ (v3.9.0) – Türregel und Halter
+
+Zwei Fragen aus dem Levelbau, und hinter der zweiten ein echter Fehler.
+
+**„Bleibt die Tür offen, wenn die Schalter sie geöffnet haben?"** Nein: Ein
+SCHLÜSSEL öffnet dauerhaft (die Tür wird zu Schutt), eine PLATTE hält nur,
+solange jemand darauf steht, ein ZEITSCHALTER nur, solange sein Timer läuft.
+Das ist die Halte-Choreografie zu zweit – aber es soll eine Entscheidung des
+Bauenden sein. Neu: `door.latch` („Nach dem Öffnen: bleibt offen") – sobald die
+Bedingung EINMAL erfüllt war, bleibt die Tür offen. Die Regel wohnt in
+`doorState(openers, require, latched)`, den Zustand führt `Wall.door.latched`;
+im MP kommen beide Seiten aus denselben synchronisierten Öffnern zum selben
+Schluss. Der `timer`-Check überspringt latchende Türen: Wo die Tür offen
+BLEIBT, gibt es keinen Sprint, für den die Zeit reichen müsste.
+
+**„Im Testmodus waren alle anderen Platten automatisch gedrückt."** Genau so
+war es, und nicht nur dort: Der Halte-Zustand lief über die TÜR-ID
+(`plate.opens`) – im Testmodus wie in der Netz-Nachricht `plate`. Zwei Platten
+derselben Tür waren damit EIN Schalter: Wer auf einer stand, hielt die andere
+mit, und ein `require: 'all'` ging mit einer Kugel auf. Jetzt trägt jede Platte
+ihre eigene Kennung (`Plate.id` = „Ebene:Spalte,Zeile", gesetzt im Element aus
+`ctx.floorIndex`), der Halte-Zustand wird je PLATTE geführt und je Platte
+verschickt. Protokoll-Hinweis: Beide Seiten müssen dieselbe Version fahren –
+die Nachricht trägt jetzt die Platten- statt der Tür-Kennung.
+
+**Der Partner ist EIN Körper.** Aus dem ersten Fix folgt eine Modell-Lücke, die
+vorher hinter dem Bug lag: Eine `all`-Tür mit zwei Platten braucht zwei HALTER
+– der Partner ist einer, jeder Rollstein einer. `holdable()` in validate.ts
+zählt das wie bei Hall (Platten, die nur Füße halten können, gegen den einen
+Partner; Platten, die nur ein Stein erreicht, gegen die Steinzahl; nie mehr
+Platten als Halter) und speist beides: `pairReachable` (die Tür geht im Modell
+nicht auf) und den `openers`-Bericht, der es beim Namen nennt
+(„2 Platten gleichzeitig, 1 Halter"). Die Prüfung steht VOR dem Ausstieg für
+reine Platten-Türen – sonst bliebe der häufigste Fall stumm. Ohne sie wäre ein
+Level mit zwei Platten und keinem Stein grün und unspielbar; das gemeldete
+Level (Stein + Gast) bleibt grün, denn zwei Halter für zwei Platten genügen.
+
+E2E Lauf 40 fährt die ganze Kette im Testmodus: eine Platte allein öffnet die
+`all`-Tür NICHT, mit beiden geht sie auf und BLEIBT offen (Platte los, Tür
+offen), und die Tür ohne Latch fällt hinter dem Gast wieder zu.
+
+Nebenbefund aus dem neuen Feld: Lauf 14 fiel plötzlich mit einem Klick-Timeout
+aus, und die Ursache lag nicht am Feld, sondern im Panel. `#edProps` ist eine
+Flex-Spalte; ist ihr Inhalt höher als der Kasten, SCHRUMPFEN die Kinder – und
+ein Kind mit eigenem `min-height` (`.menu-meta`: 1.2em) fällt auf eine Zeile
+zusammen, während sein Text sichtbar darüber hinausläuft. Der überlaufende
+Text nahm dann die Klicks des Knopfes darunter an (`elementFromPoint` traf den
+Hinweistext statt „⌫ Element löschen"). Jetzt schrumpft dort kein Kind mehr
+(`#edProps > * { flex-shrink: 0 }`), der Kasten scrollt – und der Hinweis
+steht wie beim Nachbarfeld nur da, wenn die Einstellung ihn braucht.
+
 ## v3.8.1 – Element-Sheet verdeckte seinen eigenen Öffner
 
 Meldung mit Bild: „Die Element-Auswahl ist zu hoch und überlappt mit dem

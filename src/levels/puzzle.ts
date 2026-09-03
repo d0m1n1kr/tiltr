@@ -166,6 +166,9 @@ export function planDoorPuzzle(
     id,
     edge: [[a.x, a.y], dir],
     require: openers.length > 1 ? 'all' : 'any',
+    // Generierte Rätsel-Türen schließen wieder: Der Beweis rechnet mit dem
+    // strengeren Fall, und „bleibt offen" ist eine Entscheidung des Bauenden.
+    latch: false,
   };
   return { elements: [door, ...openers], doorIndex: i, protectedCells, openerCells };
 }

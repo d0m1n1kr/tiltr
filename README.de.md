@@ -134,7 +134,7 @@ Pfeiltasten/WASD rollen, Leertaste pingt.
 | Checkpoint | Respawn-Punkt plus ein Echo-Ping; Transporter-Landeplätze sind ebenfalls Respawn |
 | Echo-Ping | eine Wellenfront deckt die Umgebung auf; Reflexionen kommen verzögert und räumlich platziert zurück; begrenzt je Level, Echo-Kristalle füllen auf |
 | Wächter / Schläfer | patrouilliert eine Bahn aus beliebig vielen Wegpunkten mit pulsierendem Summen und hält dort an, wo du eine Pause setzt; Berührung wirft zurück. Ein Schläfer schnarcht auf seinem Posten, bis dein Ping ihn weckt |
-| Schlüssel & Tür | der Schlüssel klimpert in Hörweite; eine Stimmgabel summt ungepannt, man findet sie über die Tonhöhe. Türen brauchen einen oder alle Öffner und können auf einen Spieler beschränkt sein – für den anderen sind sie einfach eine Wand |
+| Schlüssel & Tür | der Schlüssel klimpert in Hörweite; eine Stimmgabel summt ungepannt, man findet sie über die Tonhöhe. Türen brauchen einen oder alle Öffner, können auf einen Spieler beschränkt sein – für den anderen sind sie einfach eine Wand – und schließen nach der Platte wieder oder bleiben offen |
 | Druckplatte | gehalten öffnet sie die verknüpfte Tür – durch dich, den Partner oder einen Rollstein |
 | Zeitschloss-Schalter | öffnet seine Tür für einige Sekunden, das Ticken wird hektisch |
 | Schiebewand | gleitet im Takt auf und zu, Warnticken vor dem Schließen |

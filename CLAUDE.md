@@ -138,7 +138,22 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Türregel wohnt in `core/doors.ts` (`doorState`), im Spiel ruft NUR
   `updateDoors(now)` in app.ts sie – Schlüssel, Zeitschloss und MP-Platten
   schalten keine Tür mehr selbst. `permanent` (Schutt) nur bei reinen
-  Schlüssel-Bedingungen. `coopReachable` und der `openers`-Check rechnen
+  Schlüssel-Bedingungen.
+  WIE LANGE OFFEN (M76): Schlüssel dauerhaft, PLATTE nur solange gehalten,
+  ZEITSCHALTER nur solange der Timer läuft – und je Tür einstellbar über
+  `door.latch` („bleibt offen"): War die Bedingung EINMAL erfüllt, bleibt die
+  Tür offen (`doorState(openers, require, latched)`, Zustand in
+  `Wall.door.latched`; der `timer`-Check überspringt latchende Türen, denn
+  dann gibt es keinen Sprint). EINE PLATTE IST EINE PLATTE (M76): Der
+  Halte-Zustand hängt an `Plate.id` („Ebene:Spalte,Zeile"), NICHT an
+  `plate.opens` – über die Tür-ID hielt eine Platte ihre Geschwister mit, und
+  ein 'all' ging mit einer Kugel auf (im Testmodus wie in der Netz-Nachricht
+  `plate`, die jetzt die Platten-Kennung trägt: beide Seiten brauchen dieselbe
+  Version). DER PARTNER IST EIN KÖRPER: Eine 'all'-Tür mit zwei Platten
+  braucht zwei HALTER (Partner = einer, jeder Rollstein einer) – `holdable()`
+  in validate.ts zählt das für `pairReachable` UND den `openers`-Bericht
+  („2 Platten gleichzeitig, 1 Halter"); die Prüfung steht VOR dem Ausstieg für
+  reine Platten-Türen, sonst bliebe der häufigste Fall stumm. `coopReachable` und der `openers`-Check rechnen
   'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
   HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
   DÄMMERUNG (M43): `floor.dusk` = hell bis zur ersten Wandberührung, dann

@@ -324,6 +324,12 @@ einmal rot gesehen, bevor sie zählt.
 - Kein Overlay, das seinen eigenen Öffner verdeckt: Ein Sheet, das über die
   Leiste wächst, aus der es kommt, ist nur noch durch eine Auswahl zu
   verlassen. Overlays über Bedienleisten sind MODAL (Schirm + Schließen).
+- Kein schrumpfendes Kind in einer scrollenden Flex-Spalte: Ist der Inhalt
+  höher als der Kasten, drückt Flexbox die Kinder zusammen – und ein Kind mit
+  eigenem `min-height` (`.menu-meta`) fällt auf eine Zeile zusammen, während
+  sein Text darüber hinausläuft UND die Klicks des Knopfes darunter annimmt
+  (gemessen im Editor-Eigenschaften-Panel, v3.9.0). Wer eine Spalte scrollen
+  lässt, setzt `flex-shrink: 0` auf die Kinder.
 - `<button>` als Grid-Kind: Es meldet seine Inhaltshöhe NICHT an die Zeile.
   Zweizeilige Beschriftungen ragen dann in die Kachel darunter. Heilmittel
   sind BEIDE zusammen – `min-height: max-content` an der Kachel UND

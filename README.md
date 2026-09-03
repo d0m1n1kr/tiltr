@@ -131,7 +131,7 @@ expose it). On desktop: arrow keys/WASD roll, Space pings.
 | Checkpoint | respawn point plus one echo ping; transporter landings respawn too |
 | Echo ping | a wavefront reveals the surroundings; reflections return delayed and placed in space; limited per level, refilled by echo crystals |
 | Guard / sleeper | patrols a route of any length with a pulsing hum, pausing at waypoints you set; touch sends you back. A sleeper snores on its post until your ping wakes it |
-| Key & door | the key jingles within earshot; a tuning-fork key hums an ungpanned tone you locate by pitch. Doors take one or all of their openers, and can be restricted to one player — for the other one it is simply a wall |
+| Key & door | the key jingles within earshot; a tuning-fork key hums an ungpanned tone you locate by pitch. Doors take one or all of their openers, can be restricted to one player — for the other one it is simply a wall — and either close again once the plate is released or stay open for good |
 | Pressure plate | held, it opens the linked door — by you, your partner or a boulder |
 | Time-lock switch | opens its door for a few seconds with a tick-tock that turns frantic |
 | Sliding wall | grinds open and shut to a beat, warning tick before it closes |

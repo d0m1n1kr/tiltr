@@ -5,7 +5,11 @@
 // alle Öffner müssen GLEICHZEITIG erfüllt sein – alle Schlüssel eingesammelt,
 // alle Schalter laufen, alle Platten gehalten. Ein Schlüssel ist dauerhaft
 // erfüllt; besteht die erfüllte Bedingung nur aus Schlüsseln, ist die Tür
-// DAUERHAFT offen (sie wird zu Schutt), sonst gleitet sie auf und wieder zu.
+// DAUERHAFT offen (sie wird zu Schutt), sonst gleitet sie auf und wieder zu –
+// es sei denn, die Tür trägt „bleibt offen" (`latch`/`latched`, M76).
+// EINE PLATTE IST EINE BEDINGUNG: `collectOpeners` trägt jede Platte einzeln
+// ein, auch wenn zwei dieselbe Tür öffnen. Der Halte-Zustand gehört deshalb
+// zur PLATTE (`Plate.id`), nicht zur Tür.
 // Rein und DOM-frei wie der Rest von core/.
 
 export type DoorRequire = 'any' | 'all';
@@ -23,7 +27,19 @@ export interface DoorState {
   permanent: boolean;
 }
 
-export function doorState(openers: readonly OpenerState[], require: DoorRequire = 'any'): DoorState {
+/**
+ * `latched` (M76): Diese Tür ist schon einmal aufgegangen UND trägt „bleibt
+ * offen". Dann bleibt sie offen, egal was die Öffner jetzt sagen – die Platte
+ * darf los, der Schalter darf ablaufen. Wer den Zustand führt, entscheidet
+ * der Aufrufer (im Spiel `Wall.door.latched`); die REGEL steht hier, damit es
+ * bei einer Wahrheit bleibt.
+ */
+export function doorState(
+  openers: readonly OpenerState[],
+  require: DoorRequire = 'any',
+  latched = false,
+): DoorState {
+  if (latched) return { open: true, permanent: false };
   if (!openers.length) return { open: false, permanent: false };
   if (require === 'all') {
     const open = openers.every((o) => o.satisfied);

@@ -75,6 +75,30 @@ describe('Coop: Platten von Partner und Rollstein (M74)', () => {
     expect(boulderProof(reported).stonePlates.size).toBe(0);
   });
 
+  it('zwei Platten an einer all-Tür brauchen zwei Halter (M76)', () => {
+    // Der Partner ist EIN Körper: Zwei Platten, die gleichzeitig gehalten
+    // werden müssen, kann er nicht besetzen – ohne Stein ist das Level
+    // unspielbar, und der Bericht sagt es beim Namen.
+    const twoPlates = level([
+      { type: 'door', id: 'tor1', edge: [[1, 0], 'e'], require: 'all' },
+      { type: 'plate', cell: [1, 2], opens: 'tor1' },
+      { type: 'plate', cell: [3, 2], opens: 'tor1' },
+    ]);
+    const rep = validateLevel(twoPlates);
+    expect(rep.find((c) => c.key === 'coop')?.ok).toBe(false);
+    const openers = rep.find((c) => c.key === 'openers');
+    expect(openers?.ok).toBe(false);
+    expect(openers?.detail).toContain('2 Platten gleichzeitig, 1 Halter');
+    // Mit einem Rollstein sind es zwei Halter – dann geht die Tür auf.
+    const withStone = level([
+      { type: 'door', id: 'tor1', edge: [[1, 0], 'e'], require: 'all' },
+      { type: 'plate', cell: [1, 2], opens: 'tor1' },
+      { type: 'plate', cell: [3, 2], opens: 'tor1' },
+      { type: 'boulder', cell: [2, 2] },
+    ]);
+    expect(validateLevel(withStone).find((c) => c.key === 'coop')?.ok).toBe(true);
+  });
+
   it('eine Platte, auf der man selbst stehen müsste, öffnet die Tür NICHT', () => {
     // Einziger Öffner der Tür ist die Platte im Gang von Spieler 1: Er müsste
     // darauf stehen bleiben und gleichzeitig durch die Tür rollen.

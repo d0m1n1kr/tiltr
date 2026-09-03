@@ -130,7 +130,7 @@ describe('Coop-Physik', () => {
 
   it('platesUnderBall erkennt gehaltene Platten', () => {
     const world = new World([], new Ball(50, 50, 22), { x: 500, y: 500, r: 30 });
-    world.plates.push({ x: 200, y: 50, r: 30, opens: 'g', held: false });
+    world.plates.push({ x: 200, y: 50, r: 30, id: '0:2,0', opens: 'g', held: false });
     expect(world.platesUnderBall()).toHaveLength(0);
     world.ball.x = 190;
     expect(world.platesUnderBall()).toHaveLength(1);

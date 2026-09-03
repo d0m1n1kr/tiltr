@@ -99,6 +99,11 @@ export const doorDef = z.object({
   /** Mehrere Öffner (Schlüssel, Zeitschloss, Platte): 'any' = einer genügt,
    *  'all' = alle müssen gleichzeitig erfüllt sein (core/doors.ts). */
   require: z.enum(['any', 'all']).default('any'),
+  /** BLEIBT OFFEN (M76): Sobald die Bedingung einmal erfüllt war, bleibt die
+   *  Tür offen – die Platte darf wieder los, der Schalter darf ablaufen.
+   *  Ohne das schließt sie wieder (Halte-Choreografie zu zweit). Schlüssel
+   *  öffnen ohnehin dauerhaft (die Tür wird zu Schutt). */
+  latch: z.boolean().default(false),
   /** Tür nur für EINEN Spieler (M72, wie transporter.player): Für den anderen
    *  ist sie eine WAND, die nie aufgeht – im Spiel wie im Beweis. Ohne Angabe
    *  gilt sie für beide. Nur in Zwei-Spieler-Leveln sinnvoll. */

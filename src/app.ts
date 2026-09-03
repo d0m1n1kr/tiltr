@@ -2269,8 +2269,11 @@ function mpFrame(now: number): void {
     });
   }
 
-  // Lokale Platten unter dem Ball (auch ein Ball im Ziel hält seine Platte!)
-  const holds = new Set(world.platesUnderBall().map((p) => p.opens));
+  // Lokale Platten unter dem Ball (auch ein Ball im Ziel hält seine Platte!).
+  // Geführt wird je PLATTE (`Plate.id`), nicht je Tür: Zwei Platten derselben
+  // Tür sind zwei Bedingungen – über die Tür-ID hätte eine die andere
+  // mitgehalten und ein 'all' wäre mit einer Kugel aufgegangen (M76).
+  const holds = new Set(world.platesUnderBall().map((p) => p.id));
   for (const id of holds) {
     if (!mp.localHolds.has(id)) {
       mp.transport.send('plate', { id, held: true });
@@ -2290,7 +2293,7 @@ function mpFrame(now: number): void {
   // die Türen entscheidet updateDoors über alle Ebenen (require any/all).
   for (const floor of loaded.floors) {
     for (const pl of floor.world.plates) {
-      pl.held = holds.has(pl.opens) || mp.remoteHolds.has(pl.opens);
+      pl.held = holds.has(pl.id) || mp.remoteHolds.has(pl.id);
     }
   }
   updateDoors(now);
@@ -2326,7 +2329,12 @@ function applyDoors(sources: readonly World[], targets: readonly World[], now: n
     for (let i = fw.walls.length - 1; i >= 0; i--) {
       const w = fw.walls[i]!;
       if (!w.door) continue;
-      const state = doorState(openers.get(w.door.id) ?? [], w.door.require ?? 'any');
+      const state = doorState(openers.get(w.door.id) ?? [], w.door.require ?? 'any', w.door.latched === true);
+      // „Bleibt offen" (M76): Der Riegel fällt in dem Moment, in dem die Tür
+      // zum ersten Mal offen ist – danach fragt doorState die Öffner nicht
+      // mehr. Jede Welt merkt sich das selbst; im MP kommen beide Seiten aus
+      // denselben (synchronisierten) Öffnern zum selben Schluss.
+      if (state.open && w.door.latch) w.door.latched = true;
       if (state.open) openNow.add(w.door.id);
       const dx = w.x + w.w / 2 - world.ball.x;
       const dy = w.y + w.h / 2 - world.ball.y;
@@ -2397,12 +2405,12 @@ function mpTestFrame(now: number, dt: number): void {
   const otherWorld = other.loaded.floors[other.floor]!.world;
   otherWorld.advanceGuards(dt);
   otherWorld.advanceHoles(dt);
-  const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.opens));
+  const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.id));
   for (const id of held) if (!mpTest.held.has(id)) audio.plate(true);
   for (const id of mpTest.held) if (!held.has(id)) audio.plate(false);
   mpTest.held = held;
   for (const side of mpTest.sides)
-    for (const fl of side.loaded.floors) for (const pl of fl.world.plates) pl.held = held.has(pl.opens);
+    for (const fl of side.loaded.floors) for (const pl of fl.world.plates) pl.held = held.has(pl.id);
   updateDoors(now);
 }
 
@@ -3231,6 +3239,10 @@ function frame(now: number): void {
     // eine Platte hält nur, solange wirklich jemand darauf steht).
     doors: world.walls.filter((w) => w.door !== undefined).length,
     doorsOpen: world.walls.filter((w) => w.door?.open === true).map((w) => w.door!.id),
+    // Welche PLATTEN gehalten werden (M76): je Platte, nicht je Tür – zwei
+    // Platten derselben Tür sind zwei Bedingungen.
+    platesHeld: world.plates.filter((p) => p.held || p.boulder === true).map((p) => p.id),
+    doorsLatched: world.walls.filter((w) => w.door?.latched === true).map((w) => w.door!.id),
     transporters: world.transporters.length,
     torches: world.torches.length,
     brittleSided: world.walls.filter((w) => w.hpSide !== undefined).length,
