@@ -75,3 +75,50 @@ describe('Lockglocke', () => {
     expect(bell.ringLeft).toBe(0);
   });
 });
+
+// M83 – ZU ZWEIT LÄUTET SIE FÜR BEIDE: Im Multiplayer hat jeder Spieler eine
+// eigene Welt mit eigenen Horchern. Ohne Übertragung lockt die Glocke nur die
+// eigenen, und „ich läute, du schleichst vorbei" gibt es nicht. Die Nachricht
+// `bell` schlägt sie in der anderen Welt über `ringBellAt` an.
+describe('Glocke über das Netz (M83)', () => {
+  it('ringBellAt schlägt an, ohne Kanten-Trigger und ohne consumeRings', () => {
+    const { world } = loadLevel(level());
+    const bell = world.bells[0]!;
+    expect(bell.ringLeft).toBe(0);
+    expect(world.ringBellAt(0)).toBe(bell);
+    expect(bell.ringLeft).toBe(bell.ringS);
+    // Der Klang kommt aus der Nachricht, nicht aus der eigenen Welt: Die
+    // Kugel steht hier nicht auf der Glocke.
+    expect(world.consumeRings()).toEqual([]);
+    expect(bell.inside).toBe(false);
+    expect(world.ringBellAt(7)).toBeNull();
+  });
+  it('so angeschlagen lockt sie die Horcher genauso', () => {
+    const { world } = loadLevel(level());
+    const l = world.listeners[0]!;
+    world.ball.x = 450;
+    world.ball.y = 50;
+    world.ball.vx = 200;
+    world.ringBellAt(0);
+    const x0 = l.x;
+    for (let i = 0; i < 12; i++) world.step(1 / 60, { x: 0, y: 0 });
+    expect(l.x).toBeLessThan(x0 - 10); // zur Glocke bei x=150, nicht zum Ball
+  });
+  it('advanceBells zählt den Nachklang ohne Ballschritt herunter', () => {
+    const { world } = loadLevel(level());
+    const bell = world.bells[0]!;
+    world.ringBellAt(0);
+    world.advanceBells(1);
+    expect(bell.ringLeft).toBeCloseTo(bell.ringS - 1);
+    world.advanceBells(5);
+    expect(bell.ringLeft).toBe(0);
+  });
+  it('advanceListeners bewegt die Horcher ohne Ballschritt zur Glocke', () => {
+    const { world } = loadLevel(level());
+    const l = world.listeners[0]!;
+    const x0 = l.x;
+    world.ringBellAt(0);
+    for (let i = 0; i < 12; i++) world.advanceListeners(1 / 60);
+    expect(l.x).toBeLessThan(x0 - 10);
+  });
+});

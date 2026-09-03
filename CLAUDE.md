@@ -313,7 +313,16 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   im Aufleuchten über `levelFeatures` (sleeper, fork, wallMirror).
 - ELEMENTE M46 (Phase 3): LOCKGLOCKE `bell` (Kanten-Trigger `updateBells`,
   `consumeRings()` für den Klang; klingende Glocke = Ziel ALLER Horcher in
-  `updateListeners`); HALLRAUM `reverbZone` (Feedback-Delay-Send am Master,
+  `updateListeners`). ZU ZWEIT LÄUTET SIE FÜR BEIDE (M83): Jeder Spieler hat
+  eine eigene Welt und eigene Horcher – die Nachricht `bell` ({f, i} wie
+  'key'/'switch') schlägt sie beim Partner über `World.ringBellAt(i)` an (kein
+  Kanten-Trigger, kein `rungNow`; Klang + Meldung kommen aus der Nachricht),
+  in COOP UND RACE, denn Ablenkung ist keine Progression. Dazu zwei Helfer:
+  `advanceBells(dt)` zählt den Nachklang in Welten herunter, die die Schleife
+  NICHT schrittet (`decayIdleBells` – sonst lockt beim Betreten der Ebene ein
+  Läuten von vor einer Minute), und `advanceListeners(dt)` lässt die Horcher
+  der ruhenden Seite im MP-Testmodus mitlaufen (wie `advanceGuards`), sonst
+  sieht man dort die Wirkung nicht. E2E Lauf 41. HALLRAUM `reverbZone` (Feedback-Delay-Send am Master,
   `setReverb`, `World.inReverb()`); WANDERLOCH `roamingHole` (liegt in
   `world.holes` mit `roam`, `advanceHoles` wie `advanceGuards` – auch in der
   Editor-Vorschau; Modell passierbar wie atmendes Loch, Patrouille im

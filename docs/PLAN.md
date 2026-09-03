@@ -612,6 +612,36 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M83 „Zu zweit läutet sie für beide" ✓ (v3.15.0)
+
+Wunsch aus dem Levelbau: „Das Läuten der Glocke soll im Multiplayer auch beim
+anderen Spieler wirken." Genau das fehlte, und zwar aus der Architektur heraus:
+Jeder Spieler hat eine EIGENE Welt (`loadLevel(def, { player })`), also auch
+eigene Horcher. Wer läutete, lockte nur seine – die Coop-Geste „ich läute, du
+schleichst vorbei" gab es nicht.
+
+Übertragen wird das wie Schlüssel und Zeitschalter (M59), mit einer neuen
+Nachricht `bell` ({f, i} = Ebene + Index, wie 'key'/'switch'):
+`World.ringBellAt(i)` schlägt die Glocke in der Welt des Empfängers an – ohne
+Kanten-Trigger und ohne `rungNow`, denn seine Kugel steht nicht darauf und den
+Klang bringt die Nachricht mit (`audio.bellRing` aus ihrer Richtung, plus die
+Meldung „🔔 Partner läutet die Glocke"). Sie wirkt in COOP UND RACE: Ablenkung
+ist keine Progression, sondern Teil der Welt – wie die Platten.
+
+Zwei Nebenbaustellen, die dazugehören:
+- `advanceBells(dt)` – die Spielschleife schrittet nur die Welt der AKTIVEN
+  Ebene. Ohne dieses Herunterzählen bliebe ein Läuten auf einer anderen Ebene
+  stehen und lockte beim Betreten die Horcher zu einem Klang von vor einer
+  Minute (`decayIdleBells` in app.ts).
+- `advanceListeners(dt)` – im MP-TESTMODUS läuft die ruhende Seite mit
+  (`advanceGuards`/`advanceHoles` gab es schon): Sonst sieht der Bauende nicht,
+  was sein Läuten beim Partner tut. Die Glocke wird dort direkt in der anderen
+  Welt angeschlagen, wie die Platten.
+
+E2E Lauf 41 „Glocke zu zweit": Glocke in Spieler 1s Reihe, Horcher in Spieler 2s
+Reihe – geprüft wird, dass sie in BEIDEN Welten klingt und der Horcher der
+ruhenden Seite zu ihr läuft (einmal rot gesehen: `ringing: [1,0]`).
+
 ## M82 „Der Partner ist mitgekommen" ✓ (v3.14.0)
 
 Am GETEILTEN Level geprüft (das ist neu seit M80 möglich – Diagnose-Link, dann

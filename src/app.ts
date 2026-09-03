@@ -2192,6 +2192,16 @@ function mpOnMessage(type: string, payload: unknown): void {
       }
       updateDoors(performance.now());
     }
+  } else if (type === 'bell') {
+    // Coop UND Race (M83): Die Glocke ist Ablenkung, keine Progression – sie
+    // wirkt in beiden Modi, wie die Platten. Gehört wird sie aus ihrer
+    // Richtung, aber nur, wenn ich auf derselben Ebene stehe.
+    const p = payload as { f: number; i: number };
+    const bl = loaded?.floors[p.f]?.world.ringBellAt(p.i);
+    if (bl) {
+      if (p.f === activeFloor && world) audio.bellRing(bl.x - world.ball.x, bl.y - world.ball.y);
+      flash(t('mp.partnerBell'));
+    }
   } else if (type === 'finish') {
     const p = payload as { elapsed: number };
     if (!mp.remote.finished) flash(t('mp.partnerFinished'));
@@ -2409,6 +2419,10 @@ function mpTestFrame(now: number, dt: number): void {
   const otherWorld = other.loaded.floors[other.floor]!.world;
   otherWorld.advanceGuards(dt);
   otherWorld.advanceHoles(dt);
+  // Die Glocke drüben klingt aus, und ihre Horcher laufen dorthin (M83) –
+  // sonst sieht man im Testmodus nicht, was das Läuten beim Partner tut.
+  otherWorld.advanceBells(dt);
+  otherWorld.advanceListeners(dt);
   const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.id));
   for (const id of held) if (!mpTest.held.has(id)) audio.plate(true);
   for (const id of mpTest.held) if (!held.has(id)) audio.plate(false);
@@ -2416,6 +2430,25 @@ function mpTestFrame(now: number, dt: number): void {
   for (const side of mpTest.sides)
     for (const fl of side.loaded.floors) for (const pl of fl.world.plates) pl.held = held.has(pl.id);
   updateDoors(now);
+}
+
+/**
+ * NACHKLANG LÄUFT ÜBERALL WEITER (M83): Die Spielschleife schrittet nur die
+ * Welt der AKTIVEN Ebene. Eine Glocke, die der Partner auf einer anderen Ebene
+ * angeschlagen hat, bliebe dort sonst stehen und lockte beim Betreten die
+ * Horcher zu einem Läuten von vor einer Minute. Die aktive Welt zählt ihre
+ * Glocken selbst herunter (`step`), im Testmodus die ruhende Seite über
+ * `mpTestFrame`.
+ */
+function decayIdleBells(dt: number): void {
+  const sides = mpTest ? mpTest.sides.map((sd) => sd.loaded) : loaded ? [loaded] : [];
+  for (const side of sides) {
+    side.floors.forEach((f, fl) => {
+      if (side === loaded && fl === activeFloor) return;
+      if (mpTest && side !== loaded && fl === mpTestOther().floor) return;
+      f.world.advanceBells(dt);
+    });
+  }
 }
 
 /** Im Ziel: Diese Seite ist durch, ihre Uhr steht – die Kugel rollt weiter
@@ -2716,10 +2749,17 @@ function frame(now: number): void {
       if (ev.kind !== 'plate') haptics.hit(0.6);
     }
     // Lockglocke (M46): angeschlagen – Glockenschlag aus ihrer Richtung.
+    // ZU ZWEIT LÄUTET SIE FÜR BEIDE (M83): Jeder Spieler hat seine eigene
+    // Welt, also auch seine eigenen Horcher – ohne diese Nachricht lockt die
+    // Glocke nur die eigenen, und „ich läute, du schleichst vorbei" gäbe es
+    // nicht. Im Testmodus dieselbe Glocke in der anderen Welt (wie die Platten).
     for (const bl of world.consumeRings()) {
       audio.bellRing(bl.x - world.ball.x, bl.y - world.ball.y);
       haptics.checkpoint();
       flash(t('st.bell'));
+      const i = world.bells.indexOf(bl);
+      if (mp) mp.transport.send('bell', { f: activeFloor, i });
+      if (mpTest) mpTestOther().loaded.floors[activeFloor]?.world.ringBellAt(i);
     }
 
     for (const hit of hits) {
@@ -3067,6 +3107,7 @@ function frame(now: number): void {
 
     if (mp && mp.phase === 'playing' && !disconnected) mpFrame(now);
     if (mpTest) mpTestFrame(now, dt);
+    decayIdleBells(dt);
     if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
       if (remaining <= 0) {
@@ -3286,6 +3327,12 @@ function frame(now: number): void {
         held: [...mpTest.held],
         done: mpTest.sides.map((sd) => sd.done),
         balls: mpTest.sides.map((sd) => ({ x: sd.loaded.world.ball.x, y: sd.loaded.world.ball.y, vx: sd.loaded.world.ball.vx, vy: sd.loaded.world.ball.vy, floor: sd.floor })),
+        // Klingt die Glocke in BEIDEN Welten (M83)? Und laufen die Horcher
+        // drüben hin? Beides muss von außen prüfbar sein.
+        ringing: mpTest.sides.map((sd) => sd.loaded.floors[sd.floor]!.world.bells.filter((b) => b.ringLeft > 0).length),
+        listeners: mpTest.sides.map((sd) =>
+          sd.loaded.floors[sd.floor]!.world.listeners.map((l) => ({ x: Math.round(l.x), y: Math.round(l.y) })),
+        ),
       }
     : null;
   (window as unknown as { __tiltrMp?: unknown }).__tiltrMp = mp

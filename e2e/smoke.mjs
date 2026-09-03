@@ -92,6 +92,7 @@ const KNOWN_RUNS = [
   "38",
   "39",
   "40",
+  "41",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -7284,6 +7285,99 @@ if (want("40")) {
   } catch (e) {
     check(
       `Lauf 40 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+
+// --- Lauf 41: Glocke zu zweit (M83). Aus dem Levelbau: „Das Läuten der Glocke
+// soll im Multiplayer auch beim anderen Spieler wirken." Jeder Spieler hat eine
+// EIGENE Welt mit eigenen Horchern – ohne Übertragung lockt die Glocke nur die
+// eigenen, und „ich läute, du schleichst vorbei" gibt es nicht. Fixture: Glocke
+// in Spieler 1s Reihe, Horcher in Spieler 2s Reihe. Geprüft: Sie klingt in
+// BEIDEN Welten, und der Horcher der ruhenden Seite läuft zu ihr. ---
+if (want("41")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveRow = (y) => [0, 1, 2].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m83",
+      name: "Glocke zu zweit",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 5, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          elements: [
+            { type: "bell", cell: [1, 0], ringS: 8 },
+            { type: "listener", cell: [3, 2], speed: 60 },
+          ],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 2],
+          goal2: [2, 2],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    await page.click("#edTest");
+    await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+    const before = await page.evaluate(() => ({
+      ringing: window.__tiltrMpTest?.ringing,
+      listener: window.__tiltrMpTest?.listeners[1][0],
+    }));
+    check(
+      `Vorher schweigt sie in beiden Welten (${JSON.stringify(before)})`,
+      before.ringing?.[0] === 0 && before.ringing?.[1] === 0 && before.listener !== undefined,
+    );
+
+    // Spieler 1 rollt über die Glocke – sie muss DRÜBEN mitklingen.
+    await holdUntil(
+      page,
+      "ArrowRight",
+      async () => (await page.evaluate(() => window.__tiltrMpTest?.ringing[0])) > 0,
+      15000,
+    );
+    const rung = await page.evaluate(() => ({
+      ringing: window.__tiltrMpTest?.ringing,
+      listener: window.__tiltrMpTest?.listeners[1][0],
+    }));
+    check(
+      `Die Glocke klingt in BEIDEN Welten (${JSON.stringify(rung)})`,
+      rung.ringing?.[0] > 0 && rung.ringing?.[1] > 0,
+    );
+    // Und die Horcher der ruhenden Seite laufen zur Glocke (links oben).
+    const moved = await until(async () => {
+      const l = await page.evaluate(() => window.__tiltrMpTest?.listeners[1][0]);
+      return l && l.x < before.listener.x - 20 && l.y < before.listener.y - 20 ? l : null;
+    }, { timeout: 8000 });
+    check(
+      `Der Horcher des Partners läuft zur Glocke (von ${JSON.stringify(before.listener)} nach ${JSON.stringify(moved)})`,
+      moved !== null,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 41 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

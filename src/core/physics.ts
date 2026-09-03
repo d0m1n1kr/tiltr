@@ -481,6 +481,33 @@ export class World {
     return r;
   }
 
+  /**
+   * GLOCKE VON AUSSEN ANSCHLAGEN (M83): Im Multiplayer hat jeder Spieler seine
+   * EIGENE Welt – läutet der Partner, klingt es hier nicht, und seine
+   * Ablenkung lockt nur seine Horcher. Die Nachricht `bell` schlägt sie
+   * deshalb hier nachträglich an. Kein Kanten-Trigger und kein `rungNow`:
+   * Unsere Kugel steht nicht darauf, und der Klang kommt aus der Nachricht.
+   */
+  ringBellAt(index: number): Bell | null {
+    const bl = this.bells[index];
+    if (!bl) return null;
+    bl.ringLeft = bl.ringS;
+    return bl;
+  }
+
+  /** Nachklang herunterzählen OHNE Ballschritt: für Welten, die die
+   *  Spielschleife nicht schrittet (andere Ebene, ruhende Seite im
+   *  MP-Testmodus). Sonst lockt ein Läuten von vor einer Minute noch. */
+  advanceBells(dt: number): void {
+    for (const bl of this.bells) if (bl.ringLeft > 0) bl.ringLeft = Math.max(0, bl.ringLeft - dt);
+  }
+
+  /** Horcher weiterlaufen lassen ohne Ballschritt (MP-Testmodus): Sie ziehen
+   *  zur klingenden Glocke, sonst heim – die ruhende Kugel jagt niemand. */
+  advanceListeners(dt: number): void {
+    this.updateListeners(dt);
+  }
+
   /** Liegt der Ballmittelpunkt gerade in einem Hallraum? */
   /** Steht der Ball in einer Nebelzone? (Klang-Dämpfung UND Horcher-Deckung, M67) */
   inFog(): boolean {
