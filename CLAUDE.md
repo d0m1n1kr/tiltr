@@ -167,7 +167,16 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   sie eingerastet; ab dort gilt sie als offen, für BEIDE Spieler. Saat über
   `pairReachable(…, latched)` bzw. `coopReachable(…, {latched})`, je Zelle
   abgeleitet in `latchedAt(k, …)` aus der Reichweite mit GENAU DIESER Tür
-  gebannt. Eine Zelle, die man auch ohne sie erreicht, zählt ohne sie. `coopReachable` und der `openers`-Check rechnen
+  gebannt. Eine Zelle, die man auch ohne sie erreicht, zählt ohne sie.
+  DER SOFTLOCK NENNT DEN GRUND (M79): `nameCause` probiert für die EINE
+  gemeldete Zelle – alle Türen offen ⇒ Einzelprobe je Tür („Tür X fällt hinter
+  dir zu"), sonst andere Ebene ⇒ „von Ebene N führt kein Weg zurück
+  (Transporter?)", sonst „kein Rückweg (Einbahn-Strömung oder brüchige Wand)".
+  WICHTIG: HORCHER und WÄCHTER kommen im Softlock-Beweis NICHT vor
+  (`patrolLines` sammelt nur `guard`, und die Softlock-Abfragen laufen ohne
+  `guardSafe`) – ein Bericht, der nur den Ort nennt, verleitet zur falschen
+  Ursache („da steht doch ein Horcher"); das sagt jetzt auch
+  `ed.help.softlock` in allen vier Sprachen. `coopReachable` und der `openers`-Check rechnen
   'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
   HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
   DÄMMERUNG (M43): `floor.dusk` = hell bis zur ersten Wandberührung, dann
