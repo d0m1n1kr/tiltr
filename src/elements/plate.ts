@@ -31,7 +31,7 @@ registerElement<PlateDef>({
       ctx.lineTo(w * 0.68, h * 0.5);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.strokeStyle = `rgba(${WORLD.door}, 0.9)`;
+      ctx.strokeStyle = `rgba(${WORLD.plate}, 0.9)`;
       ctx.strokeRect(w * 0.7, h * 0.18, 7, h * 0.26);
       ctx.strokeRect(w * 0.7, h * 0.56, 7, h * 0.26);
     },

@@ -612,6 +612,18 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M56 „Rubin" ✓ (v3.0.7) – Türen in eigener Farbe
+
+Rückmeldung vom Gerät: Türen und brüchige Wände sind visuell nicht zu
+unterscheiden. Beides sind Wandsegmente, gezeichnet im Echo-Alpha 0,55 auf
+fast schwarzem Grund – Schlüssel-Gold (Hue 45°) und Brüchig-Bernstein (30°)
+fallen dort zusammen. Türen sind jetzt **Rubin** (`232, 84, 128`, Hue 343°):
+„verschlossen", klar getrennt vom Bernstein, rosiger und dunkler als das
+Wächter-Rot, satter als das Jukebox-Pink. Der Schlüssel bleibt Gold – Form
+und Farbe unterscheiden Schlüssel und Tür jetzt doppelt. Galerie-Rahmen von
+Druckplatte und Zeitschalter folgen dem Spiel (`WORLD.plate`, Gold) statt der
+Tür; das Editor-Overlay für Tür-Verknüpfungen färbt sich automatisch mit.
+
 ## M55 „Wem gehört das" ✓ (v3.0.6) – Lizenz
 
 Bis 3.0.5 hatte das Repo keine Lizenz: keine LICENSE-Datei, kein Feld in

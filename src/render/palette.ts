@@ -17,7 +17,13 @@ export const WORLD = {
   heart: '255, 110, 130',
   guard: '255, 92, 92',
   key: '255, 214, 90',
-  door: '255, 214, 90',
+  /** Tür (v3.0.7): Rubinrot – VERSCHLOSSEN. Bis 3.0.6 Schlüssel-Gold, das im
+   *  Echo-Alpha von 0,55 auf dunklem Grund nicht vom Brüchig-Bernstein der
+   *  brüchigen Wände zu unterscheiden war (Hue 45° gegen 30°). Rubin liegt bei
+   *  343°: klar getrennt von Bernstein, dunkler und rosiger als Wächter-Rot
+   *  (255, 92, 92), satter und dunkler als Jukebox-Pink. Der Schlüssel bleibt
+   *  Gold – Schlüssel und Tür unterscheiden sich in Form UND Farbe. */
+  door: '232, 84, 128',
   gem: '190, 240, 255',
   portal: '240, 130, 230',
   plate: '255, 214, 90',
