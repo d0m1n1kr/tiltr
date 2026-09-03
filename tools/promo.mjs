@@ -130,22 +130,27 @@ const phone = () => browser.newContext({ viewport: { width: 390, height: 844 }, 
   await ctx.close();
 }
 
-// 2) Der Kern: Dunkelheit, dann deckt der Echo-Ping die Wände auf.
+// 2) Der Kern: Dunkelheit, dann deckt der Echo-Ping die Wände auf. Der
+// Bildbereich dieser Szene liefert später das Schaubild (siehe unten).
+let pingRange = [0, 0];
 {
   const ctx = await phone();
   const page = await ctx.newPage();
   await page.goto(`${BASE}/?seed=1207&nosplash`);
   await page.click('#quickBtn');
   await until(async () => (await page.evaluate(() => window.__tiltrBall)) != null, 8000);
+  const pingFrom = frames.length;
   await page.keyboard.down('ArrowRight');
   await rec(page, 700);
+  // EIN Ping genügt (v3.20.0): Zwei hintereinander sahen aus wie ein Fehler,
+  // und die Aufdeckung wirkt nur beim ersten Mal wie eine Offenbarung.
   await page.keyboard.press('Space');
-  await rec(page, 1500);
+  await rec(page, 1600);
   await page.keyboard.up('ArrowRight');
   await page.keyboard.down('ArrowDown');
-  await page.keyboard.press('Space');
-  await rec(page, 1300);
+  await rec(page, 1200);
   await page.keyboard.up('ArrowDown');
+  pingRange = [pingFrom, frames.length];
   cut();
   await ctx.close();
 }
@@ -224,6 +229,22 @@ for (const f of frames) {
   f.h = small.h;
   delete f.png;
 }
+// SCHAUBILD FÜR DIE LINK-VORSCHAU (M86b): Messenger zeigen von einem GIF nur
+// das ERSTE Bild – und das war der fast schwarze Splash-Anfang. Also kommt das
+// hellste Bild der Ping-Szene davor (die aufgedeckten Wände), einen Moment
+// stehend. Es ist Teil der Schleife und wirkt wie eine Titelkarte.
+{
+  const lum = (f) => {
+    let sum = 0;
+    for (let i = 0; i < f.data.length; i += 4 * 37) sum += f.data[i] + f.data[i + 1] + f.data[i + 2];
+    return sum;
+  };
+  let best = frames[pingRange[0]];
+  for (const f of frames.slice(pingRange[0], pingRange[1])) if (lum(f) > lum(best)) best = f;
+  frames.unshift({ ...best, ms: 900 });
+  console.log(`✓ Schaubild aus Bild ${frames.indexOf(best)} der Ping-Szene`);
+}
+
 const { w, h } = frames[0];
 const sample = [];
 for (let i = 0; i < frames.length; i += 4) {

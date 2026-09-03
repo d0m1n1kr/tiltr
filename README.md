@@ -10,10 +10,9 @@ ping reaches. Best played with headphones, eyes half closed.
 
 **▶ Play now: https://d0m1n1kr.github.io/tiltr/** — installable as an app,
 works offline. Every push deploys automatically (tests → build → GitHub
-Pages). The start screen has a **📣 Spread the word** button: it shares the
-animation below plus a short pitch in your language and this link – in ONE
-message where the platform allows it, otherwise just the link (whose preview
-shows the animation anyway).
+Pages). The start screen has a **📣 Spread the word** button: one message with a
+short pitch in your language and this link – whose preview carries the
+animation below.
 
 <p align="center"><img src="public/promo.gif" width="220" alt="Screencast: splash, echo ping in the dark, confetti, a real workshop level in the editor and in two-player test mode"></p>
 

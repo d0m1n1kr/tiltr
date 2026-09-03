@@ -7497,11 +7497,12 @@ if (want("42")) {
 }
 
 
-// --- Lauf 43: Weitersagen (M85/M86). EIN Knopf, EINE Nachricht: das Promo-GIF
-// als Bild, Werbetext und Link als Bildunterschrift. Drei Stufen, jede geprüft:
-// Dateien+Text (alles zusammen), nur Link (Plattform ohne Dateien – die
-// og:image-Vorschau zeigt das GIF trotzdem), Zwischenablage (kein Web Share).
-// Dazu: Werbetext in der AKTUELLEN Sprache und kein Überlauf bei 400 px. ---
+// --- Lauf 43: Weitersagen (M85–M86b). EIN Knopf, EINE Nachricht – und zwar
+// die, die ANKOMMT: Titel, Werbetext und Link. Das GIF bleibt WEG, obwohl die
+// Plattform Dateien könnte: Auf dem Gerät gemessen kam bei {files, text} nur
+// das Bild an, der Text mit dem Link fiel weg. Die Animation reist stattdessen
+// in der Vorschau (og:image). Geprüft: Nachricht, Sprachwechsel,
+// Zwischenablage-Fallback, og:image, kein Überlauf bei 400 px. ---
 if (want("43")) {
   try {
     const page = await browser.newPage({ viewport: { width: 400, height: 900 }, locale: "de-DE" });
@@ -7521,32 +7522,27 @@ if (want("43")) {
         og.url === "https://d0m1n1kr.github.io/tiltr/",
     );
 
-    // Stufe 1: Plattform kann Dateien – GIF UND Text in EINER Nachricht.
+    // EINE Nachricht – und zwar die, die ANKOMMT: Werbetext, Titel und Link.
+    // Die Datei bleibt WEG, obwohl die Plattform hier behauptet, sie könne sie:
+    // Auf dem Gerät gemessen kam bei {files, text} nur das Bild an, der Text
+    // mit dem Link fiel weg (M86b). Ein Promo ohne Link ist wertlos.
     await page.evaluate(() => {
       window.__shared = null;
       navigator.canShare = () => true;
       navigator.share = (d) => {
-        window.__shared = {
-          keys: Object.keys(d),
-          n: d.files?.length ?? 0,
-          type: d.files?.[0]?.type,
-          name: d.files?.[0]?.name,
-          size: d.files?.[0]?.size,
-          text: d.text,
-        };
+        window.__shared = { keys: Object.keys(d), n: d.files?.length ?? 0, title: d.title, text: d.text, url: d.url };
         return Promise.resolve();
       };
     });
     await page.click("#promoShare");
     const one = await until(async () => await page.evaluate(() => window.__shared), { timeout: 8000 });
     check(
-      `Eine Nachricht: GIF + Text mit Link (${JSON.stringify({ ...one, text: (one?.text ?? "").slice(-42) })})`,
-      one?.n === 1 &&
-        one?.type === "image/gif" &&
-        one?.size > 10000 &&
-        JSON.stringify(one?.keys) === JSON.stringify(["files", "text"]) &&
+      `Eine Nachricht mit Text UND Link, ohne Datei (${JSON.stringify({ ...one, text: (one?.text ?? "").slice(0, 30) })})`,
+      one?.n === 0 &&
+        JSON.stringify(one?.keys) === JSON.stringify(["title", "text", "url"]) &&
+        /unsichtbare[sn]? Labyrinth/.test(one?.title ?? "") &&
         /Kopfhörer/.test(one?.text ?? "") &&
-        (one?.text ?? "").endsWith("https://d0m1n1kr.github.io/tiltr/"),
+        one?.url === "https://d0m1n1kr.github.io/tiltr/",
     );
 
     // Sprache wechseln: derselbe Knopf teilt jetzt auf Englisch.
@@ -7560,20 +7556,8 @@ if (want("43")) {
       /Headphones/.test(en?.text ?? ""),
     );
 
-    // Stufe 2: keine Dateien möglich → Link mit Titel/Text/URL.
+    // Ohne Web Share → Text + Link in die Zwischenablage.
     await page.click('#langRow .chip[data-lang="de"]');
-    await page.evaluate(() => {
-      window.__shared = null;
-      navigator.canShare = () => false;
-    });
-    await page.click("#promoShare");
-    const link = await until(async () => await page.evaluate(() => window.__shared), { timeout: 6000 });
-    check(
-      `Ohne Datei-Unterstützung geht der Link raus (${JSON.stringify(link?.keys)})`,
-      link !== null && link.n === 0 && JSON.stringify(link.keys) === JSON.stringify(["title", "text", "url"]),
-    );
-
-    // Stufe 3: kein Web Share → Text + Link in die Zwischenablage.
     await page.evaluate(() => {
       delete navigator.share;
       window.__clip = null;

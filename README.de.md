@@ -11,10 +11,9 @@ halb geschlossenen Augen.
 
 **▶ Jetzt spielen: https://d0m1n1kr.github.io/tiltr/** – als App
 installierbar, läuft offline. Jeder Push deployt automatisch (Tests → Build →
-GitHub Pages). Der Startscreen hat einen Knopf **📣 App weitersagen**: Er teilt die
-Animation unten samt kurzem Werbetext in der eingestellten Sprache und diesem
-Link – in EINER Nachricht, wo die Plattform es erlaubt, sonst nur den Link
-(dessen Vorschau die Animation ohnehin zeigt).
+GitHub Pages). Der Startscreen hat einen Knopf **📣 App weitersagen**: eine Nachricht mit
+kurzem Werbetext in der eingestellten Sprache und diesem Link – dessen Vorschau
+die Animation unten trägt.
 
 <p align="center"><img src="public/promo.gif" width="220" alt="Screencast: Splash, Echo-Ping im Dunkeln, Konfetti, ein echtes Werkstatt-Level im Editor und im Zwei-Spieler-Testmodus"></p>
 

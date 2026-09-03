@@ -677,20 +677,21 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
 - `src/promo.ts` + `tools/promo.mjs` – WEITERSAGEN (M85): Der Startscreen teilt
   die APP. `promoShare(title, text)` ist rein: Text aus dem Wörterbuch der
   aktuellen Sprache, Adresse aus `APP_URL` – NICHT `location.href`, sonst teilt
-  der Dev-Server einen toten Link. EINE Nachricht, EIN Chip (M86), drei Stufen:
-  (1) kann die Plattform Dateien, geht das GIF als BILD raus und
-  `promoCaption` (Text + Link) als Bildunterschrift im `text` – der Link IM
-  Text, nicht als eigenes `url`, sonst lässt die Ziel-App ihn weg (2.11.4 gilt
-  für Felder NEBEN einer Datei, nicht für Bild + Unterschrift); (2) keine
-  Dateien: Link mit title/text/url, die Vorschau zeigt das GIF über `og:image`;
-  (3) kein Web Share: Zwischenablage. Gefragt wird VOR dem Laden – `canShare`
-  prüft nur Typen, eine LEERE Probe-Datei genügt, sonst holt jedes Gerät 700 KB
-  umsonst.
+  der Dev-Server einen toten Link. EIN Chip, EINE Nachricht: `title`, `text`,
+  `url` – KEINE Datei. M86 hatte das GIF mitgeschickt (Bild + Unterschrift), und
+  auf dem Gerät kam nur das Bild an: 2.11.4 gilt auch hier, hängt eine Datei
+  dran, entscheidet die Ziel-App und lässt den Text liegen (M86b). Ein Promo
+  ohne Link ist wertlos. Die Animation reist deshalb in der Vorschau
+  (`og:image`) – und weil Messenger nur das ERSTE Bild eines GIFs zeigen, setzt
+  tools/promo.mjs das HELLSTE Bild der Ping-Szene als Schaubild davor (gemessen
+  über eine Pixel-Stichprobe, nicht geraten). Ohne Web Share: Zwischenablage
+  (`promoCaption` = Text + Link in einem Block).
   DAS GIF: `npm run promo` fährt die App wie tools/screenshots.mjs und schneidet
   sechs Szenen (Splash, Echo-Ping im Dunkeln, Konfetti, Galerie, Hörtest,
   Editor + Zwei-Spieler-Testmodus aus `tools/promo-level.json`, einem ECHTEN
   Coop-Level des Autors). KEINE Text-Screens (Galerie, Hörtest): In 195 px
-  liest sich Text nicht, ein Promo verkauft sich über Bewegung (v3.18.0).
+  liest sich Text nicht, ein Promo verkauft sich über Bewegung (v3.18.0). EIN
+  Ping, nicht zwei – zwei hintereinander sehen aus wie ein Fehler (v3.20.0).
   Ohne ffmpeg entsteht es in JS: Screenshots → Box-Filter auf ein
   Viertel → EINE 256er-Palette (gifenc, MIT; upng-js dekodiert). Bildzeiten
   GEMESSEN (feste Delays liefen zu schnell), Verkleinern ERST NACH der Aufnahme

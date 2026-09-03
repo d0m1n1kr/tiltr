@@ -11,13 +11,12 @@
 /** Die eine Adresse der App (Live-Deploy, siehe README). */
 export const APP_URL = 'https://d0m1n1kr.github.io/tiltr/';
 
-/** Das Promo-GIF liegt daneben – als `og:image` für die Link-Vorschau und zum
- *  Mitschicken als Datei (`public/promo.gif`, erzeugt von tools/promo.mjs). */
+/** Das Promo-GIF liegt daneben und reist als `og:image` in der Link-Vorschau
+ *  (`public/promo.gif`, erzeugt von tools/promo.mjs). MITGESCHICKT wird es
+ *  nicht: Auf dem Gerät gemessen kam bei `share({files, text})` nur die Datei
+ *  an, der Text mit dem Link fiel weg (M86b) – und ein Promo ohne Link ist
+ *  wertlos. Deshalb ist das erste Bild des GIFs das Schaubild der Vorschau. */
 export const PROMO_GIF_URL = `${APP_URL}promo.gif`;
-
-/** Dateiname des GIFs im lokalen Bundle (relativ, damit es auch unter einem
- *  Unterpfad und im Dev-Server gefunden wird). */
-export const PROMO_GIF_FILE = 'promo.gif';
 
 export interface PromoShare {
   title: string;

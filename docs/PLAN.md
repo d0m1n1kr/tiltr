@@ -612,6 +612,28 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M86b „Die Nachricht, die ankommt" ✓ (v3.20.0)
+
+Gemessen auf dem Gerät: „Es ist nur das GIF da, nicht der Werbetext und der
+Link." Damit ist M86 widerlegt – die Lektion aus 2.11.4 gilt AUCH für
+Bild + Bildunterschrift: Hängt eine Datei dran, entscheidet die Ziel-App, und
+sie nahm das Bild und ließ den Text liegen. Ein Promo ohne Link ist wertlos,
+also gewinnt der Link: geteilt werden `title`, `text` und `url`, sonst nichts.
+
+Damit die Animation trotzdem reist, trägt sie die Link-Vorschau (`og:image`).
+Dafür brauchte das GIF eine Korrektur: Messenger zeigen nur das ERSTE Bild, und
+das war der fast schwarze Splash-Anfang. `tools/promo.mjs` setzt jetzt das
+HELLSTE Bild der Ping-Szene als Schaubild davor (900 ms) – die aufgedeckten
+Wände, gemessen statt geraten (mittlere Helligkeit über eine Pixel-Stichprobe).
+Es ist Teil der Schleife und wirkt wie eine Titelkarte.
+
+Zweite Rückmeldung zum Video: „Im Video ist zwei mal ein Ping. Einer reicht."
+Stimmt – zwei hintereinander sehen aus wie ein Fehler, und die Aufdeckung wirkt
+nur beim ersten Mal wie eine Offenbarung. Jetzt einer, dafür länger stehend.
+
+106 Bilder, 14,8 s, 677 KB. E2E Lauf 43 hält die Entscheidung fest: Auch wenn
+die Plattform Dateien KÖNNTE, geht keine mit – sonst fällt der Link weg.
+
 ## M86 „Eine Nachricht" ✓ (v3.19.0)
 
 Rückfrage: „Kann ‚spreading the word' und ‚share GIF' nicht in einer Message
