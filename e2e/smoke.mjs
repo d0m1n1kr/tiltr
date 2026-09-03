@@ -6116,11 +6116,42 @@ if (want("33")) {
         JSON.stringify(storeB.start2) === "[0,2]",
     );
 
-    // Spieler-Schalter im Editor: 1 räumt ●²/◎²/Platte und Gast-Koordinaten weg, 2 holt die Werkzeuge zurück.
+    // Entwurf aus der Zeit VOR 3.1.3: zwei Platten ohne Tür (opens fehlt).
+    // normalizeDraft füllt beim Öffnen „tor1" auf – der Entwurf lädt, das
+    // Badge „Verknüpfungen" nennt die fehlende Tür statt rohem zod-JSON.
     await pageA.click("#interSecondary"); // Menü
+    await pageA.evaluate((d) => localStorage.setItem("tiltr.workshop.draft.v1", JSON.stringify({ def: d, updatedAt: new Date().toISOString() })), {
+      ...def,
+      id: "custom-old-draft",
+      floors: [{ ...def.floors[0], elements: [{ type: "plate", cell: [1, 1] }, { type: "plate", cell: [2, 1] }] }],
+    });
     await pageA.click("#workshopBtn");
-    await pageA.click("#wsResumeBtn"); // Draft von oben
-    await until(async () => !!(await pageA.evaluate(() => document.getElementById("edPlayers"))));
+    await pageA.click("#wsResumeBtn");
+    const oldDraft = await until(async () => {
+      const r = await pageA.evaluate(() => ({
+        loadError: window.__tiltrEd?.loadError,
+        opens: window.__tiltrEd?.def?.floors?.[0]?.elements?.map((e) => e.opens),
+      }));
+      return r.opens?.length === 2 ? r : null;
+    }, { timeout: 4000 });
+    const linkBadge = await until(async () => {
+      const b = await pageA.locator("#edBadges .ed-badge.fail").allTextContents();
+      return b.some((x) => /Verknüpfungen/.test(x)) ? b : null;
+    }, { timeout: 3000 });
+    check(
+      `Alter Entwurf mit Platten ohne Tür lädt (opens aufgefüllt), „Verknüpfungen" rot statt zod-JSON (${JSON.stringify({ loadError: oldDraft?.loadError, opens: oldDraft?.opens, linkBadge })})`,
+      !!oldDraft && oldDraft.loadError === null && JSON.stringify(oldDraft.opens) === JSON.stringify(["tor1", "tor1"]) && !!linkBadge,
+    );
+    // Zurück zum eigentlichen Entwurf von oben (Werkstatt-Level erneut bearbeiten).
+    await pageA.click("#edClose");
+    // Zwei-Tap: Der erste Tap bewaffnet den Knopf und ändert seinen Text
+    // („⚠ Entwurf verwerfen?"), der zweite trifft also diesen Text.
+    await pageA.locator("#workshopList .ws-item").first().locator("button", { hasText: "✏️" }).click();
+    await pageA.locator("#workshopList .ws-item").first().locator("button", { hasText: "Entwurf verwerfen" }).click();
+    await until(async () => !(await pageA.locator("#editor").getAttribute("class")).includes("hidden"));
+
+    // Spieler-Schalter im Editor: 1 räumt ●²/◎²/Platte und Gast-Koordinaten weg, 2 holt die Werkzeuge zurück.
+    await until(async () => !!(await pageA.evaluate(() => window.__tiltrEd?.def?.id === "custom-m57")));
     await pageA.selectOption("#edPlayers", "1");
     const solo = await pageA.evaluate(() => ({
       start2: !!document.getElementById("edToolPlayer"),

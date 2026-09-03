@@ -271,6 +271,7 @@ export const en: Dict = {
   'ed.forPlayer.1': 'Player 1 (●/◎)',
   'ed.forPlayer.2': 'Player 2 (●²/◎²)',
   'ed.toolAgain': 'Tap again: for player {n}',
+  'ed.errMissing': 'missing',
   'ed.start2Cleared': 'Start 2 cleared – the guest starts with player 1.',
   'ed.goal2Cleared': 'Goal 2 cleared – both share the goal.',
   'ed.testAs': 'Preview as',

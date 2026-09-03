@@ -25,6 +25,7 @@ import { compileTune, type CompiledTune, type Tune } from '../audio/chiptune';
 import { previewTune } from '../audio/musicPreview';
 import { clearDraft, exportPayload, saveDraft, workshop } from '../workshop';
 import { t, applyI18n, type Dict } from '../i18n';
+import { ZodError } from 'zod';
 
 type Dir = 'n' | 'e' | 's' | 'w';
 export type Edge = [[number, number], Dir];
@@ -241,6 +242,37 @@ export function removeFloor(level: RawLevel, index: number): void {
   const taken = (): Array<[number, number]> => [f0.start, ...(f0.goal ? [f0.goal] : []), ...(f0.start2 ? [f0.start2] : [])];
   if (index === 0 && f0.start2) f0.start2 = freeCellFor(f0, f0.start2, [f0.start, ...(f0.goal ? [f0.goal] : [])]);
   if (hadGoal2) f0.goal2 = freeCellFor(f0, [f0.size[0] - 1, 0], taken());
+}
+
+/** Ladefehler lesbar machen (M61): Ein zod-Fehler kam als rohes JSON in die
+ *  Statuszeile („[{ "expected": "string", "path": ["floors", 0, "elements",
+ *  1, "opens"] … }]") – auf dem Phone ein Textblock, der nichts sagt. Jetzt:
+ *  „E1 · Druckplatte 2: opens fehlt (expected string, received undefined)".
+ *  Rein und exportiert (tests/editorErrors.test.ts). */
+export function describeLoadError(err: unknown, def: { floors?: Array<{ elements?: Array<{ type?: string }> }> } | null): string {
+  if (err instanceof ZodError) {
+    const lines = err.issues.map((iss) => {
+      const p = iss.path.map(String);
+      let where = p.join('.');
+      let field = '';
+      if (p[0] === 'floors' && p[1] !== undefined) {
+        const fl = Number(p[1]);
+        where = `E${fl + 1}`;
+        if (p[2] === 'elements' && p[3] !== undefined) {
+          const i = Number(p[3]);
+          const type = def?.floors?.[fl]?.elements?.[i]?.type;
+          const name = type ? t(`el.${type}.title` as keyof Dict).split(' & ')[0] : t('ed.elements');
+          where += ` · ${name} ${i + 1}`;
+          field = p.slice(4).join('.');
+        } else field = p.slice(2).join('.');
+      } else field = where;
+      const missing = /received undefined/.test(iss.message);
+      const what = field ? (missing ? `${field} ${t('ed.errMissing')}` : field) : '';
+      return `${where}${what ? `: ${what}` : ''} (${iss.message})`;
+    });
+    return lines.join(' · ');
+  }
+  return err instanceof Error ? err.message : String(err);
 }
 
 type Tool = 'select' | 'place' | 'wall' | 'erase' | 'start' | 'goal' | 'test';
@@ -655,7 +687,7 @@ export function setupEditor(opts: {
       // („Feld belegt", Wächter-/Transporter-Schritt 2) müssen stehen bleiben
       // – aufgeräumt wird zu Beginn der nächsten Aktion (act).
     } catch (e) {
-      loadError = e instanceof Error ? e.message : String(e);
+      loadError = describeLoadError(e, draft);
       flash(loadError, true);
     }
     // Jede Änderung landet reload-fest im Draft – „später fortsetzen"

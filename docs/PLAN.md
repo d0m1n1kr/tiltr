@@ -612,6 +612,17 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M61 „Was fehlt, steht da" ✓ (v3.1.4) – lesbare Ladefehler im Editor
+
+Der Screenshot zur unsichtbaren Platte zeigte die Statuszeile: rohes zod-JSON
+(`[{ "expected": "string", "path": ["floors", 0, "elements", 1, "opens"] … }]`)
+– auf dem Phone ein Textblock, aus dem niemand „der Platte fehlt die Tür"
+liest. `describeLoadError` (rein, editor.ts) übersetzt zod-Issues in
+„E1 · Druckplatte 2: opens fehlt (expected string, received undefined)";
+andere Fehler gehen unverändert durch. E2E Lauf 33 legt zusätzlich einen
+Entwurf aus der Zeit vor 3.1.3 (zwei Platten ohne Tür) in den Speicher und
+prüft, dass er über „Weiter an …" lädt und „Verknüpfungen" rot wird.
+
 ## M60 „Die unsichtbare Platte" ✓ (v3.1.3) – Druckplatte im Editor verknüpfbar
 
 Rückmeldung: „Druckplatten sieht man im Editor nicht." Ursache war keine

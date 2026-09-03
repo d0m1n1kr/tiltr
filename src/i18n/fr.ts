@@ -271,6 +271,7 @@ export const fr: Dict = {
   'ed.forPlayer.1': 'Joueur 1 (●/◎)',
   'ed.forPlayer.2': 'Joueur 2 (●²/◎²)',
   'ed.toolAgain': 'Retape : pour le joueur {n}',
+  'ed.errMissing': 'manque',
   'ed.start2Cleared': 'Départ 2 retiré – l’invité part avec le joueur 1.',
   'ed.goal2Cleared': 'Arrivée 2 retirée – arrivée commune.',
   'ed.testAs': 'Aperçu en tant que',

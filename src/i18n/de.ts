@@ -275,6 +275,7 @@ export const de = {
   'ed.forPlayer.1': 'Spieler 1 (●/◎)',
   'ed.forPlayer.2': 'Spieler 2 (●²/◎²)',
   'ed.toolAgain': 'Nochmal tippen: für Spieler {n}',
+  'ed.errMissing': 'fehlt',
   'ed.start2Cleared': 'Start 2 aufgehoben – der Gast startet bei Spieler 1.',
   'ed.goal2Cleared': 'Ziel 2 aufgehoben – beide haben dasselbe Ziel.',
   'ed.testAs': 'Vorschau als',
