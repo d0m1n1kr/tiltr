@@ -149,11 +149,18 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   `plate.opens` – über die Tür-ID hielt eine Platte ihre Geschwister mit, und
   ein 'all' ging mit einer Kugel auf (im Testmodus wie in der Netz-Nachricht
   `plate`, die jetzt die Platten-Kennung trägt: beide Seiten brauchen dieselbe
-  Version). DER PARTNER IST EIN KÖRPER: Eine 'all'-Tür mit zwei Platten
-  braucht zwei HALTER (Partner = einer, jeder Rollstein einer) – `holdable()`
-  in validate.ts zählt das für `pairReachable` UND den `openers`-Bericht
-  („2 Platten gleichzeitig, 1 Halter"); die Prüfung steht VOR dem Ausstieg für
-  reine Platten-Türen, sonst bliebe der häufigste Fall stumm. `coopReachable` und der `openers`-Check rechnen
+  Version). WER HALTEN KANN, ENTSCHEIDET DIE TÜR
+  (M76/M77): Eine 'all'-Tür braucht so viele HALTER wie Platten, und wie viele
+  Füße frei sind, sagt die Tür – fällt sie wieder zu, muss jemand GLEICHZEITIG
+  durchrollen und hält nichts (ein freier Spieler: der Partner), „bleibt offen"
+  verlangt beim Öffnen niemanden im Durchgang (BEIDE Spieler dürfen stehen,
+  danach tauschen sie die Seiten – so baut man einen Seitenwechsel). Dazu die
+  Steine: `holdCheck(plates, feetReach, stonePlates, boulders, feetFree)` in
+  validate.ts zählt wie bei Hall und speist `pairReachable` UND den
+  `openers`-Bericht (`holdDetail` nennt den Ausweg: „… – „bleibt offen" löst
+  das"); die Prüfung steht VOR dem Ausstieg für reine Platten-Türen, sonst
+  bliebe der häufigste Fall stumm. Bei einer latchenden Tür zählt auch die
+  EIGENE Platte als Öffner – M74 gilt nur für Türen, die wieder zufallen. `coopReachable` und der `openers`-Check rechnen
   'all' als „alle Öffner erreichbar"; `timer` prüft weiter je Schalter.
   HELLE EBENE: `floor.bright` → Renderer `revealAll` für diese Ebene.
   DÄMMERUNG (M43): `floor.dusk` = hell bis zur ersten Wandberührung, dann

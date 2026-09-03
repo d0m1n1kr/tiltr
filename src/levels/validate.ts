@@ -353,35 +353,63 @@ export interface PairReach {
   p2: Set<string>;
 }
 
+/** Warum die Platten einer Tür nicht gleichzeitig gehalten werden können –
+ *  `need` Platten dieser Sorte gegen `have` Halter. */
+export interface HoldVerdict {
+  ok: boolean;
+  kind?: 'feet' | 'stones' | 'total';
+  need?: number;
+  have?: number;
+}
+
 /**
- * Kann jemand DIESE Platten GLEICHZEITIG halten (M76)? Der Partner ist EIN
- * Körper und jeder Rollstein einer – eine 'all'-Tür mit zwei Platten braucht
- * also zwei Halter. Gezählt wird wie bei Hall: Platten, die nur Füße halten
- * können, gegen den einen Partner; Platten, die nur ein Stein erreicht, gegen
- * die Steinzahl; und niemals mehr Platten als Halter.
+ * Kann jemand DIESE Platten GLEICHZEITIG halten (M76/M77)? Gezählt wird wie
+ * bei Hall: Platten, die nur Füße halten können, gegen die freien Spieler;
+ * Platten, die nur ein Stein erreicht, gegen die Steinzahl; und niemals mehr
+ * Platten als Halter.
  *
- * Die Frage kommt aus dem Levelbau (zwei Platten, eine mit Stein, eine mit
- * dem zweiten Spieler): Ohne diese Zählung wäre ein Level mit zwei Platten
- * und keinem Stein grün – und unspielbar, denn der Partner kann nicht auf
- * zwei Platten stehen.
+ * WIE VIELE FÜSSE FREI SIND, entscheidet die Tür (M77):
+ * - Sie schließt wieder → jemand muss GLEICHZEITIG durchrollen, und wer
+ *   durchrollt, hält nichts: EIN Spieler (der Partner) bleibt zum Halten.
+ * - Sie „bleibt offen" (`latch`) → beim Öffnen muss niemand durch. BEIDE
+ *   Spieler dürfen auf Platten stehen, die Tür rastet ein, danach gehen sie
+ *   getrennte Wege. Genau so baut man einen Seitenwechsel: Schalter links und
+ *   rechts der Tür, jeder tritt auf seinen.
  */
-function holdable(
-  plates: readonly { fl: number; cell: readonly [number, number]; plate: boolean }[],
-  partnerReach: ReadonlySet<string>,
+export function holdCheck(
+  plates: readonly { fl: number; cell: readonly [number, number] }[],
+  feetReach: ReadonlySet<string>,
   stonePlates: ReadonlySet<string>,
   boulders: number,
-): boolean {
-  if (plates.length <= 1) return true;
-  let onlyPartner = 0;
+  feetFree: number,
+): HoldVerdict {
+  if (plates.length <= 1) return { ok: true };
+  let onlyFeet = 0;
   let onlyStone = 0;
   for (const p of plates) {
     const key = cellKey(p.fl, p.cell);
     const stone = stonePlates.has(key);
-    const feet = partnerReach.has(key);
-    if (feet && !stone) onlyPartner++;
+    const feet = feetReach.has(key);
+    if (feet && !stone) onlyFeet++;
     else if (stone && !feet) onlyStone++;
   }
-  return onlyPartner <= 1 && onlyStone <= boulders && plates.length <= 1 + boulders;
+  if (onlyFeet > feetFree) return { ok: false, kind: 'feet', need: onlyFeet, have: feetFree };
+  if (onlyStone > boulders) return { ok: false, kind: 'stones', need: onlyStone, have: boulders };
+  if (plates.length > feetFree + boulders) {
+    return { ok: false, kind: 'total', need: plates.length, have: feetFree + boulders };
+  }
+  return { ok: true };
+}
+
+/** Der Bericht in einem Satz – er muss sagen, WAS fehlt, und bei einer Tür,
+ *  die wieder zufällt, den Ausweg nennen. */
+export function holdDetail(doorId: string, v: HoldVerdict, latch: boolean): string {
+  const tail = latch ? '' : ' – „bleibt offen" löst das';
+  if (v.kind === 'feet') {
+    return `${doorId}: ${v.need} Platten nur für Füße, ${v.have} Spieler frei (wer durchrollt, hält nichts)${tail}`;
+  }
+  if (v.kind === 'stones') return `${doorId}: ${v.need} Platten brauchen Steine, ${v.have} vorhanden${tail}`;
+  return `${doorId}: ${v.need} Platten gleichzeitig, ${v.have} Halter${tail}`;
 }
 
 export function pairReachable(
@@ -399,14 +427,18 @@ export function pairReachable(
   const start1: StartPos = from?.p1 ?? { floor: 0, cell: f0.start };
   const start2: StartPos = from?.p2 ?? { floor: 0, cell: f0.start2 ?? f0.start };
   const requireAll = new Set<string>();
+  // Türen, die offen BLEIBEN (M77): Bei ihnen muss beim Öffnen niemand
+  // durchrollen – das ändert, wer eine Platte halten kann.
+  const latchDoors = new Set<string>();
   // Wie viele Steine es überhaupt gibt – mehr Platten gleichzeitig kann
-  // niemand halten (der Partner eine, jeder Stein eine).
+  // niemand halten (jeder freie Spieler eine, jeder Stein eine).
   const boulders = def.floors.reduce((n, f) => n + f.elements.filter((e) => e.type === 'boulder').length, 0);
   type Opener = { fl: number; cell: readonly [number, number]; plate: boolean };
   const openersOf = new Map<string, Opener[]>();
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (el.type === 'door' && el.require === 'all') requireAll.add(el.id);
+      if (el.type === 'door' && el.latch) latchDoors.add(el.id);
       if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
         const list = openersOf.get(el.opens) ?? [];
         list.push({ fl, cell: el.cell, plate: el.type === 'plate' });
@@ -433,10 +465,15 @@ export function pairReachable(
         // Schlüssel und Zeitschalter bleiben geteilt (M59) – die muss niemand
         // festhalten.
         const other = p === 0 ? 1 : 0;
+        // BLEIBT DIE TÜR OFFEN, zählt auch die EIGENE Platte (M77): Drauf
+        // treten, die Tür rastet ein, wieder runter und durch. Nur bei einer
+        // Tür, die wieder zufällt, muss jemand ANDERS halten (M74).
+        const latch = latchDoors.has(doorId);
         const usable = openers.filter((o) => {
           const key = cellKey(o.fl, o.cell);
           if (!coop) return !o.plate && seen[p]!.has(key);
           if (!o.plate) return seen[0]!.has(key) || seen[1]!.has(key);
+          if (latch) return seen[0]!.has(key) || seen[1]!.has(key) || stonePlates.has(key);
           return seen[other]!.has(key) || stonePlates.has(key);
         });
         // Im Race sind Platten für die Tür schlicht nicht da – eine Tür NUR
@@ -450,7 +487,10 @@ export function pairReachable(
         // ein Level mit zwei Platten und keinem Stein grün und unspielbar.
         if (opens && coop && requireAll.has(doorId)) {
           const plates = usable.filter((o) => o.plate);
-          if (!holdable(plates, seen[other]!, stonePlates, boulders)) opens = false;
+          // Freie Füße: bei einer latchenden Tür beide Spieler, sonst nur der
+          // Partner (der andere rollt in dem Moment durch).
+          const feetReach = latch ? new Set([...seen[0]!, ...seen[1]!]) : seen[other]!;
+          if (!holdCheck(plates, feetReach, stonePlates, boulders, latch ? 2 : 1).ok) opens = false;
         }
         if (opens) {
           open[p]!.add(doorId);
@@ -828,6 +868,9 @@ export function validateLevel(raw: unknown): CheckResult[] {
   const requireAllDoors = new Set(
     def.floors.flatMap((f) => f.elements.filter((e): e is DoorDef => e.type === 'door' && e.require === 'all').map((d) => d.id)),
   );
+  const latchDoors = new Set(
+    def.floors.flatMap((f) => f.elements.filter((e): e is DoorDef => e.type === 'door' && e.latch).map((d) => d.id)),
+  );
   for (const [doorId, openers] of openersByDoor) {
     if (!doorIds.has(doorId)) continue; // hängende Verknüpfung: das sagt `links`
     const keyed = openers.filter((o) => o.type !== 'plate');
@@ -839,17 +882,21 @@ export function validateLevel(raw: unknown): CheckResult[] {
           return new Set([...pr.p1, ...pr.p2]);
         })()
       : coopReachable(def, new Set([doorId]));
-    // ERREICHBAR IST NICHT HALTBAR (M76): Eine 'all'-Tür mit zwei Platten
-    // verlangt zwei Körper – der Partner ist einer, jeder Stein einer. Das
-    // gilt auch für eine REINE Platten-Tür, deshalb steht die Prüfung VOR
-    // dem Ausstieg unten: sonst bliebe der häufigste Fall stumm.
+    // ERREICHBAR IST NICHT HALTBAR (M76/M77): Eine 'all'-Tür mit zwei Platten
+    // verlangt zwei Halter. Wie viele Füße frei sind, entscheidet die Tür –
+    // fällt sie wieder zu, rollt einer durch und hält nichts; „bleibt offen"
+    // erlaubt beiden Spielern, gleichzeitig zu stehen (Seitenwechsel). Die
+    // Prüfung steht VOR dem Ausstieg unten, sonst bliebe die REINE
+    // Platten-Tür – der häufigste Fall – stumm.
     if (two && pairCoop && requireAllDoors.has(doorId)) {
-      const plates = openers.filter((o) => o.type === 'plate').map((o) => ({ fl: o.fl, cell: o.cell, plate: true }));
+      const plates = openers.filter((o) => o.type === 'plate').map((o) => ({ fl: o.fl, cell: o.cell }));
       const boulders = def.floors.reduce((n, f) => n + f.elements.filter((e) => e.type === 'boulder').length, 0);
-      if (!holdable(plates, withoutThisDoor, stonePlates, boulders)) {
+      const latch = latchDoors.has(doorId);
+      const v = holdCheck(plates, withoutThisDoor, stonePlates, boulders, latch ? 2 : 1);
+      if (!v.ok) {
         openersOk = false;
         const pl = plates[0]!;
-        openersDetail ??= `${doorId}: ${plates.length} Platten gleichzeitig, ${1 + boulders} Halter`;
+        openersDetail ??= holdDetail(doorId, v, latch);
         openersAt ??= { floor: pl.fl, cell: pl.cell };
       }
     }

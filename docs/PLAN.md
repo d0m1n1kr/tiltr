@@ -612,6 +612,38 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M77 „Seitenwechsel" ✓ (v3.10.0) – wer halten kann, entscheidet die Tür
+
+Meldung mit Bild, direkt nach M76: „Hier müssen P1 und P2 die Seite wechseln.
+Die Schalter liegen daher auf beiden Seiten der Tür – es wird angezeigt: Fehler
+Öffner vor Tür." Der Bericht hatte recht und war zugleich unbrauchbar: Er sagte
+„tor1: 2 Platten gleichzeitig, 3 Halter" – als wären die Halter das Problem,
+obwohl drei da waren.
+
+Die Wahrheit hängt an der TÜR, nicht an der Zahl der Körper:
+
+- Eine Tür, die WIEDER ZUFÄLLT, muss offen sein, WÄHREND jemand durchrollt –
+  und wer durchrollt, hält keine Platte. Für zwei Platten bleibt genau EIN
+  freier Spieler (der Partner) plus die Steine. Die Anordnung „Schalter links
+  und rechts" ist damit unlösbar: Stehen beide, geht niemand; geht einer, fällt
+  die Tür zu.
+- Eine Tür, die OFFEN BLEIBT (`latch`, M76), muss beim Öffnen niemanden
+  durchlassen. BEIDE Spieler dürfen gleichzeitig auf Platten stehen, die Tür
+  rastet ein, und danach tauschen sie in Ruhe die Seiten. Genau die Idee aus
+  der Meldung.
+
+Deshalb rechnet `holdCheck` jetzt mit einer Kapazität, die die Tür vorgibt
+(`feetFree` = 2 bei latch, sonst 1), und `pairReachable` zählt bei einer
+latchenden Tür auch die EIGENE Platte als Öffner – M74 („die eigene Platte
+öffnet mir nichts") gilt nur, solange die Tür wieder zufällt. Der Bericht sagt
+jetzt, was fehlt, und nennt den Ausweg: „2 Platten nur für Füße, 1 Spieler frei
+(wer durchrollt, hält nichts) – „bleibt offen" löst das" (`holdDetail`).
+
+Units in tests/coopPlates.test.ts halten die Anordnung aus der Meldung fest:
+mit „bleibt offen" ist sie grün und teilbar (beide erreichen ihr Ziel auf der
+anderen Seite), ohne sie rot mit dem Hinweis – und die eigene Platte öffnet
+eine latchende Tür auch allein.
+
 ## M76 „Eine Platte ist eine Platte" ✓ (v3.9.0) – Türregel und Halter
 
 Zwei Fragen aus dem Levelbau, und hinter der zweiten ein echter Fehler.

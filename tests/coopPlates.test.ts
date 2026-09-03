@@ -88,7 +88,9 @@ describe('Coop: Platten von Partner und Rollstein (M74)', () => {
     expect(rep.find((c) => c.key === 'coop')?.ok).toBe(false);
     const openers = rep.find((c) => c.key === 'openers');
     expect(openers?.ok).toBe(false);
-    expect(openers?.detail).toContain('2 Platten gleichzeitig, 1 Halter');
+    // Der Bericht sagt, WAS fehlt – und nennt den Ausweg (M77).
+    expect(openers?.detail).toContain('2 Platten nur für Füße, 1 Spieler frei');
+    expect(openers?.detail).toContain('bleibt offen');
     // Mit einem Rollstein sind es zwei Halter – dann geht die Tür auf.
     const withStone = level([
       { type: 'door', id: 'tor1', edge: [[1, 0], 'e'], require: 'all' },
@@ -127,5 +129,93 @@ describe('Coop: Platten von Partner und Rollstein (M74)', () => {
       { type: 'plate', cell: [0, 1], opens: 'tor1' },
     ]);
     expect(pairReachable(shared, false).p1.has(cellKey(0, [4, 0]))).toBe(false);
+  });
+});
+
+// M77 – SEITENWECHSEL: Die Meldung aus dem Levelbau war „hier müssen P1 und P2
+// die Seite wechseln, die Schalter liegen daher auf BEIDEN Seiten der Tür" –
+// und der Bericht sagte „Öffner vor Tür" rot. Zu Recht, solange die Tür wieder
+// zufällt: Wer durchrollt, kann keine Platte halten, also bleibt nur ein
+// Halter für zwei Platten. Mit „bleibt offen" ist es lösbar – dann tritt jeder
+// auf seine Platte, die Tür rastet ein, und danach tauschen beide die Seite.
+// Ein Gang in Reihe 0: alles aufgeschnitten, dann Reihe 0 von Reihe 1
+// getrennt – so hängt das Ergebnis nicht am Seed.
+const oneRow = (cols: number) => ({
+  seed: 3,
+  carve: carveAll(cols, 2),
+  add: [...Array(cols).keys()].map((x) => [[x, 0], 's'] as [[number, number], 's']),
+});
+
+function sideSwap(latch: boolean) {
+  return parseLevel({
+    id: 'custom-swap',
+    name: 'Seitenwechsel',
+    players: 2,
+    mpMode: 'coop',
+    floors: [
+      {
+        size: [6, 2],
+        maze: oneRow(6),
+        elements: [
+          { type: 'door', id: 'tor', edge: [[2, 0], 'e'], require: 'all', latch },
+          { type: 'plate', cell: [1, 0], opens: 'tor' }, // Seite von Spieler 1
+          { type: 'plate', cell: [3, 0], opens: 'tor' }, // Seite von Spieler 2
+        ],
+        start: [0, 0],
+        goal: [4, 0],
+        start2: [5, 0],
+        goal2: [0, 0],
+      },
+    ],
+  });
+}
+
+describe('Seitenwechsel an einer Tür mit Platten auf beiden Seiten (M77)', () => {
+  it('„bleibt offen": jeder tritt auf seine Platte, danach ist der Weg frei', () => {
+    const rep = validateLevel(sideSwap(true));
+    const red = rep.filter((c) => !c.ok).map((c) => `${c.key}: ${c.detail ?? ''}`);
+    expect(red).toEqual([]);
+    expect(isShareable(rep)).toBe(true);
+    const pair = pairReachable(sideSwap(true), true);
+    expect(pair.p1.has(cellKey(0, [4, 0]))).toBe(true); // Spieler 1 kommt hinüber
+    expect(pair.p2.has(cellKey(0, [0, 0]))).toBe(true); // Spieler 2 auch
+  });
+
+  it('ohne „bleibt offen" ist dieselbe Anordnung unlösbar – und der Bericht nennt den Ausweg', () => {
+    const rep = validateLevel(sideSwap(false));
+    expect(rep.find((c) => c.key === 'coop')?.ok).toBe(false);
+    const openers = rep.find((c) => c.key === 'openers');
+    expect(openers?.ok).toBe(false);
+    expect(openers?.detail).toContain('bleibt offen');
+    expect(pairReachable(sideSwap(false), true).p1.has(cellKey(0, [4, 0]))).toBe(false);
+  });
+
+  it('„bleibt offen" macht auch die EIGENE Platte zum Öffner (M74 gilt nur für Türen, die zufallen)', () => {
+    const own = (latch: boolean) =>
+      parseLevel({
+        id: 'custom-own',
+        name: 'Eigene Platte',
+        players: 2,
+        mpMode: 'coop',
+        floors: [
+          {
+            size: [5, 2],
+            maze: oneRow(5),
+            elements: [
+              { type: 'door', id: 'tor', edge: [[2, 0], 'e'], latch },
+              { type: 'plate', cell: [1, 0], opens: 'tor' },
+            ],
+            start: [0, 0],
+            goal: [4, 0],
+            start2: [0, 0],
+            goal2: [1, 0],
+          },
+        ],
+      });
+    // Drauftreten, die Tür rastet ein, wieder runter und durch.
+    expect(pairReachable(own(true), true).p1.has(cellKey(0, [4, 0]))).toBe(true);
+    // Ohne Latch müsste er gleichzeitig stehen und rollen – der Partner steht
+    // hier auf demselben Start, erreicht die Platte also auch: das zählt (M74).
+    expect(pairReachable(own(false), true).p1.has(cellKey(0, [4, 0]))).toBe(true);
   });
 });
