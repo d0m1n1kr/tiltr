@@ -116,7 +116,13 @@ const want = (id) => {
  *  Wert (die Zusicherung danach sagt dann, was fehlte). Feste Sleeps nach
  *  Bewegungen und Klicks waren die Last-Flakes der Läufe 9, 17 und 21: allein
  *  grün, unter vier Arbeitern lasen sie den Zustand von vor dem Ereignis. */
-const until = async (fn, { timeout = 8000, step = 50 } = {}) => {
+/** Faktor für ALLE Wartebudgets (parallel.mjs setzt ihn auf die
+ *  Arbeiterzahl): Unter Last läuft die Spielschleife langsamer, die Kugel
+ *  braucht in WANDUHR-Zeit länger für dieselbe Strecke. Gewartet wird
+ *  weiterhin auf Zustand – nur die Obergrenze wächst. */
+const TIMEOUT_SCALE = Math.max(1, Number(process.env.E2E_TIMEOUT_SCALE ?? 1));
+const until = async (fn, { timeout: budget = 8000, step = 50 } = {}) => {
+  const timeout = budget * TIMEOUT_SCALE;
   const t0 = Date.now();
   for (;;) {
     const v = await fn();
@@ -152,6 +158,16 @@ const browser = await chromium.launch({
   executablePath,
   args: ["--autoplay-policy=no-user-gesture-required"],
 });
+// Auch Playwrights EIGENE Obergrenze (30 s für click/fill) dehnt sich unter
+// Last: Der CI-Ausfall endete in einem click-Timeout, nachdem der Lauf schon
+// zu langsam war. Ein Haken um newContext genügt – jede Seite jedes Laufs
+// erbt das Budget.
+const newContext = browser.newContext.bind(browser);
+browser.newContext = async (opts) => {
+  const ctx = await newContext(opts);
+  ctx.setDefaultTimeout(30000 * TIMEOUT_SCALE);
+  return ctx;
+};
 const errors = [];
 let failed = false;
 const check = (name, cond) => {

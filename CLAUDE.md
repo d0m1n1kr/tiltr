@@ -34,7 +34,12 @@ ihm fehlten STILL – 207 ✓ statt 247, exit 0 an keiner Stelle rot. Der
 Dispatcher meldet zusätzlich jeden zugeteilten Lauf, der nie sein `# Lauf X`
 druckte (`NICHT gelaufen`), und setzt exit ≠ 0. Ein Lauf, der allein grün ist
 und unter 4 Arbeitern rot, ist ein LAST-Flake: Sleeps durch Zustands-Warten
-ersetzen, nicht die Arbeiterzahl senken. Dafür gibt es seit v3.0.1 die Helfer
+ersetzen, nicht die Arbeiterzahl senken. Und die BUDGETS skalieren mit der
+Arbeiterzahl: der Dispatcher setzt `E2E_TIMEOUT_SCALE` (= Zahl der Arbeiter),
+`until` multipliziert damit, und jeder Kontext bekommt `setDefaultTimeout(30 s
+× Skala)` – vier Arbeiter auf zwei CI-Kernen strecken die Wand-Uhr, und in
+Lauf 9 warf am Ende Playwrights EIGENER 30-s-Klick-Timeout (Arbeiter bei 146 s
+statt 53 s, 7 ✗ in der CI, lokal grün). Dafür gibt es seit v3.0.1 die Helfer
 `until(fn, {timeout})` (pollt bis wahr, gibt sonst den letzten Wert zurück –
 die Zusicherung danach sagt, was fehlte), `settled(page)` (Ball ruht) und
 `holdUntil(page, key, pred)`: Taste halten, bis die Bedingung gilt UND der

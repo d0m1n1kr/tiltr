@@ -115,7 +115,18 @@ const results = await Promise.all(
           process.execPath,
           [new URL("./smoke.mjs", import.meta.url).pathname],
           {
-            env: { ...process.env, E2E_BASE: BASE, E2E_ONLY: b.ids.join(",") },
+            // Unter Last dehnt sich die WANDUHR: Vier Arbeiter auf zwei Kernen
+            // lassen die Spielschleife (rAF) einbrechen, die Kugel rollt in
+            // Sekunden dieselbe Strecke nicht mehr. Deshalb skalieren die
+            // Wartebudgets mit der Arbeiterzahl – die Zusicherungen warten
+            // weiter auf ZUSTAND, nur ihre Obergrenze wächst (das war der
+            // CI-Ausfall von Lauf 9: 8 s Budget, Arbeiter bei 146 s statt 53).
+            env: {
+              ...process.env,
+              E2E_BASE: BASE,
+              E2E_ONLY: b.ids.join(","),
+              E2E_TIMEOUT_SCALE: String(Math.max(1, bins.length)),
+            },
             stdio: ["ignore", "pipe", "pipe"],
           },
         );
