@@ -13,8 +13,8 @@
 import { generateMaze, mirrorCells, setWall, type Cell } from '../core/maze';
 import { MUSIC_IDS } from '../music';
 import { mulberry32 } from '../core/rng';
-import { loadLevel } from './loader';
-import { parseLevel, type DoorDef, type FloorDef, type JukeboxDef, type LevelDef } from './schema';
+import { elementForPlayer, loadLevel } from './loader';
+import { parseLevel, type DoorDef, type FloorDef, type JukeboxDef, type LevelDef, type TransporterDef } from './schema';
 import { boulderProof } from './boulders';
 
 export interface CellConfig {
@@ -52,6 +52,9 @@ export interface CellConfig {
    * sagen, WELCHER Automat im Weg steht.
    */
   openJukeboxCells?: Set<string>;
+  /** Zwei Spieler (M65): nur Transporter zählen, die es für DIESEN Spieler
+   *  gibt (`transporter.player` fehlt oder passt). Ohne Angabe: alle. */
+  player?: 1 | 2;
 }
 
 export interface StartPos {
@@ -161,7 +164,7 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
     rows: f.size[1],
     jumps: [
       ...f.elements
-        .filter((e) => e.type === 'transporter')
+        .filter((e): e is TransporterDef => e.type === 'transporter' && (cfg.player === undefined || elementForPlayer(e, cfg.player)))
         .map((t) => ({ from: t.cell as readonly [number, number], toFloor: t.target.floor, toCell: t.target.cell as readonly [number, number] })),
       ...(guards?.edges ?? []).map((e) => ({ from: e.from, toFloor: fi, toCell: e.to, guardEdge: true })),
     ],
@@ -336,8 +339,8 @@ export function pairReachable(
   const open = [new Set<string>(), new Set<string>()];
   for (;;) {
     const seen = [
-      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0] }, start1),
-      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[1] }, start2),
+      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[0], player: 1 }, start1),
+      reachable(def, { brittleOpen: true, doorsOpen: false, openDoorIds: open[1], player: 2 }, start2),
     ];
     let changed = false;
     for (const p of [0, 1] as const) {
@@ -366,12 +369,12 @@ export function pairReachable(
 /** Zellen-Schritte von A nach B über Ebenen im offenen Modell (Türen offen,
  *  brüchig offen, Transporter als Sprung) – Infinity = kein Weg. Für das
  *  weiche Badge „Wege ähnlich lang" (M57). */
-export function pathSteps(def: LevelDef, from: StartPos, to: StartPos): number {
+export function pathSteps(def: LevelDef, from: StartPos, to: StartPos, player?: 1 | 2): number {
   const floors = def.floors.map((f) => ({
     cells: buildFloorCells(f, { brittleOpen: true, doorsOpen: true }, def.mirror),
     cols: f.size[0],
     rows: f.size[1],
-    jumps: f.elements.filter((e) => e.type === 'transporter'),
+    jumps: f.elements.filter((e): e is TransporterDef => e.type === 'transporter' && (player === undefined || elementForPlayer(e, player))),
     solid: new Set(f.elements.filter((e) => e.type === 'jukebox').map((e) => `${e.cell[0]},${e.cell[1]}`)),
   }));
   const dist = new Map<string, number>([[cellKey(from.floor, from.cell), 0]]);
@@ -459,15 +462,17 @@ export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
   const goalFl = def.floors.findIndex((f) => f.goal);
   if (goalFl < 0) return { ok: false, detail: 'kein Ziel' };
   const goalKey = cellKey(goalFl, def.floors[goalFl]!.goal!);
-  const past = guardSafeReachable(def);
+  const two = def.players === 2;
+  const past = two ? reachable(def, { brittleOpen: true, doorsOpen: true, guardSafe: true, player: 1 }) : guardSafeReachable(def);
   let ok = past.has(goalKey);
   let detail = ok ? undefined : 'Ziel';
-  // Zwei Spieler (M57): Der Gast startet an start2 und braucht goal2 (wenn
-  // gesetzt) – sein eigener wächtersicherer Baum. Öffner und Transporter
-  // gelten als erreichbar, wenn EINER der beiden sie erreicht.
+  // Zwei Spieler (M57/M65): Der Gast startet an start2, braucht goal2 (wenn
+  // gesetzt) und hat nur SEINE Transporter – sein eigener wächtersicherer
+  // Baum. Öffner gelten als erreichbar, wenn EINER der beiden sie erreicht.
   const f0 = def.floors[0]!;
-  const start2 = f0.start2;
-  const past2 = start2 ? reachable(def, { brittleOpen: true, doorsOpen: true, guardSafe: true }, { floor: 0, cell: start2 }) : past;
+  const past2 = two
+    ? reachable(def, { brittleOpen: true, doorsOpen: true, guardSafe: true, player: 2 }, { floor: 0, cell: f0.start2 ?? f0.start })
+    : past;
   const g2 = def.floors.findIndex((f) => f.goal2);
   if (ok && g2 >= 0 && !past2.has(cellKey(g2, def.floors[g2]!.goal2!))) {
     ok = false;
@@ -475,11 +480,10 @@ export function guardsProof(def: LevelDef): { ok: boolean; detail?: string } {
   }
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
-      if (
-        (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch' || el.type === 'transporter') &&
-        !past.has(cellKey(fl, el.cell)) &&
-        !past2.has(cellKey(fl, el.cell))
-      ) {
+      if (el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch' && el.type !== 'transporter') continue;
+      // Ein Transporter nur für Spieler 2 muss auch nur in SEINEM Baum liegen.
+      const sets = el.type === 'transporter' && el.player === 1 ? [past] : el.type === 'transporter' && el.player === 2 ? [past2] : [past, past2];
+      if (!sets.some((s) => s.has(cellKey(fl, el.cell)))) {
         ok = false;
         detail = `${el.type} E${fl + 1} (${el.cell})`;
       }
@@ -853,8 +857,8 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // Weich (M57): Wege ähnlich lang – im Race sonst von vornherein entschieden,
   // im Coop wartet einer nur. Toleranz: 3 Zellen oder 30 %, was größer ist.
   if (two) {
-    const d1 = pathSteps(def, { floor: 0, cell: def.floors[0]!.start }, { floor: goalFl, cell: def.floors[goalFl]!.goal! });
-    const d2 = pathSteps(def, start2, g2 >= 0 ? { floor: g2, cell: def.floors[g2]!.goal2! } : { floor: goalFl, cell: def.floors[goalFl]!.goal! });
+    const d1 = pathSteps(def, { floor: 0, cell: def.floors[0]!.start }, { floor: goalFl, cell: def.floors[goalFl]!.goal! }, 1);
+    const d2 = pathSteps(def, start2, g2 >= 0 ? { floor: g2, cell: def.floors[g2]!.goal2! } : { floor: goalFl, cell: def.floors[goalFl]!.goal! }, 2);
     const fair = Number.isFinite(d1) && Number.isFinite(d2) && Math.abs(d1 - d2) <= Math.max(3, 0.3 * Math.max(d1, d2));
     push('fair', fair, fair ? undefined : `${d1} ↔ ${d2}`);
   }

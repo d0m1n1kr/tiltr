@@ -105,6 +105,44 @@ describe('Schema und Loader', () => {
   });
 });
 
+describe('Transporter nur für einen Spieler (M65)', () => {
+  // Gast-Korridor: Pad bei [2,2] nur für Spieler 2, Ziel = sein Ziel [3,2].
+  const withPad = () => {
+    const raw = level();
+    (raw.floors[0] as { elements: unknown[] }).elements.push({ type: 'transporter', cell: [2, 2], target: { floor: 0, cell: [3, 2] }, player: 2 });
+    return raw;
+  };
+  it('der Loader baut das Pad nur in die Welt von Spieler 2', () => {
+    const def = parseLevel(withPad());
+    expect(loadLevel(def, { player: 1 }).world.transporters).toHaveLength(0);
+    expect(loadLevel(def, { player: 2 }).world.transporters).toHaveLength(1);
+    expect(loadLevel(def, { player: 1, allTransporters: true }).world.transporters).toHaveLength(1);
+  });
+  it('der Beweis rechnet Sprünge nur für den Spieler, dem das Pad gehört', () => {
+    const raw = level();
+    // Pad im HOST-Korridor hinter der Tür, springt ins Ziel des Gasts – nur für Spieler 1.
+    (raw.floors[0] as { elements: unknown[] }).elements.push({ type: 'transporter', cell: [2, 0], target: { floor: 0, cell: [3, 2] }, player: 1 });
+    const pr = pairReachable(parseLevel(raw), true);
+    expect(pr.p1.has(cellKey(0, [3, 2]))).toBe(true);
+    expect(pr.p2.has(cellKey(0, [2, 0]))).toBe(false);
+    // Dasselbe Pad für Spieler 2 erklärt: kein Sprung mehr für Spieler 1.
+    (raw.floors[0] as { elements: Array<Record<string, unknown>> }).elements.at(-1)!.player = 2;
+    expect(pairReachable(parseLevel(raw), true).p1.has(cellKey(0, [3, 2]))).toBe(false);
+  });
+  it('Badges bleiben grün: der Wächter-Beweis verlangt das Pad nur im Baum seines Spielers', () => {
+    const checks = validateLevel(withPad());
+    const map = new Map(checks.map((c) => [c.key, c]));
+    expect(map.get('guards')?.ok).toBe(true);
+    expect(map.get('coop')?.ok).toBe(true);
+    expect(isShareable(checks)).toBe(true);
+  });
+  it('mirrorLevel behält die Spieler-Zuordnung', () => {
+    const m = mirrorLevel(parseLevel(withPad()), 'x');
+    const tp = m.floors[0]!.elements.find((e) => e.type === 'transporter')!;
+    expect((tp as { player?: number }).player).toBe(2);
+  });
+});
+
 describe('Beweise (pairReachable)', () => {
   it('Coop: die Platte des Gasts öffnet die Tür des Hosts – beide erreichen ihr Ziel', () => {
     const def = parseLevel(level());

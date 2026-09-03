@@ -2879,6 +2879,7 @@ function frame(now: number): void {
     mirrors: world.walls.filter((w) => w.mirror).length,
     forks: world.keys.filter((k) => k.voice === 'fork').length,
     keysCollected: world.keys.filter((k) => k.collected).length,
+    transporters: world.transporters.length,
     bright: bright(),
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,

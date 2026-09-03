@@ -612,6 +612,20 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M65 „Deine Tür, mein Pad" ✓ (v3.1.8) – Transporter nur für einen Spieler
+
+Wunsch: In Zwei-Spieler-Leveln soll ein Transporter wahlweise nur einem
+Spieler gehören. `transporter.player: 1 | 2` (fehlt = beide): Der Loader
+baut das Pad nur in die Welt dieses Spielers (`elementForPlayer`) – für den
+anderen gibt es weder Klang noch Warp; der Editor lädt mit
+`allTransporters` und zeigt alles, mit „P1"/„P2" am Pad und dem Feld
+„Transporter für" (beide / nur Spieler 1 / nur Spieler 2). Beweise: `reachable`
+kennt `player`, `pairReachable` rechnet je Spieler nur seine Sprünge,
+`guardsProof` verlangt ein Pad nur im Baum seines Spielers, `fair` misst je
+Spieler mit seinen Pads. Zurück auf einen Spieler räumt die Zuordnung weg.
+Units (Loader, Beweis, Spiegelung), Lauf 33: Pad nur für den Gast, Host-Welt
+ohne Transporter, Feld im Editor.
+
 ## M64 „Zeig es" ✓ (v3.1.7) – README gestrafft, Screenshots reproduzierbar
 
 Beide READMEs neu geschnitten: Roadmap raus (das Bautagebuch ist PLAN.md),

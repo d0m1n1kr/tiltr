@@ -5891,6 +5891,8 @@ if (want("33")) {
             { type: "plate", cell: [0, 2], opens: "g" },
             { type: "door", id: "k", edge: [[1, 2], "e"] },
             { type: "key", cell: [2, 0], opens: "k" },
+            // Pad NUR für Spieler 2 (M65): hinter seiner Tür, springt in sein Ziel.
+            { type: "transporter", cell: [2, 2], target: { floor: 0, cell: [3, 2] }, player: 2 },
           ],
           start: [0, 0],
           goal: [3, 0],
@@ -5947,6 +5949,31 @@ if (want("33")) {
       `Sechs Werkzeug-Kacheln, keine ●²-Kachel, Druckplatte in der Palette, Modus „coop" (${JSON.stringify(tools2)})`,
       tools2.tiles === 6 && !tools2.start2Tile && tools2.plate && tools2.players === 2 && tools2.mode === "coop",
     );
+    // Transporter-Eigenschaft „Transporter für" (M65): Pad bei (2,2) wählen.
+    await pageA.click("#edTool-select");
+    const tpPt = await pageA.evaluate(() => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById("edCanvas").getBoundingClientRect();
+      return { x: box.left + (ed.ox + 250 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 250 * ed.scale) / ed.dpr };
+    });
+    await pageA.mouse.click(tpPt.x, tpPt.y);
+    const tpField = await until(async () => (await pageA.evaluate(() => document.getElementById("edTransporterPlayer")?.value)) ?? null, { timeout: 3000 });
+    await pageA.selectOption("#edTransporterPlayer", "both");
+    const tpBoth = await pageA.evaluate(() => {
+      const ed = window.__tiltrEd;
+      return ed.def.floors[0].elements[ed.selected]?.player;
+    });
+    await pageA.selectOption("#edTransporterPlayer", "2"); // zurück auf Spieler 2
+    check(`Transporter-Feld „für": zeigt Spieler 2, „beide" löscht die Zuordnung (${tpField} → ${tpBoth})`, tpField === "2" && tpBoth === undefined);
+    // Auswahl aufheben (leere Zelle (1,1) antippen) – das Werkzeug-Feld „Setzt
+    // für" erscheint nur ohne ausgewähltes Element.
+    const emptyPt = await pageA.evaluate(() => {
+      const ed = window.__tiltrEd;
+      const box = document.getElementById("edCanvas").getBoundingClientRect();
+      return { x: box.left + (ed.ox + 150 * ed.scale) / ed.dpr, y: box.top + (ed.oy + 150 * ed.scale) / ed.dpr };
+    });
+    await pageA.mouse.click(emptyPt.x, emptyPt.y);
+    await until(async () => (await pageA.evaluate(() => window.__tiltrEd?.selected)) === -1);
     await pageA.click("#edTool-start");
     const before = await pageA.evaluate(() => ({
       field: document.getElementById("edToolPlayer")?.value,
@@ -6067,6 +6094,10 @@ if (want("33")) {
     );
     const mpA = await pageA.evaluate(() => ({ ...window.__tiltrMp, ball: window.__tiltrBall }));
     const mpB = await pageB.evaluate(() => ({ ...window.__tiltrMp, ball: window.__tiltrBall }));
+    // Transporter nur für Spieler 2 (M65): in der Welt des Hosts gibt es ihn nicht.
+    const tpA = await pageA.evaluate(() => window.__tiltrWorld?.transporters);
+    const tpB = await pageB.evaluate(() => window.__tiltrWorld?.transporters);
+    check(`Transporter nur für Spieler 2: Host 0, Gast 1 (${tpA}/${tpB})`, tpA === 0 && tpB === 1);
     check(
       `Rollen: Host Spieler 1 bei (50,50), Gast Spieler 2 an Start 2 (50,250), beide „custom" (${mpA.player}@${mpA.ball?.x},${mpA.ball?.y} / ${mpB.player}@${mpB.ball?.x},${mpB.ball?.y})`,
       mpA.player === 1 &&

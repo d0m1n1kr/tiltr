@@ -232,7 +232,13 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   zählen gar nicht. Neue Öffner-Arten IMMER an beiden Stellen (Sync in
   app.ts UND pairReachable) eintragen. Badges
   `coop`/`race` ERSETZEN `goal` bei zwei Spielern (bei 'any' beide Pflicht),
-  `fair` ist weich (`SOFT_CHECKS`, wie `items`). KEINE EIGENEN KACHELN für
+  `fair` ist weich (`SOFT_CHECKS`, wie `items`). TRANSPORTER JE SPIELER
+  (M65): `transporter.player` 1|2 – der Loader baut das Pad nur in die Welt
+  dieses Spielers (`elementForPlayer`; der Editor lädt mit
+  `allTransporters`), `reachable({ player })` zählt nur seine Sprünge, und
+  `pairReachable`/`guardsProof`/`pathSteps` reichen den Spieler durch. Wer
+  ein weiteres Element je Spieler will, hängt es an `elementForPlayer` und
+  dieselbe `player`-Option – EINE Stelle für Spiel und Beweis. KEINE EIGENEN KACHELN für
   Start 2/Ziel 2 (M58): Die Werkzeugleiste hat SECHS Kacheln, mehr sind auf
   dem Phone nicht erreichbar – ● und ◎ tragen `toolPlayer` (Feld „Setzt für"
   im Eigenschaften-Panel, aktive Kachel nochmal tippen wechselt). Wer ein

@@ -681,7 +681,7 @@ export function setupEditor(opts: {
   function rebuild(): void {
     if (!draft) return;
     try {
-      loaded = loadLevel(parseLevel(draft));
+      loaded = loadLevel(parseLevel(draft), { allTransporters: true }); // Vorschau zeigt beide Spieler
       loadError = null;
       // Status hier NICHT löschen: frische Hinweise aus der laufenden Aktion
       // („Feld belegt", Wächter-/Transporter-Schritt 2) müssen stehen bleiben
@@ -865,6 +865,12 @@ export function setupEditor(opts: {
       const hot = selEl === el;
       overlay.strokeStyle = `rgba(${WORLD.portal}, ${hot ? 0.95 : 0.45})`;
       overlay.fillStyle = `rgba(${WORLD.portal}, 0.9)`;
+      // Nur für einen Spieler (M65): kleine Marke am Pad.
+      if (el.player === 1 || el.player === 2) {
+        overlay.font = `700 ${11 * dpr}px system-ui, sans-serif`;
+        overlay.textAlign = 'left';
+        overlay.fillText(`P${el.player}`, tx(el.cell[0] * CELL) + 4 * dpr, ty((el.cell[1] + 1) * CELL) - 4 * dpr);
+      }
       if (tg.floor === activeFloor) {
         overlay.lineWidth = 1.5 * dpr;
         overlay.setLineDash([5 * dpr, 5 * dpr]);
@@ -1743,6 +1749,22 @@ export function setupEditor(opts: {
           paint();
         });
         propsEl.append(link);
+        // Zwei Spieler (M65): Pad nur für einen Spieler – in der Welt des
+        // anderen gibt es es nicht.
+        if (twoPlayers()) {
+          const who = selectInput(String(el.player ?? 'both'), [
+            ['both', t('ed.tp.both')],
+            ['1', t('ed.tp.p1')],
+            ['2', t('ed.tp.p2')],
+          ], (v) => {
+            if (v === 'both') delete el.player;
+            else el.player = Number(v);
+            rebuild();
+            paint();
+          });
+          who.id = 'edTransporterPlayer';
+          propsEl.append(field(t('ed.tp.for'), who));
+        }
       }
       if (el.type === 'timedSwitch') {
         if (el.durationS === undefined) el.durationS = 6;
@@ -1828,6 +1850,7 @@ export function setupEditor(opts: {
         for (const f of draft!.floors) {
           delete f.start2;
           delete f.goal2;
+          for (const el of f.elements) if (el.type === 'transporter') delete el.player;
         }
         toolPlayer = 1;
         if (placeType === 'plate') placeType = 'hole';

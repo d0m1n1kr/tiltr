@@ -26,6 +26,15 @@ export interface LoadedFloor {
  *  Spieler 1. Default 1: jeder bestehende Aufruf bleibt unverändert. */
 export interface LoadOptions {
   player?: 1 | 2;
+  /** Editor: auch die Transporter des ANDEREN Spielers bauen (Vorschau zeigt
+   *  alles, was in der Def steht). Im Spiel bleiben sie weg. */
+  allTransporters?: boolean;
+}
+
+/** Gehört dieses Element in die Welt von Spieler `player`? Transporter mit
+ *  `player` gibt es nur für ihn (M65); alles andere für beide. */
+export function elementForPlayer(el: { type: string; player?: 1 | 2 }, player: 1 | 2): boolean {
+  return el.type !== 'transporter' || el.player === undefined || el.player === player;
 }
 
 export interface LoadedLevel {
@@ -199,7 +208,8 @@ export function loadLevel(defOrData: LevelDef | unknown, opts: LoadOptions = {})
     }
 
     const world = new World(walls, ball, goal);
-    buildElements(floor.elements, { world, cell: CELL, cols, rows, floorIndex });
+    const elements = opts.allTransporters ? floor.elements : floor.elements.filter((el) => elementForPlayer(el, player));
+    buildElements(elements, { world, cell: CELL, cols, rows, floorIndex });
     floors.push({ world, cols, rows, bright: floor.bright, dusk: floor.dusk });
   });
 

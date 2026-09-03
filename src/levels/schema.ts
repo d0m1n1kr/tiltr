@@ -115,6 +115,9 @@ export const transporterDef = z.object({
   /** Ziel: Ebenen-Index + Zelle. Gleiche Ebene = Portal. */
   target: z.object({ floor: z.number().int().min(0), cell: cellCoord }),
   r: z.number().positive().default(32),
+  /** Zwei Spieler (M65): nur für diesen Spieler vorhanden – in der Welt des
+   *  anderen gibt es das Pad nicht (kein Klang, kein Warp). Fehlt = beide. */
+  player: z.union([z.literal(1), z.literal(2)]).optional(),
 });
 
 export const slidingWallDef = z.object({
