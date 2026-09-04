@@ -16,6 +16,21 @@ describe('needsFor', () => {
   });
 });
 
+describe('needsFor: together (M90)', () => {
+  it('meldet die Rendezvous-Regel als Merkmal – sonst gewinnt eine alte Seite nach der alten Regel', () => {
+    expect(needsFor(0, true)).toEqual(['together']);
+    expect(needsFor(3, true)).toEqual(['marks', 'together']);
+    expect(needsFor(3, false)).toEqual(['marks']);
+    expect(needsFor(0, false)).toEqual([]);
+  });
+
+  it('diese Fassung kann beides', () => {
+    expect(canDo(needsFor(3, true), FEATURES)).toBe(true);
+    // Eine Gegenstelle von vor M90 kennt „together" nicht.
+    expect(canDo(needsFor(0, true), ['marks'])).toBe(false);
+  });
+});
+
 describe('canDo', () => {
   it('diese Fassung kann, was sie selbst verlangt', () => {
     expect(canDo(needsFor(3), FEATURES)).toBe(true);

@@ -11,11 +11,16 @@
 // spielt weiter mit jeder älteren Fassung. Rein – Units in tests/features.test.ts.
 
 /** Merkmale, die DIESE Fassung beherrscht. Neues Spielmittel ⇒ hier eintragen. */
-export const FEATURES: readonly string[] = ['marks'];
+export const FEATURES: readonly string[] = ['marks', 'together'];
 
-/** Was ein Level verlangt. `marks` > 0 heißt: beide müssen Bojen legen können. */
-export function needsFor(marks: number): string[] {
-  return marks > 0 ? ['marks'] : [];
+/** Was ein Level verlangt: `marks` > 0 heißt „beide müssen Bojen legen
+ *  können", `together` heißt „beide müssen nach der Rendezvous-Regel spielen"
+ *  (M90 – eine alte Gegenstelle würde sonst nach der alten Regel gewinnen). */
+export function needsFor(marks: number, together = false): string[] {
+  const needs: string[] = [];
+  if (marks > 0) needs.push('marks');
+  if (together) needs.push('together');
+  return needs;
 }
 
 /** Kann eine Seite mit diesen Merkmalen das Verlangte? Fehlende Angabe heißt

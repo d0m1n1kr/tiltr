@@ -111,6 +111,7 @@ export class GameAudio {
   private nextBeat = 0;
   private nextTinkle = 0;
   private nextMarkTick = 0;
+  private nextWaitCall = 0;
   private nextTock = 0;
   private tockHigh = false;
 
@@ -1072,6 +1073,33 @@ export class GameAudio {
       osc.connect(gain).connect(this.master);
       osc.start(t0);
       osc.stop(t0 + 0.16);
+    });
+  }
+
+  /** GEMEINSAM ANKOMMEN (M90): Der Partner steht im Ziel und wartet auf mich.
+   *  Ein RUF, kein Puls: zwei Töne aufwärts (Quarte, wie man einen Namen
+   *  ruft), ungepannt – er kommt vom Schirm, nicht aus der Welt, wie das
+   *  Konfetti. Ein Pulsieren wäre in diesem Spiel der Herzschlag und damit
+   *  Gefahr (siehe die Partner-Stimme); Warten ist keine Gefahr, es ist eine
+   *  Aufforderung. Wird jeden Frame gerufen, die Sperre hält den Abstand –
+   *  hört das Warten auf, bleibt nichts stehen, das man abschalten müsste. */
+  waitCall(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (t < this.nextWaitCall) return;
+    this.nextWaitCall = t + 1.6;
+    [659.25, 880].forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const t0 = t + i * 0.16;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.07, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.34);
+      osc.connect(gain).connect(this.master);
+      osc.start(t0);
+      osc.stop(t0 + 0.36);
     });
   }
 

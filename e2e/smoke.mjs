@@ -98,6 +98,7 @@ const KNOWN_RUNS = [
   "44",
   "45",
   "46",
+  "47",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -968,8 +969,10 @@ if (want("9")) {
     const raceCount = await pageA.locator("#mpLevelList .level-item").count();
     await pageA.click('[data-mpmode="coop"]');
     check(
-      `MP-Panel: je 6 Level + 🎲 Zufall (${coopCount}/${raceCount})`,
-      coopCount === 7 && raceCount === 7,
+      // Seit M90 hat Coop ein Level mehr („Gleichschritt", coop-07) – die Zahl
+      // ist Absicht, nicht Zufall: 7 Coop + 6 Race, je plus 🎲 Zufall.
+      `MP-Panel: 7 Coop + 6 Race, je + 🎲 Zufall (${coopCount}/${raceCount})`,
+      coopCount === 8 && raceCount === 7,
     );
 
     await pageA
@@ -8123,6 +8126,206 @@ if (want("46")) {
   } catch (e) {
     check(
       `Lauf 46 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 47: Gemeinsam ankommen (M90). Bis 3.23 gewann Coop, wenn beide
+// IRGENDWANN durch waren – jeder für sich, nur addiert. Mit `together` wird
+// aus dem Ende eine Verabredung: Gewonnen ist erst, wenn BEIDE gleichzeitig in
+// ihren Zielzonen liegen. Die Zusicherung, die vorher rot sein MUSS, ist die
+// zweite: Einer allein im Ziel gewinnt NICHT (vorher rastete `localFinished`
+// ein und die Karte zog auf). Dazu die Rückmeldung, ohne die der Modus Frust
+// wäre (Chip „◎ Partner wartet" beim Nachzügler), und der Abschluss auf BEIDEN
+// Seiten – niemand ist Schiedsrichter. Host + Gast im SELBEN Kontext (Lauf 33:
+// BroadcastChannel überbrückt keine Playwright-Kontexte). ---
+if (want("47")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const pageA = await ctx.newPage();
+    pageA.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    pageA.on("pageerror", (e) => errors.push(String(e)));
+    // Je Spieler eine EIN-ZELLEN-NISCHE als Ziel, von unten angefahren: Die
+    // gehaltene Taste presst die Kugel an die Nischenwand, und dort LIEGT sie
+    // in der Zielzone (Radius 1,4 · Ballradius um die Zellmitte). Ein Ziel in
+    // einer offenen Ecke wäre nur im VORBEIROLLEN erreicht – für ein
+    // Rendezvous muss man darin warten können.
+    const def = {
+      id: "custom-m90",
+      name: "Rendezvous",
+      players: 2,
+      mpMode: "coop",
+      together: true,
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 2],
+          maze: {
+            seed: 9,
+            // Untere Reihe durchgängig, dazu je ein Aufgang in die Randnischen.
+            carve: [[[0, 1], "e"], [[1, 1], "e"], [[2, 1], "e"], [[0, 0], "s"], [[3, 0], "s"]],
+            // Die obere Reihe ist zerschnitten – die Nischen sind Sackgassen.
+            add: [[[0, 0], "e"], [[1, 0], "e"], [[2, 0], "e"], [[1, 0], "s"], [[2, 0], "s"]],
+          },
+          elements: [],
+          start: [0, 1],
+          goal: [0, 0],
+          start2: [3, 1],
+          goal2: [3, 0],
+          bright: true,
+        },
+      ],
+    };
+
+    await pageA.goto(`${BASE}/?nosplash`);
+    await pageA.click("#workshopBtn");
+    await pageA.click("#wsImportBtn");
+    await pageA.fill("#wsImportText", JSON.stringify(def));
+    await pageA.click("#wsImportGo");
+    await until(async () => (await pageA.locator("#workshopList .ws-item").count()) > 0);
+
+    // --- Teil 1: der Schalter im Editor. Die Regel ist eine COOP-Regel; das
+    // Schema lehnt sie im Rennen ab, also muss der Editor sie dort wegräumen –
+    // sonst baut man einen Entwurf, der nicht mehr lädt.
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await pageA.locator("#edTogether").count()) > 0, { timeout: 10000 });
+    const togSet = await pageA.inputValue("#edTogether");
+    await pageA.selectOption("#edMpMode", "race");
+    await until(async () => (await pageA.locator("#edTogether").count()) === 0, { timeout: 6000 });
+    const goneInRace = (await pageA.locator("#edTogether").count()) === 0;
+    await pageA.selectOption("#edMpMode", "coop");
+    await until(async () => (await pageA.locator("#edTogether").count()) > 0, { timeout: 6000 });
+    const afterBack = await pageA.inputValue("#edTogether");
+    check(
+      `Editor: „Gemeinsam ankommen" steht im Level, das Rennen nimmt es mit (${JSON.stringify({ togSet, goneInRace, afterBack })})`,
+      togSet === "both" && goneInRace && afterBack === "each",
+    );
+    // Wieder anschalten – mit dieser Regel geht es in den Netz-Teil.
+    await pageA.selectOption("#edTogether", "both");
+    await pageA.click("#edClose");
+
+    // --- Teil 2: echtes Netz, Host + Gast im SELBEN Kontext.
+    const pageB = await ctx.newPage();
+    pageB.on("pageerror", (e) => errors.push(String(e)));
+    await pageA.goto(`${BASE}/?mpcode=TESTMP47&nosplash`);
+    await pageA.click("#workshopBtn");
+    await until(async () => (await pageA.locator("#workshopList .ws-item").count()) > 0);
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "Zu zweit" }).click();
+    await until(async () => !(await pageA.locator("#mp").getAttribute("class")).includes("hidden"));
+    await pageA.click("#mpCustomItem");
+    await until(async () => (await pageA.textContent("#mpCode")).trim() === "TESTMP47", { timeout: 8000 });
+    await pageB.goto(`${BASE}/?nosplash#join=TESTMP47`);
+    await until(async () => (await pageB.textContent("#interTitle")).includes("Rendezvous"), { timeout: 8000 });
+    for (const p of [pageA, pageB])
+      await until(async () => await p.locator("#interPrimary").isVisible(), { timeout: 10000 });
+    await pageA.click("#interPrimary", { timeout: 5000 });
+    await pageB.click("#interPrimary", { timeout: 5000 });
+    const started = await until(
+      async () =>
+        (await pageA.evaluate(() => window.__tiltrMp?.phase)) === "playing" &&
+        (await pageB.evaluate(() => window.__tiltrMp?.phase)) === "playing",
+      { timeout: 20000 },
+    );
+    check(`Host und Gast spielen (${started === true})`, started === true);
+
+    // A rollt in seine Nische und BLEIBT dort (Taste bleibt unten – so wartet
+    // ein Spieler wirklich, und die Kugel kann nicht aus der Zone driften).
+    await pageA.keyboard.down("ArrowUp");
+    const saidA = await until(
+      async () => {
+        const st = (await pageA.textContent("#status")).trim();
+        return /warte auf den Partner/.test(st) ? st : null;
+      },
+      { timeout: 15000 },
+    );
+    check(`A liegt im Ziel und wartet – die Statuszeile sagt es ("${saidA ?? (await pageA.textContent("#status")).trim()}")`, saidA !== null);
+
+    // Mode und `together` mit ausgeben: Ohne sie ist „einer allein gewinnt
+    // nicht" nicht von „das Flag kam nie an" zu unterscheiden.
+    const soloA = await pageA.evaluate(() => ({
+      phase: window.__tiltrMp?.phase,
+      fin: window.__tiltrMp?.localFinished,
+      mode: window.__tiltrMp?.mode,
+      together: window.__tiltrMp?.together,
+    }));
+    const soloB = await pageB.evaluate(() => window.__tiltrMp?.phase);
+    check(
+      `Einer allein im Ziel gewinnt NICHT (${JSON.stringify({ ...soloA, b: soloB })})`,
+      soloA.phase === "playing" && soloA.fin === false && soloB === "playing",
+    );
+
+    // Der Nachzügler bekommt die Rückmeldung: Pille in Partnerfarbe. Beim
+    // Wartenden selbst bleibt sie leer – er ist nicht sein eigener Partner.
+    const chipB = await until(async () => {
+      const txt = (await pageB.textContent("#waitChip")).trim();
+      return txt.length > 0 ? txt : null;
+    }, { timeout: 6000 });
+    const chipA = (await pageA.textContent("#waitChip")).trim();
+    check(
+      `Der Nachzügler sieht „Partner wartet" (B: "${chipB ?? ""}", A: "${chipA}")`,
+      (chipB ?? "").includes("Partner wartet") && chipA === "",
+    );
+
+    // Und jetzt kommt B nach: BEIDE Seiten schließen unabhängig ab.
+    await pageB.keyboard.down("ArrowUp");
+    // Beim Warten den ZUSTAND mitschreiben: Bleibt es aus, muss die Meldung
+    // sagen, WAS fehlte – rollte B nicht, oder sah eine Seite den anderen
+    // nicht im Ziel (die Meldung ist 700 ms gültig, unter Last zählt das).
+    let seen = null;
+    const side = (p) =>
+      p.evaluate(() => ({
+        phase: window.__tiltrMp?.phase,
+        fin: window.__tiltrMp?.localFinished,
+        sees: (window.__tiltrMp?.remote?.goalAt ?? 0) > 0,
+        y: Math.round(window.__tiltrBall?.y ?? -1),
+      }));
+    const bothDone = await until(
+      async () => {
+        seen = { a: await side(pageA), b: await side(pageB) };
+        return seen.a.phase === "done" && seen.b.phase === "done";
+      },
+      { timeout: 15000 },
+    );
+    await pageA.keyboard.up("ArrowUp");
+    await pageB.keyboard.up("ArrowUp");
+    check(
+      `Beide im Ziel: Sieg auf BEIDEN Seiten, ohne Schiedsrichter (${JSON.stringify(seen)})`,
+      bothDone === true,
+    );
+
+    // Die Ergebniskarte zieht 1,8 s nach dem Sieg auf (mpCheckResult) – auf
+    // den TEXT warten, nicht auf eine Zeit: sonst liest man noch den
+    // Bereit-Schirm („Warte auf deinen Partner …", so erst gefallen).
+    const cardA = await until(
+      async () => {
+        const title = (await pageA.textContent("#interTitle")).trim();
+        return /Gemeinsam geschafft/.test(title)
+          ? { title, text: (await pageA.textContent("#interText")).trim() }
+          : null;
+      },
+      { timeout: 8000 },
+    );
+    const cardB = await until(
+      async () => {
+        const title = (await pageB.textContent("#interTitle")).trim();
+        return /Gemeinsam geschafft/.test(title) ? title : null;
+      },
+      { timeout: 8000 },
+    );
+    check(
+      `Ergebniskarte nennt den Augenblick des Rendezvous, nicht zwei Einzelzeiten (${JSON.stringify(cardA)})`,
+      cardA !== null &&
+        /Gemeinsam angekommen nach/.test(cardA.text) &&
+        !/Du:/.test(cardA.text) &&
+        (cardB ?? "").includes("Gemeinsam geschafft"),
+    );
+    await pageA.close();
+    await pageB.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 47 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

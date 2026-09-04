@@ -59,9 +59,12 @@ animation below.
   relays, no server of our own). Join via QR code, 6-letter room code or the
   host's **📨 invite** (message plus join link through the share sheet).
   **Co-op:** pressure plates, keys and switches work for both of you, so
-  you can open your partner's doors; you win once both are in. **Race:**
-  identical level, first one in wins, with rematch. Six hand-built levels per
-  mode plus a 🎲 generator, and every **two-player level from the workshop**
+  you can open your partner's doors; you win once both are in — and a level
+  can ask you to **arrive together**, meaning both of you in your goals at the
+  same moment (whoever gets there first waits, and the straggler hears the
+  call). **Race:**
+  identical level, first one in wins, with rematch. Seven hand-built co-op
+  levels, six race levels plus a 🎲 generator, and every **two-player level from the workshop**
   can be hosted straight from your library — the guest receives it with the
   room. In co-op you **hear** your partner: a warm low hum from his
   direction, plus a rolling layer that grows with his speed — a wall of felt

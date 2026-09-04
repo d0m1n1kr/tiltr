@@ -421,6 +421,10 @@ export const levelSchema = z.object({
   marks: z.number().int().min(0).max(9).default(3),
   /** Nur bei zwei Spielern: fester Modus oder 'any' (die Lobby wählt). */
   mpMode: z.enum(['coop', 'race', 'any']).default('any'),
+  /** Gemeinsam ankommen (M90): Gewonnen wird nur, wenn BEIDE gleichzeitig in
+   *  ihren Zielzonen liegen. Nur im Coop sinnvoll – im Rennen gibt es keinen
+   *  gemeinsamen Sieg. Fehlt = die alte Regel (jeder für sich fertig). */
+  together: z.boolean().optional(),
   /**
    * Gesetzt von mirrorLevel (src/levels/mirror.ts): Alle Def-Koordinaten
    * sind bereits gespiegelt; Loader/Test-Helfer spiegeln zusätzlich das
@@ -428,7 +432,13 @@ export const levelSchema = z.object({
    * Spiegelbild des Original-Designs. NICHT von Hand setzen.
    */
   mirror: z.enum(['x', 'y', 'xy']).optional(),
-});
+})
+  // „Gemeinsam ankommen" ist eine Coop-Regel: Solo gibt es keinen Partner, im
+  // Rennen keinen gemeinsamen Sieg. Als Invariante im Schema (wie force <=
+  // 2400 < accel), damit ein solches Level nicht erst im Spiel auffällt.
+  .refine((l) => !l.together || (l.players === 2 && l.mpMode !== 'race'), {
+    message: '„together" nur bei zwei Spielern im Coop (players: 2, mpMode coop/any)',
+  });
 export type LevelDef = z.infer<typeof levelSchema>;
 
 export function parseLevel(data: unknown): LevelDef {

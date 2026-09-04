@@ -159,6 +159,10 @@ export const de = {
   'ed.intro': 'Intro-Text',
   'ed.par': 'Par-Zeit (s)',
   'ed.pings': 'Ping-Budget',
+  'ed.together': 'Coop-Sieg',
+  'ed.together.each': 'Jeder für sich',
+  'ed.together.both': 'Gemeinsam ankommen',
+  'ed.togetherHint': 'Gewonnen wird nur, wenn beide gleichzeitig im Ziel liegen.',
   'ed.marks': 'Wegmarken je Spieler',
   'ed.cols': 'Spalten',
   'ed.rows': 'Zeilen',
@@ -336,6 +340,7 @@ export const de = {
   'ed.testAs.1': 'Spieler 1 (Host)',
   'ed.testAs.2': 'Spieler 2 (Gast)',
   'hud.swap': 'Spieler wechseln (p)',
+  'hud.partnerWaits': '◎ Partner wartet',
   'hud.mark': 'Wegmarke legen / aufnehmen (m)',
   'hud.markEmpty': 'Keine Wegmarke übrig – nimm eine wieder auf.',
   'st.mpTestStart': 'Testmodus: Du bist Spieler {n} – 👥 wechselt',
@@ -402,6 +407,8 @@ export const de = {
   'st.floorUp': '⬆ Ebene {n}',
   'st.portal': '✦ Portal',
   'st.wallDown': 'Wand eingestürzt! 🧱',
+  'st.waitTogether': 'Im Ziel – warte auf den Partner.',
+  'st.partnerWaits': 'Der Partner wartet im Ziel. Komm nach!',
   'st.markSet': 'Wegmarke gelegt 📍',
   'st.markTook': 'Wegmarke wieder aufgenommen',
   'st.switch': '⏱ Zeitschloss: Tür {n} s offen!',
@@ -480,6 +487,7 @@ export const de = {
   'mp.leave': 'Verlassen',
   'mp.partnerFinished': 'Partner ist im Ziel!',
   'mp.coopWin': '🤝 Gemeinsam geschafft!',
+  'mp.rendezvousTime': 'Gemeinsam angekommen nach {team}.',
   'mp.teamTime': 'Team-Zeit: {team}\nDu: {you} · Partner: {partner}',
   'mp.raceTimes': 'Du: {you}\nGegner: {rival}',
   'mp.raceWin': '🏆 Gewonnen!',
@@ -760,6 +768,9 @@ export const de = {
   'lv.coop-06.intro':
     'Die große Expedition: ein Marsch über mehr als einen Bildschirm. Einer hält am Start die Platte der fernen Zieltür – der andere wagt die weite Reise. Und wer im Ziel liegt, hält die Tür für den Zweiten.',
 
+  'lv.coop-07.name': 'Gleichschritt',
+  'lv.coop-07.intro':
+    'Zwei Ziele, ein Ring: Einer rollt links herum, einer rechts. Gewonnen habt ihr erst, wenn ihr GLEICHZEITIG in euren Zielzonen liegt – wer zuerst ankommt, wartet, und der Nachzügler hört das Rufen. Verabredet euch!',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro':
     'Gleiche Strecke, gleiche Chancen: Wer zuerst im Ziel ist, gewinnt. Der Halo verrät, wo dein Gegner steckt.',

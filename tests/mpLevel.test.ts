@@ -4,6 +4,7 @@ import { goalCellFor, loadLevel, startCellFor } from '../src/levels/loader';
 import { isShareable, pairReachable, pathSteps, validateLevel, cellKey } from '../src/levels/validate';
 import { mirrorLevel } from '../src/levels/mirror';
 import { removeFloor, type RawLevel } from '../src/ui/editor';
+import { COOP_LEVELS } from '../src/levels/multiplayer';
 import { CELL } from '../src/core/constants';
 
 // Zwei-Spieler-Level aus dem Editor (M57): Host = Spieler 1 (start/goal),
@@ -337,5 +338,37 @@ describe('Tür je Spieler (M72)', () => {
     const coop = validateLevel(d).find((c) => c.key === 'coop')!;
     expect(coop.ok).toBe(false);
     expect(coop.detail).toBe('Spieler 2');
+  });
+});
+
+// GEMEINSAM ANKOMMEN (M90): Das Flag ist eine Coop-Regel, und das eingebaute
+// Level dazu muss BEIDEN Spielern sein Ziel offen halten – sonst wartet einer
+// dort, wo der andere nie ankommt.
+describe('Gemeinsam ankommen (M90)', () => {
+  it('das Schema lässt „together" nur bei zwei Spielern im Coop zu', () => {
+    const two = (over: Record<string, unknown>) => () => parseLevel(level(over));
+    expect(two({ together: true })).not.toThrow();
+    expect(two({ together: true, mpMode: 'any' })).not.toThrow();
+    expect(two({ together: true, mpMode: 'race' })).toThrow(/together/);
+    expect(two({ together: true, players: 1 })).toThrow(/together/);
+    // Ohne das Flag gilt die alte Regel – und alte Level bleiben ladbar.
+    expect(parseLevel(level()).together).toBeUndefined();
+  });
+
+  it('coop-07 „Gleichschritt": beide erreichen ihr Ziel (der Beweis kennt kein Timing)', () => {
+    const def = COOP_LEVELS.find((l) => l.id === 'coop-07')!;
+    expect(def.together).toBe(true);
+    expect(def.players).toBe(2);
+    const goal1 = goalCellFor(def, 1)!;
+    const goal2 = goalCellFor(def, 2)!;
+    // Zwei verschiedene Ziele – sonst wäre „gleichzeitig" keine Verabredung.
+    expect(goal1).not.toEqual(goal2);
+    const pair = pairReachable(def, true);
+    expect(pair.p1.has(cellKey(goal1.floor, goal1.cell))).toBe(true);
+    expect(pair.p2.has(cellKey(goal2.floor, goal2.cell))).toBe(true);
+    // Und keine Tür, die einer halten müsste, während er selbst im Ziel liegt:
+    // Das Rendezvous ist die ganze Aufgabe.
+    for (const f of def.floors) expect(f.elements.some((e) => e.type === 'door')).toBe(false);
+    expect(isShareable(validateLevel(def))).toBe(true);
   });
 });

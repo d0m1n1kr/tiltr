@@ -74,6 +74,8 @@ export interface RawLevel {
   /** Zwei Spieler (M57): 2 = nur zu zweit spielbar (Lobby), mpMode wählt den Modus. */
   players?: 1 | 2;
   mpMode?: 'coop' | 'race' | 'any';
+  /** Gemeinsam ankommen (M90): nur im Coop – siehe Schema-Invariante. */
+  together?: boolean;
   [k: string]: unknown;
 }
 
@@ -2235,6 +2237,7 @@ export function setupEditor(opts: {
       } else {
         delete draft!.players;
         delete draft!.mpMode;
+        delete draft!.together;
         for (const f of draft!.floors) {
           delete f.start2;
           delete f.goal2;
@@ -2257,10 +2260,36 @@ export function setupEditor(opts: {
         ['any', t('ed.mpMode.any')],
       ], (v) => {
         draft!.mpMode = v as 'coop' | 'race' | 'any';
+        // Im Rennen gibt es keinen gemeinsamen Sieg (Schema-Invariante) –
+        // sonst läge eine Regel im Entwurf, die das Laden ablehnt.
+        if (v === 'race') delete draft!.together;
+        renderProps();
         rebuild();
       });
       modeSel.id = 'edMpMode';
       propsEl.append(field(t('ed.mpMode'), modeSel));
+      // Gemeinsam ankommen (M90): Gewonnen wird nur, wenn BEIDE gleichzeitig
+      // in ihren Zielzonen liegen. Nur im Coop – im Rennen wäre es sinnlos,
+      // und das Schema lehnt es dort ab.
+      if (draft.mpMode !== 'race') {
+        const tog = selectInput(draft.together === true ? 'both' : 'each', [
+          ['each', t('ed.together.each')],
+          ['both', t('ed.together.both')],
+        ], (v) => {
+          if (v === 'both') draft!.together = true;
+          else delete draft!.together;
+          renderProps();
+          rebuild();
+        });
+        tog.id = 'edTogether';
+        propsEl.append(field(t('ed.together'), tog));
+        if (draft.together === true) {
+          const togHint = document.createElement('p');
+          togHint.className = 'menu-meta';
+          togHint.textContent = t('ed.togetherHint');
+          propsEl.append(togHint);
+        }
+      }
       const hint = document.createElement('p');
       hint.className = 'menu-meta';
       hint.textContent = t('ed.mpHint');

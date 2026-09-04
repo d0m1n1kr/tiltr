@@ -17,6 +17,7 @@ import { cpus } from "node:os";
 const PORT = 8765;
 const BASE = `http://localhost:${PORT}`;
 const WEIGHT = {
+  47: 22,
   46: 26,
   45: 24,
   44: 12,
@@ -77,7 +78,7 @@ const runs = only ?? known;
 // anderen bei 65–93 s, 7 ✗ in Lauf 9 – einzeln und lokal alles grün). Sie
 // kommen deshalb in DENSELBEN Eimer und laufen dort hintereinander. Wer einen
 // neuen Lauf mit zwei Seiten schreibt, trägt ihn hier ein.
-const AFFINITY = [["9", "33", "45", "46"]];
+const AFFINITY = [["9", "33", "45", "46", "47"]];
 
 // Greedy: schwerste Einheit zuerst in den leichtesten Eimer. Eine „Einheit"
 // ist ein Lauf – oder eine Affinitäts-Gruppe, die zusammenbleiben muss.

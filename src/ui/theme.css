@@ -191,6 +191,15 @@
   background: rgba(75, 224, 140, 0.1);
 }
 
+/* Partner wartet im Ziel (M90, „gemeinsam ankommen"): Die Pille trägt die
+   Partnerfarbe – dieselbe, in der er im Bild leuchtet. Leer verschwindet sie
+   von selbst (.hud-chip:empty). */
+.hud-chip.waiting {
+  color: var(--partner);
+  border-color: rgba(255, 96, 110, 0.45);
+  background: rgba(255, 96, 110, 0.12);
+}
+
 /* Modus-Karte im Startmenü: Icon | Titel + Untertitel | Meta rechts.
    Einheitliche, scannbare Zeile für jeden Spielmodus. */
 .mode-item {

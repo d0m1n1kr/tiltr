@@ -204,6 +204,43 @@ const coopDefs: unknown[] = [
       },
     ],
   },
+  {
+    // GEMEINSAM ANKOMMEN (M90): Das erste Coop-Level, das keine Tür hat – die
+    // Aufgabe ist die Gleichzeitigkeit. Ein Ring mit zwei Zielen in den oberen
+    // Ecken: Beide starten unten in der Mitte, trennen sich, und gewonnen ist
+    // erst, wenn BEIDE in ihrer Zielzone liegen. Wer zuerst da ist, wartet –
+    // und der Nachzügler hört das (Ruf + Chip „◎ Partner wartet").
+    // Symmetrisch gebaut, damit niemand die längere Strecke bekommt.
+    id: 'coop-07',
+    name: 'Gleichschritt',
+    intro:
+      'Zwei Ziele, ein Ring: Einer rollt links herum, einer rechts. Gewonnen habt ihr erst, wenn ihr GLEICHZEITIG in euren Zielzonen liegt – wer zuerst ankommt, wartet, und der Nachzügler hört das Rufen. Verabredet euch!',
+    players: 2,
+    mpMode: 'coop',
+    together: true,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [9, 9],
+        maze: {
+          seed: 308,
+          // Der Ring: unten quer, beide Seitenspalten hoch, oben quer zurück.
+          carve: [...right(8, 0, 8), ...down(0, 0, 8), ...down(8, 0, 8), ...right(0, 0, 8)],
+        },
+        elements: [
+          // Je Arm ein atmendes Loch an derselben Höhe und mit derselben Phase –
+          // beide warten auf denselben Takt, das ist der halbe Gleichschritt.
+          { type: 'hole', cell: [0, 4], breathing: { offset: 0 } },
+          { type: 'hole', cell: [8, 4], breathing: { offset: 0 } },
+          { type: 'checkpoint', cell: [0, 8] },
+          { type: 'checkpoint', cell: [8, 8] },
+        ],
+        start: [4, 8],
+        goal: [0, 0],
+        goal2: [8, 0],
+      },
+    ],
+  },
 ];
 
 const raceDefs: unknown[] = [

@@ -4,6 +4,7 @@ import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { buddySound, smoothSpeed } from './core/buddy';
 import { FEATURES, canDo, needsFor } from './core/features';
+import { partnerWaiting, togetherWin } from './core/together';
 import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Mark } from './core/marks';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
@@ -95,6 +96,7 @@ const statusEl = $('status');
 const timerEl = $('timer');
 const pingsEl = $('pings');
 const gemsEl = $('gems');
+const waitChipEl = $('waitChip');
 const quickBtn = $('quickBtn');
 const tutorialBtn = $('tutorialBtn');
 const calibrateBtn = $('calibrateBtn');
@@ -184,7 +186,18 @@ interface MpSession {
   rematchPeer: boolean;
   /** Zuletzt gemeldeter Stand des Partners. `speed`/`lastAt` sind NICHT
    *  übertragen, sondern aus zwei Meldungen abgeleitet (M88). */
-  remote: { x: number; y: number; floor: number; finished: boolean; elapsed: number | null; speed: number; lastAt: number };
+  remote: {
+    x: number;
+    y: number;
+    floor: number;
+    finished: boolean;
+    elapsed: number | null;
+    speed: number;
+    lastAt: number;
+    /** Gemeinsam ankommen (M90): wann er zuletzt „ich bin im Ziel" meldete
+     *  (0 = nie oder gerade verlassen). */
+    goalAt: number;
+  };
   localFinished: boolean;
   localElapsed: number | null;
   localHolds: Set<string>;
@@ -2159,7 +2172,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
     peerReady: false,
     rematchSelf: false,
     rematchPeer: false,
-    remote: { x: 0, y: 0, floor: 0, finished: false, elapsed: null, speed: 0, lastAt: 0 },
+    remote: { x: 0, y: 0, floor: 0, finished: false, elapsed: null, speed: 0, lastAt: 0, goalAt: 0 },
     localFinished: false,
     localElapsed: null,
     localHolds: new Set(),
@@ -2185,7 +2198,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
           mode: mp.mode,
           levelId: mp.level.id,
           def: mp.custom ? mp.level : undefined,
-          needs: needsFor(mp.level.marks),
+          needs: needsFor(mp.level.marks, mp.level.together),
         });
         $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
@@ -2248,14 +2261,14 @@ function mpOnMessage(type: string, payload: unknown): void {
     mpShowIntro();
   } else if (type === 'ready') {
     const p = payload as { features?: string[] } | null;
-    if (mp.host && mp.level && !canDo(needsFor(mp.level.marks), p?.features)) {
+    if (mp.host && mp.level && !canDo(needsFor(mp.level.marks, mp.level.together), p?.features)) {
       $('mpLobbyStatus').textContent = t('mp.needsUpdate');
       return;
     }
     mp.peerReady = true;
     mpMaybeStart();
   } else if (type === 'state') {
-    const p = payload as { x: number; y: number; f: number; fin: boolean };
+    const p = payload as { x: number; y: number; f: number; fin: boolean; g?: boolean };
     // Partner-Klang (M88): Die Geschwindigkeit kommt NICHT über das Netz – sie
     // folgt aus zwei Meldungen (alle 80 ms) und wird geglättet. Ein Feld mehr
     // hätte beide Seiten ohne Not auf dieselbe Version festgelegt. Ein Sprung
@@ -2269,6 +2282,12 @@ function mpOnMessage(type: string, payload: unknown): void {
     mp.remote.y = p.y;
     mp.remote.floor = p.f;
     mp.remote.finished = p.fin;
+    // Gemeinsam ankommen (M90): Verlässt er das Ziel, sagt es die NÄCHSTE
+    // Meldung sofort (goalAt zurück auf 0) – die Nachsicht in core/together.ts
+    // deckt ausgefallene Nachrichten, nicht das Weiterrollen. Eine alte
+    // Gegenstelle schickt `g` nicht; ein `together`-Level lässt das Gate
+    // (`needs`) gar nicht erst starten.
+    mp.remote.goalAt = p.g ? at : 0;
   } else if (type === 'plate') {
     const p = payload as { id: string; held: boolean };
     if (p.held) mp.remoteHolds.add(p.id);
@@ -2321,10 +2340,22 @@ function mpOnMessage(type: string, payload: unknown): void {
     }
   } else if (type === 'finish') {
     const p = payload as { elapsed: number };
+    // Nach einem Rendezvous (M90) steht das Ergebnis schon – seine Meldung
+    // kommt eine Nachrichtenlaufzeit später und darf die Karte nicht anfassen.
+    if (mp.phase === 'done') return;
     if (!mp.remote.finished) flash(t('mp.partnerFinished'));
     mp.remote.finished = true;
     mp.remote.elapsed = p.elapsed;
     mpCheckResult();
+    // GEMEINSAM ANKOMMEN (M90): WER GEWINNT, VERSTUMMT. Ab dem Sieg läuft die
+    // Schleife nicht mehr im Spielzweig, also geht auch keine `state`-Meldung
+    // mehr hinaus – seine letzte kann noch `g: false` getragen haben (Takt
+    // 80 ms). Dann sähe ich das Rendezvous NIE und wartete für immer, während
+    // er feiert (in der CI unter Last genau so gefallen: er „done", ich
+    // „playing", `sees: false`). Deshalb ist seine `finish`-Meldung der
+    // verlässliche Anlass: Sie kommt nur, wenn er MICH im Ziel gesehen hat –
+    // dieselbe Beweislage, die auch meine Seite benutzt.
+    if (togetherMode() && !mp.localFinished) mpTogetherWin(performance.now());
   } else if (type === 'rematch') {
     mp.rematchPeer = true;
     mpMaybeRematch();
@@ -2368,7 +2399,7 @@ function mpMaybeStart(): boolean {
   mp.rematchPeer = false;
   mp.localHolds = new Set();
   mp.remoteHolds = new Set();
-  mp.remote = { x: 0, y: 0, floor: 0, finished: false, elapsed: null, speed: 0, lastAt: 0 };
+  mp.remote = { x: 0, y: 0, floor: 0, finished: false, elapsed: null, speed: 0, lastAt: 0, goalAt: 0 };
   mode = { kind: 'mp' };
   hideInterstitial();
   overlay.classList.add('hidden');
@@ -2397,6 +2428,9 @@ function mpFrame(now: number): void {
       y: world.ball.y,
       f: activeFloor,
       fin: mp.localFinished,
+      // M90: nicht „war ich mal", sondern „liege ich JETZT drin" – die
+      // Rendezvous-Regel lebt von der Gleichzeitigkeit.
+      g: world.goalReached(),
     });
   }
 
@@ -2606,6 +2640,56 @@ function winRun(now: number, seconds: number): void {
   onWin(seconds);
 }
 
+/* --- GEMEINSAM ANKOMMEN (M90) ----------------------------------------------
+   Gewonnen wird, wenn BEIDE gleichzeitig in ihren Zielzonen liegen. Die Regel
+   gilt nur im echten Coop-Netz: Solo gibt es keinen Partner, im Rennen keinen
+   gemeinsamen Sieg (das Schema lässt `together` auch nur dort zu), und im
+   MP-Testmodus liegt die abgegebene Kugel von allein im Ziel und wartet – da
+   funktioniert es ohne eigene Regel. */
+const togetherMode = (): boolean =>
+  !!mp && mp.mode === 'coop' && mp.phase === 'playing' && loaded?.def.together === true;
+
+interface TogetherState {
+  /** Läuft dieses Level nach der Rendezvous-Regel? */
+  on: boolean;
+  /** Liege ich JETZT im Ziel? */
+  mine: boolean;
+  /** Beide drin – gewonnen. */
+  win: boolean;
+  /** Er wartet im Ziel auf mich (Chip + Ruf). */
+  waits: boolean;
+}
+
+/** EINE Rechnung je Frame für Statuszeile, Chip, Ruf und das eigene
+ *  Ziel-Licht – sonst zeigten Bild und Klang zwei Wahrheiten (M88). */
+function togetherState(now: number): TogetherState {
+  if (!mp || !world || !togetherMode()) return { on: false, mine: false, win: false, waits: false };
+  const mine = world.goalReached();
+  return {
+    on: true,
+    mine,
+    win: togetherWin(mine, mp.remote.goalAt, now),
+    waits: partnerWaiting(mine, mp.remote.goalAt, now),
+  };
+}
+
+/** Das Rendezvous ist da: BEIDE Seiten sehen denselben Augenblick und
+ *  schließen unabhängig ab – niemand ist Schiedsrichter, niemand wartet auf
+ *  die Bestätigung des anderen (die käme eine Nachrichtenlaufzeit zu spät).
+ *  Die `finish`-Meldung geht trotzdem raus: Sie trägt seine Zeit, wenn seine
+ *  Seite doch eine Nachricht verloren hat. */
+function mpTogetherWin(now: number): void {
+  if (!mp || mp.localFinished) return;
+  mp.localFinished = true;
+  mp.localElapsed = (now - t0) / 1000;
+  mp.transport.send('finish', { elapsed: mp.localElapsed });
+  // Die Teamzeit IST der Augenblick des Rendezvous, nicht das Maximum zweier
+  // Einzelzeiten: Beide Uhren zeigen denselben Moment.
+  mp.remote.finished = true;
+  mp.remote.elapsed ??= mp.localElapsed;
+  mpCheckResult();
+}
+
 function mpLocalFinish(now: number): void {
   if (!mp || mp.localFinished) return;
   mp.localFinished = true;
@@ -2633,7 +2717,12 @@ function mpCheckResult(): void {
   if (mp.mode === 'coop') {
     celebrate();
     title = t('mp.coopWin');
-    text = t('mp.teamTime', { team: fmtTime(Math.max(mine, theirs)), you: fmtTime(mine), partner: fmtTime(theirs) });
+    // M90: Beim Rendezvous gibt es keine zwei Einzelzeiten, nur den einen
+    // Augenblick – „du 12,4 / Partner 12,4" wäre eine Genauigkeit, die nichts
+    // bedeutet.
+    text = loaded?.def.together
+      ? t('mp.rendezvousTime', { team: fmtTime(mine) })
+      : t('mp.teamTime', { team: fmtTime(Math.max(mine, theirs)), you: fmtTime(mine), partner: fmtTime(theirs) });
   } else {
     const won = mine < theirs;
     if (won) {
@@ -2840,6 +2929,15 @@ function frame(now: number): void {
   // geladen ist (deshalb VOR dem world-Check).
   confetti.step(dt);
   if (!world) return;
+
+  // Gemeinsam ankommen (M90): EINMAL je Frame gerechnet – Statuszeile, Chip,
+  // Ruf und das eigene Ziel-Licht sagen dann dasselbe. Gerechnet wird NACH
+  // dem Physik-Schritt (weiter unten), aber hier deklariert, weil das
+  // Ziel-Licht am Ende des Frames dieselbe Wahrheit braucht. Erst NACH dem
+  // Schritt, weil sonst „liege ich im Ziel?" die Lage des VORIGEN Bildes
+  // meldet – im ersten Bild in der Zielzone gewann dann noch die alte Regel
+  // (`mpLocalFinish` rastete ein, gemessen in Lauf 47).
+  let tog: TogetherState = { on: false, mine: false, win: false, waits: false };
 
   updateHoles(now);
   updateSlidingWalls(now);
@@ -3266,6 +3364,7 @@ function frame(now: number): void {
 
     // Im Ziel steht die Uhr auf der erreichten Zeit – das unmissverständliche
     // „du bist durch", während der Ball weiterrollen darf.
+    tog = togetherState(now);
     const testSide = mpTest ? mpTest.sides[mpTest.active]! : null;
     const shownTime = testSide?.elapsed ?? mp?.localElapsed ?? (now - t0) / 1000;
     timerEl.textContent = fmtTime(shownTime);
@@ -3278,6 +3377,12 @@ function frame(now: number): void {
       ? `💎 ${allGems.filter((g) => g.collected).length}/${allGems.length}`
       : '';
     if (gemsEl.textContent !== gemsTxt) gemsEl.textContent = gemsTxt;
+    // Er wartet im Ziel: Pille in Partnerfarbe plus ein Ruf (die Sperre in
+    // audio.waitCall hält den Abstand). Ohne diese Rückmeldung wäre der Modus
+    // Frust – „nichts passiert" sähe wie ein Fehler aus.
+    const waitTxt = tog.waits ? t('hud.partnerWaits') : '';
+    if (waitChipEl.textContent !== waitTxt) waitChipEl.textContent = waitTxt;
+    if (tog.waits) audio.waitCall();
 
     const fallen = disconnected ? null : world.fallenHole();
     const caught = fallen || disconnected ? null : world.guardCaught();
@@ -3318,6 +3423,12 @@ function frame(now: number): void {
       statusEl.textContent = t('mp.lostCountdown', { n: remaining.toFixed(0) });
     } else if (mp?.localFinished && state === 'playing') {
       statusEl.textContent = t(mp.mode === 'coop' ? 'mp.doneCoop' : 'mp.doneRace');
+    } else if (tog.on && (tog.mine || tog.waits)) {
+      // M90: Einer allein im Ziel gewinnt NICHT – er wartet, und beide hören
+      // und lesen das. Erst das Rendezvous schließt ab, auf beiden Seiten
+      // unabhängig.
+      if (tog.win) mpTogetherWin(now);
+      else statusEl.textContent = t(tog.mine ? 'st.waitTogether' : 'st.partnerWaits');
     } else if (mp && world.goalReached()) {
       mpLocalFinish(now);
     } else if (mpTest && world.goalReached()) {
@@ -3440,7 +3551,9 @@ function frame(now: number): void {
     buddy,
     marks: floorMarks,
     ghost: ghostOpt,
-    goalDone: mp?.localFinished === true,
+    // M90: Im Rendezvous leuchtet das eigene Ziel ruhig weiter, solange ich
+    // darin liege – die Uhr steht dabei noch nicht.
+    goalDone: mp?.localFinished === true || tog.mine,
     heading: fpOn() ? fpState.heading : 0,
   });
   // Testbarkeits-Hooks für E2E
@@ -3539,6 +3652,10 @@ function frame(now: number): void {
         player: mp.host ? 1 : 2,
         custom: mp.custom,
         remote: { ...mp.remote },
+        mode: mp.mode,
+        // Gilt hier die Rendezvous-Regel (M90)? Ohne diesen Haken war „einer
+        // allein gewinnt nicht" von „das Flag kam nie an" nicht zu trennen.
+        together: togetherMode(),
         localFinished: mp.localFinished,
         goalLit: renderer.goalLit,
         buddySolid: renderer.buddySolid,

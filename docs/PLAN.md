@@ -617,8 +617,8 @@ Level einen haben.
 Vier Milestones, in dieser Reihenfolge – jeder ein eigenes Release mit grüner
 Suite. Reihenfolge nach Fundament: Solange der Partner akustisch nicht
 existiert, ist jedes weitere Coop-Element eine Aufgabe, die man sich per
-Sprachkanal zuruft, und nicht Teil des Spiels. M88 und M89 sind GEBAUT (v3.22.0/v3.23.0, eigene
-Abschnitte weiter unten); offen sind M90 und M91.
+Sprachkanal zuruft, und nicht Teil des Spiels. M88, M89 und M90 sind GEBAUT
+(v3.22.0/v3.23.0/v3.24.0, eigene Abschnitte weiter unten); offen ist M91.
 
 AUSGANGSBEFUND (gemessen im Code, nicht erinnert): Das Protokoll kennt
 `setup`, `ready`, `state` (Position, alle 80 ms), `plate`, `key`, `switch`,
@@ -636,38 +636,7 @@ und sagt sonst in der Lobby „Der Partner braucht eine neuere Version"
 fängt schon heute `parseLevel` im `setup`-Empfang ab (→ `mp.badLevel`); die
 Lücke sind nur die Regel-Flags.
 
-### M90 „Gemeinsam ankommen" (v3.24.0) – 2a
-
-Level-Flag `together`: Gewonnen wird, wenn BEIDE gleichzeitig in ihren
-Zielzonen liegen. Aus „wir sind beide durch" wird „wir kommen zusammen an" –
-und der Endspurt bekommt eine Choreografie, die es heute nicht gibt.
-
-- `src/levels/schema.ts`: `together?: boolean` auf Level-Ebene (nur sinnvoll
-  bei `players: 2` und `mpMode` coop/any – Invariante im Schema wie bei
-  `force ≤ 2400`).
-- Protokoll: `state` trägt `g` (bin ich JETZT im Ziel) – zusätzlich zum
-  bestehenden `fin`. Gewonnen, wenn ich im Ziel bin UND der Partner es
-  innerhalb der letzten 700 ms gemeldet hat: großzügig gegen Latenz, und
-  BEIDE Seiten schließen unabhängig – niemand ist Schiedsrichter.
-- `setup.needs: ['together']` (siehe Fundament) – ein alter Gast würde sonst
-  nach der alten Regel gewinnen.
-- Rückmeldung ist hier Pflicht, sonst ist der Modus Frust: Solange der Partner
-  im Ziel wartet, läuft ein ruhiger, drängender Zweiklang (ungepannt – er
-  kommt vom Schirm, wie das Konfetti) plus HUD-Chip „◎ Partner wartet"; das
-  eigene Ziel pulsiert (`goalDone` gibt es schon).
-- Ergebniskarte: Teamzeit = der Augenblick des Rendezvous (nicht `max` der
-  Einzelzeiten).
-- Beweis: BEWUSST unberührt. Gleichzeitigkeit ist Timing, kein
-  Erreichbarkeitsproblem – wie das weiche `timer`-Badge. Wer es aufnimmt,
-  müsste Wege LÄNGENgleich beweisen; das ist eine Schätzung, kein Beweis.
-- Editor: Schalter „Gemeinsam ankommen" neben `mpMode`; im MP-Testmodus
-  funktioniert es von allein, weil die abgegebene Kugel liegen bleibt (also im
-  Ziel wartet, während man die andere holt).
-- `src/levels/multiplayer.ts`: ein eingebautes Coop-Level mit `together`, plus
-  Lösbarkeits-Test in tests/mpLevel.test.ts.
-- E2E Lauf 47 (Host+Gast): einer im Ziel ⇒ KEIN Sieg (die Zusicherung, die
-  vorher rot sein muss), Partner-wartet-Signal an, beide im Ziel ⇒ Sieg.
-- i18n ×4: `ed.together`, `hud.partnerWaits`, `mp.needsUpdate`.
+### M90 „Gemeinsam ankommen" ✓ (v3.24.0) – gebaut, eigener Abschnitt unten
 
 ### M91 „Duett" (v3.25.0) – 3 (Flaggschiff)
 
@@ -742,6 +711,83 @@ BFS-Land. Ein Seil zwischen den Bällen bleibt draußen: jeder Spieler hat seine
 EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
+
+## M90 „Gemeinsam ankommen" ✓ (v3.24.0)
+
+Dritter Baustein des Coop-Ausbaus, und der einzige, der die SIEGBEDINGUNG
+anfasst. Vorher gewann Coop, wenn beide IRGENDWANN durch waren – zwei
+Einzelläufe, addiert. Mit dem Level-Flag `together` wird aus dem Ende eine
+Verabredung: Gewonnen ist erst, wenn BEIDE gleichzeitig in ihren Zielzonen
+liegen. Der Endspurt bekommt damit eine Choreografie, die es vorher nicht gab.
+
+Das Modell ist winzig und rein (`src/core/together.ts`): `state` trägt neben
+`fin` ein `g` („liege ich JETZT im Ziel"), die Gegenseite merkt sich den
+Zeitpunkt, und `togetherWin(mine, at, now)` gilt, solange seine letzte Meldung
+keine 700 ms alt ist. Die Nachsicht deckt AUSGEFALLENE Nachrichten, nicht das
+Weiterrollen: Verlässt er das Ziel, sagt es die nächste Meldung sofort
+(`goalAt` zurück auf 0). Und BEIDE Seiten schließen unabhängig ab – niemand ist
+Schiedsrichter; ein Sieg, der auf die Bestätigung des anderen wartet, käme eine
+Nachrichtenlaufzeit zu spät. Die Teamzeit ist deshalb der AUGENBLICK des
+Rendezvous (`mp.rendezvousTime`), nicht das Maximum zweier Einzelzeiten: Beide
+Uhren zeigen denselben Moment, „du 12,4 · Partner 12,4" wäre eine Genauigkeit,
+die nichts bedeutet.
+
+RÜCKMELDUNG IST HIER PFLICHT, sonst ist der Modus Frust – „nichts passiert,
+obwohl ich im Ziel bin" sähe wie ein Fehler aus. Wer wartet, liest es in der
+Statuszeile und sieht sein Ziel ruhig leuchten (`goalDone` gab es schon); der
+Nachzügler bekommt die Pille „◎ Partner wartet" in Partnerfarbe und einen RUF
+(`audio.waitCall`: zwei Töne aufwärts, ungepannt – er kommt vom Schirm wie das
+Konfetti, mit Sperre alle 1,6 s). Kein Pulsieren: Puls ist in diesem Spiel der
+Herzschlag und damit Gefahr; Warten ist keine Gefahr, sondern eine
+Aufforderung.
+
+Das Flag hängt am Schema mit einer INVARIANTE (`players: 2` und `mpMode`
+coop/any) – im Rennen gibt es keinen gemeinsamen Sieg, also lehnt der Loader
+ein solches Level ab, und der Editor räumt die Regel beim Wechsel auf „Rennen"
+selbst weg (Feld „Coop-Sieg" neben dem Modus). Am Netz hängt es über das
+Merkmals-Gate aus M89: `needs: ['together']` – eine Gegenstelle von vor 3.24
+würde sonst nach der ALTEN Regel gewinnen, und das ist genau der Fall, für den
+das Gate gebaut wurde. Der BEWEIS bleibt bewusst unberührt: Gleichzeitigkeit
+ist Timing, kein Erreichbarkeitsproblem (wie das weiche `timer`-Badge). Wer es
+aufnähme, müsste Wege LÄNGENgleich beweisen – das ist eine Schätzung, kein
+Beweis.
+
+Dazu ein eingebautes Coop-Level, das die Regel lehrt: „Gleichschritt"
+(coop-07) – ein Ring mit zwei Zielen in den oberen Ecken, ohne eine einzige
+Tür. Die Aufgabe IST die Gleichzeitigkeit; symmetrisch gebaut, damit niemand
+die längere Strecke bekommt. Im MP-Testmodus funktioniert `together` von
+allein, weil die abgegebene Kugel liegen bleibt – sie wartet also im Ziel,
+während man die andere holt.
+
+Units: tests/together.test.ts (5), Schema-Invariante und Lösbarkeit von
+coop-07 in tests/mpLevel.test.ts, Gate in tests/features.test.ts. E2E Lauf 47
+(Host + Gast, in der AFFINITY-Gruppe der Zwei-Seiten-Läufe): Editor-Schalter
+samt Wegräumen im Rennen, „einer allein im Ziel gewinnt NICHT" (die
+Zusicherung, die vorher rot war), Chip beim Nachzügler, Sieg auf BEIDEN Seiten,
+Ergebniskarte mit dem Rendezvous-Augenblick.
+
+DER FEHLER, DEN DER LAUF FAND – und die Lektion für jeden Frame-Zustand: Die
+Rendezvous-Rechnung stand am ANFANG von `frame()`, also VOR `world.step()`.
+Damit meldete „liege ich im Ziel?" die Lage des VORIGEN Bildes, und im ersten
+Bild in der Zielzone gewann noch die alte Regel (`mpLocalFinish` rastete ein,
+`fin: true` bei `together: true` – ohne die beiden Haken `mode`/`together` in
+`__tiltrMp` wäre das von „das Flag kam nie an" nicht zu unterscheiden gewesen).
+Wer einen Zustand einmal je Frame rechnet, rechnet ihn NACH dem Schritt und
+deklariert ihn nur oben, damit auch das Zeichnen am Ende dieselbe Wahrheit
+sieht.
+
+UND DER ZWEITE, DEN ERST DIE LAST FAND (vier Arbeiter, lokal grün): WER
+GEWINNT, VERSTUMMT. Ab dem Sieg läuft die Schleife nicht mehr im Spielzweig,
+also geht keine `state`-Meldung mehr hinaus – und die letzte kann noch
+`g: false` getragen haben (Takt 80 ms). Der Nachzügler feierte, der Wartende
+blieb für immer „playing" mit `sees: false`. Seine `finish`-Meldung ist deshalb
+der verlässliche Anlass: Sie kommt nur, wenn er MICH im Ziel gesehen hat –
+dieselbe Beweislage, die auch meine Seite benutzt, also bleibt „beide
+entscheiden unabhängig" wahr. Die Lektion für jede künftige Regel, die auf
+einem STROM von Meldungen fußt: Am Ende des Laufs hört der Strom auf, also muss
+der letzte Zustand in einer EINZELNEN Nachricht stehen. Gefunden hat es die
+Zusicherung, die den Zustand BEIDER Seiten mit ausdruckt – ein nacktes „false"
+hätte es als Last-Flake durchgehen lassen.
 
 ## M89 „Wegmarken" ✓ (v3.23.0)
 

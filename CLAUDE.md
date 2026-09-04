@@ -705,6 +705,42 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   die ältere ist (`mp.needsUpdate` in der Lobby). Das Gate hängt am LEVEL:
   Ein Level ohne Bojen spielt weiter mit jeder Fassung. `window.__tiltrMarks`
   (E2E Lauf 46).
+- `src/core/together.ts` – GEMEINSAM ANKOMMEN (M90): Level-Flag `together`
+  macht aus dem Coop-Ende eine Verabredung – gewonnen ist erst, wenn BEIDE
+  gleichzeitig in ihren Zielzonen liegen (vorher: beide irgendwann durch, zwei
+  Einzelläufe addiert). `state` trägt neben `fin` ein `g` („liege ich JETZT im
+  Ziel"), die Gegenseite merkt sich den Zeitpunkt (`remote.goalAt`), und
+  `togetherWin(mine, at, now)` gilt, solange seine letzte Meldung keine 700 ms
+  alt ist: Die Nachsicht deckt AUSGEFALLENE Nachrichten, nicht das
+  Weiterrollen – verlässt er das Ziel, setzt die nächste Meldung `goalAt` auf
+  0. BEIDE Seiten schließen unabhängig ab (`mpTogetherWin`), niemand ist
+  Schiedsrichter; ein Sieg, der auf die Bestätigung wartet, käme eine
+  Nachrichtenlaufzeit zu spät. Teamzeit = der AUGENBLICK des Rendezvous
+  (`mp.rendezvousTime`), nicht `max` zweier Einzelzeiten. RÜCKMELDUNG IST
+  PFLICHT: Wer wartet, liest es in der Statuszeile und sieht sein Ziel leuchten
+  (`goalDone`); der Nachzügler bekommt „◎ Partner wartet" (`#waitChip`,
+  Partnerfarbe) und `audio.waitCall` (zwei Töne aufwärts, ungepannt, Sperre
+  1,6 s) – kein Pulsieren, Puls ist hier der Herzschlag = Gefahr. Schema-
+  Invariante: nur `players: 2` und `mpMode` coop/any (der Editor räumt die
+  Regel beim Wechsel auf „Rennen" selbst weg, Feld „Coop-Sieg"). Am Netz hängt
+  es am Merkmals-Gate (`needsFor(marks, together)`) – eine Gegenstelle von vor
+  3.24 würde sonst nach der ALTEN Regel gewinnen. Der BEWEIS bleibt unberührt:
+  Gleichzeitigkeit ist Timing, kein Erreichbarkeitsproblem (wie das weiche
+  `timer`-Badge); wer es aufnähme, müsste Wege LÄNGENgleich beweisen.
+  Eingebautes Lehrlevel: coop-07 „Gleichschritt" (Ring, zwei Ziele, keine Tür).
+  `window.__tiltrMp` legt `mode` und `together` offen (E2E Lauf 47).
+  FRAME-ORDNUNG, hier gelernt: Ein Zustand, der einmal je Frame gerechnet wird,
+  wird NACH `world.step()` gerechnet und oben nur DEKLARIERT – die erste
+  Fassung rechnete ihn davor, meldete die Lage des VORIGEN Bildes, und im
+  ersten Bild in der Zielzone gewann noch die alte Regel.
+  WER GEWINNT, VERSTUMMT (zweite Lektion, erst unter Last gefallen): Ab dem
+  Sieg läuft die Schleife nicht mehr im Spielzweig, also geht keine
+  `state`-Meldung mehr hinaus – die letzte kann noch `g: false` getragen haben.
+  Der Wartende blieb dann für immer „playing". Deshalb schließt auch die
+  `finish`-Meldung des Partners das Rendezvous ab (sie kommt nur, wenn er MICH
+  im Ziel gesehen hat). Jede künftige Regel auf einem STROM von Meldungen
+  braucht denselben Schluss: Der letzte Zustand muss in einer EINZELNEN
+  Nachricht stehen.
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

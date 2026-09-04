@@ -61,8 +61,11 @@ die Animation unten trägt.
   Raumcode oder der **📨 Einladung** des Hosts (Nachricht plus Link über das
   Share-Sheet). **Coop:** Druckplatten, Schlüssel und Schalter wirken für
   beide – du öffnest auch die Türen des Partners; gewonnen ist, wenn beide
-  drin sind. **Race:** identisches Level, wer zuerst ankommt, gewinnt, mit
-  Rematch. Je sechs handgebaute Level plus ein 🎲-Generator, und jedes
+  drin sind – und ein Level kann **gemeinsames Ankommen** verlangen: beide
+  gleichzeitig in ihren Zielzonen (wer zuerst da ist, wartet, und der
+  Nachzügler hört das Rufen). **Race:** identisches Level, wer zuerst ankommt,
+  gewinnt, mit Rematch. Sieben handgebaute Coop-Level, sechs Race-Level plus
+  ein 🎲-Generator, und jedes
   **Zwei-Spieler-Level aus der Werkstatt** lässt sich direkt aus der
   Bibliothek hosten – der Gast bekommt es mit dem Raum. Im Coop **hört** man
   den Partner: ein warmes, tiefes Summen aus seiner Richtung, dazu ein
