@@ -754,13 +754,35 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   rechnen coopReachable/pairReachable/holdCheck es GRATIS mit"; gratis ist es
   nur als EIGENSCHAFT (`el.type === 'plate'` steht an ~20 Stellen). Dieselbe
   Regel wie bei der Wand-Variante (M38) und „Setzt für" (M58).
-  DAS FELD IST EINE SCHALE: Die Platte mit `tune` baut einen Sog-Anker mit
-  (`RESONANCE_FORCE` 2400 < `accel` 2600, Invariante wie M32) – zum Stimmen
-  muss man neigen, und ohne Schale würde man wegrollen. Die beiden Zahlen sind
-  GEKOPPELT: Bei voller Neigung dauert die Flucht bis zum Plattenrand ~0,49 s,
-  die Haltezeit liegt bei 0,25 s – wer entschieden kippt, rollt hinaus; wer
-  stimmen will, neigt sanft. Wer an einer der Zahlen dreht, rechnet die andere
-  nach (die Rechnung steht im Modul).
+  DAS FELD IST EINE SCHALE, KEIN SOG (v3.25.2, aus dem Spieltest): `bowlPull`
+  ist eine MULDE – die Rückstellkraft wächst bis zur Lippe (halber Radius) und
+  fällt dahinter auf null. Die erste Fassung hing am Anker-Profil (`force ·
+  (1 − d/r)`, am ZENTRUM am stärksten), und das ist genau verkehrt: Eine SANFTE
+  Neigung – die, mit der man stimmt – hat ihr Gleichgewicht dort, wo der Sog
+  klein ist, nämlich am RAND (bei 0,3: 61 px, die Platte endet bei 41). Die
+  Kugel rutschte beim Stimmen von der Platte, der Ton riss ab, sie rasselte an
+  den Wänden – so gemeldet („zu viele Störgeräusche"). Umgekehrt hielt eine
+  starke Neigung sie fest, und mit Tastatur (max. 0,7) kam man NIE heraus.
+  ZWEI MESS-LEKTIONEN, beide in tests/resonance.test.ts festgeschrieben:
+  (1) DIE EINGABE RAMPT (input/tilt.ts, 0,15 je Bild), deshalb folgt die Kugel
+  dem Gleichgewicht und sammelt keinen Schwung – über die Lippe kommt nur, wer
+  sie STATISCH übertrifft. Eine Auslegung „mit Schwung drüber" war im Unit-Test
+  grün (dort lag die Neigung als RUCK an) und im Spiel eine Falle: Wer eine
+  Kraft gegen die Neigung auslegt, simuliert MIT der Rampe. (2) Der Ausstieg
+  muss in JEDER Richtung gehen, auch aus einer Nische mit einer offenen Seite –
+  also unter 2600 · 0,7 = 1820. Daraus: `RESONANCE_FORCE` 1500 (ab Neigung 0,58
+  hinaus), `RESONANCE_HOLD` 60 px als Feld-Radius für Ton UND Halten (nicht die
+  enge Platten-Toleranz 41 – beim Stimmen schwingt die Kugel aus).
+  GESTIMMT WIRD MIT EINEM TIPP: kurz antippen, loslassen, der Ton steht
+  (`tuneStep`) – eine gehaltene Taste kippt einen hinaus. Das ist die Bewegung,
+  die auch die E2E fährt.
+  NUR DIE ZWEI TÖNE (v3.25.2): Wer im Feld steht, hört die Welt um ~20 dB
+  gedämpft – `worldDuck` sitzt zwischen Master und Nebelfilter, die beiden
+  Resonanzstimmen hängen dahinter, der Hall-Send am Welt-Bus. Abstimmen heißt
+  vergleichen, und dazwischen darf nicht die halbe Welt rasseln. Und die Schale
+  BRUMMT NICHT: Der Anker-Klang lässt `a.resonance` aus (ein Element, ein
+  Klang – das Brummen lag genau auf den Tönen). `window.__tiltrDuck` zeigt den
+  Bus (wie `__tiltrMusic`).
   BEIDE SEITEN RECHNEN DASSELBE: `state` trägt `tn` (Cent, null = auf keinem
   Feld), jede Seite kennt beide Töne und entscheidet lokal – keine Autorität,
   keine Nachricht „Tor auf"; `heldIds` in app.ts ist die EINE Stelle, die aus

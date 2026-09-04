@@ -50,6 +50,11 @@ export interface PingDebug {
   refl: Array<{ x: number; z: number; gain: number; broadband: boolean }>;
 }
 
+/** Wie weit die Welt zurückweicht, während man stimmt (~−20 dB). Nicht ganz
+ *  still: Ein Wandtreffer oder das Ziel bleiben als Ahnung da – man steht
+ *  weiter IN der Welt, man hört nur genauer hin. */
+const TUNE_DUCK = 0.1;
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
   /** First Person (M23): Blickrichtung des Hörers in rad. Gedreht wird an
@@ -91,6 +96,7 @@ export class GameAudio {
   private rivalGain!: GainNode;
   private rivalFilter!: BiquadFilterNode;
   private rivalPanner!: PannerNode;
+  private worldDuck!: GainNode;
   private resMineOsc!: OscillatorNode;
   private resMineGain!: GainNode;
   private resTheirsOsc!: OscillatorNode;
@@ -138,7 +144,18 @@ export class GameAudio {
     this.fogFilter = this.ctx.createBiquadFilter();
     this.fogFilter.type = 'lowpass';
     this.fogFilter.frequency.value = 18000;
-    this.master.connect(this.fogFilter).connect(this.ctx.destination);
+    // STIMM-MODUS (M91b): Wer in einem Resonanzfeld steht, soll die ZWEI TÖNE
+    // hören und möglichst nichts sonst – abstimmen heißt vergleichen, und
+    // dazwischen darf nicht die halbe Welt rasseln (die Kugel in der Schale,
+    // Wandtreffer, der Partner, die Musik). Deshalb sitzt zwischen Master und
+    // Nebelfilter ein WELT-BUS, den `setResonance` absenkt; die beiden
+    // Resonanzstimmen hängen dahinter und bleiben voll da. Dieselbe Idee wie
+    // das Ducking der Musik unter dem Ping – nur umgekehrt: hier duckt der Ton
+    // die Welt. Der Hall-Send hängt am WELT-Bus (sonst käme die gedämpfte Welt
+    // durch ihre eigene Fahne zurück).
+    this.worldDuck = this.ctx.createGain();
+    this.worldDuck.gain.value = 1;
+    this.master.connect(this.worldDuck).connect(this.fogFilter).connect(this.ctx.destination);
     // Hallraum (M46): Feedback-Delay statt Convolver – keine Impulsantwort-
     // Datei in der PWA. Der Send ist normal zu; in der Zone geht er auf.
     // Der Nachhall läuft durch den Nebelfilter wie alles andere.
@@ -151,7 +168,7 @@ export class GameAudio {
     const damp = this.ctx.createBiquadFilter();
     damp.type = 'lowpass';
     damp.frequency.value = 3200;
-    this.master.connect(this.reverbSend).connect(delay);
+    this.worldDuck.connect(this.reverbSend).connect(delay);
     delay.connect(damp).connect(feedback).connect(delay);
     delay.connect(this.fogFilter);
 
@@ -229,11 +246,11 @@ export class GameAudio {
       gain.gain.value = 0;
       if (panned) {
         const panner = this.panner();
-        osc.connect(gain).connect(panner).connect(this.master);
+        osc.connect(gain).connect(panner).connect(this.fogFilter);
         osc.start();
         return { osc, gain, panner };
       }
-      osc.connect(gain).connect(this.master);
+      osc.connect(gain).connect(this.fogFilter);
       osc.start();
       return { osc, gain };
     };
@@ -1058,6 +1075,9 @@ export class GameAudio {
   setResonance(mineHz: number | null, theirsHz: number | null, dx: number, dy: number, aim = 0): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
+    // Solange ich stimme, weicht die Welt zurück (siehe Welt-Bus oben): Zwei
+    // Töne aufeinander abzustimmen geht nur, wenn man sie auch hört.
+    this.worldDuck.gain.setTargetAtTime(mineHz !== null ? TUNE_DUCK : 1, t, 0.18);
     this.resMineGain.gain.setTargetAtTime(mineHz ? 0.14 : 0, t, 0.12);
     if (mineHz) {
       this.resMineOsc.frequency.setTargetAtTime(mineHz, t, 0.04);
@@ -1729,6 +1749,13 @@ export class GameAudio {
     this.noiseCursor = (this.noiseCursor + 0.317) % 1;
     nz.start(t, this.noiseCursor * (nz.buffer.duration - 0.3));
     nz.stop(t + 0.3);
+  }
+
+  /** Stimm-Modus: Wie stark die Welt gerade zurückweicht (1 = voll da). Für
+   *  die E2E – „hört man wirklich nur die zwei Töne?" ist sonst nicht prüfbar
+   *  (wie `musicState` für „ist es wirklich still?"). */
+  worldDuckValue(): number {
+    return this.worldDuck?.gain.value ?? 1;
   }
 
   musicState(): MusicDebug {

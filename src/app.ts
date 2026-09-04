@@ -134,6 +134,8 @@ const wake = setupWakeLock();
 // Schleife dort früh aussteigt; „ist der Automat wirklich still?" muss aber
 // gerade dann prüfbar sein).
 Object.defineProperty(window, '__tiltrMusic', { get: () => audio.musicState(), configurable: true });
+// Stimm-Modus (M91b): Wie weit die Welt zurückweicht, während man stimmt.
+Object.defineProperty(window, '__tiltrDuck', { get: () => audio.worldDuckValue(), configurable: true });
 // Konfetti zum Sieg – gefeiert wird in JEDEM Modus, Tutorial eingeschlossen.
 const confetti = setupConfetti('confetti');
 
@@ -3342,6 +3344,11 @@ function frame(now: number): void {
     let anchorClose = 0;
     let nearAnchor: { dx: number; dy: number } | null = null;
     for (const a of world.anchors) {
+      // Die SCHALE eines Resonanzfeldes ist für die Physik ein Anker, klingt
+      // aber nicht wie einer (M91b): Sie hat ihre eigene Stimme – den Ton.
+      // Ein Element mit zwei Signaturen wäre eine zweite Bedeutung, und beim
+      // Stimmen lag das Anker-Brummen genau auf den Tönen.
+      if (a.resonance) continue;
       const d = Math.hypot(a.x - world.ball.x, a.y - world.ball.y);
       const c = Math.max(0, 1 - d / (a.r + ANCHOR_HEAR));
       if (c > anchorClose) {

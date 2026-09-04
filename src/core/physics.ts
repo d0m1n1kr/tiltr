@@ -30,6 +30,7 @@ import type {
   WindZone,
   Torch,
 } from './types';
+import { RESONANCE_HOLD, bowlPull } from './resonance';
 import { ABSORB_GAIN, shielded } from './occlusion';
 
 export class Ball {
@@ -153,7 +154,10 @@ export class World {
           ady = a.y - b.y;
         const ad = Math.hypot(adx, ady);
         if (ad < a.r && ad > 1e-6) {
-          const pull = a.force * (1 - ad / a.r);
+          // Die Schale eines Resonanzfeldes zieht nach einem ANDEREN Gesetz
+          // (M91/v3.25.2): Kraft wächst bis zur Lippe, fällt dahinter auf
+          // null – eine Mulde. Der Anker bleibt der Sog (stärkstes Zentrum).
+          const pull = a.resonance ? bowlPull(ad, a.r, a.force) : a.force * (1 - ad / a.r);
           b.vx += (adx / ad) * pull * h;
           b.vy += (ady / ad) * pull * h;
         }
@@ -656,8 +660,15 @@ export class World {
   platesUnderBall(): Plate[] {
     // Gedrückt, sobald der Ball deutlich auf der Platte steht – auch wenn er
     // in einer Ecke an der Wand lehnt (halber Ballradius Toleranz).
+    // Ein RESONANZFELD zählt WEITER (M91/v3.25.2): Beim Stimmen schwingt die
+    // Kugel in der Schale bis zu 49 px aus – mit der engen Platten-Toleranz
+    // riss dabei der Ton ab (und mit ihm das Halten). `RESONANCE_HOLD` ist
+    // knapp die eigene Zelle: Ein Feld gehört seiner Zelle, nicht der
+    // Nachbarschaft.
     const b = this.ball;
-    return this.plates.filter((pl) => Math.hypot(pl.x - b.x, pl.y - b.y) < pl.r + b.r / 2);
+    return this.plates.filter(
+      (pl) => Math.hypot(pl.x - b.x, pl.y - b.y) < (pl.tune ? RESONANCE_HOLD : pl.r + b.r / 2),
+    );
   }
 
   // Zeitschloss-Schalter, auf dem der Ball gerade steht, sonst null

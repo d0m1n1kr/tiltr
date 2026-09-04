@@ -728,10 +728,32 @@ Grundton. Der Spielerwechsel braucht dafür keine eigene Regel mehr, und im
 echten Netz darf man das Gerät ruhig legen – das Stimmen wird deutlich
 entspannter, was der erste Spieltest auch verlangt hat („zu schwierig").
 
-Units: tests/resonance.test.ts (15) plus die Gegenproben; E2E Lauf 48 im
-MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, Loslassen hält den Ton,
-der Spielerwechsel hält ihn auch, zwei verschiedene Töne lassen das Tor zu,
-Einklang öffnet es, Verstimmen schließt es wieder). Die Sabotage-Probe – `inTune` rechnet die
+UND NOCHMAL NACHGESCHÄRFT (v3.25.2, zweiter Spieltest: „in der Schale hört man
+zu viele Störgeräusche"). Drei Ursachen, alle echt:
+1. Die Schale war ein SOG-ANKER, und dessen Kraft ist im Zentrum am größten und
+   fällt zum Rand auf null – das Gegenteil einer Mulde. Eine sanfte Neigung
+   (die Stimm-Neigung!) hatte ihr Gleichgewicht bei 61 px, die Platte endet bei
+   41: Die Kugel rutschte beim Stimmen heraus, der Ton riss ab, sie rasselte an
+   den Wänden. `bowlPull` dreht das Profil um (Kraft wächst bis zur Lippe).
+2. Die Schale BRUMMTE wie ein Anker – ein Element mit zwei Klängen, und das
+   Brummen lag genau auf den Tönen. Der Anker-Klang lässt Resonanz-Schalen aus.
+3. Der Rest der Welt spielte in voller Lautstärke weiter. Jetzt weicht der
+   WELT-BUS um ~20 dB zurück, solange man im Feld steht (`worldDuck`); die
+   beiden Resonanzstimmen hängen dahinter.
+Dabei zwei Mess-Lektionen, die über die Zahlen entschieden haben: Die EINGABE
+RAMPT (0,15 je Bild), also sammelt die Kugel keinen Schwung für die Lippe – wer
+eine Kraft gegen die Neigung auslegt, simuliert mit der Rampe (eine Auslegung
+„mit Schwung drüber" war im Unit-Test grün und im Spiel eine Falle). Und der
+Ausstieg muss in JEDER Richtung gehen, auch aus einer Nische mit einer offenen
+Seite – also unter 2600 · 0,7. Heraus kam: Kraft 1500, Feld-Radius 60 px, und
+gestimmt wird mit einem TIPP (der Ton bleibt ja stehen), verlassen mit einer
+gehaltenen Taste.
+
+Units: tests/resonance.test.ts (21) plus die Gegenproben; E2E Lauf 48 im
+MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, die Welt weicht im Feld
+zurück, ein Tipp stimmt und der Ton bleibt stehen, der Spielerwechsel hält ihn
+auch, zwei verschiedene Töne lassen das Tor zu, Einklang öffnet es, Verstimmen
+schließt es, und entschieden kippen verlässt das Feld). Die Sabotage-Probe – `inTune` rechnet die
 Quinte als Einklang – hat drei der sechs Zusicherungen rot gemacht,
 darunter die eine, die vorher nur zufällig grün war: „bleibt zu" ist kein
 Zustandswechsel, auf den man warten kann, also wartet sie als EINZIGE im Lauf

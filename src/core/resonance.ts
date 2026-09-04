@@ -37,20 +37,61 @@ export const TUNE_TOL_CENTS = 25;
  *  bei voller Neigung nicht zu öffnen. */
 export const TUNE_HOLD_MS = 250;
 
-/** Sog des Feldes (px/s²). MUSS unter der Neigungs-Beschleunigung (2600)
- *  bleiben – dieselbe Regel wie beim Sog-Anker (M32): eine Schale, nie eine
- *  Falle. Der Sog fällt mit dem Abstand (`force · (1 − d/r)`, siehe
- *  World.step), also rechnet sich die FLUCHT bei VOLLER Neigung so:
- *  d'' = 2600 − 2400·(1 − d/90) = 200 + 26,7·d, und bis zum Rand der Platte
- *  (30 + halber Ballradius = 41) sind das ~0,49 s. Wer entschieden kippt,
- *  rollt also hinaus – aber erst NACH der Haltezeit (0,25 s). Wer stimmen
- *  will, neigt sanft: darunter zieht die Schale netto nach innen. */
-export const RESONANCE_FORCE = 2400;
+/** STÄRKSTE Rückstellkraft der Schale (px/s²), erreicht an der LIPPE (halber
+ *  Schalenradius) – nicht im Zentrum.
+ *
+ *  DIE ZAHL IST GEMESSEN, und sie musste zweimal fallen (v3.25.2):
+ *  1. Die Eingabe RAMPT (input/tilt.ts, 0,15 je Bild). Deshalb folgt die Kugel
+ *     dem Gleichgewicht und sammelt keinen Schwung – über die Lippe kommt nur,
+ *     wer die Lippenkraft STATISCH übertrifft. Eine Auslegung „mit Schwung
+ *     drüber" war im Unit-Test grün (dort lag die Neigung als Ruck an) und im
+ *     Spiel eine Falle.
+ *  2. Der Ausstieg muss in JEDER Richtung gehen, auch aus einer Sackgassen-
+ *     Nische mit einer einzigen offenen Seite. Die stärkste Neigung in EINER
+ *     Achse ist auf der Tastatur 0,7 (2600 · 0,7 = 1820), also muss die Lippe
+ *     darunter liegen.
+ *  1500 heißt: ab Neigung 0,58 rollt man hinaus (gemessen: 0,5 reicht schon),
+ *  sanfte Neigungen bis ~0,35 halten (Ruhelage 23–37 px). Gestimmt wird also
+ *  mit einem TIPP oder sanft – der Ton bleibt danach stehen (`tuneStep`), man
+ *  muss ihn nicht festhalten. Wer entschieden kippt, verlässt das Feld.
+ *  Wer an Kraft, Radius oder Dämpfung dreht, misst mit der Rampe nach – die
+ *  Units „Die Schale im Lauf der echten Physik" tun genau das. */
+export const RESONANCE_FORCE = 1500;
 
 /** Radius der Schale in Welteinheiten (fast eine Zelle – so findet man sie
- *  beim Anrollen, und der Sog-Verlauf bleibt flach). Die PLATTE darin ist
- *  kleiner; sie entscheidet, ob der Ton klingt. */
+ *  beim Anrollen). */
 export const RESONANCE_R = 90;
+
+/** Ab welchem Abstand die Kugel „auf dem Feld" steht (Ton + Halten). Nicht die
+ *  kleine Platten-Toleranz (41 px): Beim Stimmen schwingt die Kugel bis zu
+ *  49 px aus, und dabei darf der Ton nicht abreißen. 60 px ist knapp die
+ *  eigene Zelle – ein Feld gehört seiner Zelle, nicht der Nachbarschaft. */
+export const RESONANCE_HOLD = 60;
+
+/**
+ * DIE SCHALE IST EINE SCHALE, kein Sog (v3.25.2, aus dem Spieltest): Die
+ * Rückstellkraft WÄCHST mit dem Abstand bis zur Lippe (halber Radius) und
+ * fällt dahinter zum Rand auf null – wie eine Mulde, aus der man über den Rand
+ * herauskippen kann.
+ *
+ * Vorher hing die Schale am Sog-Anker-Profil (`force · (1 − d/r)`, am ZENTRUM
+ * am stärksten). Das ist genau umgekehrt, und es war im Spiel zu hören: Eine
+ * SANFTE Neigung – also die, mit der man stimmt – hat ihr Gleichgewicht dort,
+ * wo der Sog klein ist, nämlich am RAND (bei Neigung 0,3: 61 px, die Platte
+ * endet bei 41). Die Kugel rutschte also beim Stimmen von der Platte, der Ton
+ * riss ab und sie rasselte an den Wänden. Umgekehrt hielt eine starke Neigung
+ * sie in der Mitte fest, und mit Tastatur (höchstens 0,7) kam man nie heraus –
+ * eine Falle, genau die Sorte, die M32 verbieten wollte.
+ *
+ * Mit der Mulde gilt: Ruhelage = Neigung · 2600 / (F/(r/2)), also bei 0,3 rund
+ * 17 px und bei 0,7 rund 39 px – immer INNERHALB der Platte (41 px). Der Ton
+ * bleibt beim Stimmen stehen.
+ */
+export function bowlPull(d: number, r = RESONANCE_R, fmax = RESONANCE_FORCE): number {
+  if (d <= 0 || d >= r) return 0;
+  const lip = r / 2;
+  return d < lip ? (fmax * d) / lip : (fmax * (r - d)) / lip;
+}
 
 export type Interval = 'unison' | 'fifth';
 

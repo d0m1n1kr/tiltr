@@ -285,7 +285,10 @@ export interface Anchor {
   /** Maximaler Sog im Zentrum (px/s²) */
   force: number;
   /** Schale eines Resonanzfeldes (M91) – gebaut von der Platte, nicht vom
-   *  Anker-Element: Sie hält die Kugel, während die Neigung stimmt. */
+   *  Anker-Element: Sie hält die Kugel, während die Neigung stimmt. Sie zieht
+   *  auch nach einem ANDEREN Gesetz als der Anker (`bowlPull`: stärkste Kraft
+   *  an der Lippe, nicht im Zentrum) und brummt nicht – sie hat ihre eigene
+   *  Stimme, den Ton. */
   resonance?: boolean;
   litFrom?: number;
   litUntil?: number;

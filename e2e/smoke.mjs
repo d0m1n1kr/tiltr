@@ -8372,7 +8372,15 @@ if (want("48")) {
       floors: [
         {
           size: [5, 3],
-          maze: { seed: 3, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          // Die Zelle von Spieler 2 ist nach NORDEN offen (Reihe 1 ist eine
+          // Sackgasse, Reihe 0 bleibt getrennt): Nur so gibt es zwei offene
+          // Richtungen, und nur mit zwei Tasten zugleich kommt man über die
+          // Lippe der Schale (eine einzelne hält, gemessen in tests/resonance).
+          maze: {
+            seed: 3,
+            carve: [...carveRow(0), ...carveRow(2), [[0, 1], "s"]],
+            add: [...sealRow(0), ...sealRow(1).filter(([[x]]) => x !== 0)],
+          },
           elements: [
             { type: "door", id: "gz", edge: [[3, 2], "e"], require: "all" },
             { type: "plate", cell: [0, 0], opens: "gz", tune: "unison" },
@@ -8444,21 +8452,35 @@ if (want("48")) {
       alone?.res?.mine === 0 && alone?.res?.theirs === null && alone?.res?.open === false && alone?.doors.length === 0,
     );
 
-    // Nach OSTEN neigen ist die Mitte (351 Cent) – und der Ton BLEIBT dort
-    // stehen, wenn man loslässt: ein Stimmknopf springt nicht zurück.
-    await page.keyboard.down("ArrowRight");
-    const tuning = await until(async () => {
-      const r = await read();
-      return r.res?.mine > 300 && r.res.mine < 400 ? r : null;
-    }, { timeout: 8000 });
-    await page.keyboard.up("ArrowRight");
-    const released = await until(async () => {
-      const r = await read();
-      return r.res && (await settled(page)) ? r : null;
+    // STIMM-MODUS (M91b): Wer im Feld steht, soll die zwei Töne hören und nicht
+    // die halbe Welt – der Welt-Bus weicht um ~20 dB zurück. Und die Schale
+    // brummt nicht mehr wie ein Sog-Anker: ein Element, ein Klang.
+    const duckOn = await until(async () => {
+      const d = await page.evaluate(() => window.__tiltrDuck);
+      return typeof d === "number" && d < 0.2 ? d : null;
     }, { timeout: 8000 });
     check(
-      `Loslassen hält den Ton (gestimmt ${tuning?.res?.mine} → nach dem Loslassen ${released?.res?.mine})`,
-      tuning !== null && released?.res?.mine > 300 && released.res.mine < 400,
+      `Im Feld weicht die Welt zurück, damit man die Töne hört (Welt-Bus ${duckOn})`,
+      duckOn !== null,
+    );
+
+    // GESTIMMT WIRD MIT EINEM TIPP: Nach Osten antippen ist die Mitte (351
+    // Cent), und der Ton BLEIBT stehen – ein Stimmknopf springt nicht zurück.
+    // Eine GEHALTENE Taste (0,7) kippt einen dagegen aus der Schale; die
+    // 120 ms sind die Geste selbst, kein Warten auf einen Zustand.
+    const nudge = async (key) => {
+      await page.keyboard.down(key);
+      await page.waitForTimeout(120);
+      await page.keyboard.up(key);
+    };
+    await nudge("ArrowRight");
+    const released = await until(async () => {
+      const r = await read();
+      return r.res?.mine > 300 && r.res.mine < 400 && (await settled(page)) ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Ein Tipp stimmt, und der Ton bleibt nach dem Loslassen stehen (${released?.res?.mine})`,
+      released !== null,
     );
 
     // 👥 wechselt die Seite: Der Ton der abgegebenen Seite bleibt stehen (ihre
@@ -8486,13 +8508,14 @@ if (want("48")) {
     );
 
     // Dieselbe Neigung wie der Partner ist der EINKLANG – nach der Haltezeit
-    // schwingt das Tor auf, und BEIDE Felder gelten als gehalten.
-    await page.keyboard.down("ArrowRight");
+    // schwingt das Tor auf, und BEIDE Felder gelten als gehalten. Auch hier
+    // genügt ein TIPP: Der Ton steht danach, also bleibt das Tor offen, ohne
+    // dass jemand die Taste hält.
+    await nudge("ArrowRight");
     const tuned = await until(async () => {
       const r = await read();
       return r.res?.open === true ? r : null;
     }, { timeout: 8000 });
-    await page.keyboard.up("ArrowRight");
     check(
       `Einklang gestimmt: das Tor schwingt auf (${JSON.stringify({ ...tuned?.res, doors: tuned?.doors, held: tuned?.held })})`,
       tuned !== null &&
@@ -8505,19 +8528,41 @@ if (want("48")) {
         tuned.held.length === 2,
     );
 
-    // Verstimmen: nach NORDEN neigen ist der Grundton – kein Einklang mehr,
+    // Verstimmen: nach NORDEN antippen geht zum Grundton – kein Einklang mehr,
     // und weil diese Tür nicht „offen bleibt", fällt sie wieder zu.
-    await page.keyboard.down("ArrowUp");
+    await nudge("ArrowUp");
     const closed = await until(async () => {
       const r = await read();
       return r.res?.open === false && r.doors.length === 0 ? r : null;
     }, { timeout: 8000 });
-    await page.keyboard.up("ArrowUp");
     check(
       `Verstimmt: das Tor fällt wieder zu (${JSON.stringify({ ...closed?.res, doors: closed?.doors })})`,
       // Nicht „der Ton ist unten angekommen" prüfen: Das Tor fällt schon zu,
       // sobald der Abstand über der Toleranz liegt – DAS ist die Aussage.
       closed !== null && Math.abs(closed.res.mine - closed.res.theirs) > 25,
+    );
+    // Das Feld verlassen: Der Ton verstummt (er gehört dem Feld, nicht mir),
+    // und die Welt ist wieder voll da.
+    // Und ENTSCHIEDEN kippen (Taste HALTEN, 0,7) verlässt die Schale – aus
+    // jeder offenen Richtung, auch aus einer Nische (tests/resonance misst es).
+    await page.keyboard.down("ArrowRight");
+    let leftRes = undefined;
+    await until(async () => {
+      leftRes = (await read()).res;
+      return leftRes === null || leftRes?.mine === null;
+    }, { timeout: 8000 });
+    await page.keyboard.up("ArrowRight");
+    const left = leftRes === null || leftRes?.mine === null ? { res: leftRes } : null;
+    // Den Wert MITSCHREIBEN statt ihn im Prädikat zu verschlucken: Sonst sagt
+    // die Zusicherung „null" und nicht, was der Bus wirklich stand.
+    let duckOff = null;
+    await until(async () => {
+      duckOff = await page.evaluate(() => window.__tiltrDuck);
+      return typeof duckOff === "number" && duckOff > 0.9;
+    }, { timeout: 8000 });
+    check(
+      `Feld verlassen: Ton verstummt und die Welt kommt zurück (mine=${JSON.stringify(left?.res?.mine)}, Welt-Bus ${duckOff})`,
+      left !== null && duckOff > 0.9,
     );
     await page.close();
     await ctx.close();
