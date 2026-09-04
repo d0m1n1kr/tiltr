@@ -100,6 +100,7 @@ const KNOWN_RUNS = [
   "46",
   "47",
   "48",
+  "49",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -8452,6 +8453,15 @@ if (want("48")) {
       alone?.res?.mine === 0 && alone?.res?.theirs === null && alone?.res?.open === false && alone?.doors.length === 0,
     );
 
+    // AUF DEM FELD SAGT DAS SPIEL, WAS ZU TUN IST (v3.25.5): Ohne Anweisung
+    // errät niemand, dass die NEIGUNGSRICHTUNG stimmt. Gewartet wird, bis die
+    // Start-Meldung durch ist – die Statuszeile schreibt der Frame.
+    const said = await until(async () => {
+      const txt = (await page.textContent("#status")).trim();
+      return txt.includes("Resonanzfeld") ? txt : null;
+    }, { timeout: 12000 });
+    check(`Die Anweisung steht auf dem Feld („${String(said).slice(0, 60)}…")`, said !== null);
+
     // STIMM-MODUS (M91b): Wer im Feld steht, soll die zwei Töne hören und nicht
     // die halbe Welt – der Welt-Bus weicht um ~20 dB zurück. Und die Schale
     // brummt nicht mehr wie ein Sog-Anker: ein Element, ein Klang.
@@ -8535,6 +8545,13 @@ if (want("48")) {
         tuned.held.length === 2,
     );
 
+    // … und die Anweisung sagt es auch: „Es steht".
+    const openSaid = await until(async () => {
+      const txt = (await page.textContent("#status")).trim();
+      return txt.includes("Es steht") ? txt : null;
+    }, { timeout: 8000 });
+    check(`Die Anweisung meldet den Erfolg („${String(openSaid).slice(0, 40)}…")`, openSaid !== null);
+
     // Verstimmen: nach NORDEN antippen geht zum Grundton – kein Einklang mehr,
     // und weil diese Tür nicht „offen bleibt", fällt sie wieder zu.
     await nudge("ArrowUp");
@@ -8576,6 +8593,91 @@ if (want("48")) {
   } catch (e) {
     check(
       `Lauf 48 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 49: Licht je Spieler (M92). Aus der hellen Ebene wird ein
+// Coop-Werkzeug: Einer SIEHT das Labyrinth, der andere hört es – so kann einer
+// ansagen (mit Worten oder Wegmarken). Entschieden wird das im LOADER, also je
+// geladener Welt; im MP-Testmodus liegen beide vor, und 👥 wechselt zwischen
+// ihnen. Geprüft: Spieler 1 hell, Spieler 2 dunkel, im SELBEN Level. ---
+if (want("49")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const def = {
+      id: "custom-m92",
+      name: "Ansage",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      marks: 3,
+      floors: [
+        {
+          size: [4, 3],
+          maze: {
+            seed: 5,
+            carve: [[[0, 0], "e"], [[1, 0], "e"], [[2, 0], "e"], [[0, 0], "s"], [[0, 1], "s"]],
+          },
+          elements: [],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 2],
+          goal2: [3, 2],
+          bright: true,
+          brightPlayer: 1,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    // Das Feld steht im Editor bei der hellen Ebene – und nur dort.
+    const brightSel = page.locator("#edBrightFor");
+    check(
+      `Editor: „Hell für" steht bei der hellen Ebene (${await brightSel.count()}, Wert ${
+        (await brightSel.count()) ? await brightSel.inputValue() : "-"
+      })`,
+      (await brightSel.count()) === 1 && (await brightSel.inputValue()) === "1",
+    );
+    await page.click("#edTest");
+    await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+    const lit = () => page.evaluate(() => ({ bright: window.__tiltrWorld?.bright, player: window.__tiltrMpTest?.player }));
+    const first = await until(async () => {
+      const r = await lit();
+      return typeof r.bright === "boolean" ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Spieler 1 sieht die Ebene hell (${JSON.stringify(first)})`,
+      first?.player === 1 && first.bright === true,
+    );
+    await page.keyboard.press("p");
+    const second = await until(async () => {
+      const r = await lit();
+      return r.player === 2 ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Dieselbe Ebene ist für Spieler 2 DUNKEL (${JSON.stringify(second)})`,
+      second?.player === 2 && second.bright === false,
+    );
+    await page.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 49 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

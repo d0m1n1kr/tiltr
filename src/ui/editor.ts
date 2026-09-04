@@ -2360,6 +2360,26 @@ export function setupEditor(opts: {
     });
     light.id = 'edFloorBright';
     propsEl.append(field(t('ed.f.light'), light));
+    // LICHT JE SPIELER (M92): Aus der hellen Ebene wird ein Coop-Werkzeug –
+    // einer sieht und sagt an, der andere hört. Nur sinnvoll bei zwei
+    // Spielern UND auf einer hellen Ebene (Schema-Invariante).
+    if (twoPlayers() && fr.bright === true) {
+      const who = selectInput(String(fr.brightPlayer ?? 'both'), [
+        ['both', t('ed.brightFor.both')],
+        ['1', t('ed.brightFor.1')],
+        ['2', t('ed.brightFor.2')],
+      ], (v) => {
+        if (v === 'both') delete fr.brightPlayer;
+        else fr.brightPlayer = v === '2' ? 2 : 1;
+        rebuild();
+      });
+      who.id = 'edBrightFor';
+      propsEl.append(field(t('ed.f.brightFor'), who));
+      const hint = document.createElement('p');
+      hint.className = 'menu-meta';
+      hint.textContent = t('ed.brightForHint');
+      propsEl.append(hint);
+    }
 
     const reroll = document.createElement('button');
     reroll.className = 'btn btn-ghost';

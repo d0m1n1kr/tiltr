@@ -423,3 +423,59 @@ describe('Duett (M91)', () => {
     expect(levelFeatures(plain).has('resonance')).toBe(false);
   });
 });
+
+// LICHT JE SPIELER (M92): Aus der hellen Ebene wird ein Coop-Werkzeug – einer
+// sieht das Labyrinth und sagt an, der andere hört es. Entschieden wird das im
+// LOADER (wie `elementForPlayer`, M65), nicht im Renderer.
+describe('Licht je Spieler (M92)', () => {
+  const def = (brightPlayer?: 1 | 2) =>
+    parseLevel({
+      id: 'licht',
+      name: 'Licht',
+      players: 2,
+      mpMode: 'coop',
+      floors: [
+        {
+          size: [4, 3],
+          maze: { seed: 5, carve: [[[0, 0], 'e'], [[1, 0], 'e'], [[2, 0], 'e'], [[0, 0], 's'], [[0, 1], 's']] },
+          elements: [],
+          start: [0, 0],
+          goal: [3, 0],
+          start2: [0, 2],
+          goal2: [3, 2],
+          bright: true,
+          ...(brightPlayer ? { brightPlayer } : {}),
+        },
+      ],
+    });
+
+  it('ohne Angabe ist die helle Ebene für BEIDE hell (wie bisher)', () => {
+    expect(loadLevel(def(), { player: 1 }).floors[0]!.bright).toBe(true);
+    expect(loadLevel(def(), { player: 2 }).floors[0]!.bright).toBe(true);
+  });
+
+  it('„nur Spieler 1": für ihn hell, für den Partner dunkel', () => {
+    expect(loadLevel(def(1), { player: 1 }).floors[0]!.bright).toBe(true);
+    expect(loadLevel(def(1), { player: 2 }).floors[0]!.bright).toBe(false);
+  });
+
+  it('„nur Spieler 2": andersherum', () => {
+    expect(loadLevel(def(2), { player: 1 }).floors[0]!.bright).toBe(false);
+    expect(loadLevel(def(2), { player: 2 }).floors[0]!.bright).toBe(true);
+  });
+
+  it('das Schema lehnt „hell nur für einen" ohne zweiten Spieler oder ohne Licht ab', () => {
+    const solo = { ...JSON.parse(JSON.stringify(def(1))), players: 1 } as Record<string, unknown>;
+    expect(() => parseLevel(solo)).toThrow();
+    const dark = JSON.parse(JSON.stringify(def(1))) as { floors: Array<Record<string, unknown>> };
+    dark.floors[0]!.bright = false;
+    expect(() => parseLevel(dark)).toThrow();
+  });
+
+  it('die Lösbarkeit hängt NICHT am Licht – beide Beweise bleiben grün', () => {
+    for (const d of [def(), def(1), def(2)]) {
+      const rep = validateLevel(d);
+      expect(rep.filter((c) => !c.ok).map((c) => c.key)).toEqual([]);
+    }
+  });
+});

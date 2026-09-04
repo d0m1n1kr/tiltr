@@ -196,6 +196,16 @@ export const es: Dict = {
   'ed.latchHint': 'Una placa o un interruptor solo mantienen la puerta mientras se cumplen. Con «queda abierta», la primera apertura es definitiva; las llaves ya lo hacen.',
   'ed.req.any': 'basta uno',
   'ed.req.all': 'todos a la vez',
+  'ed.f.brightFor':
+    'Iluminado para',
+  'ed.brightFor.both':
+    'ambos',
+  'ed.brightFor.1':
+    'solo jugador 1',
+  'ed.brightFor.2':
+    'solo jugador 2',
+  'ed.brightForHint':
+    'Iluminado solo para uno: él ve el laberinto y el otro lo oye. Así uno puede guiar al otro, con la voz o con marcas.',
   'ed.f.light': 'Luz',
   'ed.light.dark': 'oscuro (estándar)',
   'ed.light.bright': 'claro – todo visible',
@@ -417,6 +427,18 @@ export const es: Dict = {
   'st.wallDown': '¡Muro derrumbado! 🧱',
   'st.waitTogether': 'En la meta: esperando al compañero.',
   'st.partnerWaits': 'Tu compañero espera en la meta. ¡Ve con él!',
+  'st.int.unison':
+    'el unísono',
+  'st.int.fifth':
+    'la quinta',
+  'st.tuneAlone':
+    '🎵 Campo de resonancia: una inclinación breve fija tu tono (luego se queda quieto). En solitario la puerta no se abre: espera a tu compañero.',
+  'st.tuneSearch':
+    '🎵 Buscad {int}. Inclina un momento en cualquier dirección: arriba es grave, abajo es agudo.',
+  'st.tuneClose':
+    '🎵 ¡Casi! El batido se ralentiza: ahora inclinaciones mínimas.',
+  'st.tuneOpen':
+    '🎵 ¡Se sostiene, la puerta se abre!',
   'st.markSet': 'Marca dejada 📍',
   'st.markTook': 'Marca recogida de nuevo',
   'st.switch': '⏱ Cerradura de tiempo: ¡puerta abierta {n} s!',

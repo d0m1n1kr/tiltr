@@ -3602,6 +3602,21 @@ function frame(now: number): void {
       winRun(now, (now - t0) / 1000);
     } else if (messageUntil > now) {
       statusEl.textContent = message;
+    } else if (duet.mine !== null && duet.interval) {
+      // AUF DEM FELD SAGT DAS SPIEL, WAS ZU TUN IST (v3.25.5): Ein Feld, das
+      // nur summt, ist ein Rätsel über das Rätsel – niemand errät, dass die
+      // NEIGUNGSRICHTUNG stimmt und ein Tipp genügt. Vier Stufen, damit die
+      // Zeile mitgeht: allein / suchen / fast / es steht.
+      statusEl.textContent = t(
+        duet.open
+          ? 'st.tuneOpen'
+          : duet.theirs === null
+            ? 'st.tuneAlone'
+            : duet.aim > 0.5
+              ? 'st.tuneClose'
+              : 'st.tuneSearch',
+        { int: t(duet.interval === 'fifth' ? 'st.int.fifth' : 'st.int.unison') },
+      );
     } else {
       const modeLabel = t(input.hasSensor ? 'hud.tilt' : 'hud.keys');
       statusEl.textContent = debug ? `Debug · ${modeLabel} · x ${tilt.x.toFixed(2)} y ${tilt.y.toFixed(2)} · ${input.diagnostics()}` : '';
@@ -3773,6 +3788,9 @@ function frame(now: number): void {
     transporters: world.transporters.length,
     torches: world.torches.length,
     brittleSided: world.walls.filter((w) => w.hpSide !== undefined).length,
+    // Licht je Spieler (M92): `bright()` liest die GELADENE Ebene, also die
+    // Ladung DIESES Spielers – damit sagt der Haken „ist es für MICH hell?"
+    // und macht „bei einem hell, beim anderen dunkel" prüfbar (E2E Lauf 49).
     bright: bright(),
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,

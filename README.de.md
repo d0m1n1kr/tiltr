@@ -66,7 +66,9 @@ die Animation unten trägt.
   Nachzügler hört das Rufen) – oder ein **Resonanz-Tor**: Zwei Schalen halten
   eure Kugeln, die Neigungsrichtung stimmt je einen Ton, und das Tor schwingt
   erst auf, wenn beide Töne im selben Intervall stehen; man hört die Schwebung
-  langsamer werden, bis sie steht. Allein ist es nicht zu spielen.
+  langsamer werden, bis sie steht. Allein ist es nicht zu spielen. Eine Ebene
+  kann auch **nur für einen hell** sein: Der sieht das Labyrinth, der andere
+  hört es – so kann einer den Weg ansagen.
   **Race:** identisches Level, wer zuerst ankommt,
   gewinnt, mit Rematch. Acht handgebaute Coop-Level, sechs Race-Level plus
   ein 🎲-Generator, und jedes

@@ -196,6 +196,16 @@ export const fr: Dict = {
   'ed.latchHint': 'Une plaque ou un interrupteur ne tient la porte que tant qu’il est satisfait. Avec « reste ouverte », la première ouverture est définitive ; les clés le font de toute façon.',
   'ed.req.any': 'un seul suffit',
   'ed.req.all': 'tous en même temps',
+  'ed.f.brightFor':
+    'Éclairé pour',
+  'ed.brightFor.both':
+    'les deux',
+  'ed.brightFor.1':
+    'joueur 1 seulement',
+  'ed.brightFor.2':
+    'joueur 2 seulement',
+  'ed.brightForHint':
+    'Éclairé pour un seul : il voit le labyrinthe, l’autre l’entend. L’un peut ainsi guider l’autre – à la voix ou avec des repères.',
   'ed.f.light': 'Lumière',
   'ed.light.dark': 'sombre (défaut)',
   'ed.light.bright': 'clair – tout visible',
@@ -417,6 +427,18 @@ export const fr: Dict = {
   'st.wallDown': 'Mur effondré ! 🧱',
   'st.waitTogether': 'À l’arrivée – j’attends mon partenaire.',
   'st.partnerWaits': 'Ton partenaire attend à l’arrivée. Rejoins-le !',
+  'st.int.unison':
+    'l’unisson',
+  'st.int.fifth':
+    'la quinte',
+  'st.tuneAlone':
+    '🎵 Champ de résonance : une brève inclinaison règle ton son (il reste ensuite en place). Seul, la porte reste fermée – attends ton partenaire.',
+  'st.tuneSearch':
+    '🎵 On cherche {int}. Incline brièvement dans une direction – en haut c’est grave, en bas c’est aigu.',
+  'st.tuneClose':
+    '🎵 Presque ! Le battement ralentit – de toutes petites inclinaisons maintenant.',
+  'st.tuneOpen':
+    '🎵 Ça tient – la porte s’ouvre !',
   'st.markSet': 'Repère posé 📍',
   'st.markTook': 'Repère repris',
   'st.switch': '⏱ Serrure horlogère : porte ouverte {n} s !',

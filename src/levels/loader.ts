@@ -221,7 +221,12 @@ export function loadLevel(defOrData: LevelDef | unknown, opts: LoadOptions = {})
     const world = new World(walls, ball, goal);
     const elements = opts.allTransporters ? floor.elements : floor.elements.filter((el) => elementForPlayer(el, player));
     buildElements(elements, { world, cell: CELL, cols, rows, floorIndex, player });
-    floors.push({ world, cols, rows, bright: floor.bright, dusk: floor.dusk });
+    // LICHT JE SPIELER (M92): `brightPlayer` macht die Ebene nur für EINEN
+    // hell – der andere hört sie. Entschieden wird hier, wo die Welt je
+    // Spieler entsteht (wie `elementForPlayer`), nicht im Renderer: Licht ist
+    // eine Eigenschaft dieser Ladung, kein Sonderfall beim Zeichnen.
+    const brightFor = floor.bright && (!floor.brightPlayer || floor.brightPlayer === player);
+    floors.push({ world, cols, rows, bright: brightFor, dusk: floor.dusk });
   });
 
   if (goalFloor === -1) throw new Error(`Level ${def.id}: kein Ziel definiert`);

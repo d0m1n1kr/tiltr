@@ -651,6 +651,37 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M92 „Ansage" ✓ (v3.26.0) – Licht je Spieler + Anweisung auf dem Feld
+
+Zwei Nachträge aus dem Spieltest des Duetts, und beide machen aus einer
+Mechanik ein Gespräch.
+
+AUF DEM FELD SAGT DAS SPIEL, WAS ZU TUN IST. Das Resonanzfeld summte, und das
+war alles - dass die NEIGUNGSRICHTUNG den Ton stimmt und ein kurzer Tipp
+genügt, errät niemand. Die Statuszeile führt jetzt in vier Stufen: allein auf
+dem Feld (kurz neigen stimmt den Ton, er bleibt stehen - allein geht das Tor
+nicht auf), beide Töne da (gesucht: Quinte - oben tief, unten hoch), nah dran
+(fast, die Schwebung wird langsamer - ganz kleine Neigungen jetzt) und im Ziel
+(es steht). Der Zweig steht NACH `messageUntil`: Ein Flash ist Neuigkeit und
+gewinnt kurz, danach steht die Anweisung wieder da.
+
+LICHT JE SPIELER (`floor.brightPlayer` 1|2). Eine helle Ebene war bisher für
+beide hell; jetzt kann sie für EINEN hell und für den anderen dunkel sein. Aus
+dem Stilmittel wird damit ein Coop-Werkzeug: Einer sieht das Labyrinth und sagt
+an, der andere hört und rollt - die Wegmarken (M89) sind die Sprache dafür, und
+im Coop auf einer hellen Ebene ist der Partner ohnehin ein fester Ball (M62).
+Entschieden wird es im LOADER, wo die Welt je Spieler entsteht (wie
+`elementForPlayer`, M65), nicht als Sonderfall im Renderer: Licht ist eine
+Eigenschaft dieser Ladung. Schema-Invariante: nur bei zwei Spielern und auf
+einer hellen Ebene - ein `brightPlayer` ohne `bright` wäre eine stille Lüge.
+Die Lösbarkeit hängt NICHT am Licht: kein Beweis ändert sich, und die Units
+halten beides fest (hell/dunkel je Spieler UND grüne Badges in allen drei
+Varianten).
+
+E2E: Lauf 48 prüft die Anweisung (zwei Stufen), Lauf 49 Licht je Spieler zeigt
+dieselbe Ebene für Spieler 1 hell und für Spieler 2 dunkel - im MP-Testmodus,
+wo beide Welten vorliegen und der Wechsel zwischen ihnen umschaltet.
+
 ## M91 „Duett" ✓ (v3.25.0)
 
 Das Flaggschiff des Coop-Ausbaus und die Idee, für die es dieses Spiel gibt:

@@ -200,6 +200,16 @@ export const de = {
   'ed.latchHint': 'Platte und Zeitschalter halten die Tür nur, solange sie erfüllt sind. Mit „bleibt offen" ist das erste Aufgehen endgültig; Schlüssel tun das ohnehin.',
   'ed.req.any': 'einer genügt',
   'ed.req.all': 'alle gleichzeitig',
+  'ed.f.brightFor':
+    'Hell für',
+  'ed.brightFor.both':
+    'beide',
+  'ed.brightFor.1':
+    'nur Spieler 1',
+  'ed.brightFor.2':
+    'nur Spieler 2',
+  'ed.brightForHint':
+    'Hell nur für einen: Der sieht das Labyrinth, der andere hört es. So kann einer ansagen – mit Worten oder mit Wegmarken.',
   'ed.f.light': 'Licht',
   'ed.light.dark': 'dunkel (Standard)',
   'ed.light.bright': 'hell – alles sichtbar',
@@ -421,6 +431,18 @@ export const de = {
   'st.wallDown': 'Wand eingestürzt! 🧱',
   'st.waitTogether': 'Im Ziel – warte auf den Partner.',
   'st.partnerWaits': 'Der Partner wartet im Ziel. Komm nach!',
+  'st.int.unison':
+    'Einklang',
+  'st.int.fifth':
+    'Quinte',
+  'st.tuneAlone':
+    '🎵 Resonanzfeld: kurz neigen stimmt den Ton (er bleibt dann stehen). Allein geht das Tor nicht auf – warte auf den Partner.',
+  'st.tuneSearch':
+    '🎵 Gesucht: {int}. Kurz in eine Richtung neigen – oben tief, unten hoch.',
+  'st.tuneClose':
+    '🎵 Fast! Die Schwebung wird langsamer – ganz kleine Neigungen jetzt.',
+  'st.tuneOpen':
+    '🎵 Es steht – das Tor schwingt auf!',
   'st.markSet': 'Wegmarke gelegt 📍',
   'st.markTook': 'Wegmarke wieder aufgenommen',
   'st.switch': '⏱ Zeitschloss: Tür {n} s offen!',

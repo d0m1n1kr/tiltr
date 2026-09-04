@@ -196,6 +196,16 @@ export const en: Dict = {
   'ed.latchHint': 'A plate or timer switch only holds the door while it is satisfied. With "stays open" the first opening is final; keys do that anyway.',
   'ed.req.any': 'any one',
   'ed.req.all': 'all at once',
+  'ed.f.brightFor':
+    'Lit for',
+  'ed.brightFor.both':
+    'both',
+  'ed.brightFor.1':
+    'player 1 only',
+  'ed.brightFor.2':
+    'player 2 only',
+  'ed.brightForHint':
+    'Lit for one player only: they see the maze, the other one hears it. That lets one of you call the way – with words or with waypoints.',
   'ed.f.light': 'Light',
   'ed.light.dark': 'dark (default)',
   'ed.light.bright': 'bright – everything visible',
@@ -417,6 +427,18 @@ export const en: Dict = {
   'st.wallDown': 'Wall collapsed! 🧱',
   'st.waitTogether': 'In the goal – waiting for your partner.',
   'st.partnerWaits': 'Your partner is waiting in the goal. Get over there!',
+  'st.int.unison':
+    'unison',
+  'st.int.fifth':
+    'a fifth',
+  'st.tuneAlone':
+    '🎵 Resonance field: a short tilt sets your tone (it then stays put). Alone the gate stays shut – wait for your partner.',
+  'st.tuneSearch':
+    '🎵 Looking for {int}. Nudge in any direction – up is low, down is high.',
+  'st.tuneClose':
+    '🎵 Almost! The beating is slowing down – tiny nudges now.',
+  'st.tuneOpen':
+    '🎵 It stands – the gate swings open!',
   'st.markSet': 'Waypoint dropped 📍',
   'st.markTook': 'Waypoint picked up again',
   'st.switch': '⏱ Time lock: door open for {n}s!',

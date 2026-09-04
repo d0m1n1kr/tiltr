@@ -393,6 +393,12 @@ export const floorSchema = z.object({
   /** Helle Ebene: Labyrinth und Elemente sind sichtbar wie in der
    *  Debug-Ansicht (Renderer revealAll) – Default ist die dunkle Welt. */
   bright: z.boolean().default(false),
+  /** LICHT JE SPIELER (M92): Hell nur für DIESEN Spieler, für den anderen
+   *  bleibt die Ebene dunkel. Damit wird aus der hellen Ebene ein Coop-
+   *  Werkzeug: Einer SIEHT und sagt an, der andere hört und rollt – die
+   *  Wegmarken (M89) sind dafür die Sprache. Ohne das Feld gilt `bright` wie
+   *  bisher für beide. */
+  brightPlayer: z.union([z.literal(1), z.literal(2)]).optional(),
   /** Dämmerung (Tutorial): hell wie `bright`, bis der Ball zum ersten Mal
    *  eine Wand berührt – dann blendet das Licht in zwei Sekunden aus und die
    *  Ebene ist dunkel wie jede andere. „Du kennst diesen Raum. Jetzt hör ihn." */
@@ -443,6 +449,11 @@ export const levelSchema = z.object({
   // 2400 < accel), damit ein solches Level nicht erst im Spiel auffällt.
   .refine((l) => !l.together || (l.players === 2 && l.mpMode !== 'race'), {
     message: '„together" nur bei zwei Spielern im Coop (players: 2, mpMode coop/any)',
+  })
+  // Licht je Spieler (M92) braucht einen zweiten Spieler und eine HELLE Ebene –
+  // sonst wäre das Feld eine stille Lüge (dunkel für beide).
+  .refine((l) => l.floors.every((f) => !f.brightPlayer || (l.players === 2 && f.bright)), {
+    message: '„brightPlayer" nur bei zwei Spielern und mit bright: true',
   });
 export type LevelDef = z.infer<typeof levelSchema>;
 

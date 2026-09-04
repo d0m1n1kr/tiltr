@@ -786,6 +786,12 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   GESTIMMT WIRD MIT EINEM TIPP: kurz antippen, loslassen, der Ton steht
   (`tuneStep`) – eine gehaltene Taste kippt einen hinaus. Das ist die Bewegung,
   die auch die E2E fährt.
+  AUF DEM FELD SAGT DAS SPIEL, WAS ZU TUN IST (v3.25.5/M92): Ein Feld, das nur
+  summt, ist ein Rätsel über das Rätsel – dass die NEIGUNGSRICHTUNG stimmt und
+  ein Tipp genügt, errät niemand. Die Statuszeile führt in VIER Stufen (allein /
+  gesucht: Quinte / fast, die Schwebung wird langsamer / es steht), der Zweig
+  steht NACH `messageUntil` – ein Flash ist Neuigkeit und gewinnt kurz, danach
+  steht die Anweisung wieder da.
   NUR DIE ZWEI TÖNE (v3.25.2): Wer im Feld steht, hört die Welt um ~20 dB
   gedämpft – `worldDuck` sitzt zwischen Master und Nebelfilter, die beiden
   Resonanzstimmen hängen dahinter, der Hall-Send am Welt-Bus. Abstimmen heißt
@@ -835,6 +841,20 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   und im Netz entspannt dieselbe Regel das Stimmen: Man darf das Gerät ruhig
   legen. Eingebautes Level: coop-08 „Duett".
   `window.__tiltrResonance` (E2E Lauf 48).
+- LICHT JE SPIELER (M92, v3.26.0): `floor.brightPlayer` 1|2 macht eine HELLE
+  Ebene nur für EINEN Spieler hell – der andere hört sie. Damit wird das
+  Stilmittel Helle Ebene zum Coop-Werkzeug: Einer sieht das Labyrinth und sagt
+  an, der andere rollt; die Wegmarken (M89) sind dafür die Sprache, und im Coop
+  auf einer hellen Ebene ist der Partner ohnehin ein fester Ball (M62).
+  Entschieden wird es im LOADER, wo die Welt je Spieler entsteht (`bright &&
+  (!brightPlayer || brightPlayer === player)`) – wie `elementForPlayer` (M65),
+  NICHT als Sonderfall im Renderer: Licht ist eine Eigenschaft dieser Ladung.
+  Schema-Invariante: nur mit `players: 2` UND `bright: true`, sonst wäre das
+  Feld eine stille Lüge. Editor: Feld Hell für (beide / nur 1 / nur 2), das nur
+  bei zwei Spielern und heller Ebene erscheint. Die Lösbarkeit hängt NICHT am
+  Licht – kein Beweis ändert sich (Units in tests/mpLevel.test.ts).
+  `__tiltrWorld.bright` sagt, ob die aktive Ebene für MICH hell ist (E2E
+  Lauf 49).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

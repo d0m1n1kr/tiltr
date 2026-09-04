@@ -65,7 +65,9 @@ animation below.
   call), or to open a **resonance gate**: two bowls hold your balls, the tilt
   direction tunes a tone each, and the gate only swings open once both tones
   sit in the same interval — you hear the beating slow down until it stands
-  still. Alone it cannot be played. **Race:** identical level, first one in
+  still. Alone it cannot be played. A floor can also be **lit for one player
+  only** — they see the maze, the other one hears it, so one of you can call the
+  way. **Race:** identical level, first one in
   wins, with rematch. Eight hand-built co-op levels, six race levels plus a 🎲
   generator, and every **two-player level from the workshop**
   can be hosted straight from your library — the guest receives it with the
