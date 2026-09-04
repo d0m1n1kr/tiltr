@@ -296,6 +296,8 @@ export const en: Dict = {
   'ed.side.e': 'right',
   'ed.side.n': 'top',
   'ed.side.s': 'bottom',
+  'ed.check.resonance':
+    'One sound interval',
   'ed.check.boulder': 'Boulder solvable',
   'ed.check.coop': 'Co-op solvable',
   'ed.check.race': 'Race solvable',
@@ -312,6 +314,8 @@ export const en: Dict = {
   'ed.help.guards': 'Every guard can be passed: one cell of its patrol must stay free while you slip by. Red: it seals the corridor – add a bay or a crossing passage.',
   'ed.help.items': 'Gems, crystals and hourglasses are reachable. A warning only – an unreachable collectible costs the third star but locks nothing.',
   'ed.help.jukebox': 'The jukebox is a solid box: it must not sit on start, goal or a patrol, must be bumpable, and must not block a required path.',
+  'ed.help.resonance':
+    'All resonance fields in a level carry the same interval. This is checked because each side judges by the interval of the field IT stands on: with different intervals, at best only one player holds their plate (so an „all openers" door never opens), at worst a door opens for one of you and not the other. Red: the named field carries a different interval than the first one.',
   'ed.help.boulder': 'The boulder puzzle is solvable: some pushing sequence reaches the goal, and none wedges the stone for good. Red: from the named spot there is no way on.',
   'ed.help.coop': 'Solvable together: each player reaches their own goal, and EVERY opener counts for both (plate, key, time switch). Red names the player who cannot get through.',
   'ed.help.race': 'Solvable as a race: each player reaches their goal ALONE – keys and switches act locally, plates do not count at all (you cannot stand on one and roll through the door).',

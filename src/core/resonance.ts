@@ -170,6 +170,26 @@ export function inTune(a: number, b: number, interval: Interval, tol = TUNE_TOL_
 }
 
 /**
+ * DER FÜHRUNGSTON (v3.25.4): Wo müsste MEIN Ton liegen, damit das Intervall
+ * steht? Dieser Ton wird leise mitgespielt, und weil er nur wenige Cent neben
+ * meinem eigenen liegt, SCHWEBT er gegen ihn – die Schwebung wird langsamer,
+ * bis sie steht. Bei einer QUINTE gibt es diese Hilfe sonst nicht: Zwei Töne
+ * im Quintabstand schweben nicht, man hört nur Reinheit, und die beurteilt ein
+ * ungeübtes Ohr kaum. Beim EINKLANG braucht es ihn nicht – dort schwebt der
+ * Ton des Partners schon selbst gegen meinen (deshalb gibt app.ts ihn dort
+ * nicht aus).
+ *
+ * Genommen wird die NÄHERE der beiden Möglichkeiten (über oder unter seinem
+ * Ton): Man wird zum nächstgelegenen Ziel geführt, nicht quer über die Skala.
+ */
+export function guideCents(mine: number, theirs: number, interval: Interval): number {
+  const aim = interval === 'fifth' ? FIFTH_CENTS : 0;
+  const up = theirs + aim;
+  const down = theirs - aim;
+  return Math.abs(mine - up) <= Math.abs(mine - down) ? up : down;
+}
+
+/**
  * Wie nah dran, 0…1 – für den Schimmer im Klang und die Anzeige. 1 heißt
  * „im Intervall", 0 „weiter als `span` Cent daneben".
  */

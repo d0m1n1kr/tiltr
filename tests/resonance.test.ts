@@ -11,6 +11,7 @@ import {
   RESONANCE_R,
   TUNE_HOLD_MS,
   centsToHz,
+  guideCents,
   holdTuned,
   inTune,
   pitchFromTilt,
@@ -299,5 +300,30 @@ describe('tuneStep – der Ton ist Zustand, kein Abbild der Neigung', () => {
   it('eine echte Neigung überschreibt jeden gehaltenen Wert', () => {
     expect(tuneStep(351, true, 0, 1)).toBeCloseTo(PITCH_SPAN_CENTS, 5);
     expect(tuneStep(FIFTH_CENTS, true, 0, -1)).toBeCloseTo(0, 5);
+  });
+});
+
+describe('guideCents – der Führungston (v3.25.4)', () => {
+  it('zeigt, wo MEIN Ton liegen müsste – bei der Quinte über oder unter seinem', () => {
+    // Er steht bei 300, ich bei 900: das nähere Ziel ist 300 + 702.
+    expect(guideCents(900, 300, 'fifth')).toBe(300 + FIFTH_CENTS);
+    // Ich bei 100: näher ist 300 − 702 (auch wenn das unter null liegt – der
+    // Ton führt mich in die richtige RICHTUNG, das Feld begrenzt ihn ohnehin).
+    expect(guideCents(100, 300, 'fifth')).toBe(300 - FIFTH_CENTS);
+    // Genau in der Mitte zwischen beiden Zielen: das obere gewinnt (<=).
+    expect(guideCents(300, 300, 'fifth')).toBe(300 + FIFTH_CENTS);
+  });
+
+  it('beim Einklang IST sein Ton der Führungston – deshalb gibt app.ts dort keinen aus', () => {
+    expect(guideCents(500, 300, 'unison')).toBe(300);
+    expect(guideCents(100, 300, 'unison')).toBe(300);
+  });
+
+  it('am Führungston gemessen ist das Intervall gestimmt', () => {
+    const theirs = 250;
+    for (const mine of [0, 400, 900, 1200]) {
+      const guide = guideCents(mine, theirs, 'fifth');
+      expect(inTune(guide, theirs, 'fifth'), `von ${mine} aus`).toBe(true);
+    }
   });
 });

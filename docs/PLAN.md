@@ -762,7 +762,22 @@ Bereich bei gleicher Cent-Toleranz wäre eine Verschärfung gewesen. Der
 Intro-Text von coop-08 nennt jetzt auch die Stimm-Bewegung (antippen) und
 verspricht keine „Schwebung" mehr – die gibt es nur nahe am Einklang.
 
-Units: tests/resonance.test.ts (23) plus die Gegenproben; E2E Lauf 48 im
+DREI NACHTRÄGE (v3.25.4), die aus dem Gespräch über die Schwierigkeit übrig
+waren:
+1. FÜHRUNGSTON (`guideCents`): Bei einer Quinte gibt es keine Schwebung – die
+   versprochene Hilfe existiert nur nahe am Einklang. Jetzt spielt das Spiel
+   leise den Ton mit, den ICH treffen müsste (die nähere der beiden
+   Möglichkeiten um seinen Ton); der schwebt gegen meinen eigenen, und die
+   Schwebung wird langsamer, bis sie steht. Beim Einklang entfällt er.
+2. BADGE „ein Klang-Intervall" (hart): Alle Resonanzfelder eines Levels tragen
+   dasselbe Intervall, denn jede Seite urteilt nach dem Feld, auf dem SIE
+   steht. Mit Ort im Bericht und `ed.help.resonance` in allen vier Sprachen.
+3. ORTUNG bei einem gemeinsamen Feld: „Sein Feld" ist das seiner Kugel
+   nächste – auch wenn das meines ist (bei einer 'any'-Tür dürfen beide auf
+   derselben Zelle stehen). Vorher wurde er am falschen Feld geortet;
+   `hisDx/hisDy` im Haken macht es prüfbar (E2E).
+
+Units: tests/resonance.test.ts (26) plus die Gegenproben; E2E Lauf 48 im
 MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, die Welt weicht im Feld
 zurück, ein Tipp stimmt und der Ton bleibt stehen, der Spielerwechsel hält ihn
 auch, zwei verschiedene Töne lassen das Tor zu, Einklang öffnet es, Verstimmen

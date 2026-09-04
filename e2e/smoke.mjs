@@ -8497,6 +8497,12 @@ if (want("48")) {
       `Der Spielerwechsel hält den Ton der ruhenden Seite (${JSON.stringify(swapped?.res)})`,
       swapped?.res?.theirs > 550 && swapped.res.theirs < 650 && swapped.res.mine === 0,
     );
+    // Sein Ton klingt an SEINEM Feld: Spieler 1 sitzt zwei Zellen über
+    // Spieler 2 (Zelle 0/0 gegen 0/2), also 200 Welteinheiten nach oben.
+    check(
+      `Sein Ton klingt an seinem Feld (dx ${swapped?.res?.hisDx}, dy ${swapped?.res?.hisDy})`,
+      swapped?.res?.hisDx === 0 && swapped.res.hisDy < -150 && swapped.res.hisDy > -250,
+    );
     // Diese Zusicherung braucht als einzige eine WARTEZEIT: „bleibt zu" ist
     // kein Zustandswechsel, auf den man warten kann. Gewartet wird deutlich
     // länger als die Haltezeit (250 ms) – Grundton gegen Mitte ist kein

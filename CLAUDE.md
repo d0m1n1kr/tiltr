@@ -802,6 +802,22 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   Klang: zwei reine SINUS-Stimmen in denselben Master (`audio.setResonance`),
   die Schwebung entsteht also AKUSTISCH; der eigene Ton ungepannt, der des
   Partners an SEINEM Feld, plus ein Schimmer nach Genauigkeit (`tuneAim`).
+  „Sein Feld" ist das seiner KUGEL nächste – auch wenn das MEINES ist
+  (v3.25.4): Bei einer 'any'-Tür dürfen beide auf derselben Zelle stehen, dann
+  kommt sein Ton von dort, wo ich stehe (ungepannt). Vorher schloss die Auswahl
+  mein Feld aus und ortete ihn am falschen. `hisDx/hisDy` im Haken.
+  FÜHRUNGSTON (v3.25.4, `guideCents`): Bei einer QUINTE gibt es keine
+  Schwebung – zwei Töne im Quintabstand schweben nicht, man hört Reinheit, und
+  die beurteilt ein ungeübtes Ohr kaum. Das Spiel spielt deshalb leise den Ton
+  mit, den ICH treffen müsste (sein Ton plus/minus das Intervall, die NÄHERE
+  der beiden Möglichkeiten): Der liegt nahe an meinem eigenen und schwebt gegen
+  ihn – langsamer, bis er steht. Beim EINKLANG entfällt er, dort schwebt sein
+  Ton schon selbst gegen meinen.
+  EIN INTERVALL JE LEVEL (v3.25.4, Badge `resonance`, HART): Jede Seite urteilt
+  nach dem Intervall des Feldes, auf dem SIE steht – bei zwei verschiedenen
+  Intervallen hält im besten Fall nur einer seine Platte (eine 'all'-Tür geht
+  nie auf), im schlechteren geht eine 'any'-Tür für den einen auf und für den
+  anderen nicht. Kein Schwierigkeitsgrad, ein Widerspruch.
   ZWEI AUSNAHMEN IM BEWEIS: Ein STEIN hält kein Resonanzfeld (keine Neigung) –
   `boulderProof` lässt sie aus `stonePlates` und zählt Steine darauf nicht;
   der PARTNER darf halten. Und eine 'all'-Tür mit zwei Feldern braucht

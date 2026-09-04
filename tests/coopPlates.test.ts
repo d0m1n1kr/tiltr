@@ -500,3 +500,40 @@ describe('Resonanzfeld: eine Platte, die kein Stein hält (M91)', () => {
     expect(pairReachable(gate(true), true).p1.has(cellKey(0, [4, 0]))).toBe(true);
   });
 });
+
+// M91/v3.25.4 – EIN Intervall je Level: Jede Seite urteilt nach dem Intervall
+// des Feldes, auf dem SIE steht. Zwei verschiedene Intervalle sind deshalb kein
+// Schwierigkeitsgrad, sondern ein Widerspruch: Im besten Fall hält nur einer
+// seine Platte, im schlechteren geht eine Tür für den einen auf und für den
+// anderen nicht.
+describe('Resonanzfelder: ein Intervall je Level (M91)', () => {
+  const two = (a: string, b: string) =>
+    level([
+      { type: 'door', id: 'tor1', edge: [[3, 0], 'e'], require: 'all', latch: true },
+      { type: 'plate', cell: [1, 0], opens: 'tor1', tune: a },
+      { type: 'plate', cell: [1, 1], opens: 'tor1', tune: b },
+    ]);
+
+  it('dasselbe Intervall: grün', () => {
+    const rep = validateLevel(two('fifth', 'fifth'));
+    expect(rep.find((c) => c.key === 'resonance')?.ok).toBe(true);
+  });
+
+  it('verschiedene Intervalle: ROT, und der Bericht nennt den Ort', () => {
+    const rep = validateLevel(two('fifth', 'unison'));
+    const res = rep.find((c) => c.key === 'resonance');
+    expect(res?.ok).toBe(false);
+    expect(res?.detail).toContain('unison');
+    expect(res?.at).toEqual({ floor: 0, cell: [1, 1] });
+    // Hartes Badge: ein widersprüchliches Level ist nicht „nur knapp".
+    expect(isShareable(rep)).toBe(false);
+  });
+
+  it('ohne Resonanzfelder ist der Check gegenstandslos und grün', () => {
+    const plain = level([
+      { type: 'door', id: 'tor1', edge: [[3, 0], 'e'] },
+      { type: 'plate', cell: [1, 1], opens: 'tor1' },
+    ]);
+    expect(validateLevel(plain).find((c) => c.key === 'resonance')?.ok).toBe(true);
+  });
+});

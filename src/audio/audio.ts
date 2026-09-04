@@ -104,6 +104,8 @@ export class GameAudio {
   private resTheirsPanner!: PannerNode;
   private resShimmerOsc!: OscillatorNode;
   private resShimmerGain!: GainNode;
+  private resGuideOsc!: OscillatorNode;
+  private resGuideGain!: GainNode;
   private buddyGain!: GainNode;
   private buddyRollGain!: GainNode;
   private buddyFilter!: BiquadFilterNode;
@@ -266,6 +268,13 @@ export class GameAudio {
     const shimmer = resVoice(false);
     this.resShimmerOsc = shimmer.osc;
     this.resShimmerGain = shimmer.gain;
+    // Führungston: der Ton, den ICH treffen müsste – leise, ungepannt (er ist
+    // eine Hilfe des Spiels, kein Ort in der Welt). Er liegt nahe an meinem
+    // eigenen und SCHWEBT deshalb gegen ihn; bei einer Quinte ist das die
+    // einzige Schwebung, die es gibt.
+    const guide = resVoice(false);
+    this.resGuideOsc = guide.osc;
+    this.resGuideGain = guide.gain;
 
     // Musik-Bus (Jukebox). Zwei getrennte Gains mit Absicht: `musicDuck` ist
     // die Sidechain (der Ping drückt sie kurz herunter), `musicVol` die
@@ -1072,7 +1081,14 @@ export class GameAudio {
    * Sprung): Ein Ton, der springt, klingt kaputt, und die Schwebung braucht
    * Zeit, um langsamer zu werden.
    */
-  setResonance(mineHz: number | null, theirsHz: number | null, dx: number, dy: number, aim = 0): void {
+  setResonance(
+    mineHz: number | null,
+    theirsHz: number | null,
+    dx: number,
+    dy: number,
+    aim = 0,
+    guideHz: number | null = null,
+  ): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     // Solange ich stimme, weicht die Welt zurück (siehe Welt-Bus oben): Zwei
@@ -1090,6 +1106,10 @@ export class GameAudio {
     }
     const shimmer = mineHz && theirsHz ? Math.max(0, Math.min(1, aim)) ** 2 * 0.06 : 0;
     this.resShimmerGain.gain.setTargetAtTime(shimmer, t, 0.15);
+    // Der Führungston ist deutlich leiser als die beiden Stimmen: Er soll die
+    // Schwebung stiften, nicht das Duett übertönen.
+    this.resGuideGain.gain.setTargetAtTime(guideHz ? 0.075 : 0, t, 0.12);
+    if (guideHz) this.resGuideOsc.frequency.setTargetAtTime(guideHz, t, 0.04);
   }
 
   // Schlüssel-Klimpern: metallischer Doppel-Blip, Rate steigt mit der Nähe.

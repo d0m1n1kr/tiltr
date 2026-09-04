@@ -671,7 +671,9 @@ export type CheckKey =
   // Platten, im Race ohne jede Hilfe; 'fair' ist weich (Weglängen ähnlich).
   | 'coop'
   | 'race'
-  | 'fair';
+  | 'fair'
+  // Duett (M91): Alle Resonanzfelder eines Levels tragen DASSELBE Intervall.
+  | 'resonance';
 
 /** Stelle im Level, auf die sich ein Prüfergebnis bezieht (Def-Koordinaten –
  *  genau die, die der Editor zeichnet). */
@@ -1225,6 +1227,26 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // erreichbar UND kein erreichbarer Zustand, aus dem es das nicht mehr ist.
   // (`bp` steht oben, weil `stonePlates` daraus kommt.)
   push('boulder', bp.goal && bp.softlock, bp.detail, bp.at);
+
+  // DUETT (M91/v3.25.4): EIN Intervall je Level. Jede Seite urteilt nach dem
+  // Intervall des Feldes, auf dem SIE steht („stehen unsere Töne im Abstand
+  // einer Quinte?"). Tragen zwei Felder verschiedene Intervalle, urteilen die
+  // Spieler verschieden: Im besten Fall hält nur einer seine Platte und eine
+  // 'all'-Tür geht NIE auf, im schlechteren geht eine 'any'-Tür für den einen
+  // auf und für den anderen nicht. Das ist kein Schwierigkeitsgrad, das ist
+  // ein Widerspruch – deshalb ein HARTES Badge.
+  const tuned: Array<{ fl: number; cell: readonly [number, number]; tune: string }> = [];
+  def.floors.forEach((floor, fl) => {
+    for (const el of floor.elements) if (el.type === 'plate' && el.tune) tuned.push({ fl, cell: el.cell, tune: el.tune });
+  });
+  const intervals = new Set(tuned.map((r) => r.tune));
+  const odd = tuned.find((r) => r.tune !== tuned[0]?.tune);
+  push(
+    'resonance',
+    intervals.size <= 1,
+    odd ? `${tuned[0]!.tune} ≠ ${odd.tune} (E${odd.fl + 1} ${odd.cell})` : undefined,
+    odd ? { floor: odd.fl, cell: odd.cell } : undefined,
+  );
 
   // Optionale Sammelziele (Gems/Kristalle) im offenen Modell erreichbar.
   let itemsOk = true;

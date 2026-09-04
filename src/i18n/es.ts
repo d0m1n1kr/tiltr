@@ -296,6 +296,8 @@ export const es: Dict = {
   'ed.side.e': 'la derecha',
   'ed.side.n': 'arriba',
   'ed.side.s': 'abajo',
+  'ed.check.resonance':
+    'Un solo intervalo',
   'ed.check.boulder': 'Roca resoluble',
   'ed.check.coop': 'Coop resoluble',
   'ed.check.race': 'Carrera resoluble',
@@ -312,6 +314,8 @@ export const es: Dict = {
   'ed.help.guards': 'Se puede pasar a cada guardia: una celda de su patrulla debe quedar libre. En rojo: sella el pasillo – añade un hueco o un paso transversal.',
   'ed.help.items': 'Gemas, cristales y relojes de arena son accesibles. Solo advertencia: un coleccionable inaccesible cuesta la tercera estrella, nada más.',
   'ed.help.jukebox': 'La máquina es un bloque macizo: no puede estar en la salida, la meta ni una patrulla, debe poder golpearse y no bloquear un camino obligado.',
+  'ed.help.resonance':
+    'Todos los campos de resonancia de un nivel llevan el mismo intervalo. Se comprueba porque cada lado juzga según el intervalo del campo en el que ESTÁ: con intervalos distintos, en el mejor caso solo uno sostiene su placa (una puerta de «todos los abridores» no se abre nunca) y en el peor una puerta se abre para uno y no para el otro. Rojo: el campo indicado lleva otro intervalo que el primero.',
   'ed.help.boulder': 'El rodillo es resoluble: alguna secuencia de empujes llega a la meta y ninguna lo atasca para siempre. En rojo: desde la celda indicada no hay salida.',
   'ed.help.coop': 'Resoluble juntos: cada jugador llega a su propia meta y CADA abridor cuenta para ambos (placa, llave, temporizador). El rojo nombra al jugador atascado.',
   'ed.help.race': 'Resoluble como carrera: cada uno llega a su meta SOLO – llaves e interruptores actúan en local, las placas no cuentan (no puedes pisarla y cruzar la puerta).',

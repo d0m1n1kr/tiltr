@@ -300,6 +300,8 @@ export const de = {
   'ed.side.e': 'rechts',
   'ed.side.n': 'oben',
   'ed.side.s': 'unten',
+  'ed.check.resonance':
+    'Ein Klang-Intervall',
   'ed.check.boulder': 'Stein lösbar',
   'ed.check.coop': 'Coop lösbar',
   'ed.check.race': 'Race lösbar',
@@ -316,6 +318,8 @@ export const de = {
   'ed.help.guards': 'An jedem Wächter kommt man vorbei: Eine Zelle seiner Patrouille muss frei bleiben, während man passiert. Rot: Er versiegelt den Gang – Ausweichbucht oder Quer-Passage einbauen.',
   'ed.help.items': 'Gems, Kristalle und Sanduhren liegen erreichbar. Nur eine Warnung – ein unerreichbares Sammelziel kostet den dritten Stern, sperrt aber nichts.',
   'ed.help.jukebox': 'Der Automat ist ein massiver Kasten: Er darf nicht auf Start, Ziel oder einer Patrouille stehen, muss anrempelbar sein und keinen Pflichtweg blockieren.',
+  'ed.help.resonance':
+    'Alle Resonanzfelder im Level tragen dasselbe Intervall. Geprüft wird das, weil jede Seite nach dem Intervall des Feldes urteilt, auf dem SIE steht: Bei verschiedenen Intervallen hält im besten Fall nur einer seine Platte (eine „alle Öffner"-Tür geht dann nie auf), im schlechteren geht eine Tür für den einen auf und für den anderen nicht. Rot: Das genannte Feld trägt ein anderes Intervall als das erste.',
   'ed.help.boulder': 'Der Rollstein ist lösbar: Es gibt eine Schiebe-Folge ins Ziel, und keine, die den Stein unwiederbringlich festsetzt. Rot: Ab der genannten Stelle geht es nicht mehr weiter.',
   'ed.help.coop': 'Zusammen lösbar: Jeder Spieler erreicht sein eigenes Ziel, wobei JEDER Öffner für beide gilt (Platte, Schlüssel, Zeitschalter). Rot nennt den Spieler, der nicht durchkommt.',
   'ed.help.race': 'Im Rennen lösbar: Jeder erreicht sein Ziel ALLEIN – Schlüssel und Schalter wirken nur lokal, Platten zählen gar nicht (man kann nicht draufstehen und durch die Tür rollen).',

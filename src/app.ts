@@ -5,7 +5,15 @@ import { CELL } from './core/constants';
 import { buddySound, smoothSpeed } from './core/buddy';
 import { FEATURES, canDo, needsFor } from './core/features';
 import { partnerWaiting, togetherWin } from './core/together';
-import { centsToHz, holdTuned, inTune, tuneAim, tuneStep, type Interval } from './core/resonance';
+import {
+  centsToHz,
+  guideCents,
+  holdTuned,
+  inTune,
+  tuneAim,
+  tuneStep,
+  type Interval,
+} from './core/resonance';
 import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Mark } from './core/marks';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
@@ -2500,20 +2508,28 @@ function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
   else duetTone = mine;
   const fresh = duetPartnerAt > 0 && now - duetPartnerAt < TONE_FRESH_MS;
   const theirs = mpTest ? mpTestOther().tone : mp && fresh ? duetPartnerTone : null;
-  // Sein Feld: das Resonanzfeld, das seiner Kugel am nächsten liegt – dort
+  // Sein Feld: das Resonanzfeld, das SEINER Kugel am nächsten liegt – dort
   // klingt sein Ton, damit die Schwebung im RAUM steht und nicht im Kopf.
+  // MEIN Feld ist dabei zugelassen (v3.25.4): Stehen wir beide auf derselben
+  // Zelle – bei einer 'any'-Tür ist das erlaubt –, dann kommt sein Ton von
+  // dort, wo ich stehe, also ungepannt. Vorher schloss die Auswahl mein Feld
+  // aus und ortete ihn am FALSCHEN (oder gar nicht).
   const buddy = mpTest
     ? { x: mpTestOther().loaded.world.ball.x, y: mpTestOther().loaded.world.ball.y }
     : mp && mp.remote.lastAt > 0
       ? { x: mp.remote.x, y: mp.remote.y }
       : null;
-  const others = fields.filter((f) => f.pl !== myPlate);
-  let his = others[0] ?? null;
-  if (buddy && his) {
-    for (const f of others) {
-      if (Math.hypot(f.pl.x - buddy.x, f.pl.y - buddy.y) < Math.hypot(his.pl.x - buddy.x, his.pl.y - buddy.y)) his = f;
-    }
-  }
+  const near = buddy
+    ? fields.reduce(
+        (best, f) =>
+          Math.hypot(f.pl.x - buddy.x, f.pl.y - buddy.y) < Math.hypot(best.pl.x - buddy.x, best.pl.y - buddy.y)
+            ? f
+            : best,
+        fields[0]!,
+      )
+    : null;
+  // Ohne Funk von ihm: das ANDERE Feld ist die beste Vermutung.
+  const his = near ?? fields.find((f) => f.pl !== myPlate) ?? null;
   const interval = myPlate?.tune ?? his?.pl.tune ?? null;
   const tuned = mine !== null && theirs !== null && interval !== null && inTune(mine, theirs, interval);
   const step = holdTuned(duetSince, tuned, now);
@@ -3370,6 +3386,14 @@ function frame(now: number): void {
       duet.his ? duet.his.x - world.ball.x : 0,
       duet.his ? duet.his.y - world.ball.y : 0,
       duet.aim,
+      // FÜHRUNGSTON (v3.25.4) nur, wo es sonst keine Schwebung gibt: Beim
+      // EINKLANG schwebt sein Ton schon gegen meinen, bei einer QUINTE nicht
+      // (zwei Töne im Quintabstand schweben nicht). Dann spielt das Spiel
+      // leise den Ton mit, den ich treffen müsste – der schwebt gegen meinen,
+      // und die Schwebung wird langsamer, bis sie steht.
+      duet.mine !== null && duet.theirs !== null && duet.interval && duet.interval !== 'unison'
+        ? centsToHz(guideCents(duet.mine, duet.theirs, duet.interval))
+        : null,
     );
 
     // Windzonen: hörbar in der Nähe, spürbar (Kraft) mittendrin
@@ -3653,6 +3677,10 @@ function frame(now: number): void {
           interval: duet.interval,
           aim: Number(duet.aim.toFixed(2)),
           open: duet.open,
+          // WO sein Ton klingt (Richtung zu SEINEM Feld) – ohne das ist eine
+          // falsche Ortung nicht prüfbar (v3.25.4).
+          hisDx: duet.his && world ? Math.round(duet.his.x - world.ball.x) : null,
+          hisDy: duet.his && world ? Math.round(duet.his.y - world.ball.y) : null,
         };
   (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {
     left: markMax() - ownCount(marks),

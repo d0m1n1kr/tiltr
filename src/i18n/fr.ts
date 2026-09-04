@@ -296,6 +296,8 @@ export const fr: Dict = {
   'ed.side.e': 'la droite',
   'ed.side.n': 'le haut',
   'ed.side.s': 'le bas',
+  'ed.check.resonance':
+    'Un seul intervalle',
   'ed.check.boulder': 'Rocher résoluble',
   'ed.check.coop': 'Coop résoluble',
   'ed.check.race': 'Course résoluble',
@@ -312,6 +314,8 @@ export const fr: Dict = {
   'ed.help.guards': 'On peut passer chaque gardien : une case de sa patrouille doit rester libre. Rouge : il scelle le couloir – ajoute un renfoncement ou un passage transversal.',
   'ed.help.items': 'Gemmes, cristaux et sabliers sont accessibles. Simple avertissement – un objet inaccessible coûte la troisième étoile, rien de plus.',
   'ed.help.jukebox': 'Le juke-box est un bloc massif : ni sur le départ, ni sur le but, ni sur une patrouille ; il doit être heurtable et ne pas bloquer un passage obligé.',
+  'ed.help.resonance':
+    'Tous les champs de résonance d’un niveau portent le même intervalle. On le vérifie parce que chaque camp juge selon l’intervalle du champ sur lequel IL se trouve : avec des intervalles différents, au mieux un seul joueur tient sa plaque (une porte « tous les ouvreurs » ne s’ouvre alors jamais), au pire une porte s’ouvre pour l’un et pas pour l’autre. Rouge : le champ nommé porte un autre intervalle que le premier.',
   'ed.help.boulder': 'Le rocher est jouable : une suite de poussées atteint le but, et aucune ne le coince définitivement. Rouge : depuis la case nommée, plus d’issue.',
   'ed.help.coop': 'Jouable ensemble : chacun atteint son propre but, et CHAQUE ouvreur compte pour les deux (plaque, clé, minuteur). Rouge nomme le joueur bloqué.',
   'ed.help.race': 'Jouable en course : chacun atteint son but SEUL – clés et minuteurs agissent localement, les plaques ne comptent pas (impossible d’y rester et de franchir la porte).',
