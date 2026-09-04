@@ -653,7 +653,12 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   mehr hätte beide Seiten ohne Not auf dieselbe Version festgelegt. Kein Funk
   > 400 ms ⇒ er gilt als ruhend, ein Ebenenwechsel wird nicht als Bewegung
   gemessen. Im MP-Testmodus liegt die abgegebene Kugel ohne Schwung: nur
-  Grundton. `window.__tiltrBuddy` (E2E Lauf 45).
+  Grundton. KEIN PHANTOM AM URSPRUNG: `mp.remote` steht bis zur ersten
+  `state`-Nachricht auf (0,0) – das ist keine Position, sondern „noch nichts
+  gehört". Es gibt den Partner (im Bild UND im Ohr) deshalb erst mit
+  `remote.lastAt > 0`; vorher klang und leuchtete er kurz in der Weltecke – die
+  CI hat es gefunden, lokal war die erste Meldung schneller da als der
+  Lesezugriff. `window.__tiltrBuddy` (E2E Lauf 45).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

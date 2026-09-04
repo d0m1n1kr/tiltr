@@ -821,6 +821,15 @@ Gast, Nähe 0,42 → 0,93 und Rollanteil bis 1,0, während der Gast heranrollt,
 danach zurück auf 0,05). Beide neuen Regeln einmal rot gesehen – Coop-Gate
 entfernt (Race klang) und Rollanteil verschluckt.
 
+NACHTRAG aus der CI (derselbe Release, vor dem Deploy gefixt): Die Zusicherung
+„Im Netz hört der Host den Gast" fiel dort mit `dx −50, Nähe 0,70` – das ist
+`mp.remote = {0,0}`, also der URSPRUNG der Welt: gelesen, BEVOR die erste
+`state`-Nachricht ankam (lokal war sie schneller da als der Lesezugriff). Kein
+Test-Timing-Problem, sondern ein Fehler im Feature: Bis zur ersten Meldung
+klang UND leuchtete der Partner in der Weltecke. Es gibt ihn jetzt erst mit
+`remote.lastAt > 0` – Bild und Klang aus derselben Wahrheit. Der Renderer-Schein
+trug den Fehler seit M22 stumm mit; erst der Klang machte ihn hörbar.
+
 Beim Schreiben des Laufs zweimal gestolpert, beides jetzt im Lauf dokumentiert:
 Die Lobby zeigt eine LISTE, erst der Tap auf `#mpCustomItem` eröffnet den Raum
 (sonst wartet der Gast ewig auf „Verbinde …"), und BEIDE Seiten müssen das

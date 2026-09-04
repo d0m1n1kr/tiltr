@@ -3272,8 +3272,14 @@ function frame(now: number): void {
   }
 
   renderer.follow(world.ball.x, world.ball.y);
+  // KEIN PHANTOM AM URSPRUNG (M88): `mp.remote` steht bis zur ersten
+  // `state`-Nachricht auf (0,0) – das ist keine Position, sondern „noch nichts
+  // gehört". Vorher klang und leuchtete der Partner deshalb kurz in der Ecke
+  // der Welt (in der CI gemessen: dx −50 statt +300, Nähe 0,70). Erst wenn er
+  // sich EINMAL gemeldet hat (`lastAt > 0`), gibt es ihn – Bild und Klang aus
+  // derselben Wahrheit.
   const buddy =
-    mp && (mp.phase === 'playing' || mp.phase === 'done')
+    mp && (mp.phase === 'playing' || mp.phase === 'done') && mp.remote.lastAt > 0
       ? {
           x: mp.remote.x,
           y: mp.remote.y,

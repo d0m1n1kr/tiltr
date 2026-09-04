@@ -7863,9 +7863,12 @@ if (want("45")) {
     // Eigene Zusicherung, damit ein misslungener Start SAGT, dass er misslang,
     // statt die nächste Prüfung an undefined zerschellen zu lassen.
     check(`Host und Gast spielen (${started === true})`, started === true);
+    // Der Haken bleibt null, bis der Gast sich EINMAL gemeldet hat – sonst
+    // stünde hier das Phantom am Ursprung (0,0). Genau daran fiel diese
+    // Zusicherung in der CI zuerst: dx −50 statt +300 (Nähe 0,70).
     const first = await until(async () => await pageA.evaluate(() => window.__tiltrBuddy), { timeout: 8000 });
     check(
-      `Im Netz hört der Host den Gast (Nähe ${(first?.closeness ?? 0).toFixed(2)}, dx ${Math.round(first?.dx ?? 0)})`,
+      `Im Netz hört der Host den Gast an SEINER Stelle, nie am Ursprung (Nähe ${(first?.closeness ?? 0).toFixed(2)}, dx ${Math.round(first?.dx ?? 0)})`,
       (first?.closeness ?? 0) > 0.2 && (first?.dx ?? 0) > 200,
     );
 
