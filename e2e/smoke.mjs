@@ -8062,14 +8062,28 @@ if (want("46")) {
 
     // AUFNEHMEN braucht keine Bewegung: derselbe Tap auf DERSELBEN Zelle nimmt
     // die eigene Boje zurück – und beim Partner verschwindet sie mit.
+    // ERST WARTEN, bis SEINE Boje bei A angekommen ist: Sonst überschreibt die
+    // Meldung „Der Partner hat eine Wegmarke gelegt" hinterher die Quittung
+    // des eigenen Aufnehmens – in der CI unter Last genau so gefallen (Lauf
+    // #148). Die Statuszeile trägt immer die JÜNGSTE Meldung, also muss die
+    // fremde vor dem eigenen Tap da sein.
+    await until(
+      async () => (await pageA.evaluate(() => window.__tiltrMarks))?.theirs?.length === 1,
+      { timeout: 8000 },
+    );
     await pageA.keyboard.press("m");
     const took = await until(async () => {
       const m = await pageA.evaluate(() => window.__tiltrMarks);
       return m?.left === 2 ? m : null;
     }, { timeout: 6000 });
+    const tookSaid =
+      (await until(async () => {
+        const txt = (await pageA.textContent("#status")).trim();
+        return /aufgenommen/.test(txt) ? txt : null;
+      }, { timeout: 6000 })) ?? (await pageA.textContent("#status")).trim();
     check(
-      `Aufgenommen: Vorrat kommt zurück (left=${took?.left}, eigene=${took?.mine.length}), Status ${JSON.stringify((await pageA.textContent("#status")).trim())}`,
-      took?.mine.length === 0 && /aufgenommen/.test(await pageA.textContent("#status")),
+      `Aufgenommen: Vorrat kommt zurück (left=${took?.left}, eigene=${took?.mine.length}), Status ${JSON.stringify(tookSaid)}`,
+      took?.mine.length === 0 && /aufgenommen/.test(tookSaid),
     );
 
     const gone = await until(async () => {

@@ -789,6 +789,13 @@ der letzte Zustand in einer EINZELNEN Nachricht stehen. Gefunden hat es die
 Zusicherung, die den Zustand BEIDER Seiten mit ausdruckt – ein nacktes „false"
 hätte es als Last-Flake durchgehen lassen.
 
+Und ein drittes Mal fiel dieselbe Klasse in der CI, diesmal in Lauf 46 (M89):
+Die Statuszeile trägt immer die JÜNGSTE Meldung, und unter Last kam die
+fremde („Der Partner hat eine Wegmarke gelegt") NACH dem eigenen Aufnehmen an
+und überschrieb die Quittung. Der Lauf wartet jetzt, bis die Boje des Partners
+angekommen IST, bevor er selbst tippt – wer eine Meldung prüft, muss die
+Reihenfolge herstellen, nicht hoffen.
+
 ## M89 „Wegmarken" ✓ (v3.23.0)
 
 Zweiter Baustein des Coop-Ausbaus und das erste Werkzeug, mit dem ein Spieler
