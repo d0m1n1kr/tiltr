@@ -612,6 +612,190 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## Geplant: Coop-Ausbau M88–M91
+
+Vier Milestones, in dieser Reihenfolge – jeder ein eigenes Release mit grüner
+Suite. Reihenfolge nach Fundament: Solange der Partner akustisch nicht
+existiert, ist jedes weitere Coop-Element eine Aufgabe, die man sich per
+Sprachkanal zuruft, und nicht Teil des Spiels.
+
+AUSGANGSBEFUND (gemessen im Code, nicht erinnert): Das Protokoll kennt
+`setup`, `ready`, `state` (Position, alle 80 ms), `plate`, `key`, `switch`,
+`bell`, `boulder`, `finish`, `rematch`. In `src/audio/` gibt es KEINE Stimme
+für den Partner – `setRival` (stetiges Rollen, gepannt, `muffled` für eine
+andere Ebene) läuft nur im DUELL. Und Coop gewinnt, wenn beide IRGENDWANN
+fertig sind (`mpCheckResult`: `localFinished && remote.finished`).
+
+GEMEINSAMES FUNDAMENT für alle vier: Neue Felder in `state` sind additiv, eine
+alte Gegenstelle ignoriert sie – das ist bei Klang und Ton harmlos, bei einer
+SIEGBEDINGUNG nicht. Deshalb bekommt `setup` ein Feld `needs: string[]`
+(Merkmalsschlüssel, nicht Versionsnummern): Der Gast prüft, ob er alle kennt,
+und sagt sonst in der Lobby „Der Partner braucht eine neuere Version"
+(`mp.needsUpdate`) statt still anders zu spielen. Ein unbekanntes ELEMENT
+fängt schon heute `parseLevel` im `setup`-Empfang ab (→ `mp.badLevel`); die
+Lücke sind nur die Regel-Flags.
+
+### M88 „Der Partner klingt" (v3.22.0) – 1a
+
+Eine leise, stetige, HRTF-gepannte Stimme am Partnerball. Sie ist NICHT der
+Rivale: der Rivale ist Bedrohung (tiefes Rollen, 120–320 Hz), der Partner ist
+Gesellschaft – ein warmer, ruhiger Grundton plus ein Rollanteil, der mit
+seiner Geschwindigkeit wächst. Damit ist die Entscheidung „immer hörbar oder
+nur in Bewegung" beantwortet: BEIDES, in zwei Anteilen. Ruhend findest du ihn
+(Grundton), rollend verrät er sich (Rollanteil) – Stillstand ist Tarnung, ohne
+dass er je verschwindet.
+
+- `src/audio/audio.ts`: `setBuddy(closeness01, dx, dy, moving01, muffled)` –
+  eigene Gain/Filter/Panner-Kette wie `rival*`, gespeist über `place()`.
+- `src/core/buddy.ts` (rein, Units): `buddyGain(dist, speed, maxSpeed)` →
+  `{ closeness, moving }`. Die Kurve gehört nicht in die Audio-Klasse, sonst
+  ist sie nicht prüfbar.
+- `src/app.ts`: im Frame aus `mp.remote` (bzw. `otherSide` im MP-Testmodus)
+  füttern – mit denselben Regeln wie jede andere Quelle: `shield(dx, dy)`
+  (ABSORB_GAIN hinter Schallschutz), `muffled` bei anderer Ebene, Dämpfung im
+  Nebel. Geschwindigkeit wird LOKAL aus zwei `state`-Nachrichten abgeleitet
+  und geglättet (τ ≈ 150 ms) – kein neues Protokollfeld, also auch kein
+  Versionsproblem.
+- Gilt in COOP UND RACE (symmetrisch, also fair) und im MP-Testmodus.
+- Beweis: unberührt (Information, keine Erreichbarkeit).
+- Test-Haken `__tiltrBuddy` = { closeness, moving, dx, dy, muffled }.
+- E2E Lauf 45 nach dem Muster von Lauf 33 (Host + Gast im SELBEN Kontext):
+  Gast bewegt sich → `closeness`/`moving` beim Host steigt; hinter einer
+  Schallschutzwand fällt sie auf ABSORB_GAIN; andere Ebene ⇒ `muffled`.
+- i18n: keine neuen Texte (reiner Klang).
+
+### M89 „Wegmarken" (v3.23.0) – 1c
+
+Jeder trägt DREI Klangbojen. Abgelegt sendet die Zelle einen weichen, langsamen
+Holz-Tick (~1,2 s), gepannt, bei BEIDEN Spielern – der Sehende auf der hellen
+Ebene markiert dem Blinden den Weg um die Löcher. Das ist das erste Werkzeug,
+mit dem ein Spieler dem anderen etwas ÜBER DIE WELT sagen kann, ohne zu reden.
+
+- `src/core/marks.ts` (rein, Units): `placeMark(list, mark, max)` /
+  `takeMark(list, floor, cell, owner)`; Regel: Der HUD-Knopf legt ab, wenn in
+  dieser Zelle keine EIGENE Boje liegt, sonst nimmt er sie zurück (Budget
+  kommt wieder). Fremde Bojen kann man nicht einsammeln.
+- Protokoll: neue Nachricht `mark` ({ f, x, y, on }) – wie `plate` ein
+  Zustandswechsel, keine Position pro Frame.
+- HUD: Chip „📍 3" + Knopf in `#hudButtons`, nur im MP sichtbar.
+- Renderer: kleiner Ring, EIGENE Boje durchgezogen, FREMDE gestrichelt (wie
+  die Landeplätze im Editor – gestrichelt heißt „nicht von mir"). Neue
+  Palette-Farbe `mark` (DESIGN.md-Regel: neues gezeichnetes Ding = Weltfarbe).
+- Klang: eigene Signatur, unverwechselbar gegen Glocke (Metall), Platte
+  (Klick) und Ping. Absorb/Nebel-Regeln wie bei allen Quellen; nur auf
+  derselben Ebene hörbar.
+- Beweis: unberührt.
+- Test-Haken `__tiltrMarks`; E2E Lauf 46 (Host+Gast): ablegen → der andere
+  hört und sieht sie, Budget 3→2, zurücknehmen → 2→3, vier Bojen unmöglich.
+- i18n ×4: `hud.mark`, `mp.partnerMark`, `hud.markEmpty`.
+
+### M90 „Gemeinsam ankommen" (v3.24.0) – 2a
+
+Level-Flag `together`: Gewonnen wird, wenn BEIDE gleichzeitig in ihren
+Zielzonen liegen. Aus „wir sind beide durch" wird „wir kommen zusammen an" –
+und der Endspurt bekommt eine Choreografie, die es heute nicht gibt.
+
+- `src/levels/schema.ts`: `together?: boolean` auf Level-Ebene (nur sinnvoll
+  bei `players: 2` und `mpMode` coop/any – Invariante im Schema wie bei
+  `force ≤ 2400`).
+- Protokoll: `state` trägt `g` (bin ich JETZT im Ziel) – zusätzlich zum
+  bestehenden `fin`. Gewonnen, wenn ich im Ziel bin UND der Partner es
+  innerhalb der letzten 700 ms gemeldet hat: großzügig gegen Latenz, und
+  BEIDE Seiten schließen unabhängig – niemand ist Schiedsrichter.
+- `setup.needs: ['together']` (siehe Fundament) – ein alter Gast würde sonst
+  nach der alten Regel gewinnen.
+- Rückmeldung ist hier Pflicht, sonst ist der Modus Frust: Solange der Partner
+  im Ziel wartet, läuft ein ruhiger, drängender Zweiklang (ungepannt – er
+  kommt vom Schirm, wie das Konfetti) plus HUD-Chip „◎ Partner wartet"; das
+  eigene Ziel pulsiert (`goalDone` gibt es schon).
+- Ergebniskarte: Teamzeit = der Augenblick des Rendezvous (nicht `max` der
+  Einzelzeiten).
+- Beweis: BEWUSST unberührt. Gleichzeitigkeit ist Timing, kein
+  Erreichbarkeitsproblem – wie das weiche `timer`-Badge. Wer es aufnimmt,
+  müsste Wege LÄNGENgleich beweisen; das ist eine Schätzung, kein Beweis.
+- Editor: Schalter „Gemeinsam ankommen" neben `mpMode`; im MP-Testmodus
+  funktioniert es von allein, weil die abgegebene Kugel liegen bleibt (also im
+  Ziel wartet, während man die andere holt).
+- `src/levels/multiplayer.ts`: ein eingebautes Coop-Level mit `together`, plus
+  Lösbarkeits-Test in tests/mpLevel.test.ts.
+- E2E Lauf 47 (Host+Gast): einer im Ziel ⇒ KEIN Sieg (die Zusicherung, die
+  vorher rot sein muss), Partner-wartet-Signal an, beide im Ziel ⇒ Sieg.
+- i18n ×4: `ed.together`, `hud.partnerWaits`, `mp.needsUpdate`.
+
+### M91 „Duett" (v3.25.0) – 3 (Flaggschiff)
+
+Ein Tor, das nur ein DUETT öffnet. Zwei Resonanzfelder; wer auf einem steht,
+erzeugt einen Ton, dessen Höhe aus der NEIGUNGSRICHTUNG kommt (eine Quinte
+über den ganzen Kreis, stetig). Das Tor öffnet, wenn die beiden Töne im
+Zielintervall stehen (Einklang oder Quinte, Toleranz ~25 Cent) – beide hören
+die Schwebung langsamer werden, bis sie steht. Der Klang IST das Rätsel, und
+allein ist er nicht lösbar. Das ist die Idee, für die es dieses Spiel gibt:
+Neigung ist gleichzeitig Bewegung und Stimme.
+
+Drei Entwurfs-Entscheidungen, die das Ding tragen:
+
+1. DAS FELD IST EINE SCHALE. Zum Stimmen muss man neigen – und Neigen rollt
+   einen vom Feld. Also hält das Feld die Kugel wie ein Sog-Anker (`force`),
+   und die Neigung wird zum Stimmknopf. Kräftig kippen = raus. Die
+   Schema-Invariante des Ankers (`force ≤ 2400 < accel 2600`, M32) gilt mit:
+   die Schale ist NIE eine Falle, ohne dass der Beweis etwas Neues lernen muss.
+2. DAS FELD IST EINE PLATTE. Für das Modell ist ein Resonanzfeld eine Platte
+   (`Plate` mit `id`/`opens`/`held`, M76): `coopReachable`, `pairReachable`,
+   `holdCheck` (wer kann halten, wer geht durch, M76/M77) und der
+   `openers`-Bericht rechnen es damit GRATIS mit. Zwei Ausnahmen sind
+   einzutragen, sonst lügt der Beweis:
+   - Ein STEIN kann ein Resonanzfeld nicht halten (er hat keine Neigung) ⇒
+     `stonePlates` lässt Resonanzfelder aus (M74).
+   - Eine 'all'-Tür mit zwei Feldern und zwei Spielern hat niemanden mehr frei,
+     der durchrollt – das Tor braucht also `latch` („bleibt offen"). Genau das
+     meldet `holdDetail` heute schon von selbst („… – „bleibt offen" löst
+     das"), der Editor setzt es beim Setzen als Vorgabe. Der Beweis erzieht
+     den Bauplan; wir bauen keine zweite Regel dafür.
+3. BEIDE SEITEN RECHNEN DASSELBE. `state` trägt `tn` (aktuelle Tonhöhe, ein
+   Float, 12,5 Hz – die Nachricht ist winzig). Jede Seite kennt beide Töne und
+   entscheidet lokal – symmetrisch, keine Autorität, keine Nachricht „Tor auf".
+   Der Ton des Partners klingt an SEINEM Feld (gepannt), damit die Schwebung
+   im Raum steht und nicht im Kopf.
+
+- `src/core/resonance.ts` (rein, Units): `pitchFromTilt(tx, ty)` (Deadzone wie
+  `forkTone`), `inTune(a, b, interval, tolCents)`, `TUNE_HOLD_MS`.
+- `src/elements/resonance.ts`: `build()` (Platte + Anker-Kraft), Galerie-
+  Eintrag mit `demoSound` (die Schwebung, die stehen bleibt), Weltfarbe
+  `resonance` in `src/render/palette.ts`, zod `resonanceDef` in
+  `src/levels/schema.ts`.
+- `src/audio/audio.ts`: `setResonance(mine, theirs, aim)` – zwei Stimmen plus
+  ein Schimmer im Einklang.
+- Editor (M60-Regel, drei Dinge je Öffner-Typ): Auto-Link beim Setzen
+  (`nearestDoorId`), Feld „Öffnet Tür" + 🔗 in `renderProps`, Fallback in
+  `normalizeDraft`. In der Palette NUR bei zwei Spielern (wie die Druckplatte
+  – solo ist es sinnlos, und `coopReachable` würde es sonst als Öffner zählen:
+  ein grünes, unlösbares Level).
+- `src/levels/firstAppearances.ts`: neues Merkmal ⇒ Aufleuchten + „Neu:"-Chip.
+- MP-Testmodus: Der Ton der ruhenden Seite bleibt auf seinem letzten Wert
+  stehen (die Kugel liegt in der Schale) – also stimmt man A, wechselt mit 👥,
+  stimmt B, und das Tor geht auf. Ohne diese Regel wäre das Duett im Editor
+  nicht testbar.
+- Units: `core/resonance.ts`; Gegenproben in tests/coopPlates.test.ts (Stein
+  hält kein Resonanzfeld; 'all'-Tür ohne `latch` ist rot mit dem Ausweg im
+  Bericht).
+- E2E Lauf 48 im MP-Testmodus (Muster Lauf 40/42): A stimmen, 👥, B stimmen,
+  Tor offen; danebengestimmt ⇒ Tor zu.
+- Ein eingebautes Coop-Level („Duett") in `src/levels/multiplayer.ts` mit
+  Lösbarkeits-Test.
+- i18n ×4: `el.resonance.title`/`.description`, `ed.resonanceHint`,
+  `mp.partnerTone`.
+
+DANACH (nicht Teil dieser vier): ein Coop-Kapitel als Bundle, das die vier
+Bausteine lehrt – erst Hören (M88), dann Markieren (M89), dann Ankommen (M90),
+dann das Duett (M91). Und die zurückgestellten Ideen mit ihrem Grund: „Fremde
+Ohren" (Partner-Ping) wäre fast gratis, „Fracht" (Stein ins Frachtfeld)
+braucht einen Zustands-BFS wie die Steine, „Schleuse" (nie beide Tore offen)
+bricht die Monotonie des Fixpunkts (M68/M78/M82) und gehört damit ebenfalls in
+BFS-Land. Ein Seil zwischen den Bällen bleibt draußen: jeder Spieler hat seine
+EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
+(M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
+Latenz gummiartig.
+
 ## M87 „Das leere Feld" ✓ (v3.21.0)
 
 Aus dem Levelbau: „Es gibt einen Knopf, um im Editor die aktuelle Ebene neu zu
