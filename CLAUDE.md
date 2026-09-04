@@ -672,6 +672,31 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   `remote.lastAt > 0`; vorher klang und leuchtete er kurz in der Weltecke – die
   CI hat es gefunden, lokal war die erste Meldung schneller da als der
   Lesezugriff. `window.__tiltrBuddy` (E2E Lauf 45).
+- `src/core/marks.ts` + `src/core/features.ts` – WEGMARKEN (M89): Klangbojen,
+  die BEIDE hören – das erste Werkzeug, mit dem ein Spieler dem anderen etwas
+  ÜBER DIE WELT sagt, ohne zu reden (der Sehende auf der hellen Ebene markiert
+  dem Blinden den Weg um die Löcher). Der Vorrat steht im LEVEL (`marks`,
+  Vorgabe 3, 0…9, Editor-Feld nur bei zwei Spielern) und gilt JE SPIELER; 0
+  heißt „dieses Level kennt sie nicht", dann ist auch der HUD-Knopf weg.
+  Eine Boje sitzt in der ZELLMITTE (`markSpot`), nicht dort, wo die Kugel
+  rollte: Sie ist ein Wegzeichen, kein Schnappschuss – daraus folgt die Regel
+  fürs Aufnehmen (`toggleMark`: derselbe Tap auf DERSELBE Zelle nimmt die
+  EIGENE zurück, der Vorrat steigt wieder). FREMDE Bojen bleiben liegen: Wer
+  eine Marke setzt, will sie wiederfinden. Nachricht `mark` ({f,x,y,on}) wie
+  `plate` ein Zustandswechsel, kein Strom; nur im ECHTEN Netz (im Testmodus
+  wäre „meine" und „seine" dieselbe Hand). Klang: weicher Holz-Tick
+  (`audio.markTick`, 430→300 Hz), Takt schneller je näher, und es tickt immer
+  nur die NÄCHSTE auf dieser Ebene – ein Bus, eine Richtung, wie beim
+  Automaten; Abschirmung/Nebel wie jede Quelle. Renderer: Kreide-Ring
+  (`WORLD.mark`), eigene durchgezogen, fremde gestrichelt (Sprache der
+  Landeplätze), immer sichtbar – eine Boje deckt nichts auf außer sich selbst.
+  MERKMALS-GATE (`core/features.ts`, rein): Neue Felder sind additiv, aber ein
+  SPIELMITTEL, das nur eine Seite hat, ist ungleich. Der Host hängt an `setup`,
+  was das LEVEL braucht (`needsFor(marks)`), der Gast an `ready`, was er kann
+  (`FEATURES`) – beide prüfen (`canDo`), also fällt es auf, egal welche Seite
+  die ältere ist (`mp.needsUpdate` in der Lobby). Das Gate hängt am LEVEL:
+  Ein Level ohne Bojen spielt weiter mit jeder Fassung. `window.__tiltrMarks`
+  (E2E Lauf 46).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

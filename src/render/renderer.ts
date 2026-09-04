@@ -31,6 +31,12 @@ export interface DrawOptions {
    *  Ball, sodass die Blickrichtung immer Screen-oben ist. 0/undefined =
    *  klassische Draufsicht. */
   heading?: number;
+  /** Wegmarken (M89) auf der AKTIVEN Ebene: eigene durchgezogen, fremde
+   *  gestrichelt – dieselbe Sprache wie die Landeplätze im Editor
+   *  („gestrichelt heißt: nicht von mir"). Immer sichtbar, auch im Dunkeln:
+   *  Eine Boje deckt nichts auf, sie ist selbst der einzige Punkt, den sie
+   *  zeigt – und sie gehört den Spielern, nicht der Welt. */
+  marks?: ReadonlyArray<{ x: number; y: number; mine: boolean }>;
   /** Kugel weglassen: Es gibt EINE Kugel für alle Ebenen (loader.ts setzt sie
    *  auf den Start von Ebene 1). Auf einer anderen Ebene wäre sie ein
    *  Phantom – im Editor sah sie dort aus wie ein eigener Startpunkt. */
@@ -471,6 +477,25 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(tx(cp.x), ty(cp.y), cp.r * s, 0, Math.PI * 2);
       ctx.stroke();
+    }
+
+    // Wegmarken (M89): kleiner Kreide-Ring. Eigene durchgezogen, fremde
+    // gestrichelt; beide blass, denn sie sollen den Weg zeigen, nicht ihn
+    // überstrahlen. Der Klang ist ihr Hauptkanal (audio.markTick).
+    for (const m of opts.marks ?? []) {
+      ctx.strokeStyle = `rgba(${WORLD.mark}, ${m.mine ? 0.75 : 0.55})`;
+      ctx.lineWidth = 2 * this.dpr;
+      ctx.setLineDash(m.mine ? [] : [4 * this.dpr, 4 * this.dpr]);
+      ctx.beginPath();
+      ctx.arc(tx(m.x), ty(m.y), 11 * s, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Ein Punkt in der Mitte: In der Bewegung erkennt man den Ring sonst
+      // schlecht von einem Checkpoint.
+      ctx.fillStyle = `rgba(${WORLD.mark}, ${m.mine ? 0.8 : 0.5})`;
+      ctx.beginPath();
+      ctx.arc(tx(m.x), ty(m.y), 2.5 * this.dpr, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Offene Coop-Türen und voll aufgefahrene Schiebewände: nur ein

@@ -97,6 +97,7 @@ const KNOWN_RUNS = [
   "43",
   "44",
   "45",
+  "46",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -7916,6 +7917,204 @@ if (want("45")) {
   } catch (e) {
     check(
       `Lauf 45 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 46: Wegmarken (M89). Das erste Werkzeug, mit dem ein Spieler dem
+// anderen etwas ÜBER DIE WELT sagt, ohne zu reden: eine Klangboje, die BEIDE
+// hören. Der Vorrat steht im LEVEL (`marks`, hier 2), gilt je Spieler und
+// lebt nur im Lauf. Geprüft: Knopf zeigt den Vorrat, Legen rastet auf die
+// ZELLMITTE und kommt beim Partner an, der Vorrat zählt herunter und ist
+// endlich, derselbe Tap nimmt die Boje wieder auf (auch beim Partner), und
+// eine FREMDE Boje bleibt liegen. ---
+if (want("46")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const pageA = await ctx.newPage();
+    const pageB = await ctx.newPage();
+    for (const p of [pageA, pageB]) {
+      p.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      p.on("pageerror", (e) => errors.push(String(e)));
+    }
+    const openAll = (cols, rows) => {
+      const out = [];
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols; x++) {
+          if (x < cols - 1) out.push([[x, y], "e"]);
+          if (y < rows - 1) out.push([[x, y], "s"]);
+        }
+      return out;
+    };
+    const def = {
+      id: "custom-m89",
+      name: "Wegmarken",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      marks: 2, // knapper Vorrat: so ist „endlich" in einem Lauf prüfbar
+      floors: [
+        {
+          size: [6, 3],
+          maze: { seed: 5, carve: openAll(6, 3), add: [] },
+          elements: [],
+          start: [0, 1],
+          goal: [5, 0],
+          start2: [3, 1],
+          goal2: [5, 2],
+          bright: true,
+        },
+      ],
+    };
+    await pageA.goto(`${BASE}/?mpcode=TESTMP46&nosplash`);
+    await pageA.click("#workshopBtn");
+    await pageA.click("#wsImportBtn");
+    await pageA.fill("#wsImportText", JSON.stringify(def));
+    await pageA.click("#wsImportGo");
+    await until(async () => (await pageA.locator("#workshopList .ws-item").count()) > 0);
+    // Editor: Das Feld für den Vorrat steht nur bei ZWEI Spielern da.
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await pageA.locator("#edBadges .ed-badge").count()) > 0);
+    const marksField = await pageA.evaluate(() => ({
+      value: document.getElementById("edMarks")?.value,
+      label: document.getElementById("edMarks")?.closest(".ed-field")?.textContent?.trim().slice(0, 24),
+    }));
+    check(
+      `Editor: Vorrat der Wegmarken einstellbar (${JSON.stringify(marksField)})`,
+      marksField.value === "2" && /Wegmarken/.test(marksField.label ?? ""),
+    );
+    await pageA.selectOption("#edPlayers", "1");
+    const soloField = await pageA.locator("#edMarks").count();
+    check(`Solo hat kein Bojen-Feld – allein hört sie niemand (${soloField})`, soloField === 0);
+    await pageA.selectOption("#edPlayers", "2");
+    await pageA.click("#edClose");
+
+    // Zu zweit spielen.
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "Zu zweit" }).click();
+    await until(async () => !(await pageA.locator("#mp").getAttribute("class")).includes("hidden"));
+    await pageA.click("#mpCustomItem");
+    await until(async () => (await pageA.textContent("#mpCode")).trim() === "TESTMP46", { timeout: 8000 });
+    await pageB.goto(`${BASE}/?nosplash#join=TESTMP46`);
+    await until(async () => (await pageB.textContent("#interTitle")).includes("Wegmarken"), { timeout: 8000 });
+    for (const p of [pageA, pageB])
+      await until(async () => await p.locator("#interPrimary").isVisible(), { timeout: 10000 });
+    await pageA.click("#interPrimary", { timeout: 5000 });
+    await pageB.click("#interPrimary", { timeout: 5000 });
+    const started = await until(
+      async () =>
+        (await pageA.evaluate(() => window.__tiltrMp?.phase)) === "playing" &&
+        (await pageB.evaluate(() => window.__tiltrMp?.phase)) === "playing",
+      { timeout: 20000 },
+    );
+    check(`Host und Gast spielen (${started === true})`, started === true);
+
+    const chip = async (p) =>
+      await p.evaluate(() => ({
+        hidden: document.getElementById("markBtn")?.classList.contains("hidden"),
+        text: document.getElementById("markBtn")?.textContent,
+      }));
+    const first = await until(async () => {
+      const c = await chip(pageA);
+      return c.hidden === false ? c : null;
+    }, { timeout: 8000 });
+    check(`HUD-Knopf zeigt den Vorrat aus dem Level (${JSON.stringify(first)})`, first?.text === "📍2");
+
+    // Legen: Die Boje rastet auf die ZELLMITTE (Start 1 = Zelle 0/1 → 50/150).
+    await pageA.keyboard.press("m");
+    const mine = await until(async () => {
+      const m = await pageA.evaluate(() => window.__tiltrMarks);
+      return m?.mine?.length === 1 ? m : null;
+    }, { timeout: 6000 });
+    check(
+      `Gelegt: eine eigene Boje auf der Zellmitte, Vorrat 2 → 1 (${JSON.stringify(mine?.mine)}, left=${mine?.left})`,
+      mine?.mine[0].x === 50 && mine?.mine[0].y === 150 && mine?.left === 1,
+    );
+    check(`Der Knopf zählt mit (${(await chip(pageA)).text})`, (await chip(pageA)).text === "📍1");
+    check(
+      `Die Statuszeile sagt es (${JSON.stringify((await pageA.textContent("#status")).trim())})`,
+      /Wegmarke gelegt/.test(await pageA.textContent("#status")),
+    );
+
+    // Beim PARTNER liegt sie auch – das ist der ganze Sinn.
+    const theirs = await until(async () => {
+      const m = await pageB.evaluate(() => window.__tiltrMarks);
+      return m?.theirs?.length === 1 ? m : null;
+    }, { timeout: 8000 });
+    check(
+      `Der Partner hört/sieht dieselbe Boje – und legt sie nicht selbst (${JSON.stringify(theirs?.theirs)}, eigene=${theirs?.mine.length}, left=${theirs?.left})`,
+      theirs?.theirs[0].x === 50 && theirs?.theirs[0].y === 150 && theirs?.mine.length === 0 && theirs?.left === 2,
+    );
+
+    // Der Gast legt seine eigene daneben: FREMDE Bojen bleiben liegen.
+    await pageB.keyboard.press("m");
+    const both = await until(async () => {
+      const m = await pageB.evaluate(() => window.__tiltrMarks);
+      return m?.mine?.length === 1 ? m : null;
+    }, { timeout: 6000 });
+    check(
+      `Gast legt daneben, meine bleibt liegen (seine=${JSON.stringify(both?.mine)}, fremde=${both?.theirs.length})`,
+      both?.mine[0].x === 350 && both?.theirs.length === 1,
+    );
+
+    // AUFNEHMEN braucht keine Bewegung: derselbe Tap auf DERSELBEN Zelle nimmt
+    // die eigene Boje zurück – und beim Partner verschwindet sie mit.
+    await pageA.keyboard.press("m");
+    const took = await until(async () => {
+      const m = await pageA.evaluate(() => window.__tiltrMarks);
+      return m?.left === 2 ? m : null;
+    }, { timeout: 6000 });
+    check(
+      `Aufgenommen: Vorrat kommt zurück (left=${took?.left}, eigene=${took?.mine.length}), Status ${JSON.stringify((await pageA.textContent("#status")).trim())}`,
+      took?.mine.length === 0 && /aufgenommen/.test(await pageA.textContent("#status")),
+    );
+
+    const gone = await until(async () => {
+      const m = await pageB.evaluate(() => window.__tiltrMarks);
+      return m?.theirs?.length === 0 ? m : null;
+    }, { timeout: 8000 });
+    check(`…und beim Partner ist sie weg (fremde=${gone?.theirs?.length}, eigene=${gone?.mine?.length})`, gone?.theirs.length === 0 && gone?.mine.length === 1);
+
+    // VORRAT IST ENDLICH. Der dritte Tap muss in einer ANDEREN Zelle liegen –
+    // in der Zelle der eigenen Boje nimmt derselbe Tap sie wieder auf (das ist
+    // die Regel, nicht ein Mangel; genau daran fiel diese Zusicherung zuerst).
+    // Bewegung deshalb nach UNTEN: Das Feld hat drei Reihen, die Wand begrenzt
+    // sie – nach rechts rollte die Kugel bis an den Rand und „eine Zelle
+    // weiter" konnte nie eintreten.
+    await pageA.keyboard.press("m"); // 1. Boje wieder auf der Startzelle
+    await until(async () => (await pageA.evaluate(() => window.__tiltrMarks?.left)) === 1, { timeout: 6000 });
+    // holdUntil, nicht selbst gebaut: Es hält die Taste, bis die Bedingung gilt
+    // UND der Ball RUHT (an der Wand gepinnt). Wer im Flug loslässt, prallt
+    // zurück – erst gemessen (y 273 → wieder 153), dann in CLAUDE.md
+    // nachgelesen, wo die Lektion aus Lauf 9 längst steht.
+    const rolled = await holdUntil(pageA, "ArrowRight", async () => (await pageA.evaluate(() => window.__tiltrBall?.x)) > 150);
+    await pageA.keyboard.press("m"); // 2. Boje – Vorrat leer
+    await until(async () => (await pageA.evaluate(() => window.__tiltrMarks?.left)) === 0, { timeout: 6000 });
+    const down = await holdUntil(pageA, "ArrowDown", async () => (await pageA.evaluate(() => window.__tiltrBall?.y)) > 220);
+    // Statuszeile leeren, damit die MELDUNG des dritten Taps geprüft wird und
+    // nicht die noch stehende des zweiten (der Frame räumt sie nach der
+    // Flash-Dauer von selbst – darauf warten, statt zu raten).
+    await until(async () => (await pageA.textContent("#status")).trim() === "", { timeout: 6000 });
+    const before3 = await pageA.evaluate(() => ({ ...window.__tiltrMarks, ball: window.__tiltrBall }));
+    await pageA.keyboard.press("m"); // dritter Versuch, freie Zelle (Reihe 2)
+    const said = (await pageA.textContent("#status")).trim();
+    const empty = await pageA.evaluate(() => window.__tiltrMarks);
+    check(
+      `Vorrat ist endlich: der dritte Versuch in freier Zelle legt nichts nach und sagt es (${JSON.stringify({
+        said,
+        left: empty?.left,
+        mine: empty?.mine?.length,
+        gerollt: [rolled, down],
+        ball: before3.ball,
+      })})`,
+      rolled && down && empty?.mine.length === 2 && empty?.left === 0 && /übrig/.test(said),
+    );
+    await pageA.close();
+    await pageB.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 46 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

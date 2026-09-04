@@ -28,6 +28,10 @@ export const WORLD = {
   portal: '240, 130, 230',
   plate: '255, 214, 90',
   buddy: '210, 225, 255',
+  /** Wegmarke (M89): Kreide-Weiß. Absichtlich FARBLOS gegen alles andere –
+   *  eine Boje gehört nicht der Welt, sondern den Spielern; sie ist eine
+   *  Notiz auf der Karte, kein Gegenstand darin. */
+  mark: '240, 244, 235',
   /** Partner als KÖRPER (M62): im Coop auf hellen Ebenen ein fester roter
    *  Ball – Rot ist die einzige Ballfarbe, die im Bild noch frei ist (Wächter-
    *  Rot ist ein Streifen, kein Ball) und liest sich nicht als das eigene Teal. */

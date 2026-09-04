@@ -350,6 +350,7 @@ export function generateDailyLevel(date: string): LevelDef {
     id: `daily-${date}`,
     players: 1,
     mpMode: 'any',
+    marks: 3, // Solo ungenutzt (M89): Bojen gibt es nur zu zweit
     name: 'Tages-Challenge',
     intro: `${p.label}. Ein Level für alle, jeden Tag ein neues – dein erster Zieleinlauf zählt als Tageswert.`,
     pingBudget: p.pings,

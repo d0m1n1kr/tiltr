@@ -3,6 +3,8 @@ import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup,
 import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { buddySound, smoothSpeed } from './core/buddy';
+import { FEATURES, canDo, needsFor } from './core/features';
+import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Mark } from './core/marks';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
 import { brittleBreakable } from './core/brittle';
@@ -99,6 +101,7 @@ const calibrateBtn = $('calibrateBtn');
 const debugBtn = $('debugBtn');
 const homeBtn = $('homeBtn');
 const swapBtn = $('swapBtn') as HTMLButtonElement;
+const markBtn = $('markBtn') as HTMLButtonElement;
 const interstitial = $('interstitial');
 const interTitle = $('interTitle');
 const interText = $('interText');
@@ -1117,6 +1120,7 @@ function launch(def: LevelDef): void {
   rivalAhead = null;
   audio.setRival(0, 0, 0);
   audio.setBuddy(0, 0, 0, 0);
+  marks = []; // Wegmarken (M89) gehören dem LAUF, nicht dem Level
   pingMax = loaded.pingBudget;
   pings = pingMax;
   pingsUsed = 0;
@@ -1169,6 +1173,7 @@ function launch(def: LevelDef): void {
   homeBtn.classList.toggle('hidden', editorPreview);
   swapBtn.classList.toggle('hidden', mpTest === null);
   updateSwapChip();
+  updateMarkChip();
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   if (mpTest) flash(t('st.mpTestStart', { n: mpTest.active + 1 }), 3000);
   input.calibrate();
@@ -1694,8 +1699,44 @@ window.addEventListener('keydown', (e) => {
   if (e.key === ' ' && !e.repeat) firePing(performance.now());
   // „p" wie player: Spieler wechseln im MP-Testmodus (Desktop-Testen).
   if ((e.key === 'p' || e.key === 'P') && !e.repeat) mpTestSwap();
+  // „m" wie Marke: Wegmarke legen/aufnehmen (Desktop-Testen).
+  if ((e.key === 'm' || e.key === 'M') && !e.repeat) placeMark();
 });
 swapBtn.addEventListener('click', mpTestSwap);
+markBtn.addEventListener('click', placeMark);
+
+/* --- Wegmarken (M89) -------------------------------------------------------
+   Klangbojen, die BEIDE Spieler hören: Der Sehende auf der hellen Ebene
+   markiert dem Blinden den Weg um die Löcher, und man kann sich an einer
+   Marke verabreden. Der Vorrat steht im LEVEL (`marks`), gilt je Spieler und
+   lebt nur im Lauf – nichts davon wird gespeichert oder geteilt.
+   NUR im echten Netz: Im MP-Testmodus wäre „meine" und „seine" Boje dieselbe
+   Hand, und im Solo hört sie niemand außer dir. */
+let marks: Mark[] = [];
+const markMax = (): number => (mp && mp.phase === 'playing' ? (loaded?.def.marks ?? 0) : 0);
+
+function updateMarkChip(): void {
+  const max = markMax();
+  markBtn.classList.toggle('hidden', max === 0 || state !== 'playing');
+  markBtn.textContent = `\u{1F4CD}${max - ownCount(marks)}`;
+}
+
+function placeMark(): void {
+  if (!world || !loaded || state !== 'playing') return;
+  const max = markMax();
+  if (max === 0) return;
+  const r = toggleMark(marks, activeFloor, world.ball.x, world.ball.y, max);
+  if (r.action === 'full') {
+    flash(t('hud.markEmpty'));
+    return;
+  }
+  marks = r.list;
+  updateMarkChip();
+  audio.markSet(r.action === 'placed');
+  haptics.checkpoint();
+  flash(t(r.action === 'placed' ? 'st.markSet' : 'st.markTook'));
+  mp?.transport.send('mark', { f: activeFloor, x: r.spot.x, y: r.spot.y, on: r.action === 'placed' });
+}
 
 // Nähe + Richtung zu einem Rechteck (für den Windzonen-Sound).
 function zoneProximity(z: WindZone, b: Ball): { dist: number; dx: number; dy: number } {
@@ -2140,7 +2181,12 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
       if (mp.host && mp.level) {
         // Werkstatt-Level (M57): die komplette Def reist mit – der Gast hat sie
         // nicht. Alte Clients ignorieren das Feld und finden die ID nicht.
-        mp.transport.send('setup', { mode: mp.mode, levelId: mp.level.id, def: mp.custom ? mp.level : undefined });
+        mp.transport.send('setup', {
+          mode: mp.mode,
+          levelId: mp.level.id,
+          def: mp.custom ? mp.level : undefined,
+          needs: needsFor(mp.level.marks),
+        });
         $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
       } else {
@@ -2168,7 +2214,13 @@ function mpPeerLeft(): void {
 function mpOnMessage(type: string, payload: unknown): void {
   if (!mp) return;
   if (type === 'setup') {
-    const p = payload as { mode: MpMode; levelId: string; def?: unknown };
+    const p = payload as { mode: MpMode; levelId: string; def?: unknown; needs?: string[] };
+    // Verlangt das Level etwas, das diese Version nicht kennt, ist die Antwort
+    // ein klarer Satz in der Lobby – nicht ein stilles Spiel mit halben Regeln.
+    if (!canDo(p.needs, FEATURES)) {
+      $('mpLobbyStatus').textContent = t('mp.needsUpdate');
+      return;
+    }
     let level: LevelDef | null = null;
     if (p.def !== undefined) {
       // Werkstatt-Level des Hosts (M57): Schema UND Pflicht-Badges prüfen –
@@ -2195,6 +2247,11 @@ function mpOnMessage(type: string, payload: unknown): void {
     mp.level = level;
     mpShowIntro();
   } else if (type === 'ready') {
+    const p = payload as { features?: string[] } | null;
+    if (mp.host && mp.level && !canDo(needsFor(mp.level.marks), p?.features)) {
+      $('mpLobbyStatus').textContent = t('mp.needsUpdate');
+      return;
+    }
     mp.peerReady = true;
     mpMaybeStart();
   } else if (type === 'state') {
@@ -2246,6 +2303,12 @@ function mpOnMessage(type: string, payload: unknown): void {
     // deshalb hier nur die Meldung – und nur, wenn er sich wirklich bewegt.
     const p = payload as { f: number; i: number; d: [number, number] };
     if (loaded?.floors[p.f]?.world.pushBoulderAt(p.i, p.d)) flash(t('mp.partnerBoulder'));
+  } else if (type === 'mark') {
+    // Wegmarke des Partners (M89): Sie liegt bei BEIDEN – das ist der Sinn.
+    // Sein Vorrat ist seine Sache; hier wird nur gesetzt oder weggenommen.
+    const p = payload as { f: number; x: number; y: number; on: boolean };
+    marks = applyPartnerMark(marks, p.f, p.x, p.y, p.on);
+    if (p.on) flash(t('mp.partnerMark'));
   } else if (type === 'bell') {
     // Coop UND Race (M83): Die Glocke ist Ablenkung, keine Progression – sie
     // wirkt in beiden Modi, wie die Platten. Gehört wird sie aus ihrer
@@ -2285,7 +2348,7 @@ function mpShowIntro(): void {
           if (!mp) return;
           await ensureSensors();
           mp.selfReady = true;
-          mp.transport.send('ready', null);
+          mp.transport.send('ready', { features: FEATURES });
           if (!mpMaybeStart()) {
             showInterstitial({ title: t('mp.readyTitle'), text: t('mp.waitPartner') });
           }
@@ -3329,6 +3392,21 @@ function frame(now: number): void {
     audio.setBuddy(0, 0, 0, 0);
   }
   (window as unknown as { __tiltrBuddy?: unknown }).__tiltrBuddy = buddyHeard;
+  (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {
+    left: markMax() - ownCount(marks),
+    max: markMax(),
+    mine: marks.filter((m) => m.mine),
+    theirs: marks.filter((m) => !m.mine),
+  };
+
+  // Wegmarken (M89): Es tickt immer nur die NÄCHSTE auf DIESER Ebene – ein
+  // Bus, eine Richtung, wie beim Automaten. Eine Schallschutzwand dazwischen
+  // dämpft sie wie jede Quelle (shield), der Nebel am Master von selbst.
+  const floorMarks = marks.filter((m) => m.floor === activeFloor);
+  if (state === 'playing') {
+    const near = nearestMark(marks, activeFloor, world.ball.x, world.ball.y);
+    if (near) audio.markTick(near.dx, near.dy, Math.min(1, near.dist / MARK_HEAR / shield(near.dx, near.dy)));
+  }
 
   // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
   const ghostPos = ghost && state === 'playing' ? sampleGhost(ghost, (now - t0) / 1000) : null;
@@ -3360,6 +3438,7 @@ function frame(now: number): void {
     ...lightOpts(now),
     now,
     buddy,
+    marks: floorMarks,
     ghost: ghostOpt,
     goalDone: mp?.localFinished === true,
     heading: fpOn() ? fpState.heading : 0,

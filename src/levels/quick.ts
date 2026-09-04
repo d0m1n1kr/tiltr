@@ -277,6 +277,7 @@ export function generateQuickLevel(seed: number, preset: Preset = 'normal'): Lev
     id: `quick-${preset}-${seed}`,
     players: 1,
     mpMode: 'any',
+    marks: 3, // Solo ungenutzt (M89): Bojen gibt es nur zu zweit
     name: 'Schnelles Spiel',
     pingBudget: p.pings,
     floors,

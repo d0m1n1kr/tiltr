@@ -127,6 +127,7 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 
 | Token | Größe | Verwendung |
 |---|---|---|
+| `mark` | `#f0f4eb` (Kreide) | Wegmarke (M89): eigene durchgezogen, fremde gestrichelt – gehört den Spielern, nicht der Welt |
 | `--fs-display` | 42 px, bold, `letter-spacing: 3px`, Gradient-Text | Logo/Titel |
 | `--fs-h2` | 20 px, 600 | Screen-Überschriften |
 | `--fs-body` | 15 px, `line-height: 1.5` | Fließtext (Overlay) |

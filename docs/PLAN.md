@@ -617,8 +617,8 @@ Level einen haben.
 Vier Milestones, in dieser Reihenfolge – jeder ein eigenes Release mit grüner
 Suite. Reihenfolge nach Fundament: Solange der Partner akustisch nicht
 existiert, ist jedes weitere Coop-Element eine Aufgabe, die man sich per
-Sprachkanal zuruft, und nicht Teil des Spiels. M88 ist GEBAUT (v3.22.0, eigener
-Abschnitt weiter unten); offen sind M89–M91.
+Sprachkanal zuruft, und nicht Teil des Spiels. M88 und M89 sind GEBAUT (v3.22.0/v3.23.0, eigene
+Abschnitte weiter unten); offen sind M90 und M91.
 
 AUSGANGSBEFUND (gemessen im Code, nicht erinnert): Das Protokoll kennt
 `setup`, `ready`, `state` (Position, alle 80 ms), `plate`, `key`, `switch`,
@@ -635,40 +635,6 @@ und sagt sonst in der Lobby „Der Partner braucht eine neuere Version"
 (`mp.needsUpdate`) statt still anders zu spielen. Ein unbekanntes ELEMENT
 fängt schon heute `parseLevel` im `setup`-Empfang ab (→ `mp.badLevel`); die
 Lücke sind nur die Regel-Flags.
-
-### M89 „Wegmarken" (v3.23.0) – 1c
-
-Die ANZAHL steht im Level und ist im Editor einstellbar (`marks`, Vorgabe 3,
-0…9; 0 = dieses Level kennt keine Bojen). Das hat eine schöne Nebenwirkung:
-Das Merkmals-Gate aus dem Fundament wird PRO LEVEL statt pauschal – `setup`
-trägt `needs: ['marks']` nur, wenn das Level Bojen erlaubt, und ein Level ohne
-Bojen spielt weiter mit einer alten Gegenstelle. Deshalb kommt `setup.needs`
-schon hier statt erst in M90.
-
-Jeder trägt so viele Klangbojen, wie das Level erlaubt. Abgelegt sendet die Zelle einen weichen, langsamen
-Holz-Tick (~1,2 s), gepannt, bei BEIDEN Spielern – der Sehende auf der hellen
-Ebene markiert dem Blinden den Weg um die Löcher. Das ist das erste Werkzeug,
-mit dem ein Spieler dem anderen etwas ÜBER DIE WELT sagen kann, ohne zu reden.
-
-- `src/levels/schema.ts`: `marks?: number` (Level-Ebene, Vorgabe 3, 0…9),
-  Editor-Feld neben dem Ping-Budget – nur bei zwei Spielern, wie `mpMode`.
-- `src/core/marks.ts` (rein, Units): `placeMark(list, mark, max)` /
-  `takeMark(list, floor, cell, owner)`; Regel: Der HUD-Knopf legt ab, wenn in
-  dieser Zelle keine EIGENE Boje liegt, sonst nimmt er sie zurück (Budget
-  kommt wieder). Fremde Bojen kann man nicht einsammeln.
-- Protokoll: neue Nachricht `mark` ({ f, x, y, on }) – wie `plate` ein
-  Zustandswechsel, keine Position pro Frame.
-- HUD: Chip „📍 3" + Knopf in `#hudButtons`, nur im MP sichtbar.
-- Renderer: kleiner Ring, EIGENE Boje durchgezogen, FREMDE gestrichelt (wie
-  die Landeplätze im Editor – gestrichelt heißt „nicht von mir"). Neue
-  Palette-Farbe `mark` (DESIGN.md-Regel: neues gezeichnetes Ding = Weltfarbe).
-- Klang: eigene Signatur, unverwechselbar gegen Glocke (Metall), Platte
-  (Klick) und Ping. Absorb/Nebel-Regeln wie bei allen Quellen; nur auf
-  derselben Ebene hörbar.
-- Beweis: unberührt.
-- Test-Haken `__tiltrMarks`; E2E Lauf 46 (Host+Gast): ablegen → der andere
-  hört und sieht sie, Budget 3→2, zurücknehmen → 2→3, vier Bojen unmöglich.
-- i18n ×4: `hud.mark`, `mp.partnerMark`, `hud.markEmpty`.
 
 ### M90 „Gemeinsam ankommen" (v3.24.0) – 2a
 
@@ -776,6 +742,61 @@ BFS-Land. Ein Seil zwischen den Bällen bleibt draußen: jeder Spieler hat seine
 EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
+
+## M89 „Wegmarken" ✓ (v3.23.0)
+
+Zweiter Baustein des Coop-Ausbaus und das erste Werkzeug, mit dem ein Spieler
+dem anderen etwas ÜBER DIE WELT sagt, ohne zu reden: eine Klangboje, die BEIDE
+hören. Der Sehende auf einer hellen Ebene markiert dem Blinden den Weg um die
+Löcher; man kann sich an einer Marke verabreden („warte bei meiner zweiten").
+
+DER VORRAT STEHT IM LEVEL (`marks`, Vorgabe 3, 0…9) – auf Wunsch des Autors im
+Editor einstellbar, Feld nur bei zwei Spielern. Das ist keine Einstellung,
+sondern eine Bau-Entscheidung: Drei Marken zwingen zur Sparsamkeit, null heißt
+„dieses Level kennt sie nicht" (dann ist auch der HUD-Knopf weg). Und es hat
+eine schöne Nebenwirkung für die Verträglichkeit – siehe unten.
+
+Eine Boje sitzt in der ZELLMITTE (`markSpot`), nicht dort, wo die Kugel gerade
+rollte: Sie ist ein Wegzeichen, kein Schnappschuss. Daraus folgt die Regel
+fürs Aufnehmen – „liegt hier schon eine von MIR?" ist ein Vergleich von
+Zellmitten, kein Abstand mit Toleranz: `toggleMark` legt ab oder nimmt zurück
+(Vorrat steigt wieder), FREMDE Bojen bleiben liegen. Wer eine Marke setzt,
+will sie wiederfinden und nicht vom Partner weggeräumt bekommen.
+
+Klang ist der Hauptkanal: weicher Holz-Tick (`audio.markTick`, 430 → 300 Hz,
+Takt schneller je näher), bewusst kein Glockenton (die Glocke lockt Horcher)
+und kein Ping-Klang (der Ping ist ein Ereignis, die Boje ein Ort). Es tickt
+immer nur die NÄCHSTE auf dieser Ebene – ein Bus, eine Richtung, wie beim
+Automaten. Abschirmung und Nebel gelten wie für jede Quelle. Im Bild ein
+Kreide-Ring (`WORLD.mark`, farblos gegen alles andere: die Boje gehört den
+Spielern, nicht der Welt), eigene durchgezogen, fremde gestrichelt – dieselbe
+Sprache wie die Landeplätze im Editor.
+
+MERKMALS-GATE (`src/core/features.ts`, rein): Neue Felder in einer Nachricht
+sind additiv, eine alte Gegenstelle ignoriert sie. Bei einem SPIELMITTEL ist
+das nicht harmlos – ein Level mit Bojen, das nur EINE Seite legen kann, ist
+ungleich, und ein Sieg nach halben Regeln ist keiner. Der Host hängt deshalb an
+`setup`, was das LEVEL braucht, der Gast an `ready`, was er KANN; beide prüfen,
+also fällt es auf, egal welche Seite die ältere ist („Der Partner braucht eine
+neuere Version"). Das Gate hängt am LEVEL, nicht an der Versionsnummer: Ein
+Level ohne Bojen spielt weiter mit jeder Fassung – genau die Nebenwirkung der
+einstellbaren Anzahl.
+
+Units: tests/marks.test.ts (12) und tests/features.test.ts (5). E2E Lauf 46
+(Host + Gast, in der AFFINITY-Gruppe der Zwei-Seiten-Läufe): Editor-Feld nur
+bei zwei Spielern, Knopf zeigt den Vorrat, Legen rastet auf die Zellmitte und
+kommt beim Partner an, Aufnehmen nimmt es dort weg, fremde Boje bleibt liegen,
+Vorrat ist endlich. Sabotage-Probe: „fremde mit wegräumen" fällt in Unit UND
+E2E, „Nachricht nicht senden" nur im E2E – beide einmal rot gesehen.
+
+DREI IRRWEGE BEIM LAUF, alle im Lauf dokumentiert: Der dritte Tap landete
+erst auf DERSELBEN Zelle wie die zweite Boje (dort nimmt er sie korrekt auf,
+statt „Vorrat leer" zu melden), die Statuszeile trug noch die Meldung des
+zweiten Taps (der Frame räumt sie erst nach der Flash-Dauer), und die Kugel
+PRALLTE von der Wand zurück (y 273 → wieder 153), weil ich die Taste im Flug
+losließ und mir dafür einen eigenen Helfer gebaut hatte – die Lektion stand
+längst in CLAUDE.md, und `holdUntil` (hält, bis die Bedingung gilt UND der
+Ball ruht) konnte es die ganze Zeit.
 
 ## M88 „Der Partner klingt" ✓ (v3.22.0)
 

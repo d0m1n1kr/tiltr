@@ -110,6 +110,7 @@ export class GameAudio {
   private nextPing = 0;
   private nextBeat = 0;
   private nextTinkle = 0;
+  private nextMarkTick = 0;
   private nextTock = 0;
   private tockHigh = false;
 
@@ -1023,6 +1024,54 @@ export class GameAudio {
       osc.connect(gain).connect(out);
       osc.start(t0);
       osc.stop(t0 + 0.12);
+    });
+  }
+
+  /** Wegmarke (M89): weicher Holz-Tick aus ihrer Richtung, Takt wird schneller,
+   *  je näher man ist – wie das Schlüssel-Klimpern, aber dumpf und ohne Metall.
+   *  Bewusst KEIN Glockenton (die Glocke lockt Horcher) und kein Ping-Teal-
+   *  Klang (der Ping ist ein Ereignis, die Boje ein Ort). Es tickt immer nur
+   *  die NÄCHSTE – ein Bus, eine Richtung, wie beim Automaten. */
+  markTick(dx: number, dy: number, dist01: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (t < this.nextMarkTick) return;
+    this.nextMarkTick = t + 0.6 + dist01 * 1.4;
+    const out = this.spatialOut(dx, dy);
+    // Holz: kurzer Dreieck-Anschlag mit schnellem Abfall, tief genug, um nicht
+    // mit dem Schlüssel (1760 Hz) verwechselt zu werden.
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(430, t);
+    osc.frequency.exponentialRampToValueAtTime(300, t + 0.06);
+    const gain = this.ctx.createGain();
+    const g = 0.03 + (1 - dist01) * 0.1;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(g, t + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.connect(gain).connect(out);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  }
+
+  /** Quittung am eigenen Ball (ungepannt – sie kommt von mir, nicht aus der
+   *  Welt): abgelegt = zwei Töne aufwärts, aufgenommen = abwärts. */
+  markSet(placed: boolean): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const notes = placed ? [430, 645] : [645, 430];
+    notes.forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const gain = this.ctx!.createGain();
+      const t0 = t + i * 0.07;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.12, t0 + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+      osc.connect(gain).connect(this.master);
+      osc.start(t0);
+      osc.stop(t0 + 0.16);
     });
   }
 

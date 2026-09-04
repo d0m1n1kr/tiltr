@@ -2211,6 +2211,15 @@ export function setupEditor(opts: {
       field(t('ed.par'), numInput(Number(draft.parTimeS ?? 60), 10, 900, 5, (v) => (draft!.parTimeS = v))),
       field(t('ed.pings'), numInput(Number(draft.pingBudget ?? 3), 0, 9, 1, (v) => (draft!.pingBudget = v))),
     );
+    // Wegmarken (M89): Vorrat je Spieler – nur bei ZWEI Spielern, denn allein
+    // hört die Boje niemand außer dir. 0 heißt: Dieses Level kennt sie nicht,
+    // dann verschwindet auch der HUD-Knopf. Ein Level ohne Bojen spielt
+    // außerdem mit jeder älteren Gegenstelle (Merkmals-Gate am LEVEL).
+    if (twoPlayers()) {
+      const marksInput = numInput(Number(draft.marks ?? 3), 0, 9, 1, (v) => (draft!.marks = v));
+      marksInput.id = 'edMarks';
+      propsEl.append(field(t('ed.marks'), marksInput));
+    }
 
     // Zwei Spieler (M57): Ein Zwei-Spieler-Level ist NUR zu zweit spielbar
     // (Werkstatt: „Zu zweit" statt „Spielen"); zurück auf einen Spieler räumt

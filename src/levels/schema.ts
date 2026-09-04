@@ -415,6 +415,10 @@ export const levelSchema = z.object({
   /** Spielerzahl (M57): 2 = Multiplayer-Level aus dem Editor – nur zu zweit
    *  spielbar, mit optionalem zweiten Start/Ziel (floor.start2/goal2). */
   players: z.union([z.literal(1), z.literal(2)]).default(1),
+  /** Wegmarken je Spieler (M89): Klangbojen, die BEIDE hören – 0 heißt, dieses
+   *  Level kennt sie nicht. Eine Bau-Entscheidung, keine Einstellung: Wer drei
+   *  Marken hat, muss sparsam sein; wer null hat, verlässt sich auf Absprachen. */
+  marks: z.number().int().min(0).max(9).default(3),
   /** Nur bei zwei Spielern: fester Modus oder 'any' (die Lobby wählt). */
   mpMode: z.enum(['coop', 'race', 'any']).default('any'),
   /**
