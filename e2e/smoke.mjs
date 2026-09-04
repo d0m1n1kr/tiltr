@@ -8349,11 +8349,12 @@ if (want("47")) {
 
 // --- Lauf 48: Duett (M91). Ein Tor, das nur ein DUETT öffnet: Zwei
 // Resonanzfelder halten die Kugeln wie Schalen, und die NEIGUNGSRICHTUNG
-// stimmt den Ton (oben Grundton, unten Quinte). Das Tor geht auf, wenn beide
-// Töne im Intervall stehen und dort einen Augenblick bleiben – und ZU, sobald
-// einer verstimmt. Geprüft im MP-Testmodus (Muster Lauf 40/42): Der Ton der
-// ruhenden Seite BLEIBT stehen, sonst wäre ein Duett allein nicht testbar.
-// Beide Starts liegen auf ihrem Feld – gestimmt wird, nicht gerollt. ---
+// stimmt den Ton. Der Ton ist ZUSTAND, kein Abbild der Neigung – Loslassen
+// hält ihn (`tuneStep`), und genau daran hängt der Spielerwechsel im
+// MP-Testmodus: Wer 👥 antippt, hält das Gerät dabei fast flach. Beide Starts
+// liegen auf ihrem Feld – gestimmt wird, nicht gerollt. Fixture mit EINKLANG
+// (die Quinte rechnen die Units), Tür ohne „bleibt offen", damit ein
+// verstimmter Ton das Tor wieder schließt. ---
 if (want("48")) {
   try {
     const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
@@ -8373,11 +8374,9 @@ if (want("48")) {
           size: [5, 3],
           maze: { seed: 3, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
           elements: [
-            // Die Tür fällt bewusst wieder ZU (kein „bleibt offen"): Nur so
-            // ist zu sehen, dass ein verstimmter Ton das Tor wieder schließt.
             { type: "door", id: "gz", edge: [[3, 2], "e"], require: "all" },
-            { type: "plate", cell: [0, 0], opens: "gz", tune: "fifth" },
-            { type: "plate", cell: [0, 2], opens: "gz", tune: "fifth" },
+            { type: "plate", cell: [0, 0], opens: "gz", tune: "unison" },
+            { type: "plate", cell: [0, 2], opens: "gz", tune: "unison" },
           ],
           start: [0, 0],
           goal: [4, 0],
@@ -8418,7 +8417,7 @@ if (want("48")) {
     const tuneValue = (await tuneSel.count()) === 1 ? await tuneSel.inputValue() : null;
     check(
       `Editor: das Klang-Tor ist eine EIGENSCHAFT der Platte (Feld: ${await tuneSel.count()}, Wert: ${tuneValue})`,
-      tuneValue === "fifth",
+      tuneValue === "unison",
     );
     await page.click("#edTest");
     await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
@@ -8434,7 +8433,7 @@ if (want("48")) {
         player: window.__tiltrMpTest?.player,
       }));
 
-    // Ohne Neigung klingt der Grundton – und der Partner hat noch keinen Ton
+    // Beim Betreten klingt der Grundton – und der Partner hat noch keinen Ton
     // gemeldet (er war noch nicht am Zug). Allein geht das Tor NIE auf.
     const alone = await until(async () => {
       const r = await read();
@@ -8445,56 +8444,80 @@ if (want("48")) {
       alone?.res?.mine === 0 && alone?.res?.theirs === null && alone?.res?.open === false && alone?.doors.length === 0,
     );
 
-    // 👥 wechselt die Seite: Der Ton von Spieler 1 BLEIBT stehen (seine Kugel
-    // liegt in ihrer Schale) – genau das macht das Duett im Editor spielbar.
+    // Nach OSTEN neigen ist die Mitte (351 Cent) – und der Ton BLEIBT dort
+    // stehen, wenn man loslässt: ein Stimmknopf springt nicht zurück.
+    await page.keyboard.down("ArrowRight");
+    const tuning = await until(async () => {
+      const r = await read();
+      return r.res?.mine > 300 && r.res.mine < 400 ? r : null;
+    }, { timeout: 8000 });
+    await page.keyboard.up("ArrowRight");
+    const released = await until(async () => {
+      const r = await read();
+      return r.res && (await settled(page)) ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Loslassen hält den Ton (gestimmt ${tuning?.res?.mine} → nach dem Loslassen ${released?.res?.mine})`,
+      tuning !== null && released?.res?.mine > 300 && released.res.mine < 400,
+    );
+
+    // 👥 wechselt die Seite: Der Ton der abgegebenen Seite bleibt stehen (ihre
+    // Kugel liegt in ihrer Schale) – genau das macht das Duett im Editor
+    // spielbar, und ohne die Regel fiel er beim Antippen auf den Grundton.
     await page.keyboard.press("p");
     await until(async () => (await page.evaluate(() => window.__tiltrMpTest?.player)) === 2, { timeout: 8000 });
-    const frozen = await until(async () => {
+    const swapped = await until(async () => {
       const r = await read();
       return r.res && r.res.theirs !== null ? r : null;
     }, { timeout: 8000 });
     check(
-      `Der Ton der ruhenden Seite bleibt stehen (${JSON.stringify(frozen?.res)})`,
-      frozen?.res?.theirs === 0 && frozen?.res?.mine === 0,
+      `Der Spielerwechsel hält den Ton der ruhenden Seite (${JSON.stringify(swapped?.res)})`,
+      swapped?.res?.theirs > 300 && swapped.res.theirs < 400 && swapped.res.mine === 0,
     );
     // Diese Zusicherung braucht als einzige eine WARTEZEIT: „bleibt zu" ist
     // kein Zustandswechsel, auf den man warten kann. Gewartet wird deutlich
-    // länger als die Haltezeit (250 ms) – wäre der Einklang fälschlich im
-    // Intervall, stünde das Tor jetzt offen (genau das zeigte die Sabotage).
+    // länger als die Haltezeit (250 ms) – Grundton gegen Mitte ist kein
+    // Einklang, also darf das Tor auch danach nicht offen stehen.
     await page.waitForTimeout(800);
     const stillShut = await read();
     check(
-      `Einklang statt Quinte: das Tor bleibt zu (${JSON.stringify({ ...stillShut.res, doors: stillShut.doors })})`,
+      `Zwei verschiedene Töne: das Tor bleibt zu (${JSON.stringify({ ...stillShut.res, doors: stillShut.doors })})`,
       stillShut.res?.open === false && stillShut.doors.length === 0,
     );
 
-    // Nach UNTEN neigen ist die Quinte: 0 gegen 702 Cent – nach der Haltezeit
+    // Dieselbe Neigung wie der Partner ist der EINKLANG – nach der Haltezeit
     // schwingt das Tor auf, und BEIDE Felder gelten als gehalten.
-    await page.keyboard.down("ArrowDown");
+    await page.keyboard.down("ArrowRight");
     const tuned = await until(async () => {
       const r = await read();
       return r.res?.open === true ? r : null;
     }, { timeout: 8000 });
-    await page.keyboard.up("ArrowDown");
+    await page.keyboard.up("ArrowRight");
     check(
-      `Quinte gestimmt: das Tor schwingt auf (${JSON.stringify({ ...tuned?.res, doors: tuned?.doors, held: tuned?.held })})`,
+      `Einklang gestimmt: das Tor schwingt auf (${JSON.stringify({ ...tuned?.res, doors: tuned?.doors, held: tuned?.held })})`,
       tuned !== null &&
-        tuned.res.mine > 650 &&
-        tuned.res.theirs === 0 &&
+        tuned.res.mine > 300 &&
+        tuned.res.mine < 400 &&
+        tuned.res.theirs > 300 &&
+        tuned.res.theirs < 400 &&
         tuned.res.aim === 1 &&
         tuned.doors.includes("gz") &&
         tuned.held.length === 2,
     );
 
-    // Taste los: Die Schale zieht die Kugel zurück, der Ton fällt auf den
-    // Grundton – dann stehen beide im EINKLANG, und das ist nicht die Quinte.
+    // Verstimmen: nach NORDEN neigen ist der Grundton – kein Einklang mehr,
+    // und weil diese Tür nicht „offen bleibt", fällt sie wieder zu.
+    await page.keyboard.down("ArrowUp");
     const closed = await until(async () => {
       const r = await read();
       return r.res?.open === false && r.doors.length === 0 ? r : null;
     }, { timeout: 8000 });
+    await page.keyboard.up("ArrowUp");
     check(
-      `Verstimmt (Ton weg oder Einklang): das Tor fällt wieder zu (${JSON.stringify({ ...closed?.res, doors: closed?.doors })})`,
-      closed !== null,
+      `Verstimmt: das Tor fällt wieder zu (${JSON.stringify({ ...closed?.res, doors: closed?.doors })})`,
+      // Nicht „der Ton ist unten angekommen" prüfen: Das Tor fällt schon zu,
+      // sobald der Abstand über der Toleranz liegt – DAS ist die Aussage.
+      closed !== null && Math.abs(closed.res.mine - closed.res.theirs) > 25,
     );
     await page.close();
     await ctx.close();

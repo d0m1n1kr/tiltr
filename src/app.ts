@@ -5,14 +5,7 @@ import { CELL } from './core/constants';
 import { buddySound, smoothSpeed } from './core/buddy';
 import { FEATURES, canDo, needsFor } from './core/features';
 import { partnerWaiting, togetherWin } from './core/together';
-import {
-  centsToHz,
-  holdTuned,
-  inTune,
-  pitchFromTilt,
-  tuneAim,
-  type Interval,
-} from './core/resonance';
+import { centsToHz, holdTuned, inTune, tuneAim, tuneStep, type Interval } from './core/resonance';
 import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Mark } from './core/marks';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
@@ -1151,6 +1144,7 @@ function launch(def: LevelDef): void {
   marks = []; // Wegmarken (M89) gehören dem LAUF, nicht dem Level
   // Duett (M91): Töne und Halte-Uhr gehören ebenfalls dem LAUF.
   duet = DUET_NONE;
+  duetTone = null;
   duetSince = null;
   duetPartnerTone = null;
   duetPartnerAt = 0;
@@ -2480,6 +2474,11 @@ const DUET_NONE: DuetState = { mine: null, theirs: null, interval: null, aim: 0,
  *  (dann meldet die nächste Nachricht `tn: null`). */
 const TONE_FRESH_MS = 700;
 let duet: DuetState = DUET_NONE;
+/** Mein eigener Ton (Cent) – ZUSTAND, nicht Abbild der Neigung: Er bleibt
+ *  stehen, solange die Kugel im Feld liegt (`tuneStep`). Im Testmodus wohnt
+ *  derselbe Wert je Seite in `TestSide.tone`, damit er den Spielerwechsel
+ *  überlebt. */
+let duetTone: number | null = null;
 let duetSince: number | null = null;
 let duetPartnerTone: number | null = null;
 let duetPartnerAt = 0;
@@ -2489,10 +2488,14 @@ function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
   const fields = loaded.floors.flatMap((f, fl) => f.world.plates.filter((p) => p.tune).map((pl) => ({ pl, fl })));
   if (fields.length === 0) return DUET_NONE;
   const myPlate = world.platesUnderBall().find((p) => p.tune) ?? null;
-  const mine = myPlate ? pitchFromTilt(tilt.x, tilt.y).cents : null;
-  // Im Testmodus BLEIBT der Ton der ruhenden Seite stehen (ihre Kugel liegt in
-  // der Schale) – deshalb wird er hier je Seite gespeichert, nicht gerechnet.
-  if (mpTest) mpTest.sides[mpTest.active]!.tone = mine;
+  // Der Ton wird FORTGESCHRIEBEN (tuneStep): Neigen dreht ihn, Loslassen hält
+  // ihn, das Feld verlassen macht ihn stumm. Im Testmodus liegt derselbe Wert
+  // je SEITE – dadurch überlebt er den Spielerwechsel, ohne dass es dafür eine
+  // eigene Regel bräuchte (wer 👥 antippt, hält das Gerät fast flach).
+  const side = mpTest ? mpTest.sides[mpTest.active]! : null;
+  const mine = tuneStep(side ? side.tone : duetTone, myPlate !== null, tilt.x, tilt.y);
+  if (side) side.tone = mine;
+  else duetTone = mine;
   const fresh = duetPartnerAt > 0 && now - duetPartnerAt < TONE_FRESH_MS;
   const theirs = mpTest ? mpTestOther().tone : mp && fresh ? duetPartnerTone : null;
   // Sein Feld: das Resonanzfeld, das seiner Kugel am nächsten liegt – dort

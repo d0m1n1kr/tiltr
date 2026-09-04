@@ -775,9 +775,17 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   der PARTNER darf halten. Und eine 'all'-Tür mit zwei Feldern braucht
   „bleibt offen", sonst hat niemand mehr einen Fuß frei – das meldet
   `holdDetail` von selbst (M76/M77), der Beweis erzieht den Bauplan.
-  MP-Testmodus: Der Ton der RUHENDEN Seite bleibt stehen (`TestSide.tone`) –
-  ihre Kugel liegt in der Schale, also klingt sie weiter; ohne diese Regel
-  wäre ein Duett im Editor nicht testbar. Eingebautes Level: coop-08 „Duett".
+  DER TON IST ZUSTAND, kein Abbild der Neigung (v3.25.1, `tuneStep`): Solange
+  die Kugel im Feld liegt, BLEIBT der Ton stehen – erst eine echte Neigung
+  (über der Deadzone) dreht ihn weiter, das Feld verlassen macht ihn stumm,
+  Betreten beginnt beim Grundton. Ein Stimmknopf springt nicht zurück, wenn man
+  die Hand wegnimmt. Die erste Fassung war eine reine Abbildung, und daran
+  scheiterte der SPIELERWECHSEL im MP-Testmodus: Wer 👥 antippt (oder auf dem
+  Phone zum Knopf greift), hält das Gerät fast flach – gehalten wurde also der
+  Grundton statt des gestimmten Tons. Mit der Zustands-Regel folgt der
+  Spielerwechsel gratis (`TestSide.tone` je Seite, `duetTone` im echten Netz),
+  und im Netz entspannt dieselbe Regel das Stimmen: Man darf das Gerät ruhig
+  legen. Eingebautes Level: coop-08 „Duett".
   `window.__tiltrResonance` (E2E Lauf 48).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene

@@ -12,6 +12,7 @@ import {
   inTune,
   pitchFromTilt,
   tuneAim,
+  tuneStep,
 } from '../src/core/resonance';
 import { levelSchema } from '../src/levels/schema';
 
@@ -35,9 +36,11 @@ describe('pitchFromTilt', () => {
     expect(left).toBeGreaterThan(FIFTH_CENTS - 15);
   });
 
-  it('ohne Neigung klingt der Grundton (Deadzone)', () => {
-    expect(pitchFromTilt(0, 0)).toEqual({ cents: 0, hz: RESONANCE_HZ });
+  it('ohne Neigung klingt der Grundton, und `active` sagt „ich fasse nicht an"', () => {
+    expect(pitchFromTilt(0, 0)).toEqual({ cents: 0, hz: RESONANCE_HZ, active: false });
     expect(pitchFromTilt(0.05, 0.02).cents).toBe(0);
+    expect(pitchFromTilt(0.05, 0.02).active).toBe(false);
+    expect(pitchFromTilt(0, -1).active).toBe(true);
   });
 
   it('Cent rechnen in Hz: die Quinte ist das 1,5-fache', () => {
@@ -115,5 +118,32 @@ describe('Die Schale ist keine Falle', () => {
     });
     expect(anchor.success).toBe(true);
     expect(RESONANCE_FORCE).toBeLessThan(2600);
+  });
+});
+
+describe('tuneStep – der Ton ist Zustand, kein Abbild der Neigung', () => {
+  it('Neigen dreht den Knopf, LOSLASSEN hält ihn', () => {
+    // Betreten: irgendwo muss der Knopf stehen – der Grundton.
+    let tone = tuneStep(null, true, 0, 0);
+    expect(tone).toBe(0);
+    // Nach Osten geneigt: die Mitte.
+    tone = tuneStep(tone, true, 1, 0);
+    expect(tone).toBeCloseTo(FIFTH_CENTS / 2, 5);
+    // Gerät flach hingelegt: der Ton BLEIBT – das ist der Spielerwechsel im
+    // Testmodus (wer 👥 antippt, hält das Gerät fast flach) und im echten
+    // Netz das Recht, die Hand wegzunehmen.
+    const held = tuneStep(tone, true, 0, 0);
+    expect(held).toBeCloseTo(FIFTH_CENTS / 2, 5);
+    expect(tuneStep(held, true, 0.01, -0.01)).toBeCloseTo(FIFTH_CENTS / 2, 5);
+  });
+
+  it('das Feld verlassen macht stumm – und Betreten beginnt wieder beim Grundton', () => {
+    expect(tuneStep(351, false, 1, 0)).toBeNull();
+    expect(tuneStep(null, true, 0, 0)).toBe(0);
+  });
+
+  it('eine echte Neigung überschreibt jeden gehaltenen Wert', () => {
+    expect(tuneStep(351, true, 0, 1)).toBeCloseTo(FIFTH_CENTS, 5);
+    expect(tuneStep(FIFTH_CENTS, true, 0, -1)).toBeCloseTo(0, 5);
   });
 });

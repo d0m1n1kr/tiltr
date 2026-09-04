@@ -718,10 +718,20 @@ Invariante: „jede Coop-Tür hat eine Platte außen UND innen (Selbstbefreiung)
 gilt nur für Türen, die WIEDER ZUFALLEN – eine latchende Tür kann niemanden
 aussperren. Die Invariante prüft jetzt genau das.
 
-Units: tests/resonance.test.ts (12) plus die Gegenproben; E2E Lauf 48 im
-MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, der Ton der ruhenden
-Seite BLEIBT stehen, Einklang öffnet die Quint-Tür nicht, Quinte öffnet sie,
-Verstimmen schließt sie wieder). Die Sabotage-Probe – `inTune` rechnet die
+NACHGESCHÄRFT (v3.25.1, aus dem Spieltest): DER TON IST ZUSTAND, kein Abbild
+der Neigung (`tuneStep`). Die erste Fassung rechnete ihn in jedem Bild aus der
+Neigung – damit fiel er in dem Moment auf den Grundton, in dem man die Hand
+wegnimmt, und genau das ist der Moment des SPIELERWECHSELS im Testmodus (wer 👥
+antippt, hält das Gerät fast flach). Jetzt gilt: Neigen dreht den Knopf,
+Loslassen hält ihn, das Feld verlassen macht stumm, Betreten beginnt beim
+Grundton. Der Spielerwechsel braucht dafür keine eigene Regel mehr, und im
+echten Netz darf man das Gerät ruhig legen – das Stimmen wird deutlich
+entspannter, was der erste Spieltest auch verlangt hat („zu schwierig").
+
+Units: tests/resonance.test.ts (15) plus die Gegenproben; E2E Lauf 48 im
+MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, Loslassen hält den Ton,
+der Spielerwechsel hält ihn auch, zwei verschiedene Töne lassen das Tor zu,
+Einklang öffnet es, Verstimmen schließt es wieder). Die Sabotage-Probe – `inTune` rechnet die
 Quinte als Einklang – hat drei der sechs Zusicherungen rot gemacht,
 darunter die eine, die vorher nur zufällig grün war: „bleibt zu" ist kein
 Zustandswechsel, auf den man warten kann, also wartet sie als EINZIGE im Lauf

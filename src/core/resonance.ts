@@ -59,6 +59,9 @@ export interface Pitch {
   cents: number;
   /** Frequenz in Hz */
   hz: number;
+  /** Wurde WIRKLICH geneigt (über der Deadzone)? Nur dann ist der Wert eine
+   *  Stimm-Absicht – ein fast flaches Gerät sagt „ich fasse gerade nicht an". */
+  active: boolean;
 }
 
 /** Cent in Frequenz über dem Grundton. */
@@ -72,11 +75,31 @@ export const centsToHz = (cents: number, base = RESONANCE_HZ): number => base * 
  */
 export function pitchFromTilt(tx: number, ty: number, deadzone = 0.08): Pitch {
   const len = Math.hypot(tx, ty);
-  if (len < deadzone) return { cents: 0, hz: RESONANCE_HZ };
+  if (len < deadzone) return { cents: 0, hz: RESONANCE_HZ, active: false };
   // Winkel gegen „oben" (Bildschirm-Norden ist -y), Betrag: links wie rechts.
   const a = Math.abs(Math.atan2(tx, -ty));
   const cents = (FIFTH_CENTS * a) / Math.PI;
-  return { cents, hz: centsToHz(cents) };
+  return { cents, hz: centsToHz(cents), active: true };
+}
+
+/**
+ * DER TON IST ZUSTAND, kein Abbild der Neigung: Ein Stimmknopf springt nicht
+ * zurück, wenn man die Hand wegnimmt. Solange die Kugel im Feld liegt, BLEIBT
+ * der Ton stehen – erst eine echte Neigung (über der Deadzone) dreht ihn
+ * weiter, und das Feld zu verlassen macht ihn stumm (null).
+ *
+ * Daraus folgt der Spielerwechsel im MP-Testmodus GRATIS: Wer 👥 antippt, hält
+ * das Gerät dabei fast flach; als reine Abbildung der Neigung fiel der Ton in
+ * genau diesem Moment auf den Grundton, und die abgegebene Seite hielt den
+ * falschen Wert. Und im echten Netz entspannt dieselbe Regel das Stimmen: Man
+ * darf das Gerät ruhig legen, ohne den gefundenen Ton zu verlieren.
+ *
+ * Beim BETRETEN klingt der Grundton (`?? 0`) – irgendwo muss der Knopf stehen.
+ */
+export function tuneStep(tone: number | null, onField: boolean, tx: number, ty: number): number | null {
+  if (!onField) return null;
+  const p = pitchFromTilt(tx, ty);
+  return p.active ? p.cents : (tone ?? 0);
 }
 
 /**
