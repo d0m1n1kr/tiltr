@@ -91,6 +91,13 @@ export class GameAudio {
   private rivalGain!: GainNode;
   private rivalFilter!: BiquadFilterNode;
   private rivalPanner!: PannerNode;
+  private resMineOsc!: OscillatorNode;
+  private resMineGain!: GainNode;
+  private resTheirsOsc!: OscillatorNode;
+  private resTheirsGain!: GainNode;
+  private resTheirsPanner!: PannerNode;
+  private resShimmerOsc!: OscillatorNode;
+  private resShimmerGain!: GainNode;
   private buddyGain!: GainNode;
   private buddyRollGain!: GainNode;
   private buddyFilter!: BiquadFilterNode;
@@ -207,6 +214,41 @@ export class GameAudio {
     this.buddyRollGain.gain.value = 0;
     buddyRoll.connect(this.buddyRollGain).connect(this.buddyFilter);
     buddyRoll.start();
+
+    // RESONANZFELDER (M91): zwei SINUS-Stimmen, denn die Schwebung ist das
+    // Rätsel – ein reiner Ton schwebt sauber, ein obertonreicher rauscht.
+    // Gemischt werden sie NICHT künstlich: Beide laufen in denselben Master,
+    // also entsteht die Schwebung akustisch, so wie zwei echte Gabeln.
+    // Der eigene Ton ist UNGEPANNT (er kommt von mir), der des Partners steht
+    // an SEINEM Feld – so liegt die Schwebung im Raum, nicht im Kopf.
+    const resVoice = (panned: boolean): { osc: OscillatorNode; gain: GainNode; panner?: PannerNode } => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 220;
+      const gain = this.ctx!.createGain();
+      gain.gain.value = 0;
+      if (panned) {
+        const panner = this.panner();
+        osc.connect(gain).connect(panner).connect(this.master);
+        osc.start();
+        return { osc, gain, panner };
+      }
+      osc.connect(gain).connect(this.master);
+      osc.start();
+      return { osc, gain };
+    };
+    const mine = resVoice(false);
+    this.resMineOsc = mine.osc;
+    this.resMineGain = mine.gain;
+    const theirs = resVoice(true);
+    this.resTheirsOsc = theirs.osc;
+    this.resTheirsGain = theirs.gain;
+    this.resTheirsPanner = theirs.panner!;
+    // Schimmer: eine Oktave über dem eigenen Ton, wächst mit der Genauigkeit –
+    // die Belohnung fürs Stimmen, hörbar BEVOR das Tor aufgeht.
+    const shimmer = resVoice(false);
+    this.resShimmerOsc = shimmer.osc;
+    this.resShimmerGain = shimmer.gain;
 
     // Musik-Bus (Jukebox). Zwei getrennte Gains mit Absicht: `musicDuck` ist
     // die Sidechain (der Ping drückt sie kurz herunter), `musicVol` die
@@ -1003,6 +1045,31 @@ export class GameAudio {
     this.buddyRollGain.gain.setTargetAtTime(near <= 0 ? 0 : 0.22 * Math.max(0, Math.min(1, moving01)), t, 0.12);
     this.buddyFilter.frequency.setTargetAtTime(muffled ? 320 : 500 + near * 900, t, 0.2);
     if (near > 0) this.place(this.buddyPanner, dx, dy);
+  }
+
+  /**
+   * DUETT (M91): Die beiden Resonanztöne. `mineHz`/`theirsHz` = null heißt
+   * „steht niemand auf dem Feld" (dann ist die Stimme still). `aim` 0…1 ist die
+   * Genauigkeit – sie fährt den Schimmer eine Oktave über dem eigenen Ton auf,
+   * damit man das Ziel HÖRT, ehe das Tor aufgeht. Die Frequenz gleitet (kein
+   * Sprung): Ein Ton, der springt, klingt kaputt, und die Schwebung braucht
+   * Zeit, um langsamer zu werden.
+   */
+  setResonance(mineHz: number | null, theirsHz: number | null, dx: number, dy: number, aim = 0): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.resMineGain.gain.setTargetAtTime(mineHz ? 0.14 : 0, t, 0.12);
+    if (mineHz) {
+      this.resMineOsc.frequency.setTargetAtTime(mineHz, t, 0.04);
+      this.resShimmerOsc.frequency.setTargetAtTime(mineHz * 2, t, 0.04);
+    }
+    this.resTheirsGain.gain.setTargetAtTime(theirsHz ? 0.14 : 0, t, 0.12);
+    if (theirsHz) {
+      this.resTheirsOsc.frequency.setTargetAtTime(theirsHz, t, 0.04);
+      this.place(this.resTheirsPanner, dx, dy);
+    }
+    const shimmer = mineHz && theirsHz ? Math.max(0, Math.min(1, aim)) ** 2 * 0.06 : 0;
+    this.resShimmerGain.gain.setTargetAtTime(shimmer, t, 0.15);
   }
 
   // Schlüssel-Klimpern: metallischer Doppel-Blip, Rate steigt mit der Nähe.

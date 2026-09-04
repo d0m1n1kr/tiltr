@@ -5,12 +5,20 @@ import { CELL } from './core/constants';
 import { buddySound, smoothSpeed } from './core/buddy';
 import { FEATURES, canDo, needsFor } from './core/features';
 import { partnerWaiting, togetherWin } from './core/together';
+import {
+  centsToHz,
+  holdTuned,
+  inTune,
+  pitchFromTilt,
+  tuneAim,
+  type Interval,
+} from './core/resonance';
 import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Mark } from './core/marks';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
 import { brittleBreakable } from './core/brittle';
 import { randomSeed, seedFromString } from './core/rng';
-import type { Hole, Jukebox, PlaylistEntry, WindZone } from './core/types';
+import type { Hole, Jukebox, Plate, PlaylistEntry, WindZone } from './core/types';
 import type { Ball } from './core/physics';
 import { TiltInput } from './input/tilt';
 import { GameAudio } from './audio/audio';
@@ -20,7 +28,7 @@ import { loadLevel, type LoadedLevel } from './levels/loader';
 import { generateQuickLevel, type Preset } from './levels/quick';
 import { TUTORIAL_LEVELS } from './levels/tutorial';
 import { CAMPAIGN_LEVELS, CAMPAIGN_IDS, WORLDS } from './levels/campaign';
-import { newFeaturesIn } from './levels/firstAppearances';
+import { levelFeatures, newFeaturesIn } from './levels/firstAppearances';
 import { starsFor, effectivePar } from './core/stars';
 import { forkTone } from './core/fork';
 import { mirrorReflection } from './core/occlusion';
@@ -287,6 +295,11 @@ interface TestSide {
   pings: number;
   done: boolean;
   elapsed: number | null;
+  /** DUETT (M91): letzter Ton dieser Seite in Cent (null = steht auf keinem
+   *  Resonanzfeld). Er BLEIBT stehen, wenn die Seite ruht – die Kugel liegt in
+   *  ihrer Schale, also klingt sie weiter; sonst wäre ein Duett im Editor
+   *  überhaupt nicht spielbar (man stimmt A, wechselt, stimmt B). */
+  tone: number | null;
 }
 let mpTest: { sides: [TestSide, TestSide]; active: 0 | 1; coop: boolean; held: Set<string> } | null = null;
 
@@ -644,6 +657,7 @@ function silenceWorld(): void {
   audio.setFog(0);
   audio.setReverb(0);
   audio.setAnchor(0, 0, 0);
+  audio.setResonance(null, null, 0, 0, 0);
 }
 
 function showMenu(): void {
@@ -1103,6 +1117,7 @@ function launch(def: LevelDef): void {
       pings: l.pingBudget,
       done: false,
       elapsed: null,
+      tone: null,
     });
     // 'any' testet als Coop: Der Modus steht erst in der Lobby fest, und die
     // schwerere Frage ist immer „geht es zusammen?".
@@ -1134,6 +1149,11 @@ function launch(def: LevelDef): void {
   audio.setRival(0, 0, 0);
   audio.setBuddy(0, 0, 0, 0);
   marks = []; // Wegmarken (M89) gehören dem LAUF, nicht dem Level
+  // Duett (M91): Töne und Halte-Uhr gehören ebenfalls dem LAUF.
+  duet = DUET_NONE;
+  duetSince = null;
+  duetPartnerTone = null;
+  duetPartnerAt = 0;
   pingMax = loaded.pingBudget;
   pings = pingMax;
   pingsUsed = 0;
@@ -2198,7 +2218,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
           mode: mp.mode,
           levelId: mp.level.id,
           def: mp.custom ? mp.level : undefined,
-          needs: needsFor(mp.level.marks, mp.level.together),
+          needs: needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance')),
         });
         $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
@@ -2261,14 +2281,18 @@ function mpOnMessage(type: string, payload: unknown): void {
     mpShowIntro();
   } else if (type === 'ready') {
     const p = payload as { features?: string[] } | null;
-    if (mp.host && mp.level && !canDo(needsFor(mp.level.marks, mp.level.together), p?.features)) {
+    if (
+      mp.host &&
+      mp.level &&
+      !canDo(needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance')), p?.features)
+    ) {
       $('mpLobbyStatus').textContent = t('mp.needsUpdate');
       return;
     }
     mp.peerReady = true;
     mpMaybeStart();
   } else if (type === 'state') {
-    const p = payload as { x: number; y: number; f: number; fin: boolean; g?: boolean };
+    const p = payload as { x: number; y: number; f: number; fin: boolean; g?: boolean; tn?: number | null };
     // Partner-Klang (M88): Die Geschwindigkeit kommt NICHT über das Netz – sie
     // folgt aus zwei Meldungen (alle 80 ms) und wird geglättet. Ein Feld mehr
     // hätte beide Seiten ohne Not auf dieselbe Version festgelegt. Ein Sprung
@@ -2288,6 +2312,15 @@ function mpOnMessage(type: string, payload: unknown): void {
     // Gegenstelle schickt `g` nicht; ein `together`-Level lässt das Gate
     // (`needs`) gar nicht erst starten.
     mp.remote.goalAt = p.g ? at : 0;
+    // DUETT (M91): sein Ton. Eine alte Gegenstelle schickt `tn` nicht – ein
+    // Level mit Resonanz-Tor lässt das Merkmals-Gate (`needs`) dann gar nicht
+    // erst starten, sonst ginge das Tor nie auf.
+    if (mp.phase === 'playing') {
+      const was = duetPartnerTone;
+      duetPartnerTone = p.tn ?? null;
+      duetPartnerAt = at;
+      if (was === null && duetPartnerTone !== null) flash(t('mp.partnerTone'));
+    }
   } else if (type === 'plate') {
     const p = payload as { id: string; held: boolean };
     if (p.held) mp.remoteHolds.add(p.id);
@@ -2417,6 +2450,85 @@ function mpMaybeRematch(): void {
   mpMaybeStart();
 }
 
+/* --- DUETT (M91) ------------------------------------------------------------
+   Zwei Resonanzfelder, ein Tor: Wer auf einem Feld steht, erzeugt einen Ton
+   aus seiner NEIGUNGSRICHTUNG (das Feld hält die Kugel wie ein Anker, damit
+   Stimmen nicht Wegrollen heißt). Das Tor geht auf, wenn die beiden Töne im
+   Zielintervall stehen und dort einen Augenblick BLEIBEN.
+
+   BEIDE SEITEN RECHNEN DASSELBE: `state.tn` trägt die Tonhöhe in Cent, jede
+   Seite kennt beide Töne und entscheidet lokal – keine Autorität, keine
+   Nachricht „Tor auf". Und das Feld ist eine PLATTE: Steht das Duett, gilt sie
+   als gehalten, und die EINE Türregel (core/doors.ts) macht den Rest. */
+interface DuetState {
+  /** eigener Ton in Cent (null = ich stehe auf keinem Feld) */
+  mine: number | null;
+  /** Ton des Partners in Cent (Netz: `state.tn`, Testmodus: seine Seite) */
+  theirs: number | null;
+  /** Zielintervall des Feldes, um das es geht */
+  interval: Interval | null;
+  /** Genauigkeit 0…1 – fährt den Schimmer auf, EHE das Tor aufgeht */
+  aim: number;
+  /** gestimmt UND stehen geblieben ⇒ die Felder halten */
+  open: boolean;
+  /** sein Feld auf MEINER Ebene (dort klingt sein Ton), sonst null */
+  his: Plate | null;
+}
+const DUET_NONE: DuetState = { mine: null, theirs: null, interval: null, aim: 0, open: false, his: null };
+/** Wie lange seine letzte Ton-Meldung gilt – wie beim Rendezvous (M90): Die
+ *  Nachsicht deckt ausgefallene Nachrichten, nicht das Verlassen des Feldes
+ *  (dann meldet die nächste Nachricht `tn: null`). */
+const TONE_FRESH_MS = 700;
+let duet: DuetState = DUET_NONE;
+let duetSince: number | null = null;
+let duetPartnerTone: number | null = null;
+let duetPartnerAt = 0;
+
+function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
+  if (!world || !loaded) return DUET_NONE;
+  const fields = loaded.floors.flatMap((f, fl) => f.world.plates.filter((p) => p.tune).map((pl) => ({ pl, fl })));
+  if (fields.length === 0) return DUET_NONE;
+  const myPlate = world.platesUnderBall().find((p) => p.tune) ?? null;
+  const mine = myPlate ? pitchFromTilt(tilt.x, tilt.y).cents : null;
+  // Im Testmodus BLEIBT der Ton der ruhenden Seite stehen (ihre Kugel liegt in
+  // der Schale) – deshalb wird er hier je Seite gespeichert, nicht gerechnet.
+  if (mpTest) mpTest.sides[mpTest.active]!.tone = mine;
+  const fresh = duetPartnerAt > 0 && now - duetPartnerAt < TONE_FRESH_MS;
+  const theirs = mpTest ? mpTestOther().tone : mp && fresh ? duetPartnerTone : null;
+  // Sein Feld: das Resonanzfeld, das seiner Kugel am nächsten liegt – dort
+  // klingt sein Ton, damit die Schwebung im RAUM steht und nicht im Kopf.
+  const buddy = mpTest
+    ? { x: mpTestOther().loaded.world.ball.x, y: mpTestOther().loaded.world.ball.y }
+    : mp && mp.remote.lastAt > 0
+      ? { x: mp.remote.x, y: mp.remote.y }
+      : null;
+  const others = fields.filter((f) => f.pl !== myPlate);
+  let his = others[0] ?? null;
+  if (buddy && his) {
+    for (const f of others) {
+      if (Math.hypot(f.pl.x - buddy.x, f.pl.y - buddy.y) < Math.hypot(his.pl.x - buddy.x, his.pl.y - buddy.y)) his = f;
+    }
+  }
+  const interval = myPlate?.tune ?? his?.pl.tune ?? null;
+  const tuned = mine !== null && theirs !== null && interval !== null && inTune(mine, theirs, interval);
+  const step = holdTuned(duetSince, tuned, now);
+  duetSince = step.since;
+  return {
+    mine,
+    theirs,
+    interval,
+    aim: mine !== null && theirs !== null && interval ? tuneAim(mine, theirs, interval) : 0,
+    open: step.open,
+    his: his && his.fl === activeFloor ? his.pl : null,
+  };
+}
+
+/** Wer auf einem Resonanzfeld steht, HÄLT es erst, wenn das Duett steht (M91).
+ *  Eine gewöhnliche Platte hält, wer darauf steht – wie immer. */
+function heldIds(plates: readonly Plate[]): Set<string> {
+  return new Set(plates.filter((p) => !p.tune || duet.open).map((p) => p.id));
+}
+
 // Pro Frame im MP: Zustand senden, Platten/Türen synchronisieren.
 function mpFrame(now: number): void {
   if (!mp || !world || !loaded) return;
@@ -2431,6 +2543,10 @@ function mpFrame(now: number): void {
       // M90: nicht „war ich mal", sondern „liege ich JETZT drin" – die
       // Rendezvous-Regel lebt von der Gleichzeitigkeit.
       g: world.goalReached(),
+      // M91: meine Tonhöhe in Cent (null = ich stehe auf keinem Feld). Ein
+      // Float je 80 ms – die Nachricht bleibt winzig, und beide Seiten
+      // rechnen dieselbe Türregel daraus.
+      tn: duet.mine,
     });
   }
 
@@ -2438,7 +2554,7 @@ function mpFrame(now: number): void {
   // Geführt wird je PLATTE (`Plate.id`), nicht je Tür: Zwei Platten derselben
   // Tür sind zwei Bedingungen – über die Tür-ID hätte eine die andere
   // mitgehalten und ein 'all' wäre mit einer Kugel aufgegangen (M76).
-  const holds = new Set(world.platesUnderBall().map((p) => p.id));
+  const holds = heldIds(world.platesUnderBall());
   for (const id of holds) {
     if (!mp.localHolds.has(id)) {
       mp.transport.send('plate', { id, held: true });
@@ -2582,7 +2698,7 @@ function mpTestFrame(now: number, dt: number): void {
   // über alle Ebenen dieselbe Instanz, siehe advanceBoulders).
   otherWorld.advanceBoulders(dt, true);
   otherWorld.consumeBoulderEvents();
-  const held = new Set([...world.platesUnderBall(), ...otherWorld.platesUnderBall()].map((p) => p.id));
+  const held = heldIds([...world.platesUnderBall(), ...otherWorld.platesUnderBall()]);
   for (const id of held) if (!mpTest.held.has(id)) audio.plate(true);
   for (const id of mpTest.held) if (!held.has(id)) audio.plate(false);
   mpTest.held = held;
@@ -3233,6 +3349,19 @@ function frame(now: number): void {
     if (nearAnchor) audio.setAnchor(anchorClose * shield(nearAnchor.dx, nearAnchor.dy), nearAnchor.dx, nearAnchor.dy);
     else audio.setAnchor(0, 0, 0);
 
+    // DUETT (M91): Die beiden Resonanztöne – EINMAL je Frame gerechnet, denn
+    // Klang, Türregel (heldIds) und der Haken für die E2E müssen dasselbe
+    // sagen. Gerechnet wird NACH `world.step()` (Lektion aus M90): „stehe ich
+    // auf dem Feld?" ist eine Frage an die neue Lage, nicht an die alte.
+    duet = duetFrame(now, tilt);
+    audio.setResonance(
+      duet.mine !== null ? centsToHz(duet.mine) : null,
+      duet.theirs !== null ? centsToHz(duet.theirs) : null,
+      duet.his ? duet.his.x - world.ball.x : 0,
+      duet.his ? duet.his.y - world.ball.y : 0,
+      duet.aim,
+    );
+
     // Windzonen: hörbar in der Nähe, spürbar (Kraft) mittendrin
     let bestZone: { dist: number; dx: number; dy: number } | null = null;
     for (const z of world.windZones) {
@@ -3503,6 +3632,18 @@ function frame(now: number): void {
     audio.setBuddy(0, 0, 0, 0);
   }
   (window as unknown as { __tiltrBuddy?: unknown }).__tiltrBuddy = buddyHeard;
+  // DUETT (M91): Töne, Genauigkeit und Türzustand offenlegen – „warum geht das
+  // Tor nicht auf?" ist ohne die beiden Zahlen nicht zu beantworten.
+  (window as unknown as { __tiltrResonance?: unknown }).__tiltrResonance =
+    duet === DUET_NONE
+      ? null
+      : {
+          mine: duet.mine === null ? null : Math.round(duet.mine),
+          theirs: duet.theirs === null ? null : Math.round(duet.theirs),
+          interval: duet.interval,
+          aim: Number(duet.aim.toFixed(2)),
+          open: duet.open,
+        };
   (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {
     left: markMax() - ownCount(marks),
     max: markMax(),

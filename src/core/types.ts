@@ -181,6 +181,10 @@ export interface Plate {
   held: boolean;
   /** Rollstein (M47) liegt auf der Platte – hält sie dauerhaft, auch allein. */
   boulder?: boolean;
+  /** Resonanzfeld (M91): Die Platte hält NUR, wenn beide Töne im Intervall
+   *  stehen – der Ton kommt aus der Neigungsrichtung des Spielers, der darauf
+   *  steht. Ein STEIN kann sie nicht halten: er hat keine Neigung. */
+  tune?: 'unison' | 'fifth';
   litFrom?: number;
   litUntil?: number;
 }
@@ -280,6 +284,9 @@ export interface Anchor {
   r: number;
   /** Maximaler Sog im Zentrum (px/s²) */
   force: number;
+  /** Schale eines Resonanzfeldes (M91) – gebaut von der Platte, nicht vom
+   *  Anker-Element: Sie hält die Kugel, während die Neigung stimmt. */
+  resonance?: boolean;
   litFrom?: number;
   litUntil?: number;
 }

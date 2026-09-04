@@ -2045,6 +2045,31 @@ export function setupEditor(opts: {
         });
         propsEl.append(link);
       }
+      // RESONANZFELD (M91): eine Platte, die man nur zu ZWEIT hält – die
+      // Neigung stimmt einen Ton, das Tor öffnet im Intervall. Als Eigenschaft
+      // der Platte, nicht als eigenes Element: So rechnet JEDES
+      // Erreichbarkeits-Modell das Feld gratis als Platte mit (und ein Stein
+      // hält es nicht, siehe boulderProof).
+      if (el.type === 'plate') {
+        const tune = selectInput(String(el.tune ?? 'off'), [
+          ['off', t('ed.tune.off')],
+          ['unison', t('ed.tune.unison')],
+          ['fifth', t('ed.tune.fifth')],
+        ], (v) => {
+          if (v === 'off') delete el.tune;
+          else el.tune = v;
+          rebuild();
+          paint();
+        });
+        tune.id = 'edPlateTune';
+        propsEl.append(field(t('ed.f.tune'), tune));
+        if (el.tune) {
+          const hint = document.createElement('p');
+          hint.className = 'menu-meta';
+          hint.textContent = t('ed.resonanceHint');
+          propsEl.append(hint);
+        }
+      }
       if (el.type === 'door') {
         const idInp = document.createElement('input');
         idInp.type = 'text';

@@ -204,6 +204,11 @@ export const de = {
   'ed.light.dark': 'dunkel (Standard)',
   'ed.light.bright': 'hell – alles sichtbar',
   'st.keyMore': '🔑 Schlüssel – die Tür braucht noch mehr.',
+  'ed.f.tune': 'Klang-Tor',
+  'ed.tune.off': 'aus (normale Platte)',
+  'ed.tune.unison': 'Einklang',
+  'ed.tune.fifth': 'Quinte',
+  'ed.resonanceHint': 'Resonanzfeld: Die Schale hält die Kugel, die Neigungsrichtung stimmt den Ton (oben = Grundton, unten = Quinte). Das Tor öffnet, wenn BEIDE Töne im Intervall stehen – setze zwei Felder mit demselben Intervall und gib der Tür „alle Öffner\u00a0+\u00a0bleibt offen".',
   'ed.f.opens': 'Öffnet Tür',
   'ed.f.id': 'Tür-ID',
   'ed.f.openers': 'Öffner',
@@ -373,6 +378,9 @@ export const de = {
   'el.wallMirror.desc': 'Eine Wand aus poliertem Metall (silber): Der Echo-Ping meldet sie doppelt so weit, als sie ist – eine Wand, die nicht da ist. Anrempeln klingt hart wie jede Wand. Trau dem Trugbild nicht.',
   'el.sleeper.title': 'Schläfer',
   'el.sleeper.desc': 'Ein Wächter, der schläft – tiefes, langsames Schnarchen aus seiner Richtung. Ein Echo-Ping in seiner Nähe weckt ihn mit einem Zischen: fünf Sekunden Patrouille, dann schläft er wieder. Der Ping wird zum Risiko.',
+  'el.resonance.title': 'Resonanzfeld & Duett',
+  'el.resonance.desc':
+    'Eine Druckplatte, die die Kugel hält wie eine Schale – und die Neigung wird zum Stimmknopf: oben der Grundton, unten die Quinte. Zu zweit klingen zwei Felder gegeneinander; steht das Intervall (Einklang oder Quinte), schwingt das Tor auf. Allein ist es nicht zu spielen.',
   'el.fork.title': 'Stimmgabel',
   'el.fork.desc': 'Ein Schlüssel, der nicht klimpert, sondern tönt – aus keiner Richtung. Die SCHWEBUNG verrät den Weg: Neigst du auf sie zu, steht der Ton fast still; neigst du weg, flattert er. Ortung über die Tonhöhe statt über das Panning.',
   'st.hourglass': '⏳ Sanduhr: +{n} s Par!',
@@ -465,6 +473,7 @@ export const de = {
   'mp.partnerKey': 'Partner hat einen Schlüssel geholt!',
   'mp.partnerSwitch': 'Partner hat einen Schalter gedrückt!',
   'mp.partnerBell': '🔔 Partner läutet die Glocke – die Horcher gehen hin!',
+  'mp.partnerTone': '🎵 Der Partner steht auf seinem Resonanzfeld.',
   'mp.partnerMark': '📍 Der Partner hat eine Wegmarke gelegt.',
   'mp.partnerBoulder': '🪨 Partner schiebt den Stein!',
   'mp.hint.race': 'Gegeneinander: identisches Level, wer zuerst im Ziel ist, gewinnt. Ein schwacher Schein zeigt den Gegner.',
@@ -771,6 +780,9 @@ export const de = {
   'lv.coop-07.name': 'Gleichschritt',
   'lv.coop-07.intro':
     'Zwei Ziele, ein Ring: Einer rollt links herum, einer rechts. Gewonnen habt ihr erst, wenn ihr GLEICHZEITIG in euren Zielzonen liegt – wer zuerst ankommt, wartet, und der Nachzügler hört das Rufen. Verabredet euch!',
+  'lv.coop-08.name': 'Duett',
+  'lv.coop-08.intro':
+    'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton. Trefft die Quinte, bis die Schwebung steht – dann schwingt das Tor auf und bleibt offen. Danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro':
     'Gleiche Strecke, gleiche Chancen: Wer zuerst im Ziel ist, gewinnt. Der Halo verrät, wo dein Gegner steckt.',

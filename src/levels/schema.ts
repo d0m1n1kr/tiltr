@@ -122,6 +122,11 @@ export const plateDef = z.object({
   /** Tür-ID, die diese Platte öffnet, SOLANGE sie gehalten wird (Coop) */
   opens: z.string().min(1),
   r: z.number().positive().default(30),
+  /** RESONANZFELD (M91): Die Platte ist eine SCHALE, die die Kugel hält, und
+   *  die Neigung wird zum Stimmknopf. Gehalten ist sie erst, wenn die Töne
+   *  beider Felder im Zielintervall stehen – allein ist ein Duett nicht zu
+   *  spielen. Ohne das Feld bleibt die Platte eine gewöhnliche Druckplatte. */
+  tune: z.enum(['unison', 'fifth']).optional(),
 });
 
 export const transporterDef = z.object({

@@ -62,9 +62,12 @@ animation below.
   you can open your partner's doors; you win once both are in — and a level
   can ask you to **arrive together**, meaning both of you in your goals at the
   same moment (whoever gets there first waits, and the straggler hears the
-  call). **Race:**
-  identical level, first one in wins, with rematch. Seven hand-built co-op
-  levels, six race levels plus a 🎲 generator, and every **two-player level from the workshop**
+  call), or to open a **resonance gate**: two bowls hold your balls, the tilt
+  direction tunes a tone each, and the gate only swings open once both tones
+  sit in the same interval — you hear the beating slow down until it stands
+  still. Alone it cannot be played. **Race:** identical level, first one in
+  wins, with rematch. Eight hand-built co-op levels, six race levels plus a 🎲
+  generator, and every **two-player level from the workshop**
   can be hosted straight from your library — the guest receives it with the
   room. In co-op you **hear** your partner: a warm low hum from his
   direction, plus a rolling layer that grows with his speed — a wall of felt

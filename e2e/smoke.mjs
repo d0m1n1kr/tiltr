@@ -99,6 +99,7 @@ const KNOWN_RUNS = [
   "45",
   "46",
   "47",
+  "48",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -969,10 +970,11 @@ if (want("9")) {
     const raceCount = await pageA.locator("#mpLevelList .level-item").count();
     await pageA.click('[data-mpmode="coop"]');
     check(
-      // Seit M90 hat Coop ein Level mehr („Gleichschritt", coop-07) – die Zahl
-      // ist Absicht, nicht Zufall: 7 Coop + 6 Race, je plus 🎲 Zufall.
-      `MP-Panel: 7 Coop + 6 Race, je + 🎲 Zufall (${coopCount}/${raceCount})`,
-      coopCount === 8 && raceCount === 7,
+      // Coop hat zwei Level mehr als Race: „Gleichschritt" (coop-07, M90) und
+      // „Duett" (coop-08, M91) – die Zahl ist Absicht, nicht Zufall:
+      // 8 Coop + 6 Race, je plus 🎲 Zufall.
+      `MP-Panel: 8 Coop + 6 Race, je + 🎲 Zufall (${coopCount}/${raceCount})`,
+      coopCount === 9 && raceCount === 7,
     );
 
     await pageA
@@ -8340,6 +8342,165 @@ if (want("47")) {
   } catch (e) {
     check(
       `Lauf 47 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 48: Duett (M91). Ein Tor, das nur ein DUETT öffnet: Zwei
+// Resonanzfelder halten die Kugeln wie Schalen, und die NEIGUNGSRICHTUNG
+// stimmt den Ton (oben Grundton, unten Quinte). Das Tor geht auf, wenn beide
+// Töne im Intervall stehen und dort einen Augenblick bleiben – und ZU, sobald
+// einer verstimmt. Geprüft im MP-Testmodus (Muster Lauf 40/42): Der Ton der
+// ruhenden Seite BLEIBT stehen, sonst wäre ein Duett allein nicht testbar.
+// Beide Starts liegen auf ihrem Feld – gestimmt wird, nicht gerollt. ---
+if (want("48")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const carveRow = (y) => [0, 1, 2, 3].map((x) => [[x, y], "e"]);
+    const sealRow = (y) => [0, 1, 2, 3, 4].map((x) => [[x, y], "s"]);
+    const def = {
+      id: "custom-m91",
+      name: "Duett",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [5, 3],
+          maze: { seed: 3, carve: [...carveRow(0), ...carveRow(2)], add: [...sealRow(0), ...sealRow(1)] },
+          elements: [
+            // Die Tür fällt bewusst wieder ZU (kein „bleibt offen"): Nur so
+            // ist zu sehen, dass ein verstimmter Ton das Tor wieder schließt.
+            { type: "door", id: "gz", edge: [[3, 2], "e"], require: "all" },
+            { type: "plate", cell: [0, 0], opens: "gz", tune: "fifth" },
+            { type: "plate", cell: [0, 2], opens: "gz", tune: "fifth" },
+          ],
+          start: [0, 0],
+          goal: [4, 0],
+          start2: [0, 2],
+          goal2: [4, 2],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    // Das Feld ist eine EIGENSCHAFT der Platte, nicht ein eigenes Werkzeug
+    // (Regel aus M58): Auswählen, und „Klang-Tor" steht im Eigenschaften-Panel.
+    const tap = async (cx, cy) => {
+      const pt = await page.evaluate(
+        ([x, y]) => {
+          const ed = window.__tiltrEd;
+          const box = document.getElementById("edCanvas").getBoundingClientRect();
+          return {
+            x: box.left + (ed.ox + (x * 100 + 50) * ed.scale) / ed.dpr,
+            y: box.top + (ed.oy + (y * 100 + 50) * ed.scale) / ed.dpr,
+          };
+        },
+        [cx, cy],
+      );
+      await page.mouse.click(pt.x, pt.y);
+      await page.waitForTimeout(250);
+    };
+    await page.locator(".ed-tile", { hasText: "☝" }).first().click();
+    await tap(0, 0);
+    const tuneSel = page.locator("#edPlateTune");
+    const tuneValue = (await tuneSel.count()) === 1 ? await tuneSel.inputValue() : null;
+    check(
+      `Editor: das Klang-Tor ist eine EIGENSCHAFT der Platte (Feld: ${await tuneSel.count()}, Wert: ${tuneValue})`,
+      tuneValue === "fifth",
+    );
+    await page.click("#edTest");
+    await until(async () => await page.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 8000 },
+    );
+    const read = () =>
+      page.evaluate(() => ({
+        res: window.__tiltrResonance,
+        doors: window.__tiltrWorld?.doorsOpen ?? [],
+        held: window.__tiltrWorld?.platesHeld ?? [],
+        player: window.__tiltrMpTest?.player,
+      }));
+
+    // Ohne Neigung klingt der Grundton – und der Partner hat noch keinen Ton
+    // gemeldet (er war noch nicht am Zug). Allein geht das Tor NIE auf.
+    const alone = await until(async () => {
+      const r = await read();
+      return r.res && r.res.mine !== null ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Allein klingt nur ein Ton, das Tor bleibt zu (${JSON.stringify({ ...alone?.res, doors: alone?.doors })})`,
+      alone?.res?.mine === 0 && alone?.res?.theirs === null && alone?.res?.open === false && alone?.doors.length === 0,
+    );
+
+    // 👥 wechselt die Seite: Der Ton von Spieler 1 BLEIBT stehen (seine Kugel
+    // liegt in ihrer Schale) – genau das macht das Duett im Editor spielbar.
+    await page.keyboard.press("p");
+    await until(async () => (await page.evaluate(() => window.__tiltrMpTest?.player)) === 2, { timeout: 8000 });
+    const frozen = await until(async () => {
+      const r = await read();
+      return r.res && r.res.theirs !== null ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Der Ton der ruhenden Seite bleibt stehen (${JSON.stringify(frozen?.res)})`,
+      frozen?.res?.theirs === 0 && frozen?.res?.mine === 0,
+    );
+    // Diese Zusicherung braucht als einzige eine WARTEZEIT: „bleibt zu" ist
+    // kein Zustandswechsel, auf den man warten kann. Gewartet wird deutlich
+    // länger als die Haltezeit (250 ms) – wäre der Einklang fälschlich im
+    // Intervall, stünde das Tor jetzt offen (genau das zeigte die Sabotage).
+    await page.waitForTimeout(800);
+    const stillShut = await read();
+    check(
+      `Einklang statt Quinte: das Tor bleibt zu (${JSON.stringify({ ...stillShut.res, doors: stillShut.doors })})`,
+      stillShut.res?.open === false && stillShut.doors.length === 0,
+    );
+
+    // Nach UNTEN neigen ist die Quinte: 0 gegen 702 Cent – nach der Haltezeit
+    // schwingt das Tor auf, und BEIDE Felder gelten als gehalten.
+    await page.keyboard.down("ArrowDown");
+    const tuned = await until(async () => {
+      const r = await read();
+      return r.res?.open === true ? r : null;
+    }, { timeout: 8000 });
+    await page.keyboard.up("ArrowDown");
+    check(
+      `Quinte gestimmt: das Tor schwingt auf (${JSON.stringify({ ...tuned?.res, doors: tuned?.doors, held: tuned?.held })})`,
+      tuned !== null &&
+        tuned.res.mine > 650 &&
+        tuned.res.theirs === 0 &&
+        tuned.res.aim === 1 &&
+        tuned.doors.includes("gz") &&
+        tuned.held.length === 2,
+    );
+
+    // Taste los: Die Schale zieht die Kugel zurück, der Ton fällt auf den
+    // Grundton – dann stehen beide im EINKLANG, und das ist nicht die Quinte.
+    const closed = await until(async () => {
+      const r = await read();
+      return r.res?.open === false && r.doors.length === 0 ? r : null;
+    }, { timeout: 8000 });
+    check(
+      `Verstimmt (Ton weg oder Einklang): das Tor fällt wieder zu (${JSON.stringify({ ...closed?.res, doors: closed?.doors })})`,
+      closed !== null,
+    );
+    await page.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 48 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

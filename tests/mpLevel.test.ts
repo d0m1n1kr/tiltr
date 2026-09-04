@@ -5,6 +5,8 @@ import { isShareable, pairReachable, pathSteps, validateLevel, cellKey } from '.
 import { mirrorLevel } from '../src/levels/mirror';
 import { removeFloor, type RawLevel } from '../src/ui/editor';
 import { COOP_LEVELS } from '../src/levels/multiplayer';
+import { coopReachable, reachable } from './helpers';
+import { levelFeatures } from '../src/levels/firstAppearances';
 import { CELL } from '../src/core/constants';
 
 // Zwei-Spieler-Level aus dem Editor (M57): Host = Spieler 1 (start/goal),
@@ -370,5 +372,54 @@ describe('Gemeinsam ankommen (M90)', () => {
     // Das Rendezvous ist die ganze Aufgabe.
     for (const f of def.floors) expect(f.elements.some((e) => e.type === 'door')).toBe(false);
     expect(isShareable(validateLevel(def))).toBe(true);
+  });
+});
+
+// DUETT (M91): Das Resonanzfeld ist eine PLATTE mit Klang-Bedingung – kein
+// eigenes Element. Genau das ist die Entwurfs-Entscheidung, die den Beweis
+// gratis mitrechnen lässt; dieser Test hält sie fest.
+describe('Duett (M91)', () => {
+  const duett = () => COOP_LEVELS.find((l) => l.id === 'coop-08')!;
+
+  it('coop-08 „Duett" ist beweisbar lösbar und teilbar', () => {
+    const def = duett();
+    const rep = validateLevel(def);
+    const red = rep.filter((c) => !c.ok).map((c) => `${c.key}: ${c.detail ?? ''}`);
+    expect(red).toEqual([]);
+    expect(isShareable(rep)).toBe(true);
+  });
+
+  it('zwei Felder mit DEMSELBEN Intervall, beide vor der Tür, Tür „alle + bleibt offen"', () => {
+    const def = duett();
+    const fields = def.floors.flatMap((f) =>
+      f.elements.filter((e): e is Extract<typeof e, { type: 'plate' }> => e.type === 'plate' && e.tune !== undefined),
+    );
+    expect(fields).toHaveLength(2);
+    expect(new Set(fields.map((f) => f.tune)).size).toBe(1);
+    const door = def.floors.flatMap((f) => f.elements).find((e) => e.type === 'door')!;
+    expect(door.type === 'door' && door.require).toBe('all');
+    expect(door.type === 'door' && door.latch).toBe(true);
+    // BEIDE Felder liegen vor der Tür: Drinnen könnte niemand mehr stimmen.
+    const outside = reachable(def, { brittleOpen: true, doorsOpen: false });
+    for (const f of fields) expect(outside.has(cellKey(0, f.cell))).toBe(true);
+  });
+
+  it('das Feld ist eine Platte: der Fixpunkt öffnet die Tür und erreicht das Ziel', () => {
+    const def = duett();
+    const goal = goalCellFor(def, 1)!;
+    // Ohne die Tür (also ohne Duett) ist die Zielkammer versiegelt …
+    const door = def.floors.flatMap((f) => f.elements).find((e) => e.type === 'door')!;
+    const banned = coopReachable(def, new Set([door.type === 'door' ? door.id : '']));
+    expect(banned.has(cellKey(goal.floor, goal.cell))).toBe(false);
+    // … mit ihr erreichen BEIDE Spieler ihr Ziel.
+    const pair = pairReachable(def, true);
+    expect(pair.p1.has(cellKey(goal.floor, goal.cell))).toBe(true);
+    expect(pair.p2.has(cellKey(goal.floor, goal.cell))).toBe(true);
+  });
+
+  it('„resonance" ist ein eigenes Merkmal – das Aufleuchten zeigt es beim ersten Mal', () => {
+    expect(levelFeatures(duett()).has('resonance')).toBe(true);
+    const plain = COOP_LEVELS.find((l) => l.id === 'coop-01')!;
+    expect(levelFeatures(plain).has('resonance')).toBe(false);
   });
 });

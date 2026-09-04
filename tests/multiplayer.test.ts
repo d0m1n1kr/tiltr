@@ -6,11 +6,11 @@ import { Ball, World } from '../src/core/physics';
 import { cellKey, coopReachable, expectAllReachable, reachable } from './helpers';
 
 describe('Multiplayer-Level', () => {
-  it('7 Coop + 6 Race, IDs eindeutig, Intros vorhanden', () => {
-    expect(COOP_LEVELS).toHaveLength(7);
+  it('8 Coop + 6 Race, IDs eindeutig, Intros vorhanden', () => {
+    expect(COOP_LEVELS).toHaveLength(8);
     expect(RACE_LEVELS).toHaveLength(6);
     const ids = [...COOP_LEVELS, ...RACE_LEVELS].map((l) => l.id);
-    expect(new Set(ids).size).toBe(13);
+    expect(new Set(ids).size).toBe(14);
     for (const l of [...COOP_LEVELS, ...RACE_LEVELS]) expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
   });
 
@@ -52,9 +52,18 @@ describe('Multiplayer-Level', () => {
     }
   });
 
-  it('Coop: jede Tür hat eine Platte außen UND eine innen (Selbstbefreiung)', () => {
+  it('Coop: jede Tür, die wieder zufällt, hat eine Platte außen UND eine innen (Selbstbefreiung)', () => {
     for (const def of COOP_LEVELS) {
-      const doorIds = def.floors.flatMap((f) => f.elements.filter((e) => e.type === 'door').map((d) => d.id));
+      // Türen mit „bleibt offen" (M76) brauchen KEINE Innenplatte: Sie fallen
+      // nicht mehr zu, also kann sich niemand aussperren. Die Regel schützt
+      // gegen das Zufallen – nicht gegen die Bauform (M91 „Duett": beide
+      // Resonanzfelder liegen draußen, weil man drinnen nicht mehr stimmt).
+      const doorIds = def.floors.flatMap((f) =>
+        f.elements
+          .filter((e) => e.type === 'door')
+          .filter((d) => d.latch !== true)
+          .map((d) => d.id),
+      );
       for (const id of doorIds) {
         // Alle anderen Türen offen, nur diese zu:
         const others = new Set(doorIds.filter((d) => d !== id));

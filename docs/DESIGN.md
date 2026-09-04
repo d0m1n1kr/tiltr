@@ -109,7 +109,14 @@ Strömung Chartreuse (`168, 232, 84` – gerichteter, unüberwindbarer Fluss),
 Horcher Orangerot (`255, 120, 50` – lauschender Jäger, wärmer als das
 Wächter-Rot), Nebel entsättigtes Blaugrau (`160, 165, 185` – Klangdämpfung,
 keine Gefahr), Eis kaltes Eisweiß (`185, 225, 240` – rutschiger Boden),
-Sog-Anker helles Violett (`170, 110, 240` – Gefahr-Familie der Löcher).
+Sog-Anker helles Violett (`170, 110, 240` – Gefahr-Familie der Löcher),
+Wegmarke Kreide-Weiß (`240, 244, 235` – absichtlich farblos gegen alles
+andere: eine Boje gehört nicht der Welt, sondern den Spielern; eigene
+durchgezogen, fremde gestrichelt; M89), Resonanzfeld Pervenche (`150, 130,
+255` – zwischen Wand-Blau 220° und Anker-Violett 270°; die Nähe zum Anker ist
+ABSICHT, denn ein Resonanzfeld IST eine Schale, die zieht – anders als der
+Anker singt es und gehört der Coop-Familie. Die PLATTE darin bleibt Gold: sie
+ist eine Platte, und das Modell rechnet sie auch als eine; M91).
 Der Zeitschloss-Schalter gehört zur Tür-Mechanik und bleibt in der
 Gold-Familie (`255, 214, 90`); der Echo-Kristall trägt bewusst das
 Ping-Teal (`75, 224, 200` – er ist abgefüllter Ping), und der Glasboden
@@ -127,7 +134,6 @@ Systemfont-Stack (`--font`), kein Webfont – die PWA bleibt klein und lädt off
 
 | Token | Größe | Verwendung |
 |---|---|---|
-| `mark` | `#f0f4eb` (Kreide) | Wegmarke (M89): eigene durchgezogen, fremde gestrichelt – gehört den Spielern, nicht der Welt |
 | `--fs-display` | 42 px, bold, `letter-spacing: 3px`, Gradient-Text | Logo/Titel |
 | `--fs-h2` | 20 px, 600 | Screen-Überschriften |
 | `--fs-body` | 15 px, `line-height: 1.5` | Fließtext (Overlay) |

@@ -4,6 +4,7 @@
 import { registerElement, cellCenter } from './registry';
 import type { PlateDef } from '../levels/schema';
 import { WORLD } from '../render/palette';
+import { RESONANCE_FORCE, RESONANCE_R } from '../core/resonance';
 
 registerElement<PlateDef>({
   type: 'plate',
@@ -19,7 +20,16 @@ registerElement<PlateDef>({
       id: `${ctx.floorIndex}:${def.cell[0]},${def.cell[1]}`,
       opens: def.opens,
       held: false,
+      tune: def.tune,
     });
+    // RESONANZFELD (M91): Zum Stimmen muss man neigen – und Neigen würde einen
+    // vom Feld rollen. Deshalb ist das Feld eine SCHALE: derselbe Sog wie beim
+    // Anker, per Invariante unter der Neigungs-Beschleunigung (kräftig kippen
+    // heißt hinausrollen). Sie gehört der PLATTE, nicht einem eigenen Element –
+    // so rechnet jedes Erreichbarkeits-Modell das Feld gratis als Platte mit.
+    if (def.tune) {
+      ctx.world.anchors.push({ x: p.x, y: p.y, r: RESONANCE_R, force: RESONANCE_FORCE, resonance: true });
+    }
   },
 
   gallery: {

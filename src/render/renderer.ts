@@ -511,17 +511,20 @@ export class Renderer {
       ctx.setLineDash([]);
     }
 
-    // Druckplatten: goldener Rahmen, gefüllt solange gehalten.
+    // Druckplatten: goldener Rahmen, gefüllt solange gehalten. Ein
+    // RESONANZFELD (M91) trägt seine eigene Farbe – es ist eine Platte, aber
+    // eine, die man nur zu zweit hält.
     for (const pl of world.plates) {
       const alpha = debug || revealAll ? 0.9 * gain : revealAlpha(pl, 0.9, 'plate');
       if (alpha <= 0.01 && !pl.held) continue;
       const a = Math.max(alpha, pl.held ? 0.9 : 0);
       const r = pl.r * s;
-      ctx.strokeStyle = `rgba(${WORLD.plate}, ${a})`;
+      const hue = pl.tune ? WORLD.resonance : WORLD.plate;
+      ctx.strokeStyle = `rgba(${hue}, ${a})`;
       ctx.lineWidth = 2.5 * this.dpr;
       ctx.strokeRect(tx(pl.x) - r, ty(pl.y) - r, r * 2, r * 2);
       if (pl.held) {
-        ctx.fillStyle = `rgba(${WORLD.plate}, 0.35)`;
+        ctx.fillStyle = `rgba(${hue}, 0.35)`;
         ctx.fillRect(tx(pl.x) - r + 3, ty(pl.y) - r + 3, r * 2 - 6, r * 2 - 6);
       }
     }
@@ -630,18 +633,21 @@ export class Renderer {
       if (alpha <= 0.01) continue;
       const cx = tx(a.x),
         cy = ty(a.y);
+      // Die Schale eines Resonanzfeldes (M91) zieht wie ein Anker, ist aber
+      // keiner – sie trägt die Farbe ihres Feldes.
+      const hue = a.resonance ? WORLD.resonance : WORLD.anchor;
       if (debug || revealAll) {
-        ctx.strokeStyle = `rgba(${WORLD.anchor}, ${alpha * 0.25})`;
+        ctx.strokeStyle = `rgba(${hue}, ${alpha * 0.25})`;
         ctx.lineWidth = 1.5 * this.dpr;
         ctx.beginPath();
         ctx.arc(cx, cy, a.r * s, 0, Math.PI * 2);
         ctx.stroke();
       }
-      ctx.fillStyle = `rgba(${WORLD.anchor}, ${alpha})`;
+      ctx.fillStyle = `rgba(${hue}, ${alpha})`;
       ctx.beginPath();
       ctx.arc(cx, cy, 8 * s, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(${WORLD.anchor}, ${alpha * 0.6})`;
+      ctx.strokeStyle = `rgba(${hue}, ${alpha * 0.6})`;
       ctx.lineWidth = 2 * this.dpr;
       for (const rr of [20, 32, 44]) {
         ctx.beginPath();

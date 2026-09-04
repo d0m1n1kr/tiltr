@@ -462,3 +462,41 @@ describe('Echte Falle trotz Partner-Saat (M82)', () => {
     expect(sl.detail).toContain('Spieler 1');
   });
 });
+
+// M91 – DUETT: Ein Resonanzfeld IST eine Platte (deshalb rechnet jedes Modell
+// es gratis mit), aber mit zwei Ausnahmen, die eingetragen sein MÜSSEN, sonst
+// lügt der Beweis: Ein STEIN kann es nicht halten (er hat keine Neigung), und
+// eine 'all'-Tür mit zwei Feldern hat ohne „bleibt offen" niemanden mehr frei,
+// der durchrollt.
+describe('Resonanzfeld: eine Platte, die kein Stein hält (M91)', () => {
+  const withStone = (tune: boolean) =>
+    level([
+      { type: 'door', id: 'tor1', edge: [[1, 0], 'e'] },
+      { type: 'plate', cell: [3, 2], opens: 'tor1', ...(tune ? { tune: 'fifth' } : {}) },
+      { type: 'boulder', cell: [2, 2] },
+    ]);
+
+  it('auf eine gewöhnliche Platte legt der Stein sich – auf ein Resonanzfeld nicht', () => {
+    const plain = boulderProof(withStone(false), withStone(false).floors[0]!.start2);
+    expect(plain.stonePlates.has(cellKey(0, [3, 2]))).toBe(true);
+    const field = boulderProof(withStone(true), withStone(true).floors[0]!.start2);
+    expect(field.stonePlates.has(cellKey(0, [3, 2]))).toBe(false);
+  });
+
+  it('zwei Felder an einer all-Tür ohne „bleibt offen": der Bericht nennt den Ausweg', () => {
+    const gate = (latch: boolean) =>
+      level([
+        { type: 'door', id: 'tor1', edge: [[3, 0], 'e'], require: 'all', ...(latch ? { latch: true } : {}) },
+        { type: 'plate', cell: [1, 0], opens: 'tor1', tune: 'fifth' },
+        { type: 'plate', cell: [1, 1], opens: 'tor1', tune: 'fifth' },
+      ]);
+    const shut = validateLevel(gate(false));
+    const openers = shut.find((c) => c.key === 'openers');
+    expect(openers?.ok).toBe(false);
+    expect(openers?.detail).toContain('bleibt offen');
+    // Mit „bleibt offen" dürfen beide beim Öffnen stehen – danach ist der Weg frei.
+    const open = validateLevel(gate(true));
+    expect(open.find((c) => c.key === 'openers')?.ok).toBe(true);
+    expect(pairReachable(gate(true), true).p1.has(cellKey(0, [4, 0]))).toBe(true);
+  });
+});

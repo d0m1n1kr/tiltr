@@ -20,6 +20,9 @@ export function levelFeatures(def: LevelDef): Set<string> {
       // Varianten mit eigener Signatur zählen als eigenes Merkmal (M45).
       if (el.type === 'guard' && el.sleeper) f.add('sleeper');
       if (el.type === 'key' && el.voice === 'fork') f.add('fork');
+      // Resonanzfeld (M91): eine Platte, die singt – eigene Signatur, also
+      // eigenes Merkmal (wie die Stimmgabel unter den Schlüsseln).
+      if (el.type === 'plate' && el.tune) f.add('resonance');
     }
     if (fl.maze.brittle.length > 0 || fl.maze.brittleChance > 0) f.add('wallBrittle');
     if (fl.maze.absorb.length > 0) f.add('wallAbsorb');

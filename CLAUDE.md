@@ -741,6 +741,44 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   im Ziel gesehen hat). Jede künftige Regel auf einem STROM von Meldungen
   braucht denselben Schluss: Der letzte Zustand muss in einer EINZELNEN
   Nachricht stehen.
+- `src/core/resonance.ts` – DUETT (M91): Ein Tor, das nur ein DUETT öffnet.
+  Zwei Resonanzfelder, eines je Spieler; wer auf einem steht, erzeugt einen
+  Ton, dessen Höhe aus der NEIGUNGSRICHTUNG kommt (`pitchFromTilt`: Norden =
+  Grundton, Süden = Quinte, Ost und West die Mitte – überall STETIG, ein Kreis
+  hätte eine Naht). Das Tor öffnet, wenn beide Töne im Zielintervall stehen
+  (`inTune`, 25 Cent Toleranz) und dort einen Augenblick BLEIBEN (`holdTuned`,
+  `TUNE_HOLD_MS` 250 ms – sonst öffnete ein Durchwischen beim Suchen).
+  DAS FELD IST EINE PLATTE, keine siebte Elementklasse: `plate.tune`
+  ('unison' | 'fifth'). Der Plan wollte ein eigenes Element und begründete
+  selbst, warum das nicht geht – „für das Modell ist es eine Platte, also
+  rechnen coopReachable/pairReachable/holdCheck es GRATIS mit"; gratis ist es
+  nur als EIGENSCHAFT (`el.type === 'plate'` steht an ~20 Stellen). Dieselbe
+  Regel wie bei der Wand-Variante (M38) und „Setzt für" (M58).
+  DAS FELD IST EINE SCHALE: Die Platte mit `tune` baut einen Sog-Anker mit
+  (`RESONANCE_FORCE` 2400 < `accel` 2600, Invariante wie M32) – zum Stimmen
+  muss man neigen, und ohne Schale würde man wegrollen. Die beiden Zahlen sind
+  GEKOPPELT: Bei voller Neigung dauert die Flucht bis zum Plattenrand ~0,49 s,
+  die Haltezeit liegt bei 0,25 s – wer entschieden kippt, rollt hinaus; wer
+  stimmen will, neigt sanft. Wer an einer der Zahlen dreht, rechnet die andere
+  nach (die Rechnung steht im Modul).
+  BEIDE SEITEN RECHNEN DASSELBE: `state` trägt `tn` (Cent, null = auf keinem
+  Feld), jede Seite kennt beide Töne und entscheidet lokal – keine Autorität,
+  keine Nachricht „Tor auf"; `heldIds` in app.ts ist die EINE Stelle, die aus
+  „ich stehe drauf" + „das Duett steht" ein Halten macht, danach greift die
+  gewöhnliche Türregel (core/doors.ts). Merkmals-Gate: `needsFor(…, duet)` –
+  eine Gegenstelle von vor 3.25 schickt kein `tn`, das Tor ginge NIE auf.
+  Klang: zwei reine SINUS-Stimmen in denselben Master (`audio.setResonance`),
+  die Schwebung entsteht also AKUSTISCH; der eigene Ton ungepannt, der des
+  Partners an SEINEM Feld, plus ein Schimmer nach Genauigkeit (`tuneAim`).
+  ZWEI AUSNAHMEN IM BEWEIS: Ein STEIN hält kein Resonanzfeld (keine Neigung) –
+  `boulderProof` lässt sie aus `stonePlates` und zählt Steine darauf nicht;
+  der PARTNER darf halten. Und eine 'all'-Tür mit zwei Feldern braucht
+  „bleibt offen", sonst hat niemand mehr einen Fuß frei – das meldet
+  `holdDetail` von selbst (M76/M77), der Beweis erzieht den Bauplan.
+  MP-Testmodus: Der Ton der RUHENDEN Seite bleibt stehen (`TestSide.tone`) –
+  ihre Kugel liegt in der Schale, also klingt sie weiter; ohne diese Regel
+  wäre ein Duett im Editor nicht testbar. Eingebautes Level: coop-08 „Duett".
+  `window.__tiltrResonance` (E2E Lauf 48).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

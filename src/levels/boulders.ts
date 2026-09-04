@@ -42,7 +42,9 @@ interface FloorModel {
   ice: Set<number>;
   /** stehende, nicht atmende Löcher (Index → Loch-ID) */
   holes: Map<number, number>;
-  plates: Array<{ idx: number; opens: string }>;
+  /** `tune` = RESONANZFELD (M91): Ein Stein kann es nicht halten – er hat
+   *  keine Neigung, und gestimmt wird mit Neigung. */
+  plates: Array<{ idx: number; opens: string; tune?: boolean }>;
   slides: Set<string>;
   /** Türkanten je Tür-ID: "x,y,dir" */
   doorEdges: Map<string, Set<string>>;
@@ -156,7 +158,7 @@ export function boulderProof(
           if (!el.breathing) m.holes.set(idxOf(cols, el.cell), holeId++);
           break;
         case 'plate':
-          m.plates.push({ idx: idxOf(cols, el.cell), opens: el.opens });
+          m.plates.push({ idx: idxOf(cols, el.cell), opens: el.opens, tune: el.tune !== undefined });
           break;
         case 'slidingWall':
           m.slides.add(`${el.edge[0][0]},${el.edge[0][1]},${el.edge[1]}`);
@@ -199,7 +201,9 @@ export function boulderProof(
           if (pl.opens !== doorId) continue;
           total++;
           const key = `${ffl}:${pl.idx % fm.cols},${Math.floor(pl.idx / fm.cols)}`;
-          if (s.stones.includes(ffl * 100000 + pl.idx) || heldPlates.has(key)) held++;
+          // Ein STEIN hält kein Resonanzfeld (M91) – der PARTNER schon, wenn
+          // `heldPlates` es sagt (das rechnet pairReachable samt Halte-Regel).
+          if ((!pl.tune && s.stones.includes(ffl * 100000 + pl.idx)) || heldPlates.has(key)) held++;
         }
       });
       const st = doorState(
@@ -235,6 +239,9 @@ export function boulderProof(
   const plateAt = new Map<string, string>(); // "fl*100000+idx" -> "fl:x,y"
   floors.forEach((fm, ffl) => {
     for (const pl of fm.plates) {
+      // Resonanzfelder gehören NICHT in `stonePlates`: Was ein Stein nicht
+      // halten kann, darf der Paar-Beweis auch nicht als gehalten annehmen (M74).
+      if (pl.tune) continue;
       const px = pl.idx % fm.cols;
       const py = Math.floor(pl.idx / fm.cols);
       plateAt.set(String(ffl * 100000 + pl.idx), `${ffl}:${px},${py}`);

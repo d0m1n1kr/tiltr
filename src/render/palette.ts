@@ -71,6 +71,11 @@ export const WORLD = {
   /** Hallraum (M46): helles Blaugrau, luftiger als Nebel (der ist entsättigt
    *  und schwer) – Raum, der trägt statt schluckt. */
   reverb: '150, 195, 220',
+  /** Resonanzfeld (M91): Pervenche – zwischen Wand-Blau (220°) und Anker-
+   *  Violett (270°). Die Nähe zum Anker ist ABSICHT: Ein Resonanzfeld IST
+   *  eine Schale, die zieht; anders als der Anker singt es und gehört der
+   *  Coop-Familie. Die Platte darin bleibt Gold – sie ist eine Platte. */
+  resonance: '150, 130, 255',
   /** Rollstein (M47): warmes Steingrau – ein Körper, kein Signal; heller als
    *  Wand-Blau, matter als die Schiebewand. */
   boulder: '176, 168, 156',

@@ -617,8 +617,8 @@ Level einen haben.
 Vier Milestones, in dieser Reihenfolge – jeder ein eigenes Release mit grüner
 Suite. Reihenfolge nach Fundament: Solange der Partner akustisch nicht
 existiert, ist jedes weitere Coop-Element eine Aufgabe, die man sich per
-Sprachkanal zuruft, und nicht Teil des Spiels. M88, M89 und M90 sind GEBAUT
-(v3.22.0/v3.23.0/v3.24.0, eigene Abschnitte weiter unten); offen ist M91.
+Sprachkanal zuruft, und nicht Teil des Spiels. ALLE VIER SIND GEBAUT
+(v3.22.0/v3.23.0/v3.24.0/v3.25.0, eigene Abschnitte weiter unten).
 
 AUSGANGSBEFUND (gemessen im Code, nicht erinnert): Das Protokoll kennt
 `setup`, `ready`, `state` (Position, alle 80 ms), `plate`, `key`, `switch`,
@@ -638,68 +638,7 @@ Lücke sind nur die Regel-Flags.
 
 ### M90 „Gemeinsam ankommen" ✓ (v3.24.0) – gebaut, eigener Abschnitt unten
 
-### M91 „Duett" (v3.25.0) – 3 (Flaggschiff)
-
-Ein Tor, das nur ein DUETT öffnet. Zwei Resonanzfelder; wer auf einem steht,
-erzeugt einen Ton, dessen Höhe aus der NEIGUNGSRICHTUNG kommt (eine Quinte
-über den ganzen Kreis, stetig). Das Tor öffnet, wenn die beiden Töne im
-Zielintervall stehen (Einklang oder Quinte, Toleranz ~25 Cent) – beide hören
-die Schwebung langsamer werden, bis sie steht. Der Klang IST das Rätsel, und
-allein ist er nicht lösbar. Das ist die Idee, für die es dieses Spiel gibt:
-Neigung ist gleichzeitig Bewegung und Stimme.
-
-Drei Entwurfs-Entscheidungen, die das Ding tragen:
-
-1. DAS FELD IST EINE SCHALE. Zum Stimmen muss man neigen – und Neigen rollt
-   einen vom Feld. Also hält das Feld die Kugel wie ein Sog-Anker (`force`),
-   und die Neigung wird zum Stimmknopf. Kräftig kippen = raus. Die
-   Schema-Invariante des Ankers (`force ≤ 2400 < accel 2600`, M32) gilt mit:
-   die Schale ist NIE eine Falle, ohne dass der Beweis etwas Neues lernen muss.
-2. DAS FELD IST EINE PLATTE. Für das Modell ist ein Resonanzfeld eine Platte
-   (`Plate` mit `id`/`opens`/`held`, M76): `coopReachable`, `pairReachable`,
-   `holdCheck` (wer kann halten, wer geht durch, M76/M77) und der
-   `openers`-Bericht rechnen es damit GRATIS mit. Zwei Ausnahmen sind
-   einzutragen, sonst lügt der Beweis:
-   - Ein STEIN kann ein Resonanzfeld nicht halten (er hat keine Neigung) ⇒
-     `stonePlates` lässt Resonanzfelder aus (M74).
-   - Eine 'all'-Tür mit zwei Feldern und zwei Spielern hat niemanden mehr frei,
-     der durchrollt – das Tor braucht also `latch` („bleibt offen"). Genau das
-     meldet `holdDetail` heute schon von selbst („… – „bleibt offen" löst
-     das"), der Editor setzt es beim Setzen als Vorgabe. Der Beweis erzieht
-     den Bauplan; wir bauen keine zweite Regel dafür.
-3. BEIDE SEITEN RECHNEN DASSELBE. `state` trägt `tn` (aktuelle Tonhöhe, ein
-   Float, 12,5 Hz – die Nachricht ist winzig). Jede Seite kennt beide Töne und
-   entscheidet lokal – symmetrisch, keine Autorität, keine Nachricht „Tor auf".
-   Der Ton des Partners klingt an SEINEM Feld (gepannt), damit die Schwebung
-   im Raum steht und nicht im Kopf.
-
-- `src/core/resonance.ts` (rein, Units): `pitchFromTilt(tx, ty)` (Deadzone wie
-  `forkTone`), `inTune(a, b, interval, tolCents)`, `TUNE_HOLD_MS`.
-- `src/elements/resonance.ts`: `build()` (Platte + Anker-Kraft), Galerie-
-  Eintrag mit `demoSound` (die Schwebung, die stehen bleibt), Weltfarbe
-  `resonance` in `src/render/palette.ts`, zod `resonanceDef` in
-  `src/levels/schema.ts`.
-- `src/audio/audio.ts`: `setResonance(mine, theirs, aim)` – zwei Stimmen plus
-  ein Schimmer im Einklang.
-- Editor (M60-Regel, drei Dinge je Öffner-Typ): Auto-Link beim Setzen
-  (`nearestDoorId`), Feld „Öffnet Tür" + 🔗 in `renderProps`, Fallback in
-  `normalizeDraft`. In der Palette NUR bei zwei Spielern (wie die Druckplatte
-  – solo ist es sinnlos, und `coopReachable` würde es sonst als Öffner zählen:
-  ein grünes, unlösbares Level).
-- `src/levels/firstAppearances.ts`: neues Merkmal ⇒ Aufleuchten + „Neu:"-Chip.
-- MP-Testmodus: Der Ton der ruhenden Seite bleibt auf seinem letzten Wert
-  stehen (die Kugel liegt in der Schale) – also stimmt man A, wechselt mit 👥,
-  stimmt B, und das Tor geht auf. Ohne diese Regel wäre das Duett im Editor
-  nicht testbar.
-- Units: `core/resonance.ts`; Gegenproben in tests/coopPlates.test.ts (Stein
-  hält kein Resonanzfeld; 'all'-Tür ohne `latch` ist rot mit dem Ausweg im
-  Bericht).
-- E2E Lauf 48 im MP-Testmodus (Muster Lauf 40/42): A stimmen, 👥, B stimmen,
-  Tor offen; danebengestimmt ⇒ Tor zu.
-- Ein eingebautes Coop-Level („Duett") in `src/levels/multiplayer.ts` mit
-  Lösbarkeits-Test.
-- i18n ×4: `el.resonance.title`/`.description`, `ed.resonanceHint`,
-  `mp.partnerTone`.
+### M91 „Duett" ✓ (v3.25.0) – gebaut, eigener Abschnitt unten
 
 DANACH (nicht Teil dieser vier): ein Coop-Kapitel als Bundle, das die vier
 Bausteine lehrt – erst Hören (M88), dann Markieren (M89), dann Ankommen (M90),
@@ -711,6 +650,82 @@ BFS-Land. Ein Seil zwischen den Bällen bleibt draußen: jeder Spieler hat seine
 EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
+
+## M91 „Duett" ✓ (v3.25.0)
+
+Das Flaggschiff des Coop-Ausbaus und die Idee, für die es dieses Spiel gibt:
+Neigung ist gleichzeitig BEWEGUNG und STIMME. Ein Tor, das nur ein Duett
+öffnet – zwei Resonanzfelder, eines je Spieler; wer auf einem steht, erzeugt
+einen Ton, dessen Höhe aus der NEIGUNGSRICHTUNG kommt. Das Tor geht auf, wenn
+die beiden Töne im Zielintervall stehen (Einklang oder Quinte, Toleranz
+25 Cent) und dort einen Augenblick bleiben. Beide hören die Schwebung
+langsamer werden, bis sie steht. Allein ist es nicht lösbar – und zwar nicht,
+weil eine Regel es verbietet, sondern weil ein Ton kein Intervall hat.
+
+DIE ENTSCHEIDENDE ABWEICHUNG VOM PLAN: Das Resonanzfeld ist KEIN eigenes
+Element, sondern eine EIGENSCHAFT der Druckplatte (`plate.tune`:
+'unison' | 'fifth'). Der Plan wollte `src/elements/resonance.ts` und begründete
+im selben Atemzug, warum das nicht geht: „Für das Modell ist ein Resonanzfeld
+eine Platte – `coopReachable`, `pairReachable`, `holdCheck` und der
+`openers`-Bericht rechnen es damit GRATIS mit." Gratis ist es nur als
+Eigenschaft: `el.type === 'plate'` steht an rund zwanzig Stellen in
+validate.ts, boulders.ts, doors.ts und editor.ts, und ein neuer Typ hätte
+jede davon gebraucht. Das ist dieselbe Regel wie bei der Wand-Variante (M38)
+und bei „Setzt für" an ● und ◎ (M58): Wer ein Werkzeug braucht, macht es zur
+Eigenschaft eines vorhandenen.
+
+DIE SCHALE (`src/core/resonance.ts`, rein, Units): Zum Stimmen muss man
+neigen, und Neigen würde einen vom Feld rollen. Deshalb baut die Platte mit
+`tune` einen Sog-Anker mit (`RESONANCE_FORCE` 2400 < `accel` 2600, dieselbe
+Invariante wie M32: eine Schale, nie eine Falle). Der Sog fällt mit dem
+Abstand, also rechnet sich die Flucht bei VOLLER Neigung auf ~0,49 s bis zum
+Plattenrand – die Haltezeit (`TUNE_HOLD_MS` 250 ms) liegt bewusst darunter:
+Wer entschieden kippt, rollt hinaus; wer stimmen will, neigt sanft. Diese
+Kopplung zweier Zahlen ist der Kern der Spielbarkeit und steht deshalb als
+Rechnung im Modul, nicht als Gefühl im Kopf.
+
+DIE TONHÖHE IST ÜBERALL STETIG: 0 Cent bei Neigung nach Norden, die Quinte
+bei Süden, und der Weg dorthin geht über Ost ODER West (351 Cent). Ein Kreis,
+der bei 702 auf 0 zurückspringt, hätte eine Naht, und an der wäre der Ton
+sprunghaft – unspielbar. Zwei reine SINUS-Stimmen (`audio.setResonance`)
+laufen in denselben Master, also entsteht die Schwebung AKUSTISCH wie bei
+zwei echten Gabeln; der eigene Ton ist ungepannt (er kommt von mir), der des
+Partners steht an SEINEM Feld, damit die Schwebung im Raum liegt und nicht im
+Kopf. Ein Schimmer eine Oktave darüber wächst mit der Genauigkeit – man hört
+das Ziel, EHE das Tor aufgeht.
+
+BEIDE SEITEN RECHNEN DASSELBE: `state` trägt `tn` (Tonhöhe in Cent, null =
+steht auf keinem Feld), jede Seite kennt beide Töne und entscheidet lokal –
+keine Autorität, keine Nachricht „Tor auf". Und weil das Feld eine Platte ist,
+macht die EINE Türregel (core/doors.ts) den Rest: Steht das Duett, gilt die
+Platte als gehalten. Am Netz hängt das Ganze am Merkmals-Gate (M89):
+`needs: ['duet']` – eine Gegenstelle von vor 3.25 schickt kein `tn`, das Tor
+ginge nie auf, und ein solches Level startet deshalb gar nicht.
+
+ZWEI AUSNAHMEN MUSSTEN IN DEN BEWEIS, sonst lügt er: Ein STEIN kann kein
+Resonanzfeld halten (er hat keine Neigung) – `boulderProof` lässt tune-Platten
+aus `stonePlates` heraus und zählt einen Stein darauf nicht als Öffner; der
+PARTNER darf es halten, wenn `heldPlates` es sagt. Und eine 'all'-Tür mit zwei
+Feldern hat ohne „bleibt offen" niemanden mehr frei, der durchrollt – genau
+das meldet `holdDetail` von selbst („… – „bleibt offen" löst das"), der Beweis
+erzieht also den Bauplan, und wir brauchen keine zweite Regel dafür.
+Gegenproben in tests/coopPlates.test.ts.
+
+Dazu das eingebaute Level coop-08 „Duett": zwei Felder in Sackgassen-Nischen
+(beide AUSSEN, denn drinnen stimmt niemand mehr), die Zielkammer versiegelt,
+die Tür mit „alle Öffner" + „bleibt offen". Dabei fiel eine alte Test-
+Invariante: „jede Coop-Tür hat eine Platte außen UND innen (Selbstbefreiung)"
+gilt nur für Türen, die WIEDER ZUFALLEN – eine latchende Tür kann niemanden
+aussperren. Die Invariante prüft jetzt genau das.
+
+Units: tests/resonance.test.ts (12) plus die Gegenproben; E2E Lauf 48 im
+MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, der Ton der ruhenden
+Seite BLEIBT stehen, Einklang öffnet die Quint-Tür nicht, Quinte öffnet sie,
+Verstimmen schließt sie wieder). Die Sabotage-Probe – `inTune` rechnet die
+Quinte als Einklang – hat drei der sechs Zusicherungen rot gemacht,
+darunter die eine, die vorher nur zufällig grün war: „bleibt zu" ist kein
+Zustandswechsel, auf den man warten kann, also wartet sie als EINZIGE im Lauf
+bewusst länger als die Haltezeit und liest DANACH.
 
 ## M90 „Gemeinsam ankommen" ✓ (v3.24.0)
 

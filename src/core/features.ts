@@ -11,15 +11,18 @@
 // spielt weiter mit jeder älteren Fassung. Rein – Units in tests/features.test.ts.
 
 /** Merkmale, die DIESE Fassung beherrscht. Neues Spielmittel ⇒ hier eintragen. */
-export const FEATURES: readonly string[] = ['marks', 'together'];
+export const FEATURES: readonly string[] = ['marks', 'together', 'duet'];
 
 /** Was ein Level verlangt: `marks` > 0 heißt „beide müssen Bojen legen
  *  können", `together` heißt „beide müssen nach der Rendezvous-Regel spielen"
- *  (M90 – eine alte Gegenstelle würde sonst nach der alten Regel gewinnen). */
-export function needsFor(marks: number, together = false): string[] {
+ *  (M90 – eine alte Gegenstelle würde sonst nach der alten Regel gewinnen),
+ *  `duet` heißt „das Level hat ein Resonanz-Tor" (M91): Ohne den Ton der
+ *  anderen Seite (`state.tn`) geht es NIE auf – ein unlösbares Level. */
+export function needsFor(marks: number, together = false, duet = false): string[] {
   const needs: string[] = [];
   if (marks > 0) needs.push('marks');
   if (together) needs.push('together');
+  if (duet) needs.push('duet');
   return needs;
 }
 

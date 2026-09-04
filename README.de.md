@@ -63,8 +63,12 @@ die Animation unten trägt.
   beide – du öffnest auch die Türen des Partners; gewonnen ist, wenn beide
   drin sind – und ein Level kann **gemeinsames Ankommen** verlangen: beide
   gleichzeitig in ihren Zielzonen (wer zuerst da ist, wartet, und der
-  Nachzügler hört das Rufen). **Race:** identisches Level, wer zuerst ankommt,
-  gewinnt, mit Rematch. Sieben handgebaute Coop-Level, sechs Race-Level plus
+  Nachzügler hört das Rufen) – oder ein **Resonanz-Tor**: Zwei Schalen halten
+  eure Kugeln, die Neigungsrichtung stimmt je einen Ton, und das Tor schwingt
+  erst auf, wenn beide Töne im selben Intervall stehen; man hört die Schwebung
+  langsamer werden, bis sie steht. Allein ist es nicht zu spielen.
+  **Race:** identisches Level, wer zuerst ankommt,
+  gewinnt, mit Rematch. Acht handgebaute Coop-Level, sechs Race-Level plus
   ein 🎲-Generator, und jedes
   **Zwei-Spieler-Level aus der Werkstatt** lässt sich direkt aus der
   Bibliothek hosten – der Gast bekommt es mit dem Raum. Im Coop **hört** man

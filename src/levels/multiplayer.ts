@@ -241,6 +241,49 @@ const coopDefs: unknown[] = [
       },
     ],
   },
+  {
+    // DUETT (M91): das Flaggschiff des Coop-Ausbaus – ein Tor, das nur ein
+    // DUETT öffnet. Zwei Resonanzfelder in Sackgassen-Nischen (beide AUSSEN,
+    // denn gestimmt wird vor dem Tor, nicht dahinter), die Zieltür mit
+    // „alle Öffner" + „bleibt offen": Beide dürfen beim Öffnen stehen, danach
+    // rollen sie los – ohne `latch` hätte niemand mehr einen Fuß frei
+    // (M76/M77, das meldet der Beweis von selbst).
+    id: 'coop-08',
+    name: 'Duett',
+    intro:
+      'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton. Trefft die Quinte, bis die Schwebung steht – dann schwingt das Tor auf und bleibt offen. Danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
+    players: 2,
+    mpMode: 'coop',
+    pingBudget: 4,
+    floors: [
+      {
+        size: [7, 7],
+        maze: {
+          seed: 321,
+          carve: [...right(0, 0, 6), ...down(6, 0, 6), [[2, 0], 's'], [[4, 0], 's']],
+          // Die Nischen sind Sackgassen (nur von oben), die Zielkammer ist
+          // versiegelt: die Tür ist ihr einziger Eingang.
+          add: [
+            [[1, 1], 'e'],
+            [[2, 1], 'e'],
+            [[2, 1], 's'],
+            [[3, 1], 'e'],
+            [[4, 1], 'e'],
+            [[4, 1], 's'],
+            [[5, 6], 'e'],
+          ],
+        },
+        elements: [
+          { type: 'door', id: 'gz', edge: [[6, 5], 's'], require: 'all', latch: true },
+          { type: 'plate', cell: [2, 1], opens: 'gz', tune: 'fifth' },
+          { type: 'plate', cell: [4, 1], opens: 'gz', tune: 'fifth' },
+          { type: 'checkpoint', cell: [6, 0] },
+        ],
+        start: [0, 0],
+        goal: [6, 6],
+      },
+    ],
+  },
 ];
 
 const raceDefs: unknown[] = [
@@ -386,6 +429,9 @@ const raceDefs: unknown[] = [
 // Einstiegslevel, auf dessen Choreografie auch der Multiplayer-E2E fußt).
 // 'x' erhält oben/unten in den Intro-Texten ("ganz oben am Start").
 const MIRRORS: Record<string, MirrorAxis> = {
+  // 'xy': Der Start wandert nach unten rechts – der Intro-Text von „Duett"
+  // nennt keine Richtungen, also darf gespiegelt werden.
+  'coop-08': 'xy',
   'coop-02': 'y',
   'coop-03': 'x',
   'coop-04': 'xy',

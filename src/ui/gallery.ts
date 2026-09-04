@@ -109,6 +109,54 @@ export function extraEntries(): TypedEntry[] {
       },
     },
     {
+      // RESONANZFELD (M91): kein eigenes Element, sondern eine PLATTE, die
+      // singt – deshalb steht es hier bei den Varianten, wie die Stimmgabel
+      // unter den Schlüsseln.
+      type: 'resonance',
+      title: 'Resonanzfeld & Duett',
+      description:
+        'Eine Druckplatte, die die Kugel hält wie eine Schale – und die Neigung wird zum Stimmknopf: oben der Grundton, unten die Quinte. Zu zweit klingen zwei Felder gegeneinander; steht das Intervall (Einklang oder Quinte), schwingt das Tor auf. Allein ist es nicht zu spielen.',
+      draw(ctx, w, h) {
+        const cx = w * 0.38,
+          cy = h / 2;
+        // Die Schale: Ringe wie beim Anker, aber in Resonanzfarbe …
+        ctx.strokeStyle = `rgba(${WORLD.resonance}, 0.55)`;
+        ctx.lineWidth = 2;
+        for (const r of [0.24, 0.34]) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, h * r, 0.5, Math.PI * 2 - 0.5);
+          ctx.stroke();
+        }
+        // … darin die Platte.
+        ctx.strokeStyle = `rgba(${WORLD.resonance}, 0.95)`;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(cx - h * 0.14, cy - h * 0.14, h * 0.28, h * 0.28);
+        // Zwei Wellen, die zusammenfinden (Schwebung, die steht).
+        ctx.strokeStyle = `rgba(${WORLD.resonance}, 0.8)`;
+        ctx.lineWidth = 1.5;
+        for (const [phase, amp] of [
+          [0, 0.12],
+          [0.9, 0.08],
+        ] as Array<[number, number]>) {
+          ctx.beginPath();
+          for (let i = 0; i <= 30; i++) {
+            const x = w * 0.62 + (i / 30) * w * 0.32;
+            const y = cy + Math.sin(i / 2.2 + phase) * h * amp;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      },
+      demoSound(audio) {
+        // Danebengestimmt (Schwebung), dann zusammen: der Ton bleibt stehen.
+        audio.setResonance(220, 262, 1, 0, 0);
+        setTimeout(() => audio.setResonance(220, 340, 1, 0, 0.4), 900);
+        setTimeout(() => audio.setResonance(220, 330, 1, 0, 1), 1700);
+        setTimeout(() => audio.setResonance(null, null, 0, 0, 0), 2900);
+      },
+    },
+    {
       type: 'fork',
       title: 'Stimmgabel',
       description:
