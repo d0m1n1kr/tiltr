@@ -26,7 +26,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # Der npm-Cache oben greift, aber `npm ci` kostet auch warm über zwei
+      # Minuten: --prefer-offline nimmt die Pakete aus dem Cache statt vom
+      # Netz, --no-audit/--fund sparen zwei Rundreisen, die niemand liest.
+      - run: npm ci --prefer-offline --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test

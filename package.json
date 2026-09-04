@@ -15,6 +15,7 @@
     "e2e": "node e2e/parallel.mjs",
     "e2e:serial": "node e2e/smoke.mjs",
     "promo": "node tools/promo.mjs",
+    "release": "node tools/release.mjs",
     "screenshots": "node tools/screenshots.mjs",
     "lint": "eslint src tests",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"e2e/**/*.mjs\" \"*.{ts,json,md}\""

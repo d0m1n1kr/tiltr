@@ -12,6 +12,7 @@ npm run typecheck  # tsc --noEmit
 npm test           # Vitest-Units
 npm run lint       # ESLint
 npm run build      # Produktions-Build (dist/, inkl. PWA/Workbox)
+npm run release -- 3.23.0   # ganze Suite, und NUR bei grün die neue Version
 npm run e2e        # Playwright-Smoke, PARALLEL: ein Server, 4 Arbeiter (e2e/parallel.mjs)
 npm run e2e:serial # dieselben Läufe in einem Prozess (e2e/smoke.mjs)
 E2E_ONLY=23,24 npm run e2e:serial   # nur diese Läufe – zum Iterieren, 20 s statt 4 min
@@ -71,9 +72,21 @@ Bild dort ergänzen, nie von Hand schießen – die Bilder müssen zum Stand
 passen, und der Stand ändert sich.
 
 CI (`.github/workflows/pages.yml`) führt alle fünf aus und deployt `dist/`
-auf GitHub Pages. Vor jedem Push: komplette Suite lokal grün. Bei jedem
-Release die Version in `package.json` bumpen – sie erscheint auf dem
-Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
+auf GitHub Pages – bei ROTEM Schritt wird der Deploy ÜBERSPRUNGEN, `version.json`
+bleibt dann einfach stehen. Nach jedem Push also den CI-LAUF ansehen, nicht nur
+`version.json` pollen: Ein rotes E2E sieht von außen aus wie ein langsamer
+Deploy. Vor jedem Push: komplette Suite lokal grün.
+
+DIE VERSION ENTSTEHT ZULETZT (`npm run release -- 3.23.0`, tools/release.mjs):
+Das Werkzeug fährt typecheck, lint, units, build und e2e und setzt die Zahl in
+`package.json` ERST, wenn alles grün ist – bei rot bleibt die alte stehen und
+die letzten Zeilen des gefallenen Schritts stehen da. Grund: Die Zahl ist kein
+Etikett, sie erscheint auf dem Startscreen und steuert den Update-Toast
+(version.json, NetworkOnly) – 3.22.0 trug zwei rote CI-Läufe, bevor sie je live
+war. Sie gehört trotzdem in DENSELBEN Commit wie das Feature: „bumpen erst nach
+grüner CI" hieße ein zweiter Push nur für die Zahl, also ein zweiter CI-Lauf
+und ein Deploy ohne Update-Toast dazwischen. Committen und pushen macht das
+Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
 
 ## Architektur (Details: docs/PLAN.md)
 
