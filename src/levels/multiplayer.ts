@@ -23,12 +23,23 @@ const down = (x: number, y0: number, y1: number): Edge[] => {
   return e;
 };
 
+// DIE REIHENFOLGE IST DIE LEHRREIHE, DIE ID IST EIN SCHLÜSSEL (M93): Das
+// MP-Panel listet die Level in ARRAY-Ordnung und nummeriert sie dabei; die ID
+// steht nirgends im Bild, sie identifiziert nur (der Gast holt das Level daraus
+// aus seinem Pool). Deshalb stehen die drei Level aus M93 dort, wo sie
+// unterrichten – „Wegzeichen" vor „Gleichschritt" –, und nicht dort, wo ihre
+// Nummer hinwiese. Die Reihe: sechs Platten-Level (das Handwerk), dann
+// markieren (M89), gemeinsam ankommen (M90), Einklang (M91), Quinte, und
+// zuletzt die Ansage auf der halbhellen Ebene (M92).
 const coopDefs: unknown[] = [
   // Muster aller Coop-Level: Türen verschließen VERSIEGELTE Kammern (einziger
   // Eingang). Jede Tür hat eine Platte außen und eine innen (Selbstbefreiung,
   // kein Aussperren möglich); die Platte in der Zielkammer hält der Partner,
   // der schon im Ziel liegt. tests/multiplayer.test.ts beweist alle drei
-  // Invarianten pro Tür.
+  // Invarianten pro Tür. Zwei Ausnahmen bestätigen die Regel: „Gleichschritt"
+  // (M90) hat gar keine Tür – die Aufgabe ist die Gleichzeitigkeit –, und die
+  // Duett-Tore rasten ein („bleibt offen"), weshalb dort keine Innenplatte
+  // nötig ist (eine Tür, die nicht zufällt, sperrt niemanden aus).
   {
     id: 'coop-01',
     name: 'Schleuse',
@@ -205,6 +216,73 @@ const coopDefs: unknown[] = [
     ],
   },
   {
+    // WEGZEICHEN (M93): Das Kapitel-Level für die Klangbojen (M89). Zwischen
+    // Halle und Ziel liegt ein OFFENES Feld – acht Löcher, kein Echo, das
+    // einem die Lücke verrät (ein Ping zeigt Wände, und hier sind keine).
+    // Beide müssen hindurch, und zwar NACHEINANDER: einer hält die Platte in
+    // der Nische, der andere rollt ins Ziel und hält von dort. Wer den Weg
+    // zuerst findet, legt Marken – sie ticken für BEIDE, und der Zweite muss
+    // nicht suchen, sondern nur hören.
+    id: 'coop-09',
+    name: 'Wegzeichen',
+    intro:
+      'Zwischen euch und dem Ziel liegt ein offenes Feld voller Löcher. Ein Ping hilft kaum – er zeigt Wände, und hier sind keine. Wer eine Lücke findet, legt eine Wegmarke (📍 im HUD): Die ticken für BEIDE, schneller je näher. Markiert die Lücken, dann muss der Zweite den Weg nicht suchen, sondern nur hören.',
+    players: 2,
+    mpMode: 'coop',
+    marks: 4,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [8, 7],
+        maze: {
+          seed: 331,
+          carve: [
+            ...right(0, 0, 7),
+            [[0, 0], 's'],
+            // Das Feld: Reihen 1–4 in beide Richtungen offen.
+            ...right(1, 0, 7),
+            ...right(2, 0, 7),
+            ...right(3, 0, 7),
+            ...right(4, 0, 7),
+            ...down(0, 1, 4),
+            ...down(1, 1, 4),
+            ...down(2, 1, 4),
+            ...down(3, 1, 4),
+            ...down(4, 1, 4),
+            ...down(5, 1, 4),
+            ...down(6, 1, 4),
+            ...down(7, 1, 4),
+            [[0, 4], 's'],
+            ...right(5, 0, 7),
+            [[2, 5], 's'],
+          ],
+          // Platten-Nische [2,6] ist eine Sackgasse, die Zielkammer [7,6]
+          // versiegelt: die Tür ist ihr einziger Eingang.
+          add: [[[1, 6], 'e'], [[2, 6], 'e'], [[6, 6], 'e']],
+        },
+        elements: [
+          { type: 'door', id: 'gz', edge: [[7, 5], 's'] },
+          { type: 'plate', cell: [2, 6], opens: 'gz' },
+          { type: 'plate', cell: [7, 6], opens: 'gz' },
+          // Zwei versetzte Reihen: die Lücke der einen liegt über der anderen,
+          // also führt der Weg quer durch das Feld – nicht gerade hindurch.
+          { type: 'hole', cell: [0, 2] },
+          { type: 'hole', cell: [1, 2] },
+          { type: 'hole', cell: [2, 2] },
+          { type: 'hole', cell: [3, 2] },
+          { type: 'hole', cell: [4, 4] },
+          { type: 'hole', cell: [5, 4] },
+          { type: 'hole', cell: [6, 4] },
+          { type: 'hole', cell: [7, 4] },
+          { type: 'checkpoint', cell: [0, 1] },
+          { type: 'checkpoint', cell: [0, 5] },
+        ],
+        start: [0, 0],
+        goal: [7, 6],
+      },
+    ],
+  },
+  {
     // GEMEINSAM ANKOMMEN (M90): Das erste Coop-Level, das keine Tür hat – die
     // Aufgabe ist die Gleichzeitigkeit. Ein Ring mit zwei Zielen in den oberen
     // Ecken: Beide starten unten in der Mitte, trennen sich, und gewonnen ist
@@ -248,10 +326,16 @@ const coopDefs: unknown[] = [
     // „alle Öffner" + „bleibt offen": Beide dürfen beim Öffnen stehen, danach
     // rollen sie los – ohne `latch` hätte niemand mehr einen Fuß frei
     // (M76/M77, das meldet der Beweis von selbst).
+    // EINKLANG, NICHT QUINTE (M93, aus dem Spieltest): Das ERSTE Duett lehrt
+    // sich selbst nur im Einklang – zwei fast gleiche Töne SCHWEBEN, und die
+    // Schwebung wird hörbar langsamer, bis sie steht. Eine Quinte schwebt
+    // nicht; sie klingt bloß rein, und das beurteilt ein ungeübtes Ohr kaum
+    // (deshalb gibt es den Führungston, v3.25.4). Die Quinte bekommt ihr
+    // eigenes Level danach (coop-10).
     id: 'coop-08',
     name: 'Duett',
     intro:
-      'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton – kurz antippen genügt, er bleibt dann stehen. Gesucht ist die QUINTE, ein guter Abstand: etwa auf halbem Weg zwischen oben und unten. Steht sie rein, schwingt das Tor auf und bleibt offen – danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
+      'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton – kurz antippen genügt, er bleibt dann stehen. Gesucht ist DERSELBE Ton: Je näher ihr kommt, desto langsamer schwebt es zwischen euren Tönen, bis es still steht. Dann schwingt das Tor auf und bleibt offen – danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
     players: 2,
     mpMode: 'coop',
     pingBudget: 4,
@@ -275,12 +359,111 @@ const coopDefs: unknown[] = [
         },
         elements: [
           { type: 'door', id: 'gz', edge: [[6, 5], 's'], require: 'all', latch: true },
-          { type: 'plate', cell: [2, 1], opens: 'gz', tune: 'fifth' },
-          { type: 'plate', cell: [4, 1], opens: 'gz', tune: 'fifth' },
+          { type: 'plate', cell: [2, 1], opens: 'gz', tune: 'unison' },
+          { type: 'plate', cell: [4, 1], opens: 'gz', tune: 'unison' },
           { type: 'checkpoint', cell: [6, 0] },
         ],
         start: [0, 0],
         goal: [6, 6],
+      },
+    ],
+  },
+  {
+    // REINE QUINTE (M93): das zweite Duett – und das erste mit einem
+    // INTERVALL. Beim Einklang hört man die Schwebung selbst langsamer werden;
+    // eine Quinte SCHWEBT NICHT, sie klingt nur rein. Deshalb spielt das Spiel
+    // hier den Führungston mit (v3.25.4): den Ton, den ICH treffen müsste –
+    // der schwebt gegen meinen eigenen, bis er steht. Die Nischen liegen
+    // weiter auseinander als im „Duett", damit sein Ton hörbar von SEINEM Feld
+    // kommt und nicht aus derselben Ecke.
+    id: 'coop-10',
+    name: 'Reine Quinte',
+    intro:
+      'Wieder zwei Felder – diesmal ist die QUINTE gesucht, ein Abstand statt eines Gleichklangs. Achtung: Eine Quinte schwebt nicht, sie klingt nur rein. Hört auf den leisen Führungston: Das ist der Ton, den DU treffen musst, und er schwebt gegen deinen, bis er still steht. Der Grundton liegt am einen Ende der Neigung, die Oktave am anderen – die Quinte dazwischen.',
+    players: 2,
+    mpMode: 'coop',
+    pingBudget: 4,
+    floors: [
+      {
+        size: [8, 8],
+        maze: {
+          seed: 341,
+          carve: [...right(0, 0, 7), ...down(7, 0, 7), [[1, 0], 's'], [[6, 0], 's']],
+          // Zwei Sackgassen-Nischen (nur von oben) und eine versiegelte
+          // Zielkammer: die Tür ist ihr einziger Eingang.
+          add: [
+            [[0, 1], 'e'],
+            [[1, 1], 'e'],
+            [[1, 1], 's'],
+            [[5, 1], 'e'],
+            [[6, 1], 'e'],
+            [[6, 1], 's'],
+            [[6, 7], 'e'],
+          ],
+        },
+        elements: [
+          { type: 'door', id: 'gz', edge: [[7, 6], 's'], require: 'all', latch: true },
+          { type: 'plate', cell: [1, 1], opens: 'gz', tune: 'fifth' },
+          { type: 'plate', cell: [6, 1], opens: 'gz', tune: 'fifth' },
+          { type: 'checkpoint', cell: [7, 0] },
+        ],
+        start: [0, 0],
+        goal: [7, 7],
+      },
+    ],
+  },
+  {
+    // ANSAGE (M93): das Kapitel-Finale und das Level, für das es die
+    // Licht-je-Spieler-Ebene gibt (M92). Für Spieler 1 ist die Ebene HELL – er
+    // sieht das Labyrinth, die atmenden Löcher und (im Coop auf heller Ebene,
+    // M62) die Kugel des Partners. Spieler 2 sieht nichts und muss durch einen
+    // GESCHLOSSENEN Gang, dessen Boden atmet, zur Platte. Der Sehende sagt an –
+    // mit Worten oder mit Wegmarken; er hängt dabei selbst an der Platte, denn
+    // ohne sie geht seine Zieltür nicht auf. Das ist die Umkehrung des
+    // Gewohnten: Der Blinde tut die Arbeit, der Sehende trägt die Verantwortung.
+    id: 'coop-11',
+    name: 'Ansage',
+    intro:
+      'Für einen von euch ist diese Ebene HELL: Er sieht das Labyrinth, den atmenden Boden und die Kugel des anderen. Der andere sieht nichts – und muss genau da hindurch. Sagt an! Mit Worten oder mit Wegmarken (📍). Erst wenn die Platte am Ende des Gangs gehalten wird, öffnet sich die Zielkammer.',
+    players: 2,
+    mpMode: 'coop',
+    marks: 4,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [8, 6],
+        bright: true,
+        brightPlayer: 1,
+        maze: {
+          seed: 351,
+          carve: [...right(0, 0, 7), ...down(7, 0, 5), ...right(5, 0, 7), [[4, 0], 's']],
+          add: [
+            // Der untere Gang ist GESCHLOSSEN: nur über [7,5] hinein, also
+            // führt jeder Weg zur Platte über die atmenden Löcher.
+            [[0, 4], 's'],
+            [[1, 4], 's'],
+            [[2, 4], 's'],
+            [[3, 4], 's'],
+            [[4, 4], 's'],
+            [[5, 4], 's'],
+            [[6, 4], 's'],
+            // Zielkammer [4,1]: versiegelt, die Tür ist der einzige Eingang.
+            [[3, 1], 'e'],
+            [[4, 1], 'e'],
+            [[4, 1], 's'],
+          ],
+        },
+        elements: [
+          { type: 'door', id: 'gz', edge: [[4, 0], 's'] },
+          { type: 'plate', cell: [0, 5], opens: 'gz' },
+          { type: 'plate', cell: [4, 1], opens: 'gz' },
+          { type: 'hole', cell: [5, 5], breathing: { offset: 0 } },
+          { type: 'hole', cell: [2, 5], breathing: { offset: 2.2 } },
+          { type: 'checkpoint', cell: [7, 5] },
+        ],
+        start: [0, 0],
+        start2: [7, 0],
+        goal: [4, 1],
       },
     ],
   },
@@ -429,6 +612,11 @@ const raceDefs: unknown[] = [
 // Einstiegslevel, auf dessen Choreografie auch der Multiplayer-E2E fußt).
 // 'x' erhält oben/unten in den Intro-Texten ("ganz oben am Start").
 const MIRRORS: Record<string, MirrorAxis> = {
+  // Die drei Kapitel-Level (M93) spiegeln in drei verschiedene Ecken; ihre
+  // Intros nennen keine Richtungen im Labyrinth.
+  'coop-09': 'y',
+  'coop-10': 'x',
+  'coop-11': 'xy',
   // 'xy': Der Start wandert nach unten rechts – der Intro-Text von „Duett"
   // nennt keine Richtungen, also darf gespiegelt werden.
   'coop-08': 'xy',

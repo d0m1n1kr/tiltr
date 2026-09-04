@@ -68,7 +68,9 @@ animation below.
   still. Alone it cannot be played. A floor can also be **lit for one player
   only** — they see the maze, the other one hears it, so one of you can call the
   way. **Race:** identical level, first one in
-  wins, with rematch. Eight hand-built co-op levels, six race levels plus a 🎲
+  wins, with rematch. Eleven hand-built co-op levels — the last five are a
+  teaching run: marking, arriving together, unison, fifth, calling the way —
+  six race levels plus a 🎲
   generator, and every **two-player level from the workshop**
   can be hosted straight from your library — the guest receives it with the
   room. In co-op you **hear** your partner: a warm low hum from his

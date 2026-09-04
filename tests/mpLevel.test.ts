@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../src/levels/schema';
 import { goalCellFor, loadLevel, startCellFor } from '../src/levels/loader';
-import { isShareable, pairReachable, pathSteps, validateLevel, cellKey } from '../src/levels/validate';
+import { buildFloorCells, isShareable, pairReachable, pathSteps, validateLevel, cellKey } from '../src/levels/validate';
 import { mirrorLevel } from '../src/levels/mirror';
 import { removeFloor, type RawLevel } from '../src/ui/editor';
 import { COOP_LEVELS } from '../src/levels/multiplayer';
@@ -477,5 +477,105 @@ describe('Licht je Spieler (M92)', () => {
       const rep = validateLevel(d);
       expect(rep.filter((c) => !c.ok).map((c) => c.key)).toEqual([]);
     }
+  });
+});
+
+// COOP-KAPITEL (M93): Aus den Coop-Mitteln der letzten Milestones wird eine
+// LEHRREIHE – die Reihenfolge im MP-Panel führt vom Markieren (M89) über das
+// Rendezvous (M90) und das Duett (M91) zur Ansage auf der halbhellen Ebene
+// (M92). Geprüft wird hier die BAUFORM der drei neuen Level; die Beweise
+// (Erreichbarkeit, Tür notwendig, Platte außen+innen) laufen für ALLE
+// Coop-Level in tests/multiplayer.test.ts.
+describe('Coop-Kapitel (M93)', () => {
+  const lv = (id: string) => COOP_LEVELS.find((l) => l.id === id)!;
+  const tuned = (def: (typeof COOP_LEVELS)[number]) =>
+    def.floors.flatMap((f) =>
+      f.elements.filter((e): e is Extract<typeof e, { type: 'plate' }> => e.type === 'plate' && e.tune !== undefined),
+    );
+  const span = (def: (typeof COOP_LEVELS)[number]) => {
+    const [a, b] = tuned(def);
+    return Math.abs(a!.cell[0] - b!.cell[0]) + Math.abs(a!.cell[1] - b!.cell[1]);
+  };
+
+  it('die Reihenfolge im Panel IST die Lehrreihenfolge (die ID ist ein Schlüssel, kein Rang)', () => {
+    // Marken → gemeinsam ankommen → Einklang → Quinte → Ansage.
+    expect(COOP_LEVELS.map((l) => l.id).slice(6)).toEqual(['coop-09', 'coop-07', 'coop-08', 'coop-10', 'coop-11']);
+  });
+
+  it('coop-09 „Wegzeichen": keine Spalte führt gerade durch das Lochfeld', () => {
+    const def = lv('coop-09');
+    const floor = def.floors[0]!;
+    const holes = floor.elements.filter((e) => e.type === 'hole');
+    expect(holes).toHaveLength(8);
+    // Die zwei Lochreihen sind versetzt: In JEDER Spalte liegt ein Loch, also
+    // gibt es keinen Durchmarsch – der Weg führt quer, und den findet man
+    // einmal und markiert ihn dann (M89).
+    for (let x = 0; x < floor.size[0]; x++) {
+      expect(
+        holes.some((h) => h.cell[0] === x),
+        `Spalte ${x} ohne Loch`,
+      ).toBe(true);
+    }
+    // Löcher sind im Modell NICHT gesperrt (man kommt am Rand vorbei) – das
+    // Feld ist Schwierigkeit, kein Riegel. Der Vorrat an Marken ist größer
+    // als die Vorgabe, denn hier ist er das Werkzeug des Levels.
+    expect(def.marks).toBe(4);
+  });
+
+  it('coop-08 „Duett" lehrt den EINKLANG, coop-10 die QUINTE – und die weiter auseinander', () => {
+    expect(tuned(lv('coop-08')).map((f) => f.tune)).toEqual(['unison', 'unison']);
+    expect(tuned(lv('coop-10')).map((f) => f.tune)).toEqual(['fifth', 'fifth']);
+    // Ohne Schwebung trägt die Ortung: Sein Ton kommt von SEINEM Feld, also
+    // liegen die Quint-Felder weiter auseinander als die Einklang-Felder.
+    expect(span(lv('coop-10'))).toBeGreaterThan(span(lv('coop-08')));
+  });
+
+  it('coop-10 „Reine Quinte": beide Felder vor der Tür, Tür „alle" + „bleibt offen"', () => {
+    const def = lv('coop-10');
+    const door = def.floors.flatMap((f) => f.elements).find((e) => e.type === 'door')!;
+    expect(door.type === 'door' && door.require).toBe('all');
+    // Ohne „bleibt offen" hätte bei zwei Feldern niemand mehr einen Fuß frei
+    // (M76/M77) – der Beweis meldete das von selbst.
+    expect(door.type === 'door' && door.latch).toBe(true);
+    const outside = reachable(def, { brittleOpen: true, doorsOpen: false });
+    for (const f of tuned(def)) expect(outside.has(cellKey(0, f.cell))).toBe(true);
+    expect(isShareable(validateLevel(def))).toBe(true);
+  });
+
+  it('coop-11 „Ansage": hell NUR für Spieler 1 – der andere hört dieselbe Ebene', () => {
+    const def = lv('coop-11');
+    const floor = def.floors[0]!;
+    expect(floor.bright).toBe(true);
+    expect(floor.brightPlayer).toBe(1);
+    expect(loadLevel(def, { player: 1 }).floors[0]!.bright).toBe(true);
+    expect(loadLevel(def, { player: 2 }).floors[0]!.bright).toBe(false);
+    // Und beide kommen ins Ziel: Die Ansage ist Spielhilfe, kein Beweisteil.
+    const goal = goalCellFor(def, 1)!;
+    const pair = pairReachable(def, true);
+    expect(pair.p1.has(cellKey(goal.floor, goal.cell))).toBe(true);
+    expect(pair.p2.has(cellKey(goal.floor, goal.cell))).toBe(true);
+    expect(isShareable(validateLevel(def))).toBe(true);
+  });
+
+  it('coop-11: der Gang zur Platte hat GENAU EINEN Eingang – jeder Weg führt über die Löcher', () => {
+    const def = lv('coop-11');
+    const floor = def.floors[0]!;
+    const [cols, rows] = floor.size;
+    const cells = buildFloorCells(floor, { brittleOpen: true, doorsOpen: true }, def.mirror);
+    // Der Gang ist die Reihe der Platte, die NICHT in der Zielkammer liegt.
+    const goal = floor.goal!;
+    const outer = floor.elements.find((e) => e.type === 'plate' && (e.cell[0] !== goal[0] || e.cell[1] !== goal[1]))!;
+    const ry = outer.type === 'plate' ? outer.cell[1] : -1;
+    // `cells[i].s/.e` sagt WAND (nicht offen) – so liest es auch der Drucker.
+    let entrances = 0;
+    for (let x = 0; x < cols; x++) {
+      if (ry > 0 && !cells[(ry - 1) * cols + x]!.s) entrances++;
+      if (ry < rows - 1 && !cells[ry * cols + x]!.s) entrances++;
+    }
+    expect(entrances, 'Eingänge in den Gang').toBe(1);
+    // … und in diesem Gang atmet der Boden (deshalb braucht es die Ansage).
+    const holes = floor.elements.filter((e) => e.type === 'hole');
+    expect(holes.length).toBeGreaterThanOrEqual(2);
+    for (const h of holes) expect(h.cell[1], 'Loch außerhalb des Gangs').toBe(ry);
   });
 });

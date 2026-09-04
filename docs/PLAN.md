@@ -651,6 +651,72 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M93 „Das Coop-Kapitel" ✓ (v3.27.0) – Einklang zuerst, und drei Level, die unterrichten
+
+Die Mittel für zwei Spieler waren fertig (M88 hören, M89 markieren, M90
+gemeinsam ankommen, M91 stimmen, M92 ansagen) – ein KAPITEL waren sie nicht:
+Wer die Lobby öffnete, fand sechs Platten-Level, dahinter zwei Einzelstücke und
+für Marken, Partnerklang und halbhelles Licht überhaupt kein Level, das sie
+lehrt. M93 macht aus dem Vorrat eine Reihe.
+
+DIE REIHENFOLGE IM PANEL IST DIE LEHRREIHE, DIE ID IST EIN SCHLÜSSEL. Das
+MP-Panel listet `COOP_LEVELS` in Array-Ordnung und nummeriert dabei; die ID
+steht nirgends im Bild – sie identifiziert nur, der Gast holt das Level daraus
+aus seinem Pool. Also stehen die neuen Level dort, wo sie unterrichten, und
+nicht dort, wo ihre Nummer hinwiese: „Wegzeichen" (coop-09) VOR „Gleichschritt"
+(coop-07). Eine ID umzunummerieren wäre das Gegenteil von harmlos – sie ist der
+Schlüssel, über den beide Seiten dasselbe Level meinen.
+
+EINKLANG ZUERST (coop-08 „Duett"). Das erste Duett verlangte die QUINTE, und
+das war die falsche Reihenfolge: Zwei fast gleiche Töne SCHWEBEN, und die
+Schwebung wird hörbar langsamer, bis sie steht – die Mechanik erklärt sich
+selbst. Eine Quinte schwebt nicht; sie klingt bloß rein, und das beurteilt ein
+ungeübtes Ohr kaum (deshalb gibt es seit v3.25.4 den Führungston). Also lehrt
+coop-08 jetzt den Einklang, und die Quinte bekommt ihr eigenes Level dahinter –
+mit weiter auseinanderliegenden Feldern, denn ohne Schwebung trägt die ORTUNG:
+Sein Ton kommt von SEINEM Feld.
+
+DIE DREI NEUEN LEVEL:
+
+- **„Wegzeichen"** (coop-09, vor dem Rendezvous): Zwischen Halle und Zielkammer
+  liegt ein OFFENES Feld mit zwei versetzten Lochreihen – in jeder Spalte ein
+  Loch, also kein Durchmarsch. Ein Ping hilft dort kaum, denn er zeigt Wände,
+  und es gibt keine. Beide müssen hindurch, und zwar nacheinander (einer hält
+  die Platte in der Nische, der andere rollt ins Ziel und hält von dort) – wer
+  den Weg zuerst findet, legt Marken, und die ticken für BEIDE. Das ist der
+  Sinn von M89 in einem Satz. `marks: 4` statt der Vorgabe 3: Hier sind sie das
+  Werkzeug des Levels.
+- **„Reine Quinte"** (coop-10, nach dem Duett): dieselbe Bauform wie coop-08 –
+  zwei Sackgassen-Nischen, versiegelte Zielkammer, Tür „alle Öffner" +
+  „bleibt offen" (ohne `latch` hätte niemand mehr einen Fuß frei, M76/M77) –
+  aber `tune: 'fifth'` und die Nischen an den ENDEN der Halle. Der Intro-Text
+  sagt, was das Ohr erwartet: keine Schwebung, sondern den leisen Führungston.
+- **„Ansage"** (coop-11, das Finale): `floor.brightPlayer: 1` – für Spieler 1
+  ist die Ebene hell, für Spieler 2 stockdunkel. Der Blinde muss durch einen
+  GESCHLOSSENEN Gang (genau ein Eingang, dahinter zwei atmende Löcher) zur
+  Platte, die die Zielkammer des Sehenden öffnet; danach kehrt er zurück und
+  wird von innen hereingehalten. Der Sehende sieht Labyrinth, Atemtakt und (M62)
+  die Kugel des Partners – er sagt an, mit Worten oder Marken. Die Umkehrung des
+  Gewohnten: Der Blinde tut die Arbeit, der Sehende trägt die Verantwortung.
+
+WAS DIE TESTS FESTHALTEN: Die Beweise laufen wie für jedes Coop-Level
+(Erreichbarkeit im Fixpunkt, JEDE Tür notwendig, Platte außen UND innen bei
+Türen, die zufallen). Dazu drei Bauform-Prüfungen in tests/mpLevel.test.ts, die
+zeigen, was ein Blick auf die Karte sagt: in JEDER Spalte des Lochfelds ein
+Loch; Einklang hier, Quinte dort und die Quint-Felder weiter auseinander; der
+Gang zur Platte hat GENAU EINEN Eingang (gerechnet aus `buildFloorCells`, deren
+`.s`/`.e` WAND heißt, nicht offen – dieselbe Lesart wie im Karten-Drucker). Der
+Drucker kann jetzt auch Coop- und Race-Level (`PRINT_IDS=coop-11`) samt
+Start 2 / Ziel 2 – ohne Karte sind Nischen, Türkanten und Lochreihen Raterei.
+
+EIN UNBEKANNTES EINGEBAUTES LEVEL IST EIN VERSIONS-UNTERSCHIED. Bei
+eingebauten Leveln schickt der Host nur die ID. Kannte der Gast sie nicht (weil
+sein Kapitel kürzer ist), stieg `mpOnMessage` still aus – und beide warteten in
+der Lobby, ohne dass irgendetwas eine Ursache nannte. Jetzt steht dort derselbe
+Satz wie beim Merkmals-Gate: „Der Partner braucht eine neuere Version." Das
+Gate (M89) deckt neue SPIELMITTEL, nicht neue Level; ein wachsendes Kapitel
+braucht seinen eigenen Satz.
+
 ## M92 „Ansage" ✓ (v3.26.0) – Licht je Spieler + Anweisung auf dem Feld
 
 Zwei Nachträge aus dem Spieltest des Duetts, und beide machen aus einer

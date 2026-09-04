@@ -855,6 +855,35 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   Licht – kein Beweis ändert sich (Units in tests/mpLevel.test.ts).
   `__tiltrWorld.bright` sagt, ob die aktive Ebene für MICH hell ist (E2E
   Lauf 49).
+- COOP-KAPITEL (M93, v3.27.0): `COOP_LEVELS` in src/levels/multiplayer.ts ist
+  jetzt eine LEHRREIHE – sechs Platten-Level, dann markieren (M89), gemeinsam
+  ankommen (M90), Einklang (M91), Quinte, ansagen (M92). DIE REIHENFOLGE IM
+  ARRAY IST DIE LEHRREIHE, DIE ID IST EIN SCHLÜSSEL: Das MP-Panel listet in
+  Array-Ordnung und nummeriert dabei; die ID steht nirgends im Bild, sie
+  identifiziert nur (der Gast holt das Level daraus aus seinem Pool). Deshalb
+  steht coop-09 „Wegzeichen" VOR coop-07 – und deshalb wird eine ID NIE
+  umnummeriert. EINKLANG ZUERST: coop-08 „Duett" verlangt seit M93 `unison`,
+  denn zwei fast gleiche Töne SCHWEBEN und erklären die Mechanik von selbst;
+  eine Quinte schwebt nicht (dafür gibt es den Führungston) und bekommt ihr
+  eigenes Level dahinter, mit weiter auseinanderliegenden Feldern – ohne
+  Schwebung trägt die ORTUNG. Neue Level: „Wegzeichen" (offenes Lochfeld, in
+  JEDER Spalte ein Loch – kein Durchmarsch, ein Ping zeigt Wände und es gibt
+  keine; `marks: 4`), „Reine Quinte" (Bauform von coop-08, `tune: 'fifth'`),
+  „Ansage" (`brightPlayer: 1`; der Blinde muss durch einen Gang mit GENAU EINEM
+  Eingang und atmendem Boden zur Platte, die die Zielkammer des Sehenden
+  öffnet). Ein Coop-Level braucht KEIN Bundle: Bundles überspringen MP-Level
+  (`bundleProgress.skipped`) – das Kapitel wohnt in der Lobby. Wer ein Level
+  ergänzt: Bauform-Prüfung in tests/mpLevel.test.ts (die Invarianten für ALLE
+  Coop-Level stehen in tests/multiplayer.test.ts), Name + Intro in ALLE VIER
+  Wörterbücher, Spiegelachse in `MIRRORS` (der Ecken-Test verlangt Streuung),
+  die Zahl im E2E-Panel-Check und die KARTE zuerst drucken:
+  `PRINT_IDS=coop-11 npx vitest run tests/mazeprint.test.ts` kennt seit M93
+  auch Coop/Race samt Start 2 / Ziel 2 – und `.s`/`.e` einer Zelle heißt WAND,
+  nicht offen (dieselbe Lesart in den Bauform-Tests). EIN UNBEKANNTES
+  EINGEBAUTES LEVEL IST EIN VERSIONS-UNTERSCHIED: Bei eingebauten Leveln
+  schickt der Host nur die ID; kennt der Gast sie nicht, stieg `mpOnMessage`
+  still aus und BEIDE warteten in der Lobby – jetzt steht dort `mp.needsUpdate`
+  wie beim Merkmals-Gate (das Gate deckt neue SPIELMITTEL, nicht neue Level).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

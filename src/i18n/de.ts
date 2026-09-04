@@ -808,7 +808,16 @@ export const de = {
     'Zwei Ziele, ein Ring: Einer rollt links herum, einer rechts. Gewonnen habt ihr erst, wenn ihr GLEICHZEITIG in euren Zielzonen liegt – wer zuerst ankommt, wartet, und der Nachzügler hört das Rufen. Verabredet euch!',
   'lv.coop-08.name': 'Duett',
   'lv.coop-08.intro':
-    'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton – kurz antippen genügt, er bleibt dann stehen. Gesucht ist die QUINTE, ein guter Abstand: etwa auf halbem Weg zwischen oben und unten. Steht sie rein, schwingt das Tor auf und bleibt offen – danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
+    'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton – kurz antippen genügt, er bleibt dann stehen. Gesucht ist DERSELBE Ton: Je näher ihr kommt, desto langsamer schwebt es zwischen euren Tönen, bis es still steht. Dann schwingt das Tor auf und bleibt offen – danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
+  'lv.coop-09.name': 'Wegzeichen',
+  'lv.coop-09.intro':
+    'Zwischen euch und dem Ziel liegt ein offenes Feld voller Löcher. Ein Ping hilft kaum – er zeigt Wände, und hier sind keine. Wer eine Lücke findet, legt eine Wegmarke (📍 im HUD): Die ticken für BEIDE, schneller je näher. Markiert die Lücken, dann muss der Zweite den Weg nicht suchen, sondern nur hören.',
+  'lv.coop-10.name': 'Reine Quinte',
+  'lv.coop-10.intro':
+    'Wieder zwei Felder – diesmal ist die QUINTE gesucht, ein Abstand statt eines Gleichklangs. Achtung: Eine Quinte schwebt nicht, sie klingt nur rein. Hört auf den leisen Führungston: Das ist der Ton, den DU treffen musst, und er schwebt gegen deinen, bis er still steht. Der Grundton liegt am einen Ende der Neigung, die Oktave am anderen – die Quinte dazwischen.',
+  'lv.coop-11.name': 'Ansage',
+  'lv.coop-11.intro':
+    'Für einen von euch ist diese Ebene HELL: Er sieht das Labyrinth, den atmenden Boden und die Kugel des anderen. Der andere sieht nichts – und muss genau da hindurch. Sagt an! Mit Worten oder mit Wegmarken (📍). Erst wenn die Platte am Ende des Gangs gehalten wird, öffnet sich die Zielkammer.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro':
     'Gleiche Strecke, gleiche Chancen: Wer zuerst im Ziel ist, gewinnt. Der Halo verrät, wo dein Gegner steckt.',

@@ -804,7 +804,16 @@ export const fr: Dict = {
     'Deux arrivées, un anneau : l’un part à gauche, l’autre à droite. Vous ne gagnez que si vous êtes tous les deux dans vos arrivées EN MÊME TEMPS – le premier arrivé attend, et l’autre entend l’appel. Mettez-vous d’accord !',
   'lv.coop-08.name': 'Duo',
   'lv.coop-08.intro':
-    'Deux alcôves, deux champs de résonance – et une porte qu’un DUO seul ouvre. Prenez un champ chacun : la coupe vous retient et la direction de l’inclinaison accorde votre son – une brève pression suffit, il reste où vous l’avez laissé. Cherchez la QUINTE, un intervalle large : à peu près à mi-chemin entre le haut et le bas. Dès qu’elle sonne juste, la porte s’ouvre et reste ouverte – ensuite, il ne reste qu’à arriver TOUS LES DEUX.',
+    'Deux alcôves, deux champs de résonance – et une porte qu’un DUO seul ouvre. Prenez un champ chacun : la coupe vous retient et la direction de l’inclinaison accorde votre son – une brève pression suffit, il reste où vous l’avez laissé. Cherchez le MÊME son : plus vous vous rapprochez, plus le battement entre vos sons ralentit, jusqu’à s’arrêter. Alors la porte s’ouvre et reste ouverte – ensuite, il ne reste qu’à arriver TOUS LES DEUX.',
+  'lv.coop-09.name': 'Jalons',
+  'lv.coop-09.intro':
+    'Entre vous et l’arrivée s’étend un champ ouvert criblé de trous. Un ping n’aide guère : il montre les murs, et ici il n’y en a pas. Celui qui trouve un passage y pose un jalon (📍 dans l’interface) : ils tintent pour VOUS DEUX, plus vite à mesure qu’on approche. Marquez les passages, et le second n’aura pas à chercher le chemin – seulement à écouter.',
+  'lv.coop-10.name': 'Quinte juste',
+  'lv.coop-10.intro':
+    'De nouveau deux champs – mais cette fois on cherche la QUINTE, un intervalle et non l’unisson. Attention : une quinte ne bat pas, elle sonne seulement juste. Écoutez le ton guide, tout doux : c’est la note que TU dois atteindre, et elle bat contre la tienne jusqu’à s’immobiliser. La fondamentale est à un bout de l’inclinaison, l’octave à l’autre – la quinte entre les deux.',
+  'lv.coop-11.name': 'Le guidage',
+  'lv.coop-11.intro':
+    'Pour l’un de vous, cet étage est ÉCLAIRÉ : il voit le labyrinthe, le sol qui respire et la bille de l’autre. L’autre ne voit rien – et doit passer juste là. Guide-le ! Avec des mots ou avec des jalons (📍). La chambre d’arrivée ne s’ouvre que tant que la plaque au bout du couloir est maintenue.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Même parcours, mêmes chances : le premier arrivé gagne. Le halo te dit où est ton adversaire.',
   'lv.race-02.name': 'Vent contraire',

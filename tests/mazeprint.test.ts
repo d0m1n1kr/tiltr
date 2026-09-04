@@ -6,13 +6,14 @@
 //   PRINT_IDS=w1-04,w3-04 npx vitest run tests/mazeprint.test.ts
 import { it } from 'vitest';
 import { CAMPAIGN_LEVELS } from '../src/levels/campaign';
+import { COOP_LEVELS, RACE_LEVELS } from '../src/levels/multiplayer';
 import { buildFloorCells } from '../src/levels/validate';
 
 const IDS = ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.PRINT_IDS ?? '').split(',').filter(Boolean);
-const MARK: Record<string, string> = { hole: 'O', gem: '*', key: 'K', checkpoint: 'C', guard: 'g', listener: 'L', fogZone: '~', ice: '=', transporter: 'T', timedSwitch: 'W', jukebox: 'J', windZone: 'w', current: 'c', echoCrystal: 'x', anchor: 'A', glass: 'g' };
+const MARK: Record<string, string> = { plate: 'P', hole: 'O', gem: '*', key: 'K', checkpoint: 'C', guard: 'g', listener: 'L', fogZone: '~', ice: '=', transporter: 'T', timedSwitch: 'W', jukebox: 'J', windZone: 'w', current: 'c', echoCrystal: 'x', anchor: 'A', glass: 'g' };
 
 it('print', () => {
-  for (const def of CAMPAIGN_LEVELS) {
+  for (const def of [...CAMPAIGN_LEVELS, ...COOP_LEVELS, ...RACE_LEVELS]) {
     if (!IDS.includes(def.id)) continue;
     def.floors.forEach((floor, fl) => {
       const [cols, rows] = floor.size;
@@ -23,7 +24,9 @@ it('print', () => {
         if (el.type === 'guard') for (const c of el.patrol) mark.set(`${c[0]},${c[1]}`, 'g');
       }
       mark.set(`${floor.start[0]},${floor.start[1]}`, 'S');
+      if (floor.start2) mark.set(`${floor.start2[0]},${floor.start2[1]}`, '2');
       if (floor.goal) mark.set(`${floor.goal[0]},${floor.goal[1]}`, 'G');
+      if (floor.goal2) mark.set(`${floor.goal2[0]},${floor.goal2[1]}`, 'g');
       const norm = ([[x, y], d]: [[number, number], string]): string =>
         d === 'w' ? `${x - 1},${y},e` : d === 'n' ? `${x},${y - 1},s` : `${x},${y},${d}`;
       const doors = new Set(

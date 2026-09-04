@@ -804,7 +804,16 @@ export const es: Dict = {
     'Dos metas, un anillo: uno va por la izquierda, el otro por la derecha. Solo ganáis si estáis ambos en vuestras metas AL MISMO TIEMPO: quien llegue primero espera, y el que va de camino oye la llamada. ¡Poneos de acuerdo!',
   'lv.coop-08.name': 'Dúo',
   'lv.coop-08.intro':
-    'Dos hornacinas, dos campos de resonancia y una puerta que solo abre un DÚO. Tomad un campo cada uno: el cuenco os sostiene y la dirección de inclinación afina vuestro tono; basta un toque corto, luego se queda quieto. Buscad la QUINTA, un intervalo amplio: más o menos a medio camino entre arriba y abajo. Cuando suene limpia, la puerta se abre y se queda abierta; después solo cuenta que lleguéis LOS DOS.',
+    'Dos hornacinas, dos campos de resonancia y una puerta que solo abre un DÚO. Tomad un campo cada uno: el cuenco os sostiene y la dirección de inclinación afina vuestro tono; basta un toque corto, luego se queda quieto. Buscad el MISMO tono: cuanto más os acerquéis, más lento será el batido entre vuestros tonos, hasta detenerse. Entonces la puerta se abre y se queda abierta; después solo cuenta que lleguéis LOS DOS.',
+  'lv.coop-09.name': 'Señales',
+  'lv.coop-09.intro':
+    'Entre vosotros y la meta se abre un campo lleno de agujeros. Un ping apenas ayuda: muestra paredes, y aquí no hay ninguna. Quien encuentre un hueco deja una señal (📍 en la interfaz): suenan para LOS DOS, más rápido cuanto más cerca. Marcad los huecos y el segundo no tendrá que buscar el camino, solo escucharlo.',
+  'lv.coop-10.name': 'Quinta justa',
+  'lv.coop-10.intro':
+    'Otra vez dos campos, pero ahora se busca la QUINTA, un intervalo en lugar del unísono. Cuidado: una quinta no bate, solo suena limpia. Escuchad el tono guía, muy suave: es la nota que TÚ debes alcanzar, y bate contra la tuya hasta quedarse quieta. La fundamental está en un extremo de la inclinación y la octava en el otro; la quinta, en medio.',
+  'lv.coop-11.name': 'La guía',
+  'lv.coop-11.intro':
+    'Para uno de vosotros esta planta está ILUMINADA: ve el laberinto, el suelo que respira y la bola del otro. El otro no ve nada, y tiene que pasar justo por ahí. ¡Dale indicaciones! Con palabras o con señales (📍). La cámara de meta solo se abre mientras se sujeta la placa al final del pasillo.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Mismo recorrido, mismas oportunidades: gana quien llegue primero. El halo te dice dónde está tu rival.',
   'lv.race-02.name': 'Viento en contra',

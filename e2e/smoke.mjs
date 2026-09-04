@@ -971,11 +971,12 @@ if (want("9")) {
     const raceCount = await pageA.locator("#mpLevelList .level-item").count();
     await pageA.click('[data-mpmode="coop"]');
     check(
-      // Coop hat zwei Level mehr als Race: „Gleichschritt" (coop-07, M90) und
-      // „Duett" (coop-08, M91) – die Zahl ist Absicht, nicht Zufall:
-      // 8 Coop + 6 Race, je plus 🎲 Zufall.
-      `MP-Panel: 8 Coop + 6 Race, je + 🎲 Zufall (${coopCount}/${raceCount})`,
-      coopCount === 9 && raceCount === 7,
+      // Coop hat fünf Level mehr als Race: „Gleichschritt" (M90), „Duett"
+      // (M91) und das Kapitel aus M93 – „Wegzeichen", „Reine Quinte",
+      // „Ansage". Die Zahl ist Absicht, nicht Zufall:
+      // 11 Coop + 6 Race, je plus 🎲 Zufall.
+      `MP-Panel: 11 Coop + 6 Race, je + 🎲 Zufall (${coopCount}/${raceCount})`,
+      coopCount === 12 && raceCount === 7,
     );
 
     await pageA

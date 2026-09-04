@@ -2279,7 +2279,14 @@ function mpOnMessage(type: string, payload: unknown): void {
       // Zufallslevel stehen nicht im Pool: aus der ID deterministisch regenerieren.
       level = pool.find((l) => l.id === p.levelId) ?? parseMpQuickId(p.levelId);
     }
-    if (!level) return;
+    // EIN UNBEKANNTES EINGEBAUTES LEVEL IST EIN VERSIONS-UNTERSCHIED (M93):
+    // Der Host schickt bei eingebauten Leveln nur die ID; kennt der Gast sie
+    // nicht, ist seine Fassung älter (das Kapitel wächst). Ein stilles `return`
+    // ließ dann BEIDE in der Lobby warten – die Feature-Meldung sagt es.
+    if (!level) {
+      $('mpLobbyStatus').textContent = t('mp.needsUpdate');
+      return;
+    }
     mp.mode = p.mode;
     mp.level = level;
     mpShowIntro();

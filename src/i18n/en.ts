@@ -804,7 +804,16 @@ export const en: Dict = {
     'Two goals, one ring: one of you rolls left, the other right. You only win while BOTH of you are in your goals at the same time – whoever gets there first waits, and the one still on the way hears the calling. Make a plan!',
   'lv.coop-08.name': 'Duet',
   'lv.coop-08.intro':
-    'Two alcoves, two resonance fields – and a gate that only a DUET opens. Take one field each: the bowl holds you, and the tilt direction tunes your tone – a short nudge is enough, it stays where you leave it. You are looking for the FIFTH, a wide, friendly interval: roughly halfway between up and down. Once it sits clean, the gate swings open and stays open – after that, all that counts is that you BOTH reach the goal.',
+    'Two alcoves, two resonance fields – and a gate that only a DUET opens. Take one field each: the bowl holds you, and the tilt direction tunes your tone – a short nudge is enough, it stays where you leave it. You are looking for the SAME tone: the closer you get, the slower the beating between your tones, until it stands still. Then the gate swings open and stays open – after that, all that counts is that you BOTH reach the goal.',
+  'lv.coop-09.name': 'Waymarks',
+  'lv.coop-09.intro':
+    'Between you and the goal lies an open field full of holes. A ping barely helps – it shows walls, and there are none here. Whoever finds a gap drops a waymark (📍 in the HUD): they tick for BOTH of you, faster the closer you get. Mark the gaps, and the second one will not have to search for the way – only to listen.',
+  'lv.coop-10.name': 'Perfect Fifth',
+  'lv.coop-10.intro':
+    'Two fields again – but this time the FIFTH is wanted, an interval instead of a match. Careful: a fifth does not beat, it merely sounds pure. Listen for the quiet guide tone: that is the note YOU have to hit, and it beats against yours until it stands still. The root sits at one end of the tilt, the octave at the other – the fifth lies between them.',
+  'lv.coop-11.name': 'The Callout',
+  'lv.coop-11.intro':
+    'For one of you this floor is LIT: they see the maze, the breathing floor and the other ball. The other sees nothing – and has to go right through it. Call it out! With words or with waymarks (📍). Only while the plate at the end of the corridor is held does the goal chamber open.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Same track, same chances: first to the goal wins. The halo tells you where your rival is.',
   'lv.race-02.name': 'Headwind',

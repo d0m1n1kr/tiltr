@@ -70,8 +70,9 @@ die Animation unten trägt.
   kann auch **nur für einen hell** sein: Der sieht das Labyrinth, der andere
   hört es – so kann einer den Weg ansagen.
   **Race:** identisches Level, wer zuerst ankommt,
-  gewinnt, mit Rematch. Acht handgebaute Coop-Level, sechs Race-Level plus
-  ein 🎲-Generator, und jedes
+  gewinnt, mit Rematch. Elf handgebaute Coop-Level – die letzten fünf sind eine
+  Lehrreihe: markieren, gemeinsam ankommen, Einklang, Quinte, ansagen –, sechs
+  Race-Level plus ein 🎲-Generator, und jedes
   **Zwei-Spieler-Level aus der Werkstatt** lässt sich direkt aus der
   Bibliothek hosten – der Gast bekommt es mit dem Raum. Im Coop **hört** man
   den Partner: ein warmes, tiefes Summen aus seiner Richtung, dazu ein
