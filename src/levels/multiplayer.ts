@@ -251,7 +251,7 @@ const coopDefs: unknown[] = [
     id: 'coop-08',
     name: 'Duett',
     intro:
-      'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton. Trefft die Quinte, bis die Schwebung steht – dann schwingt das Tor auf und bleibt offen. Danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
+      'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton – kurz antippen genügt, er bleibt dann stehen. Gesucht ist die QUINTE, ein guter Abstand: etwa auf halbem Weg zwischen oben und unten. Steht sie rein, schwingt das Tor auf und bleibt offen – danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
     players: 2,
     mpMode: 'coop',
     pingBudget: 4,

@@ -744,10 +744,20 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
 - `src/core/resonance.ts` – DUETT (M91): Ein Tor, das nur ein DUETT öffnet.
   Zwei Resonanzfelder, eines je Spieler; wer auf einem steht, erzeugt einen
   Ton, dessen Höhe aus der NEIGUNGSRICHTUNG kommt (`pitchFromTilt`: Norden =
-  Grundton, Süden = Quinte, Ost und West die Mitte – überall STETIG, ein Kreis
+  Grundton, Süden = OKTAVE, Ost und West die Mitte – überall STETIG, ein Kreis
   hätte eine Naht). Das Tor öffnet, wenn beide Töne im Zielintervall stehen
-  (`inTune`, 25 Cent Toleranz) und dort einen Augenblick BLEIBEN (`holdTuned`,
+  (`inTune`, 40 Cent Toleranz) und dort einen Augenblick BLEIBEN (`holdTuned`,
   `TUNE_HOLD_MS` 250 ms – sonst öffnete ein Durchwischen beim Suchen).
+  DIE SKALA TRÄGT EINE OKTAVE, NICHT EINE QUINTE (v3.25.3, gemeldet: „die
+  Quinte liegt ziemlich am Rand"): Endete sie bei 702 Cent, war die Quinte nur
+  bei Neigung EXAKT nach Süden erreichbar – ohne Luft nach beiden Seiten, und
+  ein Quint-Tor hatte GENAU EINE Lösung (einer ganz oben, einer ganz unten),
+  deren 25-Cent-Budget sich beide Spieler teilen mussten. Mit
+  `PITCH_SPAN_CENTS` 1200 liegt die Quinte bei 105° von Norden, mitten im
+  Bereich, und es gibt eine 498 Cent breite FAMILIE von Lösungen (jedes Paar
+  702 Cent auseinander). Die Toleranz wuchs mit (25 → 40 Cent), denn in WINKELN
+  gerechnet ist das dieselbe Feinheit wie vorher (6° Neigungsrichtung) – ein
+  weiterer Bereich bei gleicher Cent-Toleranz wäre eine Verschärfung gewesen.
   DAS FELD IST EINE PLATTE, keine siebte Elementklasse: `plate.tune`
   ('unison' | 'fifth'). Der Plan wollte ein eigenes Element und begründete
   selbst, warum das nicht geht – „für das Modell ist es eine Platte, also

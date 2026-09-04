@@ -13,10 +13,11 @@
 // Schale, nie eine Falle) und die Neigung wird zum Stimmknopf. Kräftig kippen
 // heißt hinausrollen.
 //
-// Die Abbildung ist ÜBERALL STETIG: 0 Cent bei Neigung nach Norden, die Quinte
-// bei Süden, und der Weg dorthin geht über Ost ODER West (351 Cent). Ein Kreis,
-// der bei 702 auf 0 zurückspringt, hätte eine Naht – dort wäre der Ton
-// unspielbar sprunghaft.
+// Die Abbildung ist ÜBERALL STETIG: 0 Cent bei Neigung nach Norden, die OKTAVE
+// bei Süden, und der Weg dorthin geht über Ost ODER West (600 Cent). Ein Kreis,
+// der bei 1200 auf 0 zurückspringt, hätte eine Naht – dort wäre der Ton
+// unspielbar sprunghaft. Die Skala reicht bis zur Oktave, nicht bis zur Quinte:
+// sonst liegt das Quint-Ziel am RAND und hat nur eine einzige Lösung.
 //
 // Rein und DOM-frei wie alles in core/ – Units in tests/resonance.test.ts.
 
@@ -27,9 +28,22 @@ export const RESONANCE_HZ = 220;
 /** Reine Quinte in Cent (3/2 = 701,955…). */
 export const FIFTH_CENTS = 702;
 
-/** Wie genau gestimmt sein muss. 25 Cent sind hörbar knapp, aber ohne
- *  Sensor-Zittern erreichbar. */
-export const TUNE_TOL_CENTS = 25;
+/** Wie WEIT die Skala reicht: eine OKTAVE über den halben Kreis (v3.25.3).
+ *  Vorher endete sie bei der Quinte – die lag damit genau am Rand (Neigung
+ *  exakt nach Süden), ohne Luft nach beiden Seiten, und ein Quint-Tor hatte
+ *  deshalb GENAU EINE Lösung: einer ganz oben, einer ganz unten. Mit der
+ *  Oktave liegt die Quinte bei 105° von Norden, also mitten im Bereich, und es
+ *  gibt eine ganze FAMILIE von Lösungen (jedes Paar 702 Cent auseinander,
+ *  Grundton+Quinte genauso wie Sekunde+Sexte). */
+export const PITCH_SPAN_CENTS = 1200;
+
+/** Wie genau gestimmt sein muss. 40 Cent klingen noch klar daneben, und in
+ *  WINKELN gerechnet ist es dieselbe Feinheit wie früher: Die Skala trägt
+ *  jetzt eine Oktave über 180° (6,67 Cent je Grad), also sind 40 Cent rund
+ *  6° Neigungsrichtung – genau die 6°, die 25 Cent auf der alten, kürzeren
+ *  Skala waren. Ein weiterer Bereich ohne weitere Toleranz wäre eine
+ *  VERSCHÄRFUNG gewesen, keine Erleichterung. */
+export const TUNE_TOL_CENTS = 40;
 
 /** Wie lange der Ton im Intervall STEHEN muss, damit das Tor aufgeht – sonst
  *  öffnete ein Durchwischen beim Suchen das Tor aus Versehen. Die Zahl hängt
@@ -110,16 +124,18 @@ export const centsToHz = (cents: number, base = RESONANCE_HZ): number => base * 
 
 /**
  * Neigung → Tonhöhe. Norden (nach oben geneigt) ist der Grundton, Süden die
- * Quinte, Ost und West liegen genau in der Mitte – der Weg von unten nach oben
- * geht also über beide Seiten gleich weit. Ohne Neigung (unter der Deadzone)
- * klingt der Grundton: „Das Feld ist da, neige, um zu stimmen."
+ * OKTAVE, Ost und West liegen genau in der Mitte (Tritonus) – der Weg von
+ * unten nach oben geht also über beide Seiten gleich weit. Die Quinte liegt
+ * damit bei 105° von Norden, mitten im Bereich statt am Rand. Ohne Neigung
+ * (unter der Deadzone) klingt der Grundton: „Das Feld ist da, neige, um zu
+ * stimmen."
  */
 export function pitchFromTilt(tx: number, ty: number, deadzone = 0.08): Pitch {
   const len = Math.hypot(tx, ty);
   if (len < deadzone) return { cents: 0, hz: RESONANCE_HZ, active: false };
   // Winkel gegen „oben" (Bildschirm-Norden ist -y), Betrag: links wie rechts.
   const a = Math.abs(Math.atan2(tx, -ty));
-  const cents = (FIFTH_CENTS * a) / Math.PI;
+  const cents = (PITCH_SPAN_CENTS * a) / Math.PI;
   return { cents, hz: centsToHz(cents), active: true };
 }
 

@@ -749,7 +749,20 @@ Seite – also unter 2600 · 0,7. Heraus kam: Kraft 1500, Feld-Radius 60 px, und
 gestimmt wird mit einem TIPP (der Ton bleibt ja stehen), verlassen mit einer
 gehaltenen Taste.
 
-Units: tests/resonance.test.ts (21) plus die Gegenproben; E2E Lauf 48 im
+DIE SKALA WURDE WEITER (v3.25.3, gemeldet: „die Quinte liegt ziemlich am
+Rand"): Die Tonhöhe lief von 0 bis 702 Cent über den halben Kreis, die Quinte
+lag also GENAU am Ende – erreichbar nur bei Neigung exakt nach Süden. Damit
+hatte ein Quint-Tor genau EINE Lösung (einer ganz oben, einer ganz unten), und
+die 25 Cent Toleranz teilten sich beide Spieler. Jetzt trägt die Skala eine
+OKTAVE (`PITCH_SPAN_CENTS` 1200): Die Quinte liegt bei 105° von Norden, mitten
+im Bereich, und jedes Paar mit 702 Cent Abstand passt – eine 498 Cent breite
+Familie. Die Toleranz wuchs mit (25 → 40 Cent): In Winkeln gerechnet sind das
+wieder 6° Neigungsrichtung, also dieselbe Feinheit wie vorher; ein weiterer
+Bereich bei gleicher Cent-Toleranz wäre eine Verschärfung gewesen. Der
+Intro-Text von coop-08 nennt jetzt auch die Stimm-Bewegung (antippen) und
+verspricht keine „Schwebung" mehr – die gibt es nur nahe am Einklang.
+
+Units: tests/resonance.test.ts (23) plus die Gegenproben; E2E Lauf 48 im
 MP-Testmodus (Editor-Feld, allein klingt nur ein Ton, die Welt weicht im Feld
 zurück, ein Tipp stimmt und der Ton bleibt stehen, der Spielerwechsel hält ihn
 auch, zwei verschiedene Töne lassen das Tor zu, Einklang öffnet es, Verstimmen

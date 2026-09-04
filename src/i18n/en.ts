@@ -778,7 +778,7 @@ export const en: Dict = {
     'Two goals, one ring: one of you rolls left, the other right. You only win while BOTH of you are in your goals at the same time – whoever gets there first waits, and the one still on the way hears the calling. Make a plan!',
   'lv.coop-08.name': 'Duet',
   'lv.coop-08.intro':
-    'Two alcoves, two resonance fields – and a gate that only a DUET opens. Take one field each: the bowl holds you, and the tilt direction tunes your tone. Find the fifth and hold it until the beating stops – then the gate swings open and stays open. After that, all that counts is that you BOTH reach the goal.',
+    'Two alcoves, two resonance fields – and a gate that only a DUET opens. Take one field each: the bowl holds you, and the tilt direction tunes your tone – a short nudge is enough, it stays where you leave it. You are looking for the FIFTH, a wide, friendly interval: roughly halfway between up and down. Once it sits clean, the gate swings open and stays open – after that, all that counts is that you BOTH reach the goal.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Same track, same chances: first to the goal wins. The halo tells you where your rival is.',
   'lv.race-02.name': 'Headwind',

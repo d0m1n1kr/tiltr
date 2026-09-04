@@ -782,7 +782,7 @@ export const de = {
     'Zwei Ziele, ein Ring: Einer rollt links herum, einer rechts. Gewonnen habt ihr erst, wenn ihr GLEICHZEITIG in euren Zielzonen liegt – wer zuerst ankommt, wartet, und der Nachzügler hört das Rufen. Verabredet euch!',
   'lv.coop-08.name': 'Duett',
   'lv.coop-08.intro':
-    'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton. Trefft die Quinte, bis die Schwebung steht – dann schwingt das Tor auf und bleibt offen. Danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
+    'Zwei Nischen, zwei Resonanzfelder – und ein Tor, das nur ein DUETT öffnet. Rollt je auf ein Feld: Die Schale hält euch, und die Neigungsrichtung stimmt euren Ton – kurz antippen genügt, er bleibt dann stehen. Gesucht ist die QUINTE, ein guter Abstand: etwa auf halbem Weg zwischen oben und unten. Steht sie rein, schwingt das Tor auf und bleibt offen – danach zählt nur, dass ihr BEIDE ins Ziel kommt.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro':
     'Gleiche Strecke, gleiche Chancen: Wer zuerst im Ziel ist, gewinnt. Der Halo verrät, wo dein Gegner steckt.',

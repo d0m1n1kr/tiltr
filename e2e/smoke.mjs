@@ -8464,8 +8464,9 @@ if (want("48")) {
       duckOn !== null,
     );
 
-    // GESTIMMT WIRD MIT EINEM TIPP: Nach Osten antippen ist die Mitte (351
-    // Cent), und der Ton BLEIBT stehen – ein Stimmknopf springt nicht zurück.
+    // GESTIMMT WIRD MIT EINEM TIPP: Nach Osten antippen ist die Mitte der
+    // Skala (600 Cent, seit sie eine OKTAVE trägt), und der Ton BLEIBT stehen –
+    // ein Stimmknopf springt nicht zurück.
     // Eine GEHALTENE Taste (0,7) kippt einen dagegen aus der Schale; die
     // 120 ms sind die Geste selbst, kein Warten auf einen Zustand.
     const nudge = async (key) => {
@@ -8476,7 +8477,7 @@ if (want("48")) {
     await nudge("ArrowRight");
     const released = await until(async () => {
       const r = await read();
-      return r.res?.mine > 300 && r.res.mine < 400 && (await settled(page)) ? r : null;
+      return r.res?.mine > 550 && r.res.mine < 650 && (await settled(page)) ? r : null;
     }, { timeout: 8000 });
     check(
       `Ein Tipp stimmt, und der Ton bleibt nach dem Loslassen stehen (${released?.res?.mine})`,
@@ -8494,7 +8495,7 @@ if (want("48")) {
     }, { timeout: 8000 });
     check(
       `Der Spielerwechsel hält den Ton der ruhenden Seite (${JSON.stringify(swapped?.res)})`,
-      swapped?.res?.theirs > 300 && swapped.res.theirs < 400 && swapped.res.mine === 0,
+      swapped?.res?.theirs > 550 && swapped.res.theirs < 650 && swapped.res.mine === 0,
     );
     // Diese Zusicherung braucht als einzige eine WARTEZEIT: „bleibt zu" ist
     // kein Zustandswechsel, auf den man warten kann. Gewartet wird deutlich
@@ -8519,10 +8520,10 @@ if (want("48")) {
     check(
       `Einklang gestimmt: das Tor schwingt auf (${JSON.stringify({ ...tuned?.res, doors: tuned?.doors, held: tuned?.held })})`,
       tuned !== null &&
-        tuned.res.mine > 300 &&
-        tuned.res.mine < 400 &&
-        tuned.res.theirs > 300 &&
-        tuned.res.theirs < 400 &&
+        tuned.res.mine > 550 &&
+        tuned.res.mine < 650 &&
+        tuned.res.theirs > 550 &&
+        tuned.res.theirs < 650 &&
         tuned.res.aim === 1 &&
         tuned.doors.includes("gz") &&
         tuned.held.length === 2,
@@ -8539,7 +8540,7 @@ if (want("48")) {
       `Verstimmt: das Tor fällt wieder zu (${JSON.stringify({ ...closed?.res, doors: closed?.doors })})`,
       // Nicht „der Ton ist unten angekommen" prüfen: Das Tor fällt schon zu,
       // sobald der Abstand über der Toleranz liegt – DAS ist die Aussage.
-      closed !== null && Math.abs(closed.res.mine - closed.res.theirs) > 25,
+      closed !== null && Math.abs(closed.res.mine - closed.res.theirs) > 40,
     );
     // Das Feld verlassen: Der Ton verstummt (er gehört dem Feld, nicht mir),
     // und die Welt ist wieder voll da.

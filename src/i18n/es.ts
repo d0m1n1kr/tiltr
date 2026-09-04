@@ -778,7 +778,7 @@ export const es: Dict = {
     'Dos metas, un anillo: uno va por la izquierda, el otro por la derecha. Solo ganáis si estáis ambos en vuestras metas AL MISMO TIEMPO: quien llegue primero espera, y el que va de camino oye la llamada. ¡Poneos de acuerdo!',
   'lv.coop-08.name': 'Dúo',
   'lv.coop-08.intro':
-    'Dos hornacinas, dos campos de resonancia y una puerta que solo abre un DÚO. Tomad un campo cada uno: el cuenco os sostiene y la dirección de inclinación afina vuestro tono. Encontrad la quinta y mantenedla hasta que el batido se detenga: entonces la puerta se abre y se queda abierta. Después solo cuenta que lleguéis LOS DOS.',
+    'Dos hornacinas, dos campos de resonancia y una puerta que solo abre un DÚO. Tomad un campo cada uno: el cuenco os sostiene y la dirección de inclinación afina vuestro tono; basta un toque corto, luego se queda quieto. Buscad la QUINTA, un intervalo amplio: más o menos a medio camino entre arriba y abajo. Cuando suene limpia, la puerta se abre y se queda abierta; después solo cuenta que lleguéis LOS DOS.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Mismo recorrido, mismas oportunidades: gana quien llegue primero. El halo te dice dónde está tu rival.',
   'lv.race-02.name': 'Viento en contra',

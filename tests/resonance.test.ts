@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FIFTH_CENTS,
+  PITCH_SPAN_CENTS,
   RESONANCE_FORCE,
   RESONANCE_HOLD,
   RESONANCE_HZ,
@@ -21,11 +22,22 @@ import { levelSchema, parseLevel } from '../src/levels/schema';
 import { loadLevel } from '../src/levels/loader';
 
 describe('pitchFromTilt', () => {
-  it('Norden ist der Grundton, Süden die Quinte, Ost und West die Mitte', () => {
+  it('Norden ist der Grundton, Süden die OKTAVE, Ost und West die Mitte', () => {
     expect(pitchFromTilt(0, -1).cents).toBeCloseTo(0, 5);
-    expect(pitchFromTilt(0, 1).cents).toBeCloseTo(FIFTH_CENTS, 5);
-    expect(pitchFromTilt(1, 0).cents).toBeCloseTo(FIFTH_CENTS / 2, 5);
-    expect(pitchFromTilt(-1, 0).cents).toBeCloseTo(FIFTH_CENTS / 2, 5);
+    expect(pitchFromTilt(0, 1).cents).toBeCloseTo(PITCH_SPAN_CENTS, 5);
+    expect(pitchFromTilt(1, 0).cents).toBeCloseTo(PITCH_SPAN_CENTS / 2, 5);
+    expect(pitchFromTilt(-1, 0).cents).toBeCloseTo(PITCH_SPAN_CENTS / 2, 5);
+  });
+
+  it('die QUINTE liegt im INNEREN, nicht am Rand (v3.25.3)', () => {
+    // Vorher endete die Skala bei der Quinte: erreichbar nur bei Neigung exakt
+    // nach Süden, ohne Luft nach beiden Seiten. Jetzt liegt sie bei 105° von
+    // Norden – und links wie rechts davon geht es weiter.
+    const at = (deg: number) => pitchFromTilt(Math.sin((deg * Math.PI) / 180), -Math.cos((deg * Math.PI) / 180)).cents;
+    expect(Math.abs(at(105) - FIFTH_CENTS)).toBeLessThan(5);
+    expect(at(95)).toBeLessThan(FIFTH_CENTS);
+    expect(at(115)).toBeGreaterThan(FIFTH_CENTS);
+    expect(PITCH_SPAN_CENTS).toBeGreaterThan(FIFTH_CENTS + 400);
   });
 
   it('nur die RICHTUNG zählt, nicht die Stärke', () => {
@@ -36,8 +48,8 @@ describe('pitchFromTilt', () => {
     // Kurz vor und kurz hinter „genau nach unten": derselbe Ton, kein Sprung.
     const left = pitchFromTilt(-0.02, 1).cents;
     const right = pitchFromTilt(0.02, 1).cents;
-    expect(Math.abs(left - right)).toBeLessThan(10);
-    expect(left).toBeGreaterThan(FIFTH_CENTS - 15);
+    expect(Math.abs(left - right)).toBeLessThan(15);
+    expect(left).toBeGreaterThan(PITCH_SPAN_CENTS - 25);
   });
 
   it('ohne Neigung klingt der Grundton, und `active` sagt „ich fasse nicht an"', () => {
@@ -47,17 +59,17 @@ describe('pitchFromTilt', () => {
     expect(pitchFromTilt(0, -1).active).toBe(true);
   });
 
-  it('Cent rechnen in Hz: die Quinte ist das 1,5-fache', () => {
+  it('Cent rechnen in Hz: die Quinte ist das 1,5-fache, die Oktave das Doppelte', () => {
     expect(centsToHz(FIFTH_CENTS) / RESONANCE_HZ).toBeCloseTo(1.5, 3);
-    expect(centsToHz(1200)).toBeCloseTo(2 * RESONANCE_HZ, 5);
+    expect(centsToHz(PITCH_SPAN_CENTS)).toBeCloseTo(2 * RESONANCE_HZ, 5);
   });
 });
 
 describe('inTune', () => {
-  it('Einklang: dieselbe Höhe, Toleranz 25 Cent', () => {
+  it('Einklang: dieselbe Höhe, Toleranz 40 Cent', () => {
     expect(inTune(300, 300, 'unison')).toBe(true);
-    expect(inTune(300, 320, 'unison')).toBe(true);
-    expect(inTune(300, 340, 'unison')).toBe(false);
+    expect(inTune(300, 335, 'unison')).toBe(true);
+    expect(inTune(300, 360, 'unison')).toBe(false);
   });
 
   it('Quinte: der Abstand gilt in BEIDE Richtungen (wer oben steht, ist eine Rolle)', () => {
@@ -65,15 +77,28 @@ describe('inTune', () => {
     expect(inTune(FIFTH_CENTS, 0, 'fifth')).toBe(true);
     expect(inTune(100, 100 + FIFTH_CENTS, 'fifth')).toBe(true);
     expect(inTune(0, 0, 'fifth')).toBe(false);
-    expect(inTune(0, FIFTH_CENTS - 40, 'fifth')).toBe(false);
+    expect(inTune(0, FIFTH_CENTS - 60, 'fifth')).toBe(false);
   });
 
-  it('aus der Neigung heraus: beide nach oben = Einklang, einer runter = Quinte', () => {
+  it('die Quinte hat eine ganze FAMILIE von Lösungen, nicht eine (v3.25.3)', () => {
+    // Auf der alten Skala (Ende = Quinte) ging nur „einer ganz oben, einer ganz
+    // unten". Jetzt findet man sich überall im Bereich – 498 Cent breit.
+    for (const low of [0, 100, 250, 400, PITCH_SPAN_CENTS - FIFTH_CENTS]) {
+      expect(inTune(low, low + FIFTH_CENTS, 'fifth'), `ab ${low} Cent`).toBe(true);
+      expect(low + FIFTH_CENTS).toBeLessThanOrEqual(PITCH_SPAN_CENTS);
+    }
+  });
+
+  it('aus der Neigung heraus: beide gleich = Einklang, Oktave ist nicht die Quinte', () => {
     const up = pitchFromTilt(0, -1).cents;
     const down = pitchFromTilt(0, 1).cents;
     expect(inTune(up, up, 'unison')).toBe(true);
-    expect(inTune(up, down, 'fifth')).toBe(true);
     expect(inTune(up, down, 'unison')).toBe(false);
+    // Norden gegen Süden ist jetzt eine OKTAVE, keine Quinte mehr.
+    expect(inTune(up, down, 'fifth')).toBe(false);
+    // Die Quinte liegt bei 105° – von Norden aus.
+    const fifth = pitchFromTilt(Math.sin((105 * Math.PI) / 180), -Math.cos((105 * Math.PI) / 180)).cents;
+    expect(inTune(up, fifth, 'fifth')).toBe(true);
   });
 });
 
@@ -81,7 +106,7 @@ describe('tuneAim', () => {
   it('1 im Intervall, fällt mit dem Abstand auf 0', () => {
     expect(tuneAim(300, 300, 'unison')).toBe(1);
     expect(tuneAim(0, FIFTH_CENTS, 'fifth')).toBe(1);
-    const near = tuneAim(300, 380, 'unison');
+    const near = tuneAim(300, 400, 'unison');
     expect(near).toBeGreaterThan(0);
     expect(near).toBeLessThan(1);
     expect(tuneAim(0, 600, 'unison')).toBe(0);
@@ -255,15 +280,15 @@ describe('tuneStep – der Ton ist Zustand, kein Abbild der Neigung', () => {
     // Betreten: irgendwo muss der Knopf stehen – der Grundton.
     let tone = tuneStep(null, true, 0, 0);
     expect(tone).toBe(0);
-    // Nach Osten geneigt: die Mitte.
+    // Nach Osten geneigt: die Mitte der Skala.
     tone = tuneStep(tone, true, 1, 0);
-    expect(tone).toBeCloseTo(FIFTH_CENTS / 2, 5);
+    expect(tone).toBeCloseTo(PITCH_SPAN_CENTS / 2, 5);
     // Gerät flach hingelegt: der Ton BLEIBT – das ist der Spielerwechsel im
     // Testmodus (wer 👥 antippt, hält das Gerät fast flach), und es ist die
     // Stimm-Bewegung selbst: antippen, loslassen, der Ton steht.
     const held = tuneStep(tone, true, 0, 0);
-    expect(held).toBeCloseTo(FIFTH_CENTS / 2, 5);
-    expect(tuneStep(held, true, 0.01, -0.01)).toBeCloseTo(FIFTH_CENTS / 2, 5);
+    expect(held).toBeCloseTo(PITCH_SPAN_CENTS / 2, 5);
+    expect(tuneStep(held, true, 0.01, -0.01)).toBeCloseTo(PITCH_SPAN_CENTS / 2, 5);
   });
 
   it('das Feld verlassen macht stumm – und Betreten beginnt wieder beim Grundton', () => {
@@ -272,7 +297,7 @@ describe('tuneStep – der Ton ist Zustand, kein Abbild der Neigung', () => {
   });
 
   it('eine echte Neigung überschreibt jeden gehaltenen Wert', () => {
-    expect(tuneStep(351, true, 0, 1)).toBeCloseTo(FIFTH_CENTS, 5);
+    expect(tuneStep(351, true, 0, 1)).toBeCloseTo(PITCH_SPAN_CENTS, 5);
     expect(tuneStep(FIFTH_CENTS, true, 0, -1)).toBeCloseTo(0, 5);
   });
 });

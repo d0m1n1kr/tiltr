@@ -778,7 +778,7 @@ export const fr: Dict = {
     'Deux arrivées, un anneau : l’un part à gauche, l’autre à droite. Vous ne gagnez que si vous êtes tous les deux dans vos arrivées EN MÊME TEMPS – le premier arrivé attend, et l’autre entend l’appel. Mettez-vous d’accord !',
   'lv.coop-08.name': 'Duo',
   'lv.coop-08.intro':
-    'Deux alcôves, deux champs de résonance – et une porte qu’un DUO seul ouvre. Prenez un champ chacun : la coupe vous retient et la direction de l’inclinaison accorde votre son. Trouvez la quinte et tenez-la jusqu’à ce que le battement s’arrête – la porte s’ouvre alors et reste ouverte. Ensuite, il ne reste qu’à arriver TOUS LES DEUX.',
+    'Deux alcôves, deux champs de résonance – et une porte qu’un DUO seul ouvre. Prenez un champ chacun : la coupe vous retient et la direction de l’inclinaison accorde votre son – une brève pression suffit, il reste où vous l’avez laissé. Cherchez la QUINTE, un intervalle large : à peu près à mi-chemin entre le haut et le bas. Dès qu’elle sonne juste, la porte s’ouvre et reste ouverte – ensuite, il ne reste qu’à arriver TOUS LES DEUX.',
   'lv.race-01.name': 'Sprint',
   'lv.race-01.intro': 'Même parcours, mêmes chances : le premier arrivé gagne. Le halo te dit où est ton adversaire.',
   'lv.race-02.name': 'Vent contraire',
