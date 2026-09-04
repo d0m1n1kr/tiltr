@@ -617,7 +617,8 @@ Level einen haben.
 Vier Milestones, in dieser Reihenfolge – jeder ein eigenes Release mit grüner
 Suite. Reihenfolge nach Fundament: Solange der Partner akustisch nicht
 existiert, ist jedes weitere Coop-Element eine Aufgabe, die man sich per
-Sprachkanal zuruft, und nicht Teil des Spiels.
+Sprachkanal zuruft, und nicht Teil des Spiels. M88 ist GEBAUT (v3.22.0, eigener
+Abschnitt weiter unten); offen sind M89–M91.
 
 AUSGANGSBEFUND (gemessen im Code, nicht erinnert): Das Protokoll kennt
 `setup`, `ready`, `state` (Position, alle 80 ms), `plate`, `key`, `switch`,
@@ -635,42 +636,22 @@ und sagt sonst in der Lobby „Der Partner braucht eine neuere Version"
 fängt schon heute `parseLevel` im `setup`-Empfang ab (→ `mp.badLevel`); die
 Lücke sind nur die Regel-Flags.
 
-### M88 „Der Partner klingt" (v3.22.0) – 1a
-
-Eine leise, stetige, HRTF-gepannte Stimme am Partnerball. Sie ist NICHT der
-Rivale: der Rivale ist Bedrohung (tiefes Rollen, 120–320 Hz), der Partner ist
-Gesellschaft – ein warmer, ruhiger Grundton plus ein Rollanteil, der mit
-seiner Geschwindigkeit wächst. Damit ist die Entscheidung „immer hörbar oder
-nur in Bewegung" beantwortet: BEIDES, in zwei Anteilen. Ruhend findest du ihn
-(Grundton), rollend verrät er sich (Rollanteil) – Stillstand ist Tarnung, ohne
-dass er je verschwindet.
-
-- `src/audio/audio.ts`: `setBuddy(closeness01, dx, dy, moving01, muffled)` –
-  eigene Gain/Filter/Panner-Kette wie `rival*`, gespeist über `place()`.
-- `src/core/buddy.ts` (rein, Units): `buddyGain(dist, speed, maxSpeed)` →
-  `{ closeness, moving }`. Die Kurve gehört nicht in die Audio-Klasse, sonst
-  ist sie nicht prüfbar.
-- `src/app.ts`: im Frame aus `mp.remote` (bzw. `otherSide` im MP-Testmodus)
-  füttern – mit denselben Regeln wie jede andere Quelle: `shield(dx, dy)`
-  (ABSORB_GAIN hinter Schallschutz), `muffled` bei anderer Ebene, Dämpfung im
-  Nebel. Geschwindigkeit wird LOKAL aus zwei `state`-Nachrichten abgeleitet
-  und geglättet (τ ≈ 150 ms) – kein neues Protokollfeld, also auch kein
-  Versionsproblem.
-- Gilt in COOP UND RACE (symmetrisch, also fair) und im MP-Testmodus.
-- Beweis: unberührt (Information, keine Erreichbarkeit).
-- Test-Haken `__tiltrBuddy` = { closeness, moving, dx, dy, muffled }.
-- E2E Lauf 45 nach dem Muster von Lauf 33 (Host + Gast im SELBEN Kontext):
-  Gast bewegt sich → `closeness`/`moving` beim Host steigt; hinter einer
-  Schallschutzwand fällt sie auf ABSORB_GAIN; andere Ebene ⇒ `muffled`.
-- i18n: keine neuen Texte (reiner Klang).
-
 ### M89 „Wegmarken" (v3.23.0) – 1c
 
-Jeder trägt DREI Klangbojen. Abgelegt sendet die Zelle einen weichen, langsamen
+Die ANZAHL steht im Level und ist im Editor einstellbar (`marks`, Vorgabe 3,
+0…9; 0 = dieses Level kennt keine Bojen). Das hat eine schöne Nebenwirkung:
+Das Merkmals-Gate aus dem Fundament wird PRO LEVEL statt pauschal – `setup`
+trägt `needs: ['marks']` nur, wenn das Level Bojen erlaubt, und ein Level ohne
+Bojen spielt weiter mit einer alten Gegenstelle. Deshalb kommt `setup.needs`
+schon hier statt erst in M90.
+
+Jeder trägt so viele Klangbojen, wie das Level erlaubt. Abgelegt sendet die Zelle einen weichen, langsamen
 Holz-Tick (~1,2 s), gepannt, bei BEIDEN Spielern – der Sehende auf der hellen
 Ebene markiert dem Blinden den Weg um die Löcher. Das ist das erste Werkzeug,
 mit dem ein Spieler dem anderen etwas ÜBER DIE WELT sagen kann, ohne zu reden.
 
+- `src/levels/schema.ts`: `marks?: number` (Level-Ebene, Vorgabe 3, 0…9),
+  Editor-Feld neben dem Ping-Budget – nur bei zwei Spielern, wie `mpMode`.
 - `src/core/marks.ts` (rein, Units): `placeMark(list, mark, max)` /
   `takeMark(list, floor, cell, owner)`; Regel: Der HUD-Knopf legt ab, wenn in
   dieser Zelle keine EIGENE Boje liegt, sonst nimmt er sie zurück (Budget
@@ -795,6 +776,58 @@ BFS-Land. Ein Seil zwischen den Bällen bleibt draußen: jeder Spieler hat seine
 EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
+
+## M88 „Der Partner klingt" ✓ (v3.22.0)
+
+Erster Baustein des Coop-Ausbaus, und der Befund dahinter stand nicht im
+Gedächtnis, sondern im Code: In `src/audio/` gab es KEINE Stimme für den
+Partner. Man sah einen Schein (im Coop auf heller Ebene einen festen Ball,
+M62), aber in einem Spiel, dessen Welt sich über Klang offenbart, war „wo bist
+du?" nicht beantwortbar. `setRival` existierte – aber nur für den Geist im
+DUELL.
+
+ZWEI ANTEILE, weil die Frage „immer hörbar oder nur in Bewegung?" zwei richtige
+Antworten hat: `buddySound(dist, speed, maxSpeed)` in `src/core/buddy.ts` (rein,
+Units) liefert `closeness` für den GRUNDTON – ruhend findet man ihn – und
+`moving` für den ROLLANTEIL: rollend verrät er sich. Stillstand ist damit
+Tarnung, ohne dass der Partner je ganz verschwindet.
+
+Klanglich ist er das Gegenteil des Rivalen: Der Rivale ist Rauschen (Bedrohung),
+der Partner ist TONAL – ein warmer Quint-Grundton (D3 + A3), leiser als der
+Rivale (0,3 gegen 0,42), dazu der Rollanteil aus braunem Rauschen. KEIN
+Pulsieren: Puls ist in diesem Spiel der Herzschlag, also Gefahr.
+
+Er gehorcht denselben Regeln wie jede andere Quelle – das war die Hauptarbeit
+in app.ts, nicht die Stimme: HRTF aus seiner Richtung, `shield()` dämpft ihn
+hinter einer Schallschutzwand, eine andere Ebene lässt nur ein fernes Grundeln
+(`muffled`), der Nebel dämpft am Master von selbst (fogFilter).
+
+NUR IM COOP (Entscheidung des Autors): Im Race bleibt er stumm – dort ist die
+Blindheit das Rennen, wie dort auch Platten nicht zählen und Schlüssel lokal
+wirken (M57/M59).
+
+Die Geschwindigkeit kommt NICHT über das Netz: Sie folgt aus zwei
+`state`-Meldungen (alle 80 ms) und wird geglättet (`smoothSpeed`, τ = 150 ms) –
+ein Protokollfeld mehr hätte beide Seiten ohne Not auf dieselbe Version
+festgelegt. Meldet der Partner gerade nichts (Funkloch, > 400 ms), gilt er als
+ruhend statt als ewig rollend, und ein Ebenenwechsel wird nicht als Bewegung
+gemessen (das ist ein Warp, kein Rollen). Im MP-Testmodus liegt die abgegebene
+Kugel ohne Schwung – dort hört man also nur den Grundton, und das ist die
+Wahrheit, kein Mangel des Tests.
+
+Units in tests/buddy.test.ts, E2E Lauf 45: Testmodus (Coop hörbar aus seiner
+Richtung, ruhende Kugel ⇒ Rollanteil 0; Race STUMM) und echtes Netz (Host +
+Gast, Nähe 0,42 → 0,93 und Rollanteil bis 1,0, während der Gast heranrollt,
+danach zurück auf 0,05). Beide neuen Regeln einmal rot gesehen – Coop-Gate
+entfernt (Race klang) und Rollanteil verschluckt.
+
+Beim Schreiben des Laufs zweimal gestolpert, beides jetzt im Lauf dokumentiert:
+Die Lobby zeigt eine LISTE, erst der Tap auf `#mpCustomItem` eröffnet den Raum
+(sonst wartet der Gast ewig auf „Verbinde …"), und BEIDE Seiten müssen das
+Intro bestätigen (`#interPrimary`), das beim Host erst aufzieht, wenn der Gast
+im Raum ist. Dazu eine eigene Zusicherung „Host und Gast spielen": Ein
+misslungener Start soll das SAGEN und nicht die nächste Prüfung an `undefined`
+zerschellen lassen.
 
 ## M87 „Das leere Feld" ✓ (v3.21.0)
 

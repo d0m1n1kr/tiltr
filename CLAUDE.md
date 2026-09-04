@@ -629,6 +629,22 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   ein gemeinsames, ruckelfreies Heading für Kamera, Schub und Ohr.
   Tastatur: ↑/↓ Schub, ←/→ drehen. `window.__tiltrFp` zeigt Heading und
   Ansicht; Kalibrier-Countdown sagt die Haltung je Modus an (Tablett/45°).
+- `src/core/buddy.ts` – DER PARTNER KLINGT (M88): Bis 3.21 war der Partner
+  akustisch NICHT VORHANDEN (nur ein Schein, M62) – `setRival` gab es, aber nur
+  fürs Duell. `buddySound(dist, speed, maxSpeed)` ist rein und liefert ZWEI
+  Anteile: `closeness` für den GRUNDTON (ruhend findet man ihn) und `moving`
+  für den ROLLANTEIL (rollend verrät er sich) – Stillstand ist Tarnung, ohne
+  dass er je verschwindet. `audio.setBuddy` ist TONAL (warme Quinte D3+A3,
+  leiser als der Rivale), wo der Rivale Rauschen ist; kein Pulsieren, denn Puls
+  ist der Herzschlag = Gefahr. NUR IM COOP: Im Race bleibt er stumm, dort ist
+  die Blindheit das Rennen (wie dort Platten nicht zählen, M57). Regeln wie
+  jede Quelle: HRTF, `shield()` hinter Schallschutz, andere Ebene = `muffled`,
+  Nebel dämpft am Master. Die GESCHWINDIGKEIT kommt NICHT über das Netz – sie
+  folgt aus zwei `state`-Meldungen und wird geglättet (`smoothSpeed`); ein Feld
+  mehr hätte beide Seiten ohne Not auf dieselbe Version festgelegt. Kein Funk
+  > 400 ms ⇒ er gilt als ruhend, ein Ebenenwechsel wird nicht als Bewegung
+  gemessen. Im MP-Testmodus liegt die abgegebene Kugel ohne Schwung: nur
+  Grundton. `window.__tiltrBuddy` (E2E Lauf 45).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

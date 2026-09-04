@@ -91,6 +91,10 @@ export class GameAudio {
   private rivalGain!: GainNode;
   private rivalFilter!: BiquadFilterNode;
   private rivalPanner!: PannerNode;
+  private buddyGain!: GainNode;
+  private buddyRollGain!: GainNode;
+  private buddyFilter!: BiquadFilterNode;
+  private buddyPanner!: PannerNode;
   /** Musik-Bus: Note -> duck (Sidechain) -> vol (Entfernung) -> HRTF-Panner.
    *  Die Musik kommt AUS der Jukebox, nicht vom Schirm – sie ist damit ein
    *  akustisches Wahrzeichen, an dem man sich orientieren kann. */
@@ -167,6 +171,40 @@ export class GameAudio {
     this.rivalGain.gain.value = 0;
     this.rivalPanner = this.panner();
     rival.connect(this.rivalFilter).connect(this.rivalGain).connect(this.rivalPanner).connect(this.master);
+
+    // Partner im Coop (M88): Gesellschaft, keine Bedrohung – deshalb TONAL,
+    // wo der Rivale Rauschen ist: ein warmer Quint-Grundton (D3 + A3), sehr
+    // leise, plus ein Rollanteil nach seiner Geschwindigkeit. KEIN Pulsieren:
+    // Puls ist in diesem Spiel der Herzschlag, also Gefahr.
+    this.buddyPanner = this.panner();
+    this.buddyGain = this.ctx.createGain();
+    this.buddyGain.gain.value = 0;
+    this.buddyFilter = this.ctx.createBiquadFilter();
+    this.buddyFilter.type = 'lowpass';
+    this.buddyFilter.frequency.value = 900;
+    this.buddyFilter.connect(this.buddyGain).connect(this.buddyPanner).connect(this.master);
+    const buddyTone = this.ctx.createGain();
+    buddyTone.gain.value = 0.5;
+    buddyTone.connect(this.buddyFilter);
+    for (const [hz, g] of [
+      [146.83, 0.6],
+      [220, 0.35],
+    ] as Array<[number, number]>) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = hz;
+      const og = this.ctx.createGain();
+      og.gain.value = g; // die Quinte leiser als der Grundton
+      osc.connect(og).connect(buddyTone);
+      osc.start();
+    }
+    const buddyRoll = this.ctx.createBufferSource();
+    buddyRoll.buffer = this.noiseBuffer('brown');
+    buddyRoll.loop = true;
+    this.buddyRollGain = this.ctx.createGain();
+    this.buddyRollGain.gain.value = 0;
+    buddyRoll.connect(this.buddyRollGain).connect(this.buddyFilter);
+    buddyRoll.start();
 
     // Musik-Bus (Jukebox). Zwei getrennte Gains mit Absicht: `musicDuck` ist
     // die Sidechain (der Ping drückt sie kurz herunter), `musicVol` die
@@ -945,6 +983,24 @@ export class GameAudio {
       osc.start(t0);
       osc.stop(t0 + 0.24);
     });
+  }
+
+  /** Partner im COOP (M88): warmer Quint-Grundton aus seiner Richtung, dazu
+   *  ein Rollanteil nach seiner Geschwindigkeit (`moving01`). Im RACE bleibt
+   *  er stumm – dort ist die Blindheit das Rennen, wie dort auch Platten nicht
+   *  zählen (M57). `muffled` = andere Ebene: nur ein fernes Grundeln.
+   *  Der Nebel dämpft ihn von selbst (fogFilter am Master). */
+  setBuddy(closeness01: number, dx: number, dy: number, moving01 = 0, muffled = false): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const near = Math.max(0, Math.min(1, closeness01));
+    // Leiser als der Rivale (0.42): Der Partner soll die Welt nicht zudecken,
+    // sondern in ihr stehen.
+    const target = near <= 0 ? 0 : Math.min(0.3, near ** 1.5 * 0.34) * (muffled ? 0.3 : 1);
+    this.buddyGain.gain.setTargetAtTime(target, t, 0.15);
+    this.buddyRollGain.gain.setTargetAtTime(near <= 0 ? 0 : 0.22 * Math.max(0, Math.min(1, moving01)), t, 0.12);
+    this.buddyFilter.frequency.setTargetAtTime(muffled ? 320 : 500 + near * 900, t, 0.2);
+    if (near > 0) this.place(this.buddyPanner, dx, dy);
   }
 
   // Schlüssel-Klimpern: metallischer Doppel-Blip, Rate steigt mit der Nähe.

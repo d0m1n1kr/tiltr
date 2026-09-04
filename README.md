@@ -63,9 +63,12 @@ animation below.
   identical level, first one in wins, with rematch. Six hand-built levels per
   mode plus a 🎲 generator, and every **two-player level from the workshop**
   can be hosted straight from your library — the guest receives it with the
-  room. Your partner is a faint shimmer in the dark and a solid red ball on
-  bright floors. Reaching the goal stops your clock, not your ball, so you
-  can keep holding plates for the straggler. Lost connections get a
+  room. In co-op you **hear** your partner: a warm low hum from his
+  direction, plus a rolling layer that grows with his speed — a wall of felt
+  muffles him, another floor leaves a distant rumble. In race he stays
+  silent; there the blindness is the race. He is also a faint shimmer in the
+  dark and a solid red ball on bright floors. Reaching the goal stops your
+  clock, not your ball, so you can keep holding plates for the straggler. Lost connections get a
   10-second reconnect window; the lobby keeps the screen awake, says when no
   signaling relay is reachable, and can rebuild the connection (**🔄
   Reconnect**) without changing the room code. If a network forbids direct
@@ -150,7 +153,7 @@ expose it). On desktop: arrow keys/WASD roll, Space pings.
 | Boulder | a second body you push cell by cell: fills holes, holds plates, keeps rolling on ice |
 | Jukebox | a solid music box playing 8-bit themes (public-domain classics from scored sources plus originals); music masks the echoes, bumping it skips a track |
 | Bright floor / dusk | a lit floor you can see; dusk stays lit until your first wall touch, then fades |
-| Partner | a breathing shimmer in the dark, a red ball on bright floors, clamped to the screen edge when out of view |
+| Partner | a warm hum from his direction plus his rolling (co-op only); a breathing shimmer in the dark, a red ball on bright floors, clamped to the screen edge when out of view |
 | Goal beacon | sonar ping: closer = faster, louder, higher |
 
 ## Development

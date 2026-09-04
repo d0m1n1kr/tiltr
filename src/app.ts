@@ -2,6 +2,7 @@ import './ui/theme.css';
 import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup, summarizeBackup, type BackupPayload } from './backup';
 import { saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
+import { buddySound, smoothSpeed } from './core/buddy';
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
 import { brittleBreakable } from './core/brittle';
@@ -178,7 +179,9 @@ interface MpSession {
   peerReady: boolean;
   rematchSelf: boolean;
   rematchPeer: boolean;
-  remote: { x: number; y: number; floor: number; finished: boolean; elapsed: number | null };
+  /** Zuletzt gemeldeter Stand des Partners. `speed`/`lastAt` sind NICHT
+   *  übertragen, sondern aus zwei Meldungen abgeleitet (M88). */
+  remote: { x: number; y: number; floor: number; finished: boolean; elapsed: number | null; speed: number; lastAt: number };
   localFinished: boolean;
   localElapsed: number | null;
   localHolds: Set<string>;
@@ -617,6 +620,7 @@ function silenceWorld(): void {
   audio.setSnore(0, 0, 0);
   audio.setFork(0, 0);
   audio.setRival(0, 0, 0);
+  audio.setBuddy(0, 0, 0, 0);
   audio.setPortal(0, 0, 0);
   audio.setCurrent(0, 0, 0);
   audio.setListener(0, 0, 0, 0);
@@ -1112,6 +1116,7 @@ function launch(def: LevelDef): void {
   ghostRecorder = ghostable && !mpTest ? new GhostRecorder() : null;
   rivalAhead = null;
   audio.setRival(0, 0, 0);
+  audio.setBuddy(0, 0, 0, 0);
   pingMax = loaded.pingBudget;
   pings = pingMax;
   pingsUsed = 0;
@@ -2113,7 +2118,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
     peerReady: false,
     rematchSelf: false,
     rematchPeer: false,
-    remote: { x: 0, y: 0, floor: 0, finished: false, elapsed: null },
+    remote: { x: 0, y: 0, floor: 0, finished: false, elapsed: null, speed: 0, lastAt: 0 },
     localFinished: false,
     localElapsed: null,
     localHolds: new Set(),
@@ -2194,6 +2199,15 @@ function mpOnMessage(type: string, payload: unknown): void {
     mpMaybeStart();
   } else if (type === 'state') {
     const p = payload as { x: number; y: number; f: number; fin: boolean };
+    // Partner-Klang (M88): Die Geschwindigkeit kommt NICHT über das Netz – sie
+    // folgt aus zwei Meldungen (alle 80 ms) und wird geglättet. Ein Feld mehr
+    // hätte beide Seiten ohne Not auf dieselbe Version festgelegt. Ein Sprung
+    // über eine Ebene ist keine Bewegung, sondern ein Warp: dann nichts messen.
+    const at = performance.now();
+    const dt = (at - mp.remote.lastAt) / 1000;
+    if (mp.remote.lastAt > 0 && dt < 1 && p.f === mp.remote.floor)
+      mp.remote.speed = smoothSpeed(mp.remote.speed, Math.hypot(p.x - mp.remote.x, p.y - mp.remote.y) / dt, dt);
+    mp.remote.lastAt = at;
     mp.remote.x = p.x;
     mp.remote.y = p.y;
     mp.remote.floor = p.f;
@@ -2291,7 +2305,7 @@ function mpMaybeStart(): boolean {
   mp.rematchPeer = false;
   mp.localHolds = new Set();
   mp.remoteHolds = new Set();
-  mp.remote = { x: 0, y: 0, floor: 0, finished: false, elapsed: null };
+  mp.remote = { x: 0, y: 0, floor: 0, finished: false, elapsed: null, speed: 0, lastAt: 0 };
   mode = { kind: 'mp' };
   hideInterstitial();
   overlay.classList.add('hidden');
@@ -3281,6 +3295,35 @@ function frame(now: number): void {
             solid: mpTest.coop && bright(),
           }
         : null;
+  // Partner-Klang (M88): NUR im Coop – im Race ist die Blindheit das Rennen,
+  // wie dort auch Platten nicht zählen und Schlüssel lokal wirken (M57/M59).
+  // Gehört wird er nach denselben Regeln wie jede Quelle: Nähe, Richtung
+  // (HRTF), eine Schallschutzwand dazwischen dämpft (shield), andere Ebene =
+  // fernes Grundeln (muffled), und der Nebel dämpft am Master von selbst.
+  // Seine Geschwindigkeit trägt den ROLLANTEIL: im echten Netz abgeleitet
+  // (M88, mp.remote.speed), im Testmodus liegt die abgegebene Kugel ohne
+  // Schwung – dort hört man also nur den Grundton, und das ist die Wahrheit.
+  const buddyCoop = mp ? mp.mode === 'coop' && mp.phase === 'playing' : mpTest !== null && mpTest.coop;
+  let buddyHeard: { closeness: number; moving: number; dx: number; dy: number; muffled: boolean } | null = null;
+  if (buddy && buddyCoop && state === 'playing') {
+    const bdx = buddy.x - world.ball.x;
+    const bdy = buddy.y - world.ball.y;
+    // Meldet der Partner gerade nichts (Funkloch), gilt er als ruhend statt
+    // als ewig rollend – der letzte Messwert wäre eine Lüge, die nachhallt.
+    const speed = mp
+      ? now - mp.remote.lastAt < 400
+        ? mp.remote.speed
+        : 0
+      : mpTestOther().loaded.world.ball.speed;
+    const snd = buddySound(Math.hypot(bdx, bdy), speed, world.maxSpeed);
+    const near = snd.closeness * (buddy.sameFloor ? shield(bdx, bdy) : 1);
+    audio.setBuddy(near, bdx, bdy, snd.moving, !buddy.sameFloor);
+    buddyHeard = { closeness: near, moving: snd.moving, dx: bdx, dy: bdy, muffled: !buddy.sameFloor };
+  } else {
+    audio.setBuddy(0, 0, 0, 0);
+  }
+  (window as unknown as { __tiltrBuddy?: unknown }).__tiltrBuddy = buddyHeard;
+
   // Geist-Replay: die Bestzeit rollt zeitsynchron mit (blasser Halo).
   const ghostPos = ghost && state === 'playing' ? sampleGhost(ghost, (now - t0) / 1000) : null;
   const ghostOpt = ghostPos ? { x: ghostPos.x, y: ghostPos.y, sameFloor: ghostPos.floor === activeFloor } : null;

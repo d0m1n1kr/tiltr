@@ -64,8 +64,12 @@ die Animation unten trägt.
   drin sind. **Race:** identisches Level, wer zuerst ankommt, gewinnt, mit
   Rematch. Je sechs handgebaute Level plus ein 🎲-Generator, und jedes
   **Zwei-Spieler-Level aus der Werkstatt** lässt sich direkt aus der
-  Bibliothek hosten – der Gast bekommt es mit dem Raum. Der Partner ist im
-  Dunkeln ein blasser Schein und auf hellen Ebenen ein fester roter Ball.
+  Bibliothek hosten – der Gast bekommt es mit dem Raum. Im Coop **hört** man
+  den Partner: ein warmes, tiefes Summen aus seiner Richtung, dazu ein
+  Rollanteil, der mit seinem Tempo wächst – eine Schallschutzwand dämpft ihn,
+  eine andere Ebene lässt ein fernes Grundeln. Im Race bleibt er stumm, dort
+  ist die Blindheit das Rennen. Zu sehen ist er im Dunkeln als blasser Schein
+  und auf hellen Ebenen als fester roter Ball.
   Der Zieleinlauf stoppt die Uhr, nicht die Kugel – im Coop hält man so dem
   Nachzügler noch die Platten. Bei Verbindungsverlust gibt es ein
   10-Sekunden-Fenster; die Lobby hält den Bildschirm wach, sagt es, wenn kein
@@ -153,7 +157,7 @@ Pfeiltasten/WASD rollen, Leertaste pingt.
 | Rollstein | ein zweiter Körper, zellweise geschoben: füllt Löcher, hält Platten, rollt auf Eis weiter |
 | Jukebox | ein massiver Automat mit 8-Bit-Themen (gemeinfreie Klassiker aus Notenquellen plus eigene); Musik verdeckt die Echos, Anrempeln schaltet weiter |
 | Helle Ebene / Dämmerung | eine Ebene, die man sieht; die Dämmerung bleibt hell bis zur ersten Wandberührung und blendet dann aus |
-| Partner | atmender Schein im Dunkeln, roter Ball auf hellen Ebenen, am Bildrand geklemmt, wenn außer Sicht |
+| Partner | warmes Summen aus seiner Richtung plus sein Rollen (nur Coop); atmender Schein im Dunkeln, roter Ball auf hellen Ebenen, am Bildrand geklemmt, wenn außer Sicht |
 | Ziel-Beacon | Sonar-Ping: näher = schneller, lauter, höher |
 
 ## Entwicklung

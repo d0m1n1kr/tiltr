@@ -96,6 +96,7 @@ const KNOWN_RUNS = [
   "42",
   "43",
   "44",
+  "45",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -7736,6 +7737,182 @@ if (want("44")) {
   } catch (e) {
     check(
       `Lauf 44 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 45: Der Partner klingt (M88). Bis 3.21 war der Partner akustisch
+// NICHT VORHANDEN – ein Schein im Bild, kein Ton; in einem Spiel, dessen Welt
+// sich über Klang offenbart, war „wo bist du?" damit unbeantwortbar. Jetzt:
+// Nähe trägt den Grundton, Bewegung den Rollanteil. Und er klingt NUR im
+// COOP – im Race ist die Blindheit das Rennen. Geprüft im MP-Testmodus
+// (Coop hörbar, ruhende Kugel ⇒ moving 0; Race stumm) UND im echten Netz
+// (Host + Gast, abgeleitete Geschwindigkeit: Nähe UND Rollanteil steigen,
+// während der Gast heranrollt). ---
+if (want("45")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const pageA = await ctx.newPage();
+    pageA.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    pageA.on("pageerror", (e) => errors.push(String(e)));
+    // Offenes, helles Feld: beide Kugeln können frei aufeinander zurollen.
+    const openAll = (cols, rows) => {
+      const out = [];
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols; x++) {
+          if (x < cols - 1) out.push([[x, y], "e"]);
+          if (y < rows - 1) out.push([[x, y], "s"]);
+        }
+      return out;
+    };
+    const def = {
+      id: "custom-m88",
+      name: "Zu zweit im Dunkeln",
+      players: 2,
+      mpMode: "coop",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [6, 3],
+          maze: { seed: 5, carve: openAll(6, 3), add: [] },
+          elements: [],
+          start: [0, 1],
+          goal: [5, 0],
+          start2: [3, 1],
+          goal2: [5, 2],
+          bright: true,
+        },
+      ],
+    };
+
+    // --- Teil 1: MP-Testmodus. Eine Seite ruht (Kugel ohne Schwung), also
+    // hört man den Grundton ohne Rollanteil – das ist die Wahrheit, nicht ein
+    // Mangel des Tests.
+    await pageA.goto(`${BASE}/?nosplash`);
+    await pageA.click("#workshopBtn");
+    await pageA.click("#wsImportBtn");
+    await pageA.fill("#wsImportText", JSON.stringify(def));
+    await pageA.click("#wsImportGo");
+    await until(async () => (await pageA.locator("#workshopList .ws-item").count()) > 0);
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await pageA.locator("#edBadges .ed-badge").count()) > 0);
+    await pageA.click("#edTest");
+    await until(async () => await pageA.evaluate(() => window.__tiltrMpTest), { timeout: 20000 });
+    const coopHeard = await until(async () => await pageA.evaluate(() => window.__tiltrBuddy), { timeout: 8000 });
+    check(
+      `Coop im Testmodus: Partner ist zu HÖREN, aus seiner Richtung (${JSON.stringify(coopHeard)})`,
+      coopHeard !== null &&
+        coopHeard.closeness > 0.2 &&
+        coopHeard.muffled === false &&
+        // Start (0,1) → (50,150), Start 2 (3,1) → (350,150): er liegt rechts.
+        coopHeard.dx > 200 &&
+        Math.abs(coopHeard.dy) < 30,
+    );
+    check(
+      `Die ruhende Kugel rollt nicht: Grundton ja, Rollanteil 0 (moving=${coopHeard?.moving})`,
+      coopHeard?.moving === 0,
+    );
+
+    // Zurück in den Editor, Modus auf Race – derselbe Level, andere Regel.
+    await pageA.click("#editBtn");
+    await until(async () => (await pageA.locator("#edMpMode").count()) > 0, { timeout: 8000 });
+    await pageA.selectOption("#edMpMode", "race");
+    await pageA.click("#edTest");
+    await until(async () => (await pageA.evaluate(() => window.__tiltrMpTest?.coop)) === false, { timeout: 20000 });
+    // Zustand statt Zeit: warten, bis die Schleife wirklich Frames gerechnet
+    // hat (der Haken wird in JEDEM Frame gesetzt – auch auf null).
+    await until(async () => (await pageA.evaluate(() => window.__tiltrBall)) !== undefined, { timeout: 8000 });
+    const raceHeard = await pageA.evaluate(() => window.__tiltrBuddy);
+    check(`Im RACE bleibt der Partner STUMM (${JSON.stringify(raceHeard)})`, raceHeard === null);
+    await pageA.click("#editBtn");
+    await pageA.selectOption("#edMpMode", "coop");
+    await pageA.click("#edClose");
+
+    // --- Teil 2: echtes Netz. Host + Gast im SELBEN Kontext (Lauf 33:
+    // BroadcastChannel überbrückt keine Playwright-Kontexte). Nur hier läuft
+    // der Pfad, den der Testmodus nicht kennt: die aus zwei `state`-Meldungen
+    // ABGELEITETE Geschwindigkeit des Partners.
+    const pageB = await ctx.newPage();
+    pageB.on("pageerror", (e) => errors.push(String(e)));
+    await pageA.goto(`${BASE}/?mpcode=TESTMP45&nosplash`);
+    await pageA.click("#workshopBtn");
+    await until(async () => (await pageA.locator("#workshopList .ws-item").count()) > 0);
+    await pageA.locator("#workshopList .ws-item").last().locator("button", { hasText: "Zu zweit" }).click();
+    await until(async () => !(await pageA.locator("#mp").getAttribute("class")).includes("hidden"));
+    // Die Lobby zeigt eine LISTE: Erst der Tap auf das eigene Level eröffnet
+    // den Raum (wie Lauf 33) – ohne ihn wartet der Gast ewig auf „Verbinde …".
+    await pageA.click("#mpCustomItem");
+    await until(async () => (await pageA.textContent("#mpCode")).trim() === "TESTMP45", { timeout: 8000 });
+    await until(async () => (await pageA.innerHTML("#mpQr")).includes("<svg"));
+    await pageB.goto(`${BASE}/?nosplash#join=TESTMP45`);
+    await until(async () => (await pageB.textContent("#interTitle")).includes("Zu zweit"), { timeout: 8000 });
+    // BEIDE bestätigen das Intro – erst dann startet der Lauf (wie Lauf 33).
+    // Auf den Knopf WARTEN, nicht auf eine Zeit: Beim Host zieht das Intro
+    // erst auf, wenn der Gast im Raum ist.
+    for (const p of [pageA, pageB])
+      await until(async () => await p.locator("#interPrimary").isVisible(), { timeout: 10000 });
+    await pageA.click("#interPrimary", { timeout: 5000 });
+    await pageB.click("#interPrimary", { timeout: 5000 });
+    const started = await until(
+      async () =>
+        (await pageA.evaluate(() => window.__tiltrMp?.phase)) === "playing" &&
+        (await pageB.evaluate(() => window.__tiltrMp?.phase)) === "playing",
+      { timeout: 20000 },
+    );
+    // Eigene Zusicherung, damit ein misslungener Start SAGT, dass er misslang,
+    // statt die nächste Prüfung an undefined zerschellen zu lassen.
+    check(`Host und Gast spielen (${started === true})`, started === true);
+    const first = await until(async () => await pageA.evaluate(() => window.__tiltrBuddy), { timeout: 8000 });
+    check(
+      `Im Netz hört der Host den Gast (Nähe ${(first?.closeness ?? 0).toFixed(2)}, dx ${Math.round(first?.dx ?? 0)})`,
+      (first?.closeness ?? 0) > 0.2 && (first?.dx ?? 0) > 200,
+    );
+
+    // Der Gast rollt heran: Nähe UND Rollanteil müssen steigen. Der
+    // Rollanteil ist der eigentliche Prüfstein – er kommt aus zwei Meldungen,
+    // nicht aus dem Netz.
+    let maxNear = first?.closeness ?? 0;
+    let maxMove = 0;
+    await pageB.keyboard.down("ArrowLeft");
+    const approached = await until(
+      async () => {
+        const b = await pageA.evaluate(() => window.__tiltrBuddy);
+        if (b) {
+          maxNear = Math.max(maxNear, b.closeness);
+          maxMove = Math.max(maxMove, b.moving);
+        }
+        return maxNear > 0.85 && maxMove > 0.1 ? { maxNear, maxMove } : null;
+      },
+      { timeout: 12000 },
+    );
+    await pageB.keyboard.up("ArrowLeft");
+    check(
+      `Gast rollt heran: Nähe steigt und der Rollanteil wächst (${JSON.stringify({
+        near: Number(maxNear.toFixed(2)),
+        move: Number(maxMove.toFixed(2)),
+      })})`,
+      approached !== null,
+    );
+
+    // Und wenn er anhält, fällt der Rollanteil zurück – der Grundton bleibt.
+    const rested = await until(
+      async () => {
+        const b = await pageA.evaluate(() => window.__tiltrBuddy);
+        return b && b.moving < 0.05 ? b : null;
+      },
+      { timeout: 8000 },
+    );
+    check(
+      `Angehalten: Rollanteil fällt, Grundton bleibt (${JSON.stringify(rested)})`,
+      rested !== null && rested.closeness > 0.2,
+    );
+    await pageA.close();
+    await pageB.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 45 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }
