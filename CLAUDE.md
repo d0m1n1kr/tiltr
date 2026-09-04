@@ -34,7 +34,16 @@ ihm fehlten STILL – 207 ✓ statt 247, exit 0 an keiner Stelle rot. Der
 Dispatcher meldet zusätzlich jeden zugeteilten Lauf, der nie sein `# Lauf X`
 druckte (`NICHT gelaufen`), und setzt exit ≠ 0. Ein Lauf, der allein grün ist
 und unter 4 Arbeitern rot, ist ein LAST-Flake: Sleeps durch Zustands-Warten
-ersetzen, nicht die Arbeiterzahl senken. Und die BUDGETS skalieren mit der
+ersetzen, nicht die Arbeiterzahl senken. ZWEI-SEITEN-MP GEHÖRT IN EINEN
+ARBEITER (M88): Die Läufe 9, 33 und 45 fahren je ZWEI Seiten mit einem vollen
+Multiplayer-Lauf; zwei davon gleichzeitig sind auf zwei CI-Kernen vier schwere
+Seiten neben den übrigen Arbeitern, und dann hungert die PHYSIK – Ball A kam
+nicht mehr ins Ziel, am Ende schlug Playwrights eigener Klick-Timeout zu
+(Arbeiter 1 bei 358 s gegen 65–93 s, 7 ✗ in Lauf 9, einzeln und lokal alles
+grün). `AFFINITY` in e2e/parallel.mjs packt sie deshalb in DENSELBEN Eimer, wo
+sie hintereinander laufen; ein Budget hilft dagegen nicht, denn es fehlt keine
+Zeit, sondern Rechenkraft. Wer einen neuen Lauf mit zwei Seiten schreibt,
+trägt ihn dort ein. Und die BUDGETS skalieren mit der
 Arbeiterzahl: der Dispatcher setzt `E2E_TIMEOUT_SCALE` (= Zahl der Arbeiter),
 `until` multipliziert damit, und jeder Kontext bekommt `setDefaultTimeout(30 s
 × Skala)` – vier Arbeiter auf zwei CI-Kernen strecken die Wand-Uhr, und in

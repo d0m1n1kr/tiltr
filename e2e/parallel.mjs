@@ -68,17 +68,36 @@ const only = process.env.E2E_ONLY
   : null;
 const runs = only ?? known;
 
-// Greedy: schwerste zuerst in den leichtesten Eimer.
+// ZWEI-SEITEN-MP GEHÖRT IN EINEN ARBEITER (M88): Die Läufe 9, 33 und 45 fahren
+// je ZWEI Seiten mit einem vollen Multiplayer-Lauf. Zwei davon gleichzeitig
+// sind auf zwei CI-Kernen vier schwere Seiten neben den übrigen Arbeitern –
+// dann hungert die Physik: In der CI kam Ball A nicht mehr ins Ziel, und am
+// Ende schlug Playwrights EIGENER Klick-Timeout zu (Arbeiter 1 bei 358 s, die
+// anderen bei 65–93 s, 7 ✗ in Lauf 9 – einzeln und lokal alles grün). Sie
+// kommen deshalb in DENSELBEN Eimer und laufen dort hintereinander. Wer einen
+// neuen Lauf mit zwei Seiten schreibt, trägt ihn hier ein.
+const AFFINITY = [["9", "33", "45"]];
+
+// Greedy: schwerste Einheit zuerst in den leichtesten Eimer. Eine „Einheit"
+// ist ein Lauf – oder eine Affinitäts-Gruppe, die zusammenbleiben muss.
 const bins = Array.from({ length: Math.min(workers, runs.length) }, () => ({
   w: 0,
   ids: [],
 }));
-for (const id of [...runs].sort(
-  (a, b) => (WEIGHT[b] ?? 5) - (WEIGHT[a] ?? 5),
-)) {
+const grouped = new Set();
+const units = [];
+for (const group of AFFINITY) {
+  const ids = group.filter((id) => runs.includes(id));
+  if (ids.length === 0) continue;
+  for (const id of ids) grouped.add(id);
+  units.push({ ids, w: ids.reduce((sum, id) => sum + (WEIGHT[id] ?? 5), 0) });
+}
+for (const id of runs)
+  if (!grouped.has(id)) units.push({ ids: [id], w: WEIGHT[id] ?? 5 });
+for (const unit of units.sort((a, b) => b.w - a.w)) {
   const bin = bins.reduce((m, b) => (b.w < m.w ? b : m));
-  bin.w += WEIGHT[id] ?? 5;
-  bin.ids.push(id);
+  bin.w += unit.w;
+  bin.ids.push(...unit.ids);
 }
 
 const VITE = new URL("../node_modules/vite/bin/vite.js", import.meta.url)
