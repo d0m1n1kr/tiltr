@@ -62,7 +62,15 @@ und Titel. Lauf 10 „Splash" misst den GRÖSSTEN Kugel-Versatz während der
 Einfahrt (Schleife ab goto) statt eines Zeitpunkts – nach 200 ms plus
 Text-Checks war die Einfahrt unter Last schon vorbei (v3.0.6). Eine neue
 Zusicherung nach einer Bewegung oder einem Klick wartet auf den Zustand, den
-sie prüft – nie auf eine Zeit.
+sie prüft – nie auf eine Zeit. Das gilt AUCH für die Statuszeile: Sie wird vom
+FRAME geschrieben (`statusEl.textContent = message`), nicht vom Tastendruck –
+ein Lesezugriff direkt nach `press()` kam unter CI-Last vor dem nächsten Bild
+und fand sie leer (Lauf 46, CI #146; lokal grün). Und wer eine MELDUNG prüft,
+wartet vorher ab, bis die alte weg ist, sonst prüft er die vorige. Zweite
+Falle desselben Laufs: Wer eine Taste im Flug loslässt, dessen Kugel PRALLT von
+der Wand zurück (y 273 → wieder 153) – dafür gibt es `holdUntil` (hält, bis die
+Bedingung gilt UND der Ball ruht); ich hatte mir stattdessen einen eigenen
+Helfer gebaut, ehe ich die Lektion aus Lauf 9 hier nachlas.
 
 `npm run screenshots` (tools/screenshots.mjs) erzeugt alle README-Bilder in
 `docs/screenshots/` gegen den GEBAUTEN Stand (vite preview auf 8766, Phone

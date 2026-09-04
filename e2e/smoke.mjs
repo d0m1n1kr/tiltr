@@ -8097,7 +8097,15 @@ if (want("46")) {
     await until(async () => (await pageA.textContent("#status")).trim() === "", { timeout: 6000 });
     const before3 = await pageA.evaluate(() => ({ ...window.__tiltrMarks, ball: window.__tiltrBall }));
     await pageA.keyboard.press("m"); // dritter Versuch, freie Zelle (Reihe 2)
-    const said = (await pageA.textContent("#status")).trim();
+    // Auf die MELDUNG warten, nicht sofort lesen: Die Statuszeile schreibt der
+    // FRAME (statusEl.textContent = message), nicht der Tastendruck – unter
+    // CI-Last kam der Lesezugriff vor dem nächsten Bild, und `said` war leer
+    // (so in Lauf #146 gefallen, lokal grün). Das Fenster ist eindeutig, weil
+    // die alte Meldung vorher abgewartet wurde.
+    const said = (await until(async () => {
+      const txt = (await pageA.textContent("#status")).trim();
+      return /übrig/.test(txt) ? txt : null;
+    }, { timeout: 6000 })) ?? (await pageA.textContent("#status")).trim();
     const empty = await pageA.evaluate(() => window.__tiltrMarks);
     check(
       `Vorrat ist endlich: der dritte Versuch in freier Zelle legt nichts nach und sagt es (${JSON.stringify({
