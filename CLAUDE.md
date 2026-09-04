@@ -266,7 +266,17 @@ Startscreen und steuert den Update-Toast (version.json, NetworkOnly).
   Feld `#edWallVariant` schreibt über `setEdgeVariant` in GENAU EINE der
   Listen `maze.brittle`/`maze.absorb`. Beide verlangen im Loader eine
   EXISTIERENDE Wand – der Editor bietet die Auswahl deshalb nur für Wände an,
-  und Entfernen/Radieren nimmt die Variante mit. LANDEPLÄTZE (`landingsOn`,
+  und Entfernen/Radieren nimmt die Variante mit. DAS LEERE FELD (M87): Zum
+  Würfeln gehört das Gegenstück – „🧹 Alle Wände löschen" (Zwei-Tap, es gibt
+  kein Rückgängig) räumt die Ebene über die REINE `clearWalls(maze, cols,
+  rows, seedOpen)`: jede innere Seed-Wand nach `carve`, `add` und ALLE
+  Varianten (brüchig samt Seite, Schallschutz, Spiegel) weg – eine Variante
+  ohne Wand lehnt der Loader ab. Gefragt wird der SEED, nicht der sichtbare
+  Zustand, sonst stünde jede Kante des Feldes im Teilen-Link (bei 20×24 über
+  900); die Seed-Rechnung läuft EINMAL (`seedOpenAll`), denn `edgeOpen` parst
+  je Aufruf die ganze Def. Der Außenrand bleibt außen vor, Elemente bleiben
+  stehen (Tür und Schiebewand wollen ohnehin eine OFFENE Kante).
+  LANDEPLÄTZE (`landingsOn`,
   rein): Jede Transporter-Zielzelle auf der sichtbaren Ebene bekommt einen
   gestrichelten Ring in Portal-Farbe plus „←E<n>" von einer anderen Ebene. Ein
   Landeplatz ist KEIN Element: `elementAt`/`cellFree` kennen ihn nicht, die

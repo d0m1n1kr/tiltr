@@ -612,6 +612,34 @@ erste Einfüge-Anker traf also das falsche Level – und der Automat validierte
 dort zufällig grün. Gefunden hat es die Zusicherung, dass GENAU diese vier
 Level einen haben.
 
+## M87 „Das leere Feld" ✓ (v3.21.0)
+
+Aus dem Levelbau: „Es gibt einen Knopf, um im Editor die aktuelle Ebene neu zu
+würfeln. Genauso braucht es einen Knopf zum Löschen aller Wände." Stimmt – wer
+von Hand baut, kämpft sonst gegen das gewürfelte Labyrinth an, Kante für Kante.
+
+`clearWalls(maze, cols, rows, seedOpen)` in `src/ui/editor.ts` ist rein und
+steht neben `toggleEdge`, dessen Philosophie es teilt: Der ZIELZUSTAND zählt,
+nicht was der Seed gewürfelt hat. Jede INNERE Kante, die der nackte Seed als
+Wand würfelt, kommt in `carve`; `add` und alle Wand-Varianten (brüchig samt
+Seite, Schallschutz, Spiegel) fallen weg. Das Weglassen der Varianten ist keine
+Kosmetik: Der Loader verlangt für sie eine EXISTIERENDE Wand und weigert sich
+sonst („spiegelnde Wandkante (2,0,s) existiert nicht") – in der Sabotage-Probe
+zu Lauf 44 stand genau dieser Satz im Ladefehler.
+
+Gefragt wird der SEED, nicht der sichtbare Zustand: So bleibt `carve` minimal
+(nur die gewürfelten Wände), statt jede Kante des Feldes in den Teilen-Link zu
+schreiben – bei 20×24 wären das über 900. Die Rechnung dafür läuft EINMAL
+(`seedOpenAll`), denn `edgeOpen` parst je Aufruf die komplette Def.
+
+Der Außenrand bleibt unangetastet (er ist keine beschreibbare Kante), Elemente
+bleiben stehen – Türen und Schiebewände verlangen ohnehin eine OFFENE Kante,
+sie überleben das Abräumen also. Der Knopf ist ein ZWEI-TAP („⚠ Alle Wände
+löschen?"), weil es kein Rückgängig gibt und ein Handbau von zwanzig Wänden
+sonst mit einem Fehltipp weg wäre; die Meldung sagt hinterher, wie viele Wände
+gefallen sind. Units in tests/editorWalls.test.ts (Zielzustand, minimale
+Liste, Außenrand, Zählung, Idempotenz), E2E Lauf 44.
+
 ## M86b „Die Nachricht, die ankommt" ✓ (v3.20.0)
 
 Gemessen auf dem Gerät: „Es ist nur das GIF da, nicht der Werbetext und der

@@ -95,6 +95,7 @@ const KNOWN_RUNS = [
   "41",
   "42",
   "43",
+  "44",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -7589,6 +7590,152 @@ if (want("43")) {
   } catch (e) {
     check(
       `Lauf 43 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 44: Alle Wände löschen (M87). Zum Würfeln gehört das Gegenstück:
+// ein leeres Feld, auf dem man von Hand baut. Fixture: eine Ebene mit
+// Seed-Wänden, drei von Hand gesetzten Wänden (brüchig mit Seite,
+// Schallschutz, Spiegel) und einer Tür auf einer offenen Kante. Geprüft:
+// Zwei-Tap (der erste Tap fragt und räumt NICHT), danach ist jede innere
+// Kante offen, keine Variante bleibt liegen, die Elemente bleiben – und der
+// Beweis lädt weiter (eine Variante ohne Wand lehnt der Loader ab). ---
+if (want("44")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const inner = (cols, rows) => {
+      const out = [];
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols; x++) {
+          if (x < cols - 1) out.push([[x, y], "e"]);
+          if (y < rows - 1) out.push([[x, y], "s"]);
+        }
+      return out;
+    };
+    const def = {
+      id: "custom-m87",
+      name: "Abräumen",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 3],
+          // Seed-Maze UNANGETASTET (also Seed-Wände drin) plus drei
+          // Hand-Wände mit je einer Variante – genau das, was fallen soll.
+          maze: {
+            seed: 7,
+            carve: [],
+            add: [[[0, 0], "s"], [[1, 0], "s"], [[2, 0], "s"]],
+            brittle: [[[0, 0], "s"]],
+            brittleSide: [[[[0, 0], "s"], "n"]],
+            absorb: [[[1, 0], "s"]],
+            mirrors: [[[2, 0], "s"]],
+          },
+          elements: [
+            { type: "key", cell: [1, 2], opens: "tor1" },
+            { type: "door", id: "tor1", edge: [[0, 2], "e"] },
+          ],
+          start: [0, 0],
+          goal: [3, 2],
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edClearWalls").count()) > 0);
+
+    const state = async () =>
+      await page.evaluate((edges) => {
+        const ed = window.__tiltrEd;
+        return {
+          walls: edges.filter((e) => ed.edgeState(e) !== "open").length,
+          add: ed.add,
+          brittle: ed.brittle,
+          brittleSide: ed.brittleSide,
+          absorb: ed.absorb,
+          mirrors: ed.mirrors,
+          elements: ed.elements,
+          loadError: ed.loadError ?? null,
+        };
+      }, inner(4, 3));
+
+    const before = await state();
+    check(
+      `Fixture hat Wände UND Varianten (${JSON.stringify(before)})`,
+      before.walls >= 4 &&
+        before.add === 3 &&
+        before.brittle === 1 &&
+        before.brittleSide === 1 &&
+        before.absorb === 1 &&
+        before.mirrors === 1 &&
+        before.elements === 2,
+    );
+
+    // Erster Tap: Der Knopf FRAGT – es gibt kein Rückgängig.
+    await page.click("#edClearWalls");
+    const asked = await until(async () => {
+      const txt = await page.textContent("#edClearWalls");
+      return txt.includes("⚠") ? txt : null;
+    }, { timeout: 4000 });
+    const mid = await state();
+    check(
+      `Ein Tap fragt und räumt NICHT (${JSON.stringify(asked)}, ${mid.walls} Wände)`,
+      /⚠/.test(asked ?? "") && mid.walls === before.walls && mid.add === 3,
+    );
+
+    // Zweiter Tap: leeres Feld.
+    await page.click("#edClearWalls");
+    const after = await until(async () => {
+      const st = await state();
+      return st.walls === 0 ? st : null;
+    }, { timeout: 6000 });
+    check(
+      `Zweiter Tap räumt JEDE innere Wand ab (${JSON.stringify(after ?? (await state()))})`,
+      after !== null,
+    );
+    const now = after ?? (await state());
+    check(
+      `Keine Variante bleibt liegen – sonst lehnt der Loader ab (${JSON.stringify(now)})`,
+      now.add === 0 && now.brittle === 0 && now.brittleSide === 0 && now.absorb === 0 && now.mirrors === 0,
+    );
+    check(`Elemente bleiben (Tür und Schlüssel): ${now.elements}`, now.elements === 2);
+    check(`Der Entwurf lädt weiter (${JSON.stringify(now.loadError)})`, !now.loadError);
+
+    // Und die Meldung sagt, was passiert ist – der Knopf ist wieder kurz.
+    const said = await page.textContent("#edStatus");
+    const label = await page.textContent("#edClearWalls");
+    check(
+      `Meldung nennt die Zahl, der Knopf ist zurückgestellt (${JSON.stringify({ said, label })})`,
+      /\d+/.test(said ?? "") && /entfernt/.test(said ?? "") && !/⚠/.test(label ?? ""),
+    );
+
+    // Gegenprobe: Das leere Feld ist WIRKLICH leer – der Beweis sagt jetzt
+    // „Ziel erreichbar" (ohne Wände führt jeder Weg zum Ziel).
+    const goalOk = await until(async () => {
+      const badges = await page.evaluate(() =>
+        [...document.querySelectorAll("#edBadges .ed-badge")].map((b) => ({
+          text: b.textContent,
+          fail: b.classList.contains("fail"),
+        })),
+      );
+      const goal = badges.find((b) => /Ziel/.test(b.text));
+      return goal && !goal.fail ? goal : null;
+    }, { timeout: 8000 });
+    check(`Ohne Wände ist das Ziel erreichbar (${JSON.stringify(goalOk)})`, goalOk !== null);
+    await page.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 44 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

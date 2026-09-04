@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  clearWalls,
   edgeState,
   landingsOn,
   setEdgeVariant,
@@ -89,6 +90,71 @@ describe('setEdgeVariant', () => {
     expect(edgeState({ carve: [], add: [], brittle: [E], absorb: [], mirrors: [] }, E, false)).toBe('brittle');
     expect(edgeState(fresh(), E, true)).toBe('open');
     expect(edgeState(fresh(), E, false)).toBe('wall');
+  });
+});
+
+describe('clearWalls', () => {
+  // Prüf-Maze: jede zweite Kante ist im Seed offen – so ist beides vertreten.
+  const seedOpen = (e: Edge) => (e[0][0] + e[0][1] + (e[1] === 'e' ? 0 : 1)) % 2 === 0;
+  const inner = (cols: number, rows: number): Edge[] => {
+    const out: Edge[] = [];
+    for (let y = 0; y < rows; y++)
+      for (let x = 0; x < cols; x++) {
+        if (x < cols - 1) out.push([[x, y], 'e']);
+        if (y < rows - 1) out.push([[x, y], 's']);
+      }
+    return out;
+  };
+
+  it('danach ist JEDE innere Kante offen – und keine Variante bleibt übrig', () => {
+    const maze: MazeEdits = { carve: [], add: [[[0, 0], 'e']], brittle: [], brittleSide: [], absorb: [], mirrors: [] };
+    clearWalls(maze, 4, 4, seedOpen);
+    const open = (e: Edge) =>
+      maze.add.some((x) => same(x, e)) ? false : maze.carve.some((x) => same(x, e)) ? true : seedOpen(e);
+    for (const e of inner(4, 4)) expect(open(e)).toBe(true);
+    expect(maze.add).toEqual([]);
+    expect(maze.brittle).toEqual([]);
+    expect(maze.brittleSide).toEqual([]);
+    expect(maze.absorb).toEqual([]);
+    expect(maze.mirrors).toEqual([]);
+  });
+
+  it('carve bleibt MINIMAL: nur Kanten, die der Seed als Wand würfelt', () => {
+    const maze: MazeEdits = { carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
+    clearWalls(maze, 5, 6, seedOpen);
+    const want = inner(5, 6).filter((e) => !seedOpen(e));
+    expect(maze.carve).toHaveLength(want.length);
+    for (const e of maze.carve) expect(seedOpen(e)).toBe(false);
+  });
+
+  it('der Außenrand bleibt unangetastet (keine Kante am Feldrand in carve)', () => {
+    const maze: MazeEdits = { carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
+    clearWalls(maze, 3, 3, () => false);
+    for (const [[x, y], d] of maze.carve) {
+      if (d === 'e') expect(x).toBeLessThan(2);
+      else expect(y).toBeLessThan(2);
+    }
+    expect(maze.carve).toHaveLength(12); // 3×2 senkrecht + 2×3 waagerecht
+  });
+
+  it('zählt die entfernten Wände – Seed-Wand und Hand-Wand, nicht das Offene', () => {
+    const all = (cols: number, rows: number) => inner(cols, rows).length;
+    const m1: MazeEdits = { carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
+    expect(clearWalls(m1, 4, 4, () => false)).toBe(all(4, 4)); // alles Wand
+    const m2: MazeEdits = { carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
+    expect(clearWalls(m2, 4, 4, () => true)).toBe(0); // alles offen
+    const m3: MazeEdits = { carve: [[[0, 0], 'e']], add: [], brittle: [], absorb: [], mirrors: [] };
+    expect(clearWalls(m3, 4, 4, () => false)).toBe(all(4, 4) - 1); // eine war schon offen
+    const m4: MazeEdits = { carve: [], add: [[[0, 0], 'e']], brittle: [], absorb: [], mirrors: [] };
+    expect(clearWalls(m4, 4, 4, () => true)).toBe(1); // eine von Hand gesetzt
+  });
+
+  it('zweimal abräumen ändert nichts mehr (idempotent)', () => {
+    const a: MazeEdits = { carve: [], add: [], brittle: [], absorb: [], mirrors: [] };
+    clearWalls(a, 4, 5, seedOpen);
+    const snapshot = JSON.parse(JSON.stringify(a));
+    expect(clearWalls(a, 4, 5, seedOpen)).toBe(0);
+    expect(a).toEqual(snapshot);
   });
 });
 

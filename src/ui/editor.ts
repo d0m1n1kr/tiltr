@@ -171,6 +171,40 @@ export function toggleEdge(maze: MazeEdits, e: Edge, open: boolean, seedOpen: bo
   return 'open';
 }
 
+/** ALLE Wände einer Ebene abräumen – das Gegenstück zum Würfeln (M87). Jede
+ *  INNERE Kante, die der NACKTE Seed als Wand würfelt, kommt in `carve`;
+ *  `add` und alle Wand-VARIANTEN (brüchig samt Seite, Schallschutz, Spiegel)
+ *  fallen weg, denn eine Variante ohne Wand lehnt der Loader ab. Der
+ *  Außenrand bleibt unangetastet: Er ist keine beschreibbare Kante. Gefragt
+ *  wird der Seed (`seedOpen`), nicht der sichtbare Zustand – so bleibt die
+ *  Liste minimal, statt jede Kante des Feldes in den Teilen-Link zu schreiben.
+ *  Türen und Schiebewände verlangen eine OFFENE Kante, sie überleben das
+ *  also. Rein, exportiert für Tests. Liefert die Zahl der entfernten Wände. */
+export function clearWalls(
+  maze: MazeEdits,
+  cols: number,
+  rows: number,
+  seedOpen: (e: Edge) => boolean,
+): number {
+  const interior: Edge[] = [];
+  for (let y = 0; y < rows; y++)
+    for (let x = 0; x < cols; x++) {
+      if (x < cols - 1) interior.push([[x, y], 'e']);
+      if (y < rows - 1) interior.push([[x, y], 's']);
+    }
+  // Sichtbarer Zustand VOR dem Abräumen – nur zum Zählen; er folgt aus Seed
+  // und Listen, ein zweiter Prädikat-Parameter wäre eine zweite Wahrheit.
+  const wallBefore = (e: Edge) => (seedOpen(e) ? edgeIn(maze.add, e) : !edgeIn(maze.carve, e));
+  const removed = interior.filter(wallBefore).length;
+  maze.carve = interior.filter((e) => !seedOpen(e));
+  maze.add = [];
+  maze.brittle = [];
+  if (maze.brittleSide) maze.brittleSide = [];
+  maze.absorb = [];
+  maze.mirrors = [];
+  return removed;
+}
+
 /** Variante einer BESTEHENDEN Wand setzen: massiv, brüchig oder Schallschutz –
  *  genau eine Liste führt die Kante, die anderen nicht. Auf eine offene Kante
  *  angewandt ist das ein Fehler des Aufrufers (der Loader verlangt die Wand);
@@ -542,6 +576,24 @@ export function setupEditor(opts: {
     }
   };
 
+  // Seed-Zustand ALLER Kanten der Ebene in EINEM Durchgang: `edgeOpen` parst
+  // je Aufruf die komplette Def, und clearWalls fragt jede innere Kante (bei
+  // 20×24 sind das über 900). Gleiche Rechnung wie dort, gleiche Spiegelung.
+  const seedOpenAll = (): ((e: Edge) => boolean) => {
+    try {
+      const def = parseLevel(draft);
+      const f0 = def.floors[activeFloor]!;
+      const f = { ...f0, maze: { ...f0.maze, carve: [], add: [] } };
+      const cells = buildFloorCells(f, { brittleOpen: false, doorsOpen: true }, def.mirror);
+      return (e: Edge) => {
+        const c = cells[e[0][1] * f.size[0] + e[0][0]]!;
+        return e[1] === 'e' ? !c.e : !c.s;
+      };
+    } catch {
+      return () => true; // Def gerade kaputt: nicht zusätzlich blockieren
+    }
+  };
+
   // Türen über ALLE Ebenen: Der Loader prüft IDs global, Schlüssel öffnen
   // ebenenübergreifend – zwei Ebenen mit je einem „tor1" wären mehrdeutig.
   const allDoors = (): Array<{ fl: number; el: RawEl }> => {
@@ -829,6 +881,7 @@ export function setupEditor(opts: {
       brittle: floor().maze.brittle.length,
       brittleSide: floor().maze.brittleSide?.length ?? 0,
       absorb: floor().maze.absorb.length,
+      mirrors: floor().maze.mirrors.length,
       // Sichtbarer Kantenzustand (E2E: Wand an/aus, Variante über Eigenschaften).
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
       selEdge,
@@ -2253,6 +2306,22 @@ export function setupEditor(opts: {
       rebuild();
     });
     propsEl.append(reroll);
+
+    // Gegenstück zum Würfeln: leeres Feld (M87). Zwei-Tap, denn es gibt kein
+    // Rückgängig – und ein Handbau von zwanzig Wänden wäre mit einem Tap weg.
+    const clear = document.createElement('button');
+    clear.className = 'btn btn-ghost';
+    clear.id = 'edClearWalls';
+    clear.textContent = `🧹 ${t('ed.clearWalls')}`;
+    clear.addEventListener('click', () => {
+      twoTap(clear, `⚠ ${t('ed.clearWallsAsk')}`, () => {
+        const n = clearWalls(f.maze, f.size[0], f.size[1], seedOpenAll());
+        selEdge = null; // die ausgewählte Wand gibt es nicht mehr
+        rebuild();
+        flash(t('ed.clearedWalls', { n }));
+      });
+    });
+    propsEl.append(clear);
   }
 
   // Feld verkleinern/vergrößern: Elemente und Wand-Edits außerhalb fallen weg.
