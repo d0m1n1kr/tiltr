@@ -3,15 +3,15 @@
 // Zwei Resonanzfelder, eines je Spieler. Wer auf einem steht, erzeugt einen
 // Ton – und seine HÖHE kommt aus der NEIGUNGSRICHTUNG, nicht aus der Stärke.
 // Das Tor geht auf, wenn die beiden Töne im Zielintervall stehen (Einklang
-// oder Quinte, Toleranz ~25 Cent) und dort einen Augenblick bleiben. Beide
-// hören die Schwebung langsamer werden, bis sie steht. Der Klang IST das
-// Rätsel, und allein ist er nicht lösbar.
+// oder Quinte, Toleranz 40 Cent auf der Oktav-Skala) und dort einen Augenblick
+// bleiben. Beide hören die Schwebung langsamer werden, bis sie steht. Der
+// Klang IST das Rätsel, und allein ist er nicht lösbar.
 //
 // DIE RICHTUNG STIMMT, NICHT DIE STÄRKE: Zum Stimmen muss man neigen, und
-// Neigen würde einen vom Feld rollen – deshalb hält das Feld die Kugel wie ein
-// Sog-Anker (`RESONANCE_FORCE`, per Schema-Invariante unter `accel` 2600: eine
-// Schale, nie eine Falle) und die Neigung wird zum Stimmknopf. Kräftig kippen
-// heißt hinausrollen.
+// Neigen würde einen vom Feld rollen – deshalb hält das Feld die Kugel in einer
+// MULDE (`bowlPull`, `RESONANCE_FORCE` weit unter `accel` 2600: eine Schale,
+// nie eine Falle) und die Neigung wird zum Stimmknopf. Kräftig kippen heißt
+// über die Lippe und hinaus.
 //
 // Die Abbildung ist ÜBERALL STETIG: 0 Cent bei Neigung nach Norden, die OKTAVE
 // bei Süden, und der Weg dorthin geht über Ost ODER West (600 Cent). Ein Kreis,
