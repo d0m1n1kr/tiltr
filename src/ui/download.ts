@@ -21,6 +21,30 @@ export const SHARE_MIME: Record<ShareKind, string> = {
  *  generische Datei behandelt (public.data), nicht als Text. */
 export const EXPORT_EXT = ".tiltr";
 
+/** Eine fertige DATEI (Video, M104) teilen oder herunterladen – derselbe Weg
+ *  wie bei den Exporten: nur die Datei, kein title/text (Signal-Lektion), der
+ *  Typ kommt vom Blob. */
+export async function saveBlobFile(name: string, blob: Blob): Promise<"share" | "download"> {
+  const file = new File([blob], name, { type: blob.type || "application/octet-stream" });
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  if (typeof nav.canShare === "function" && nav.canShare({ files: [file] }) && nav.share) {
+    try {
+      await nav.share({ files: [file] });
+      return "share";
+    } catch {
+      /* abgebrochen oder verweigert – dann eben Download */
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = name;
+  a.click();
+  // Erst nach dem Klick freigeben, sonst ist der Download in manchen
+  // Browsern schon tot, bevor er beginnt.
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  return "download";
+}
+
 export async function saveTextFile(
   name: string,
   text: string,

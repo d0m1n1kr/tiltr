@@ -194,6 +194,19 @@
 /* Partner wartet im Ziel (M90, „gemeinsam ankommen"): Die Pille trägt die
    Partnerfarbe – dieselbe, in der er im Bild leuchtet. Leer verschwindet sie
    von selbst (.hud-chip:empty). */
+/* Aufnahme läuft (M104): Die UHR trägt den roten Punkt – ein eigener Chip
+   passte auf dem Phone nicht mehr neben Pings und Knöpfe (390 px: abgeschnitten
+   unter der Werkzeugleiste). Koralle wie der Partner; Violett ist Gefahr und
+   Löchern vorbehalten. */
+.hud-chip.rec {
+  border-color: rgba(255, 96, 110, 0.45);
+}
+.hud-chip.rec::before {
+  content: "●";
+  color: var(--partner);
+  margin-right: 6px;
+  font-size: 0.8em;
+}
 .hud-chip.waiting {
   color: var(--partner);
   border-color: rgba(255, 96, 110, 0.45);

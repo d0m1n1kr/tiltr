@@ -110,6 +110,10 @@ export interface ConfettiApi {
   step(dtSeconds: number): void;
   /** Sofort aufräumen (Menü, neues Level). */
   clear(): void;
+  /** Die Schnipsel zusätzlich auf ein ANDERES Canvas zeichnen (Screencast,
+   *  M104): Das Video sieht nur das Spielfeld-Canvas, die Konfetti-Ebene
+   *  liegt darüber im DOM. `scale` = Zielbreite / Konfetti-Breite. */
+  drawOn(target: CanvasRenderingContext2D, scale: number): void;
 }
 
 /** Wie viele Schnipsel pro Salve – auf Phones etwas weniger. */
@@ -159,6 +163,21 @@ export function setupConfetti(canvasId: string): ConfettiApi {
         canvas.height,
       );
       expose();
+    },
+    drawOn(target: CanvasRenderingContext2D, scale: number): void {
+      if (!pieces.length) return;
+      target.save();
+      target.setTransform(1, 0, 0, 1, 0, 0);
+      for (const p of pieces) {
+        target.globalAlpha = Math.max(0, Math.min(1, p.life / 0.5));
+        target.save();
+        target.translate(p.x * scale, p.y * scale);
+        target.rotate(p.rot);
+        target.fillStyle = p.color;
+        target.fillRect(-p.size * 0.225 * scale, (-p.size / 2) * scale, p.size * 0.45 * scale, p.size * scale);
+        target.restore();
+      }
+      target.restore();
     },
     step(dtSeconds: number): void {
       if (!canvas || !ctx || !pieces.length) return;

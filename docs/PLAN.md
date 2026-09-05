@@ -651,7 +651,7 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
-## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phasen 2–4 geplant
+## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phase 2 ✓ (v3.41.0), Phasen 3–4 geplant
 
 Gewünscht: „Der Weg wird ja bereits protokolliert. Ich möchte, dass man das
 geschaffte Level als Screencast rendern kann (um es zu sharen). Entweder
@@ -737,14 +737,51 @@ keine Bestzeit, kein Profil wird dabei geschrieben (`winRun` verzweigt VOR
 Nicht im Netz (die Partnerbahn käme von drüben), nicht im MP-Testmodus (zwei
 Kugeln, eine Hand).
 
-### Phasen 2–4 (offen)
+### Phase 2 ✓ – Video in Echtzeit (v3.41.0)
 
-2. VIDEO IN ECHTZEIT: `canvas.captureStream(30)` + MediaStreamAudioDestination
-   am Master → MediaRecorder (iOS mp4, Chrome webm). Optionen Ganz/Highlights,
-   Tempo 1×/2×, hell/dunkel; Titelkarte und Abspann mit Adresse (Promo-
-   Lektion: ein geteiltes Video ohne Link ist wertlos); Teilen als Datei ohne
-   Titeltext (Signal-Lektion). Dazu eine SONDE wie `iceProbe`: MediaRecorder-
-   Typen, VideoEncoder/AudioEncoder – erst messen, dann bauen.
+`core/cast.ts` (rein: Container-Wahl, Dateiname, Kartenzeiten) und
+`ui/screencast.ts` (MediaRecorder-Hülle + Overlay). Das Replay läuft in der
+echten Schleife, `canvas.captureStream(30)` und ein MediaStream-Abgriff am
+Ende des Audio-Graphen (`audio.captureStream`, nach dem Nebelfilter – GENAU
+das, was der Spieler hört, HRTF inklusive) gehen in EINEN MediaRecorder.
+Nichts wird nachgebaut: Türen, Wächter, Pings entstehen aus demselben Code.
+
+CONTAINER: mp4 vor webm (`CAST_MIMES`), denn geteilt wird an Leute, nicht an
+Browser, und webm spielt in iPhone-Nachrichten nicht. Gemessen: Headless-
+Chromium liefert `video/mp4` – die Sonde ist `MediaRecorder.isTypeSupported`,
+injiziert in `pickCastMime`, damit die Wahl ohne Browser prüfbar bleibt.
+
+DAS VIDEO SIEHT NUR DAS CANVAS: HUD und Statuszeile sind DOM. Deshalb zeichnet
+`drawCastOverlay` Titelkarte (Levelname, Welt), die laufende Zeit als Chip und
+den Abspann (Zeit + Adresse) IN das Bild – Farben und Schrift aus den
+Design-Tokens (`castTheme` liest sie aus dem Stylesheet). Der Abspann trägt
+die Adresse: ein geteiltes Video ohne Link ist wertlos (M85). Und das
+KONFETTI liegt auf einer eigenen DOM-Ebene, also zeichnet `confetti.drawOn`
+es zusätzlich ins Spielfeld; das Konfetti des eben gewonnenen Laufs wird
+vorher geräumt, sonst fiele es in den Anfang des Videos.
+
+DIE TITELKARTE HÄLT DEN LAUF AN (aus dem ersten E2E-Lauf): Zuerst lag sie
+ÜBER den ersten zwei Sekunden, und ein 1,1-s-Lauf war ganz darunter
+verschwunden (3,6 s Video). Jetzt steht die Kugel unter der Karte
+(`TITLE_HOLD_MS` = Titel minus Ausblenden, `replayHold`: die Uhr steht, nichts
+neigt, kein Bild wird verbraucht) und rollt los, wenn die Karte zu verblassen
+beginnt. `expectedCastMs` = Pause + Lauf/Tempo + Abspann.
+
+ZEITRAFFER 2×: zwei Mitschnitt-Bilder je gezeichnetem Bild – die Schleife
+rechnet zweimal, zeichnet einmal (`drawThisFrame`; Zeichenarbeit ist das
+Teure, M94b). Die Klänge laufen im Takt schneller, nicht in der Tonhöhe.
+HELL: `lightGain` liest `replay.bright` und – für den Abspann, wenn das Replay
+schon zu ist – `cast.opts.bright`; sonst fiel die Welt unter der Abspannkarte
+ins Dunkel. Der REC-Hinweis ist ein roter Punkt AN DER UHR: ein eigener Chip
+passte auf 390 px nicht neben Pings und Knöpfe.
+
+Teilen als Datei ohne Titeltext (`saveBlobFile`, Signal-Lektion), sonst
+Download; Dateiname `tiltr-<level>-<zeit>s.<ext>`. E2E Lauf 55: Sheet,
+Zeitraffer + hell, Bytes, Dauer ≈ erwartet, Video-Karte mit Größe, Download
+mit passender Endung. `window.__tiltrCast`.
+
+### Phasen 3–4 (offen)
+
 3. HIGHLIGHTS MIT ÜBERBLENDUNG: Zwischen den Fenstern wird stumm vorgespult,
    das letzte Bild eines Fensters blendet 400 ms über den Anfang des nächsten,
    der Ton bekommt eine Gain-Rampe am Aufnahme-Bus.

@@ -66,6 +66,8 @@ export class GameAudio {
   private master!: GainNode;
   private rollFilter!: BiquadFilterNode;
   private rollGain!: GainNode;
+  /** Abgriff für den Screencast (M104): dasselbe Signal wie am Lautsprecher. */
+  private captureDest: MediaStreamAudioDestinationNode | null = null;
   private sandRollFilter!: BiquadFilterNode;
   private sandRollGain!: GainNode;
   private windGain!: GainNode;
@@ -915,6 +917,18 @@ export class GameAudio {
    *  Aufrufstelle in der Schleife: Der Untergrund ist eine Eigenschaft DIESES
    *  Rollens, kein eigener Klangkörper (anders als das Eis-Sirren, das ÜBER
    *  dem Rollen liegt). Sand klingt leiser: Ein zäher Boden trägt weniger. */
+  /** Das fertige Signal (nach Nebelfilter, also GENAU das, was der Spieler
+   *  hört – HRTF inklusive) als MediaStream für den Screencast (M104). Ein
+   *  Abgriff, wiederverwendet; null, wenn Audio noch nie gestartet wurde. */
+  captureStream(): MediaStream | null {
+    if (!this.ctx) return null;
+    if (!this.captureDest) {
+      this.captureDest = this.ctx.createMediaStreamDestination();
+      this.fogFilter.connect(this.captureDest);
+    }
+    return this.captureDest.stream;
+  }
+
   setRolling(speed01: number, sand01 = 0): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;

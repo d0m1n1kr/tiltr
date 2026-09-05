@@ -350,6 +350,22 @@
     }
     #version { font-size: var(--fs-caption); opacity: 0.4; }
 
+    /* Screencast-Sheet (M104): dieselbe Bühne wie die Ergebniskarte. */
+    #castSheet {
+      position: fixed; inset: 0;
+      height: var(--app-height, auto);
+      display: flex;
+      background: rgba(5, 7, 15, 0.72);
+      padding: var(--space-5);
+      overflow-y: auto;
+      touch-action: pan-y;
+      z-index: var(--z-overlay);
+    }
+    .cast-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: var(--space-3); font-size: var(--fs-body-s); text-align: left;
+    }
+    .cast-chips { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
     #interstitial {
       position: fixed; inset: 0;
       height: var(--app-height, auto);
@@ -995,9 +1011,37 @@
       <!-- „▶ Lauf ansehen" (M104): spielt den Mitschnitt in der echten
            Schleife ab und kommt zu dieser Karte zurück. -->
       <button id="interReplay" class="btn btn-soft hidden"></button>
+      <!-- „🎬 Screencast" (M104, Phase 2): öffnet das Aufnahme-Sheet. -->
+      <button id="interCast" class="btn btn-soft hidden"></button>
       <div class="inter-buttons">
         <button id="interSecondary" class="btn btn-ghost hidden"></button>
         <button id="interPrimary" class="btn btn-primary hidden"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENCAST (M104, Phase 2): Optionen, dann Aufnahme des Replays. -->
+  <div id="castSheet" class="hidden">
+    <div class="panel inter-card">
+      <h2 data-i18n="cast.title"></h2>
+      <p id="castText" data-i18n="cast.text"></p>
+      <div class="cast-row">
+        <span data-i18n="cast.speed"></span>
+        <span class="cast-chips">
+          <button id="castSpeed1" class="btn chip">1×</button>
+          <button id="castSpeed2" class="btn chip">2×</button>
+        </span>
+      </div>
+      <div class="cast-row">
+        <span data-i18n="cast.light"></span>
+        <span class="cast-chips">
+          <button id="castLight0" class="btn chip" data-i18n="cast.asPlayed"></button>
+          <button id="castLight1" class="btn chip" data-i18n="cast.bright"></button>
+        </span>
+      </div>
+      <div class="inter-buttons">
+        <button id="castBack" class="btn btn-ghost" data-i18n="common.cancel"></button>
+        <button id="castGo" class="btn btn-primary" data-i18n="cast.go"></button>
       </div>
     </div>
   </div>

@@ -106,6 +106,7 @@ const KNOWN_RUNS = [
   "52",
   "53",
   "54",
+  "55",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -9366,6 +9367,120 @@ if (want("54")) {
   } catch (e) {
     check(
       `Lauf 54 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 55: Screencast (M104, Phase 2). Das Video entsteht aus dem
+// Mitschnitt: Replay in der echten Schleife, Canvas + Audio-Master in den
+// MediaRecorder. Geprüft wird: Der Knopf steht auf der Ergebniskarte, das
+// Sheet kennt Tempo und Licht, die Aufnahme läuft im Zeitraffer und HELL,
+// Bytes kommen an, die Karte nennt die Größe, und „Speichern" liefert eine
+// Datei mit der Endung des Containers (Headless-Chromium: webm). ---
+if (want("55")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: "de-DE", acceptDownloads: true });
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const def = {
+      id: "custom-m104b",
+      name: "Screencast",
+      floors: [
+        {
+          // Dunkler Gang (kein bright): So zeigt „hell" im Video etwas, das der
+          // Spieler nicht sah – und der Haken kann es messen.
+          size: [8, 2],
+          maze: {
+            seed: 3,
+            carve: [0, 1, 2, 3, 4, 5, 6].map((x) => [[x, 0], "e"]),
+            add: [0, 1, 2, 3, 4, 5, 6, 7].map((x) => [[x, 0], "s"]),
+          },
+          elements: [{ type: "checkpoint", cell: [3, 0] }],
+          start: [0, 0],
+          goal: [7, 0],
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    await page.click("#edTest");
+    const interHidden = () =>
+      page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden") === true);
+    await until(interHidden, { timeout: 20000 });
+    await page.keyboard.down("ArrowRight");
+    await until(async () => !(await interHidden()), { timeout: 25000 });
+    await page.keyboard.up("ArrowRight");
+    const runTime = (await page.evaluate(() => window.__tiltrRun?.lastRun?.time)) ?? 0;
+    const castInfo = await page.evaluate(() => window.__tiltrCast);
+    check(
+      `Das Gerät kann aufzeichnen und hat einen Container (${castInfo?.supported}, ${castInfo?.mime})`,
+      castInfo?.supported === true && typeof castInfo?.mime === "string",
+    );
+    const castBtn = page.locator("#interCast");
+    check(`Die Ergebniskarte bietet „Screencast" an („${(await castBtn.textContent())?.trim()}")`, await castBtn.isVisible());
+
+    // Sheet: Tempo 2×, Licht hell.
+    await castBtn.click();
+    await until(async () => await page.locator("#castSheet").isVisible());
+    await page.click("#castSpeed2");
+    await page.click("#castLight1");
+    const active = await page.evaluate(() =>
+      ["castSpeed1", "castSpeed2", "castLight0", "castLight1"].map((id) => document.getElementById(id)?.classList.contains("active")),
+    );
+    check(`Optionen stehen: 2× und hell (${JSON.stringify(active)})`, JSON.stringify(active) === "[false,true,false,true]");
+
+    // Aufnehmen: Replay läuft, im Zeitraffer, hell, der REC-Chip steht.
+    await page.click("#castGo");
+    const rec = await until(async () => {
+      const c = await page.evaluate(() => window.__tiltrCast);
+      const w = await page.evaluate(() => window.__tiltrWorld);
+      const chip = (await page.evaluate(() => document.getElementById("timer")?.classList.contains("rec"))) ? "● REC" : "";
+      return c?.state === "recording" && w ? { c, bright: w.bright, chip } : null;
+    }, { timeout: 15000 });
+    check(
+      `Die Aufnahme läuft im Zeitraffer und hell (state ${rec?.c?.state}, speed ${rec?.c?.speed}, bright ${rec?.c?.bright}/${rec?.bright}, Chip „${rec?.chip}")`,
+      rec?.c?.speed === 2 && rec?.c?.bright === true && rec?.bright === true && rec?.chip?.includes("REC"),
+    );
+
+    // Fertig: Karte mit Größe; Bytes > 0; Zeitraffer sichtbar an der Dauer.
+    const done = await until(async () => {
+      const c = await page.evaluate(() => window.__tiltrCast);
+      return c?.last ? c.last : null;
+    }, { timeout: 40000 });
+    // Titel-Pause 1,4 s + Lauf im Zeitraffer + Abspann 3 s (core/cast.ts).
+    const expectMs = 1400 + (runTime * 1000) / 2 + 3000;
+    check(
+      `Die Aufnahme liefert Daten (${done?.bytes} B, ${done?.mime}, ${Math.round(done?.durationMs ?? 0)} ms für einen ${runTime.toFixed(1)}-s-Lauf, erwartet ≈ ${Math.round(expectMs)} ms)`,
+      (done?.bytes ?? 0) > 1000 && typeof done?.mime === "string" && Math.abs((done?.durationMs ?? 0) - expectMs) < 1500,
+    );
+    await until(async () => !(await interHidden()), { timeout: 10000 });
+    const title = (await page.textContent("#interTitle")) ?? "";
+    check(`Die Video-Karte nennt die Größe („${title.trim()}")`, /Video fertig · \d/.test(title));
+    const recAfter = await page.evaluate(() => document.getElementById("timer")?.classList.contains("rec"));
+    check(`Der REC-Punkt an der Uhr ist wieder weg (${recAfter})`, recAfter === false);
+
+    // Speichern: ohne Web Share ein Download – Endung passend zum Container.
+    const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 15000 }), page.click("#interExtra")]);
+    const fname = dl.suggestedFilename();
+    const ext = String(done?.mime ?? "").startsWith("video/mp4") ? ".mp4" : ".webm";
+    check(`„Speichern" liefert die Datei (${fname})`, fname.startsWith("tiltr-custom-m104b-") && fname.endsWith(ext));
+    await until(async () => /Gespeichert/.test((await page.textContent("#interExtra")) ?? ""), { timeout: 5000 });
+    check(`Der Knopf meldet den Weg („${((await page.textContent("#interExtra")) ?? "").trim()}")`, /Gespeichert/.test((await page.textContent("#interExtra")) ?? ""));
+    // Zurück zur Ergebniskarte: der Screencast-Knopf ist wieder da.
+    await page.click("#interPrimary");
+    await until(async () => await castBtn.isVisible(), { timeout: 5000 });
+    check(`Zurück auf der Ergebniskarte (Screencast-Knopf sichtbar: ${await castBtn.isVisible()})`, await castBtn.isVisible());
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 55 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

@@ -1,6 +1,6 @@
 import './ui/theme.css';
 import { applyBackup, backupFileName, collectBackup, decodeBackup, encodeBackup, summarizeBackup, type BackupPayload } from './backup';
-import { saveTextFile } from './ui/download';
+import { saveBlobFile, saveTextFile } from './ui/download';
 import { CELL } from './core/constants';
 import { buddySound, smoothSpeed } from './core/buddy';
 import { FEATURES, canDo, needsFor } from './core/features';
@@ -68,7 +68,9 @@ import { setupGallery, extraEntries } from './ui/gallery';
 import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel, type TestRun, type TestStart } from './ui/editor';
 import { isShareable, validateLevel } from './levels/validate';
-import { promoCaption, promoShare } from './promo';
+import { APP_URL, promoCaption, promoShare } from './promo';
+import { DEFAULT_CAST, TAIL_MS, TITLE_HOLD_MS, castFileName, fmtBytes, pickCastMime, type CastOptions } from './core/cast';
+import { castSupported, castTheme, drawCastOverlay, mimeSupported, startCast, type CastSession, type CastTheme } from './ui/screencast';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
@@ -125,6 +127,8 @@ const interPrimary = $<HTMLButtonElement>('interPrimary');
 const interSecondary = $<HTMLButtonElement>('interSecondary');
 const interExtra = $<HTMLButtonElement>('interExtra');
 const interReplay = $<HTMLButtonElement>('interReplay');
+const interCast = $<HTMLButtonElement>('interCast');
+const castSheet = $('castSheet');
 
 fixStandaloneViewport();
 document.documentElement.lang = currentLang();
@@ -291,7 +295,31 @@ let pendingPing = false;
    „Lauf ansehen"), das laufende Replay und sein Ergebnis (E2E). */
 let recorder: RunRecorder | null = null;
 let lastRun: { rec: Recording; def: LevelDef } | null = null;
-let replay: { rec: Recording; i: number; drift: number } | null = null;
+let replay: { rec: Recording; i: number; drift: number; speed: 1 | 2; bright: boolean } | null = null;
+/** Nur das LETZTE Bild eines Zeitraffer-Schritts wird gezeichnet (M104). */
+let drawThisFrame = true;
+/** Titelkarte (M104, Phase 2): Das Replay STEHT, bis die Karte zu verblassen
+ *  beginnt – sonst läge sie über dem Anfang des Laufs. */
+let replayHold = false;
+/* SCREENCAST (M104, Phase 2): die laufende Aufnahme des Replays. */
+interface Cast {
+  session: CastSession;
+  opts: CastOptions;
+  /** Wanduhr beim Start der Aufnahme */
+  startedAt: number;
+  /** Wanduhr beim Ziel, null = unterwegs */
+  endedAt: number | null;
+  /** die Ergebniskarte, zu der es zurückgeht */
+  card: InterOpts | null;
+  theme: CastTheme;
+  def: LevelDef;
+  title: string;
+  subtitle: string;
+  state: 'recording' | 'ending';
+}
+let cast: Cast | null = null;
+let castOpts: CastOptions = { ...DEFAULT_CAST };
+let lastCast: { bytes: number; mime: string; durationMs: number; speed: number; bright: boolean } | null = null;
 let lastReplay: { frames: number; drift: number; goal: boolean; time: number | null } | null = null;
 /** Die zuletzt gezeigte Karte – nach einem Replay kommt sie wieder. */
 let lastInter: InterOpts | null = null;
@@ -407,6 +435,8 @@ interface InterOpts {
   /** „▶ Lauf ansehen" (M104): spielt den Mitschnitt in der echten Schleife
    *  ab und kommt danach zu DIESER Karte zurück. */
   replay?: InterAction;
+  /** „🎬 Screencast" (M104, Phase 2): Optionen, dann Aufnahme des Replays. */
+  cast?: InterAction;
   /** Sterne-Vorschau (M43): was der zweite und dritte Stern verlangen. */
   stars?: string;
   /** „Neu hier" (M43): Element-Typen, die dieses Level zum ersten Mal bringt –
@@ -432,6 +462,7 @@ function showInterstitial(opts: InterOpts): void {
   for (const [btn, action] of [
     [interExtra, opts.extra],
     [interReplay, opts.replay],
+    [interCast, opts.cast],
   ] as const) {
     if (action) {
       btn.textContent = action.label;
@@ -727,6 +758,13 @@ function showMenu(): void {
   recorder = null;
   lastRun = null;
   gameTimer = null;
+  if (cast) {
+    cast.session.cancel();
+    cast = null;
+  }
+  timerEl.classList.remove('rec');
+  timerEl.title = '';
+  castSheet.classList.add('hidden');
   silenceWorld();
   audio.setHeading(0);
   audio.stopMusic();
@@ -1122,6 +1160,10 @@ function lightGain(now: number): number {
   const floor = loaded?.floors[activeFloor];
   if (!floor) return 0;
   if (floor.bright) return 1;
+  // Screencast „hell" (M104): Der Zuschauer sieht das Labyrinth, das der
+  // Spieler nur gehört hat – auch noch im Abspann, wenn das Replay schon
+  // abgeschlossen ist (sonst fiel die Welt unter der Abspannkarte ins Dunkel).
+  if (replay?.bright || cast?.opts.bright) return 1;
   if (mode?.kind === 'tutorial' && profile.tutorialBright) return 1;
   if (floor.dusk) return duskStart === null ? 1 : Math.max(0, 1 - (now - duskStart) / DUSK_MS);
   return 0;
@@ -1357,6 +1399,7 @@ function onWin(seconds: number): void {
         // „Revanche" ein Link mit schlechterer Zeit.
         extra: won ? challengeAction(def, seconds, t('duel.rematch')) : undefined,
         replay: replayAction(),
+        cast: castAction(),
         primary: { label: t('common.again'), onClick: beginLevel },
         secondary: { label: t('common.menu'), onClick: showMenu },
       });
@@ -1386,6 +1429,7 @@ function onWin(seconds: number): void {
         text: lines.join('\n'),
         extra: challengeAction(def, seconds, t('duel.challenge')),
         replay: replayAction(),
+        cast: castAction(),
         primary: {
           label: t('daily.share'),
           onClick: () => {
@@ -1409,6 +1453,7 @@ function onWin(seconds: number): void {
           `${t('res.time', { time: fmtTime(seconds) })}${isRecord ? t('res.newBest') : ''}\n` +
           (hasNext ? t('res.tutProgress', { done, total }) : t('res.tutDone')),
         replay: replayAction(),
+        cast: castAction(),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -1447,6 +1492,7 @@ function onWin(seconds: number): void {
         text: lines.join('\n'),
         extra: challengeAction(def, seconds, t('duel.challenge')),
         replay: replayAction(),
+        cast: castAction(),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -1470,6 +1516,7 @@ function onWin(seconds: number): void {
         text: isRecord ? t('res.newBestLine') : bundle ? `${bundle.title} · ${index + 1}/${bundle.levels.length}` : '',
         extra: challengeAction(def, seconds, t('duel.challenge')),
         replay: replayAction(),
+        cast: castAction(),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -1494,6 +1541,7 @@ function onWin(seconds: number): void {
         // nicht mal gespeichert) – im normalen Spiel schon.
         extra: fromEditor ? undefined : challengeAction(def, seconds, t('duel.challenge')),
         replay: replayAction(),
+        cast: castAction(),
         primary: fromEditor
           ? {
               label: t('ed.backToEditor'),
@@ -1521,6 +1569,7 @@ function onWin(seconds: number): void {
             ? t('menu.quick.best', { preset: t(`preset.${profile.preset}`), time: fmtTime(best) })
             : '',
         replay: replayAction(),
+        cast: castAction(),
         primary: { label: t('common.again'), onClick: beginLevel },
         secondary: { label: t('common.menu'), onClick: showMenu },
       });
@@ -3001,7 +3050,8 @@ function startReplay(): void {
   if (!lastRun || replay) return;
   const { rec, def } = lastRun;
   hideInterstitial();
-  replay = { rec, i: 0, drift: 0 };
+  replay = { rec, i: 0, drift: 0, speed: 1, bright: false };
+  confetti.clear();
   // Die virtuelle Uhr beginnt beim t0 des Mitschnitts – `launch` liest sie
   // über nowMs(), also steht t0 danach exakt wie im Original.
   virtualNow = rec.t0;
@@ -3020,8 +3070,164 @@ function replayFinished(time: number | null): void {
   virtualNow = null;
   state = 'won';
   silenceWorld();
+  // Aufnahme (M104, Phase 2): Der Abspann läuft noch TAIL_MS weiter (Konfetti
+  // + Karte), dann schließt `finishCast` ab und zeigt die Video-Karte.
+  if (cast) {
+    cast.endedAt = frameNow ?? performance.now();
+    return;
+  }
   const card = lastInter;
   if (card) setTimeout(() => { if (state === 'won' && !replay) showInterstitial(card); }, time !== null ? 1800 : 300);
+}
+
+/* --- SCREENCAST (M104, Phase 2) ---------------------------------------------
+   Das Video entsteht aus dem Mitschnitt, in ECHTZEIT: Das Replay läuft in der
+   echten Schleife, das Spielfeld-Canvas wird mit `captureStream` und der
+   Audio-Master mit einem MediaStream-Abgriff aufgezeichnet (ui/screencast.ts).
+   Nichts wird nachgebaut – Türen, Wächter, Pings, HRTF entstehen aus demselben
+   Code wie im Spiel. Was das Video zeigt, ist NUR das Canvas; HUD und
+   Statuszeile sind DOM. Deshalb zeichnet `drawCast` Titelkarte, Zeit und
+   Abspann in das Bild. Der Abspann trägt die Adresse: Ein geteiltes Video ohne
+   Link ist wertlos (Promo-Lektion M85). */
+
+function castAction(): InterAction | undefined {
+  return lastRun ? { label: t('res.cast'), onClick: openCastSheet } : undefined;
+}
+
+function renderCastChips(): void {
+  const can = castSupported() && pickCastMime(mimeSupported) !== null;
+  $('castText').textContent = t(can ? 'cast.text' : 'cast.unsupported');
+  $('castGo').classList.toggle('hidden', !can);
+  $('castSpeed1').classList.toggle('active', castOpts.speed === 1);
+  $('castSpeed2').classList.toggle('active', castOpts.speed === 2);
+  $('castLight0').classList.toggle('active', !castOpts.bright);
+  $('castLight1').classList.toggle('active', castOpts.bright);
+}
+
+let castCard: InterOpts | null = null;
+function openCastSheet(): void {
+  if (!lastRun) return;
+  castCard = lastInter;
+  hideInterstitial();
+  renderCastChips();
+  castSheet.classList.remove('hidden');
+}
+function closeCastSheet(): void {
+  castSheet.classList.add('hidden');
+  if (castCard) showInterstitial(castCard);
+}
+$('castSpeed1').addEventListener('click', () => {
+  castOpts = { ...castOpts, speed: 1 };
+  renderCastChips();
+});
+$('castSpeed2').addEventListener('click', () => {
+  castOpts = { ...castOpts, speed: 2 };
+  renderCastChips();
+});
+$('castLight0').addEventListener('click', () => {
+  castOpts = { ...castOpts, bright: false };
+  renderCastChips();
+});
+$('castLight1').addEventListener('click', () => {
+  castOpts = { ...castOpts, bright: true };
+  renderCastChips();
+});
+$('castBack').addEventListener('click', closeCastSheet);
+$('castGo').addEventListener('click', () => void startCastRecording());
+
+async function startCastRecording(): Promise<void> {
+  if (!lastRun || replay || cast) return;
+  const mime = pickCastMime(mimeSupported);
+  if (!mime || !castSupported()) return;
+  const { rec, def } = lastRun;
+  castSheet.classList.add('hidden');
+  await audio.start();
+  // Zuerst das Replay aufsetzen (die Uhr des Mitschnitts, Zeitraffer, Licht),
+  // dann die Aufnahme starten – die Titelkarte liegt über den ersten Bildern.
+  replay = { rec, i: 0, drift: 0, speed: castOpts.speed, bright: castOpts.bright };
+  virtualNow = rec.t0;
+  currentDef = def;
+  launch(def);
+  const subtitle =
+    mode?.kind === 'campaign' ? t(`world.w${campaignPos(mode.index).world + 1}` as keyof Dict).split(' – ')[0]! : 'tiltr';
+  let session: CastSession;
+  try {
+    session = startCast(canvas, audio.captureStream(), mime);
+  } catch {
+    replayFinished(null);
+    if (castCard) showInterstitial(castCard);
+    return;
+  }
+  cast = {
+    session,
+    opts: castOpts,
+    startedAt: performance.now(),
+    endedAt: null,
+    card: castCard,
+    theme: castTheme(),
+    def,
+    title: lvName(def),
+    subtitle,
+    state: 'recording',
+  };
+  // Der rote Punkt an der Uhr sagt „Aufnahme läuft" (ein eigener Chip passte
+  // auf dem Phone nicht neben Pings und Knöpfe).
+  timerEl.classList.add('rec');
+  timerEl.title = t('cast.rec');
+  confetti.clear(); // das Konfetti des eben gewonnenen Laufs gehört nicht in den Anfang des Videos
+}
+
+/** Nach jedem gezeichneten Bild: Konfetti ins Spielfeld (das Video sieht die
+ *  eigene Ebene nicht), dann Titelkarte / Zeit / Abspann. */
+function drawCast(rafNow: number): void {
+  if (!cast) return;
+  const ctx2d = canvas.getContext('2d');
+  if (!ctx2d) return;
+  const conf = document.getElementById('confetti') as HTMLCanvasElement | null;
+  if (conf && conf.width > 0) confetti.drawOn(ctx2d, canvas.width / conf.width);
+  const secs = replay ? ((virtualNow ?? t0) - t0) / 1000 : (lastReplay?.time ?? 0);
+  drawCastOverlay(ctx2d, canvas.width, canvas.height, Math.max(1, canvas.width / canvas.clientWidth || 1), cast.theme, {
+    sinceStartMs: rafNow - cast.startedAt,
+    sinceEndMs: cast.endedAt === null ? null : rafNow - cast.endedAt,
+    title: cast.title,
+    subtitle: cast.subtitle,
+    timeText: fmtTime(secs),
+    endLine: t('cast.endLine', { time: fmtTime(secs) }),
+    byline: `tiltr · ${APP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}`,
+  });
+  if (cast.state === 'recording' && cast.endedAt !== null && rafNow - cast.endedAt >= TAIL_MS) void finishCast();
+}
+
+async function finishCast(): Promise<void> {
+  if (!cast) return;
+  const c = cast;
+  c.state = 'ending';
+  const blob = await c.session.stop();
+  if (cast !== c) return; // zwischendurch ins Menü
+  cast = null;
+  timerEl.classList.remove('rec');
+  timerEl.title = '';
+  const durationMs = performance.now() - c.startedAt;
+  lastCast = { bytes: blob.size, mime: blob.type, durationMs, speed: c.opts.speed, bright: c.opts.bright };
+  const back: InterAction = { label: t('cast.back'), onClick: () => { if (c.card) showInterstitial(c.card); } };
+  if (blob.size === 0) {
+    showInterstitial({ title: t('cast.title'), text: t('cast.failed'), primary: back });
+    return;
+  }
+  const name = castFileName(c.def.id, lastReplay?.time ?? 0, c.session.mime);
+  showInterstitial({
+    title: t('cast.doneTitle', { size: fmtBytes(blob.size) }),
+    text: t('cast.doneText'),
+    extra: {
+      label: t('cast.save'),
+      onClick: () => {
+        void saveBlobFile(name, blob).then((how) => {
+          interExtra.textContent = t(how === 'share' ? 'cast.shared' : 'cast.saved');
+        });
+      },
+    },
+    primary: back,
+  });
 }
 
 /* --- GEMEINSAM ANKOMMEN (M90) ----------------------------------------------
@@ -3310,9 +3516,18 @@ function frame(rafNow: number): void {
   // Bildern (Lobby-Ticker, Netz-Nachrichten, Rückkehr aus dem Hintergrund,
   // wo rAF gar nicht läuft) gilt wieder die Wanduhr.
   frameNow = rafNow;
+  // Zeitraffer (M104, Phase 2): Im 2×-Replay laufen zwei Mitschnitt-Bilder je
+  // gezeichnetem Bild – die Schleife rechnet zweimal, zeichnet einmal (die
+  // Zeichenarbeit ist das Teure, M94b).
+  replayHold = cast !== null && cast.state === 'recording' && rafNow - cast.startedAt < TITLE_HOLD_MS;
+  const steps = replay && !replayHold ? replay.speed : 1;
   try {
-    frameBody(rafNow);
+    for (let k = 0; k < steps; k++) {
+      drawThisFrame = k === steps - 1;
+      frameBody(rafNow);
+    }
   } finally {
+    drawThisFrame = true;
     frameNow = null;
   }
 }
@@ -3326,7 +3541,13 @@ function frameBody(rafNow: number): void {
   pendingPing = false;
   // REPLAY (M104): Das Bild kommt aus dem Mitschnitt – Uhr, Schritt, Neigung,
   // Ping-Taste. Die Schleife darunter ist dieselbe wie im Spiel.
-  if (replay && world) {
+  if (replay && world && replayHold) {
+    // Unter der Titelkarte: die Uhr steht, nichts neigt, nichts pingt.
+    now = virtualNow ?? replay.rec.t0;
+    dt = 0;
+    tiltIn = { x: 0, y: 0 };
+    ping = false;
+  } else if (replay && world) {
     const f = frameAt(replay.rec, replay.i);
     if (!f) {
       replayFinished(null);
@@ -3352,7 +3573,9 @@ function frameBody(rafNow: number): void {
     gameTimer = null;
     run();
   }
-  if (replay) {
+  if (replay && replayHold) {
+    /* Titelkarte: kein Bild verbraucht, nichts nachzuziehen. */
+  } else if (replay) {
     // Die Kugel auf die Wahrheit setzen (siehe Kopf von MITSCHNITT & REPLAY).
     const f = frameAt(replay.rec, replay.i - 1)!;
     if (f.floor !== activeFloor) replay.drift++;
@@ -3863,7 +4086,10 @@ function frameBody(rafNow: number): void {
       pad.litUntil = now + 1200;
       startWarp(pad.tx, pad.ty, pad.targetFloor, pad.dir);
       renderer.follow(world.ball.x, world.ball.y);
-      renderer.draw(world, { debug, ...lightOpts(now), now });
+      if (drawThisFrame) {
+        renderer.draw(world, { debug, ...lightOpts(now), now });
+        drawCast(rafNow);
+      }
       return;
     }
 
@@ -4081,6 +4307,17 @@ function frameBody(rafNow: number): void {
     replay: replay ? { i: replay.i, total: replay.rec.frames.length / 10, drift: replay.drift } : null,
     lastReplay,
   };
+  // SCREENCAST (M104, Phase 2): Kann das Gerät es, womit, läuft es, wie viel
+  // ist schon da – und das Ergebnis der letzten Aufnahme.
+  (window as unknown as { __tiltrCast?: unknown }).__tiltrCast = {
+    supported: castSupported(),
+    mime: pickCastMime(mimeSupported),
+    state: cast?.state ?? null,
+    bytes: cast?.session.bytes() ?? null,
+    speed: replay?.speed ?? null,
+    bright: replay?.bright ?? null,
+    last: lastCast,
+  };
   (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {
     left: markMax() - ownCount(marks),
     max: markMax(),
@@ -4122,19 +4359,22 @@ function frameBody(rafNow: number): void {
       audio.setRival(0, 0, 0);
     }
   }
-  renderer.draw(world, {
-    debug,
-    ...lightOpts(now),
-    now,
-    buddy,
-    floorGlow: glowOnFloor(activeFloor).values(),
-    marks: floorMarks,
-    ghost: ghostOpt,
-    // M90: Im Rendezvous leuchtet das eigene Ziel ruhig weiter, solange ich
-    // darin liege – die Uhr steht dabei noch nicht.
-    goalDone: mp?.localFinished === true || tog.mine,
-    heading: fpOn() ? fpState.heading : 0,
-  });
+  if (drawThisFrame) {
+    renderer.draw(world, {
+      debug,
+      ...lightOpts(now),
+      now,
+      buddy,
+      floorGlow: glowOnFloor(activeFloor).values(),
+      marks: floorMarks,
+      ghost: ghostOpt,
+      // M90: Im Rendezvous leuchtet das eigene Ziel ruhig weiter, solange ich
+      // darin liege – die Uhr steht dabei noch nicht.
+      goalDone: mp?.localFinished === true || tog.mine,
+      heading: fpOn() ? fpState.heading : 0,
+    });
+    drawCast(rafNow);
+  }
   // Testbarkeits-Hooks für E2E
   (window as unknown as { __tiltrBall?: { x: number; y: number } }).__tiltrBall = {
     x: world.ball.x,

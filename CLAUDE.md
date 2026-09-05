@@ -732,8 +732,24 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   daraus. `winRun` verzweigt im Replay VOR `onWin`: kein Geist, keine
   Bestzeit, kein Profil. Nicht im Netz, nicht im MP-Testmodus.
   `window.__tiltrRun` (E2E Lauf 54: Replay kommt auf die Millisekunde zur
-  selben Zeit ins Ziel, auch mit atmendem Loch und Sturz). Phasen 2–4
-  (Video, Highlights mit Überblendung, Offline-Render) stehen in PLAN.md.
+  selben Zeit ins Ziel, auch mit atmendem Loch und Sturz).
+  SCREENCAST (Phase 2, v3.41.0, `src/core/cast.ts` rein, `src/ui/screencast.ts`
+  Hülle): „🎬 Screencast" auf der Ergebniskarte → Sheet (Tempo 1×/2×, Licht
+  wie gespielt/hell) → das Replay läuft in der echten Schleife, Canvas
+  (`captureStream(30)`) und Audio-Master (`audio.captureStream`, Abgriff NACH
+  dem Nebelfilter = genau das, was der Spieler hört, HRTF inklusive) gehen in
+  EINEN MediaRecorder. Container mp4 vor webm (`pickCastMime`, Sonde =
+  `isTypeSupported`, injiziert). DAS VIDEO SIEHT NUR DAS CANVAS: HUD und
+  Statuszeile sind DOM – `drawCastOverlay` zeichnet Titelkarte, Zeit-Chip und
+  Abspann mit Adresse INS Bild (Tokens über `castTheme`), `confetti.drawOn`
+  legt das Konfetti dazu. DIE TITELKARTE HÄLT DEN LAUF AN (`replayHold`,
+  `TITLE_HOLD_MS`): Vorher lag sie über dem Anfang, ein kurzer Lauf war ganz
+  darunter verschwunden. Zeitraffer = mehrere Mitschnitt-Bilder je
+  gezeichnetem Bild (`drawThisFrame`, Zeichenarbeit ist das Teure). `lightGain`
+  liest `replay.bright` UND `cast.opts.bright` (Abspann). REC = roter Punkt an
+  der Uhr (`#timer.rec`), kein eigener Chip (390 px). `saveBlobFile` teilt die
+  Datei ohne Titeltext. `window.__tiltrCast` (E2E Lauf 55). Phasen 3–4
+  (Highlights mit Überblendung, Offline-Render) stehen in PLAN.md.
 - SAND (M103, v3.39.0, `src/elements/sand.ts`): der zähe Untergrund, das
   Gegenstück zum Eis. LANGSAM HEISST GEDECKELT, NICHT KLEBRIG: Die
   Endgeschwindigkeit ist `accel / friction` – auf Stein 2600/1,4 (über
