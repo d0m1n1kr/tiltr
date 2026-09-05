@@ -314,6 +314,12 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   beförderten Start wie das gerettete Ziel per `freeCellFor()` in eine freie
   Zelle (Wächter-Wegpunkte gelten als belegt). Sonst wacht die Kugel nach dem
   Löschen von Ebene 1 in einem Loch auf.
+  DER RADIERER ÖFFNET, ER WÜRFELT NICHT ZURÜCK (v3.44.1, `eraseEdge`, rein):
+  Radieren auf einer Kante nahm sie aus ALLEN Listen – und fiel damit auf den
+  Seed zurück: Eine freigeschnittene Kante bekam ihre Seed-Wand wieder
+  („Radierer macht manchmal neue Wände"). Jetzt ist die Kante danach OFFEN,
+  egal was der Seed dort hat (Seed-Wand ⇒ `carve`), Varianten gehen mit. Ein
+  Radierer nimmt weg, er stellt nichts her – Units in tests/editorWalls.test.ts.
   WAND-WERKZEUG ist ein SCHALTER nach SICHTBAREM Zustand (`toggleEdge`, rein):
   Wand oder keine Wand, die Listen carve/add werden so gesetzt, dass es
   stimmt – egal, was der Seed an der Kante gewürfelt hat (der alte Zyklus

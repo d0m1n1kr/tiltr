@@ -174,6 +174,26 @@ export function toggleEdge(maze: MazeEdits, e: Edge, open: boolean, seedOpen: bo
   return 'open';
 }
 
+/** RADIERER auf einer Kante: Die Kante ist danach OFFEN – egal, was der Seed
+ *  dort gewürfelt hat. Die erste Fassung nahm die Kante nur aus ALLEN Listen
+ *  (carve, add, Varianten) und fiel damit auf den Seed zurück: Wer eine
+ *  freigeschnittene Kante radierte, bekam die Seed-Wand ZURÜCK – gemeldet als
+ *  „Radierer macht manchmal neue Wände" (v3.44.1). Ein Radierer nimmt weg, er
+ *  stellt nichts her: Hat der nackte Seed hier eine Wand, kommt die Kante in
+ *  `carve`; die Varianten (brüchig samt Seite, Schallschutz, Spiegel) gehen mit,
+ *  denn eine Variante ohne Wand lehnt der Loader ab. Dieselbe Listen-Rechnung
+ *  wie `toggleEdge` in Richtung „offen" – EINE Regel, hier nur ohne Umschalten.
+ *  Rein, exportiert für Tests. */
+export function eraseEdge(maze: MazeEdits, e: Edge, seedOpen: boolean): void {
+  edgeDrop(maze.carve, e);
+  edgeDrop(maze.add, e);
+  edgeDrop(maze.brittle, e);
+  sideDrop(maze.brittleSide, e);
+  edgeDrop(maze.absorb, e);
+  edgeDrop(maze.mirrors, e);
+  if (!seedOpen) maze.carve.push(e);
+}
+
 /** ALLE Wände einer Ebene abräumen – das Gegenstück zum Würfeln (M87). Jede
  *  INNERE Kante, die der NACKTE Seed als Wand würfelt, kommt in `carve`;
  *  `add` und alle Wand-VARIANTEN (brüchig samt Seite, Schallschutz, Spiegel)
@@ -906,6 +926,8 @@ export function setupEditor(opts: {
       mirrors: floor().maze.mirrors.length,
       // Sichtbarer Kantenzustand (E2E: Wand an/aus, Variante über Eigenschaften).
       edgeState: (e: Edge) => edgeState(floor().maze, e, edgeOpen(e)),
+      /** Ist die Kante im NACKTEN Seed eine Wand? (E2E: Radierer-Probe) */
+      seedWall: (e: Edge) => !edgeOpen(e, true),
       selEdge,
       highlight,
       pendingWaypoint,
@@ -1403,12 +1425,8 @@ export function setupEditor(opts: {
       return;
     }
     if (target.kind === 'edge') {
-      const m = floor().maze;
-      dropFromList(m.carve, target.edge!);
-      dropFromList(m.add, target.edge!);
-      dropFromList(m.brittle, target.edge!);
-      sideDrop(m.brittleSide, target.edge!);
-      dropFromList(m.absorb, target.edge!);
+      // Offen, nicht „wie gewürfelt": Sonst kam die Seed-Wand zurück (s. eraseEdge).
+      eraseEdge(floor().maze, target.edge!, edgeOpen(target.edge!, true));
       if (selEdge && edgeKey(selEdge) === edgeKey(target.edge!)) selEdge = null;
     }
   }

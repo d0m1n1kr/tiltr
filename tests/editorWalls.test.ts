@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clearWalls,
   edgeState,
+  eraseEdge,
   landingsOn,
   setEdgeVariant,
   toggleEdge,
@@ -197,5 +198,44 @@ describe('landingsOn', () => {
     expect(landingsOn(lv, 2)).toEqual([]);
     const half: RawLevel = { ...lv, floors: [{ ...lv.floors[0]!, elements: [{ type: 'transporter', cell: [1, 0] }] }] };
     expect(landingsOn(half, 0)).toEqual([]);
+  });
+});
+
+describe('eraseEdge – der Radierer öffnet, er würfelt nicht zurück (v3.44.1)', () => {
+  it('freigeschnittene Seed-Wand radiert: bleibt OFFEN (carve bleibt), keine Wand kommt zurück', () => {
+    const maze = fresh();
+    toggleEdge(maze, E, openOf(maze, false), false); // Seed-Wand freischneiden
+    expect(openOf(maze, false)).toBe(true);
+    eraseEdge(maze, E, false);
+    // Die alte Fassung nahm E aus carve → Seed-Wand wieder da (openOf = false).
+    expect(openOf(maze, false)).toBe(true);
+    expect(maze).toEqual({ carve: [E], add: [], brittle: [], absorb: [], mirrors: [] });
+  });
+
+  it('gesetzte Wand auf offener Seed-Kante radiert: add weg, offen', () => {
+    const maze = fresh();
+    toggleEdge(maze, E, openOf(maze, true), true); // Wand setzen
+    eraseEdge(maze, E, true);
+    expect(openOf(maze, true)).toBe(true);
+    expect(maze).toEqual(fresh());
+  });
+
+  it('nackte Seed-Wand radiert: kommt in carve – und die Variante geht mit', () => {
+    const maze = fresh();
+    setEdgeVariant(maze, E, 'brittle');
+    maze.brittleSide = [[E, 'w']];
+    eraseEdge(maze, E, false);
+    expect(openOf(maze, false)).toBe(true);
+    expect(maze.brittle).toEqual([]);
+    expect(maze.brittleSide).toEqual([]);
+    expect(maze.carve).toEqual([E]);
+  });
+
+  it('offene Kante radiert: nichts passiert, nichts entsteht', () => {
+    const maze = fresh();
+    eraseEdge(maze, E, true);
+    expect(maze).toEqual(fresh());
+    eraseEdge(maze, E, true);
+    expect(maze).toEqual(fresh());
   });
 });

@@ -2826,6 +2826,40 @@ if (want("14")) {
       gone.state === "open" && gone.absorb === 0 && gone.selEdge === null,
     );
 
+    // DER RADIERER ÖFFNET, ER WÜRFELT NICHT ZURÜCK (v3.44.1, gemeldet:
+    // „Radierer macht manchmal neue Wände"): Eine Kante, die der Seed als Wand
+    // würfelt, wird mit dem Wand-Werkzeug geöffnet (carve) – der Radierer
+    // darauf ließ sie früher auf den Seed zurückfallen, die Wand stand wieder.
+    // Gesucht wird eine Kante, die im NACKTEN Seed eine Wand ist; dann öffnen,
+    // radieren, und sie muss offen BLEIBEN.
+    const seedWall = await page.evaluate(() => {
+      const ed = window.__tiltrEd;
+      const cols = ed.def.floors[1].size[0], rows = ed.def.floors[1].size[1];
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols - 1; x++) {
+          const e = [[x, y], "e"];
+          if (ed.seedWall(e)) return e;
+        }
+      return null;
+    });
+    if (seedWall) {
+      const stE = () => page.evaluate((e) => window.__tiltrEd.edgeState(e), seedWall);
+      if ((await stE()) === "wall") {
+        await page.locator(".ed-tile", { hasText: "▤" }).click();
+        await tap(seedWall[0][0], seedWall[0][1], "e"); // Seed-Wand freischneiden
+      }
+      const opened = await stE();
+      await page.locator(".ed-tile", { hasText: "⌫" }).click();
+      await tap(seedWall[0][0], seedWall[0][1], "e"); // radieren
+      const afterErase = await stE();
+      check(
+        `Radierer auf freigeschnittener Seed-Wand (${JSON.stringify(seedWall)}): bleibt offen (${opened} → ${afterErase})`,
+        opened === "open" && afterErase === "open",
+      );
+    } else {
+      check("Radierer-Probe: eine Seed-Wand auf E2 gefunden", false);
+    }
+
     // ⚑ Test ab hier: Startpunkt der Vorschau auf E2 bei (1,3) setzen, Vorschau
     // starten – die Kugel steht dort (Mitte der Zelle), die HUD-Ebene sagt E2.
     // Zurück im Editor ist die Flagge noch da; Tap auf dieselbe Zelle hebt auf.
