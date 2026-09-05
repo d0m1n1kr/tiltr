@@ -683,6 +683,16 @@ Radial-Fleck in der BALL-Farbe. Zwei Entscheidungen dabei:
   auslaufender Fleck sieht aus wie eine Spur. `FLOOR_GLOW_ALPHA` 0,16 ist ein
   Fünftel des Ball-Kerns – sichtbar, aber nie ein Signal.
 
+UND EINE LEKTION ÜBER DIE CI: Die erste Fassung baute den Verlauf je Zelle und
+je Bild neu (`createRadialGradient`). Lokal war die Suite grün; in der CI fiel
+Lauf 9 „Coop" – zwei volle Seiten auf zwei Kernen – mit sieben ✗ und einem
+Klick-Timeout, also mit der Signatur des Last-Flakes, und der Deploy blieb aus
+(3.29.0 war nie live, bis der Fix nachkam). Ein Verlauf hängt nur am RADIUS,
+nicht an der Position: Er wird jetzt einmal in ein Offscreen-Canvas gemalt und
+danach geblittet. Die Regel dahinter gilt für jedes künftige Bildwerk: Erst
+fragen, ob sich das Ding vorzeichnen lässt, und dann messen – nicht lokal, wo
+Kerne übrig sind.
+
 Prüfbar: `__tiltrWorld.floorGlowMs` / `.floorGlowCells`; E2E Lauf 50 rollt
 weiter, bis MEHR ALS EINE Zelle glüht (Warten auf den Zustand, nicht auf eine
 Zeit – an der Wand gelehnt liegt die Kugel in einer einzigen Zelle, daran ist

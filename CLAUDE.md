@@ -921,6 +921,15 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   selbst war. Ein gefülltes Rechteck sah aus wie Bodenbelag, deshalb ein
   auslaufender Radial-Verlauf (`FLOOR_GLOW_ALPHA` 0,16 – ein Fünftel des
   Ball-Kerns).
+  ZEICHENARBEIT JE OBJEKT UND BILD IST IN DER CI TEUER (hier gelernt): Die
+  erste Fassung baute je glühender Zelle und je Bild einen
+  `createRadialGradient`. Lokal grün – in der CI fiel Lauf 9 „Coop" (zwei volle
+  Seiten auf zwei Kernen) mit sieben ✗ und einem Klick-Timeout, also mit der
+  Signatur des LAST-Flakes, und der Deploy blieb aus. Ein Verlauf, der nur am
+  RADIUS hängt, wird EINMAL in ein Offscreen-Canvas gemalt (`spotImage`) und
+  danach nur geblittet; `globalAlpha` macht die Helligkeit. Wer etwas Neues je
+  Frame vielfach zeichnet, fragt zuerst: Hängt es an der Position, oder kann
+  ich es vorzeichnen?
   `__tiltrWorld.glowMs`/`.plateGlowMs`/`.floorGlowMs`/`.floorGlowCells`
   (E2E Lauf 50, Platte in Lauf 48).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
