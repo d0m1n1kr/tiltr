@@ -114,11 +114,30 @@ export class World {
           b.vy += z.fy * h;
         }
       }
-      // Strömung: wie Wind, aber stärker als die Neigung – unüberwindbar.
+      // Strömung: wie Wind, aber stärker als die Neigung – und EINBAHNSTRASSE.
+      //
+      // Die Kraft allein reichte dafür nicht (M101, gemeldet: „man soll auf
+      // keinen Fall durchkommen können"): 3400 gegen 2600 Neigung sind netto
+      // 800 px/s², und über die 100 px einer Zelle bremst das einen Ball erst
+      // unter 400 px/s ab – wer mit voller Fahrt ankam (maxSpeed 900), rollte
+      // einfach durch. Eine Kraft, die auch das schafft, müsste über 6600
+      // liegen und würde jeden Eintritt zur Katapultfahrt machen.
+      //
+      // Deshalb steht die Zusage nicht in einer ZAHL, sondern in der Regel:
+      // Innerhalb der Zelle gibt es keine Geschwindigkeit GEGEN die Strömung.
+      // Das ist genau, was das Lösbarkeits-Modell seit jeher annimmt (eine
+      // GERICHTETE Kante, wie ein Transporter) – Physik und Beweis sagen jetzt
+      // dasselbe. Geklemmt wird nur die FLUSS-Achse: Quer hindurchgetragen zu
+      // werden und dabei auszuweichen bleibt möglich, sonst wäre die Strömung
+      // eine Wand.
       for (const z of this.currents) {
         if (b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h) {
           b.vx += z.fx * h;
           b.vy += z.fy * h;
+          if (z.fx > 0) b.vx = Math.max(0, b.vx);
+          else if (z.fx < 0) b.vx = Math.min(0, b.vx);
+          if (z.fy > 0) b.vy = Math.max(0, b.vy);
+          else if (z.fy < 0) b.vy = Math.min(0, b.vy);
         }
       }
       const damp = Math.exp(-(iced ? this.iceFriction : this.friction) * h);

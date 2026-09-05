@@ -651,6 +651,32 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M101 „Die Strömung ist eine Einbahnstraße" ✓ (v3.37.0)
+
+Gemeldet in einem Satz: „Und Fluss soll stärker sein. Man soll auf keinen Fall
+durchkommen können." Er hatte recht, und der Grund war eine Rechnung, die seit
+M9 nie nachgeprüft wurde: Die Kraft (3400) liegt über der Neigung (2600) –
+netto 800 px/s². Über die 100 px einer Zelle bremst das einen Ball erst unter
+400 px/s ab. `maxSpeed` ist 900. Wer also Schwung mitbrachte, rollte stromauf
+einfach hindurch; die Unit-Probe von damals ließ den Ball IM Strom aus dem
+Stand starten und war deshalb grün.
+
+Eine stärkere Zahl wäre die falsche Antwort: Damit auch 900 px/s auf 100 px
+gebremst werden, bräuchte es über 6600 px/s², und jeder Eintritt würde zur
+Katapultfahrt. Die Zusage gehört nicht in eine Zahl, sondern in eine REGEL:
+Innerhalb einer Strömungszelle gibt es keine Geschwindigkeit gegen die
+Fließrichtung. Damit sagt die Physik endlich dasselbe wie das
+Lösbarkeits-Modell, das die Strömung seit M9 als GERICHTETE Kante führt (wie
+einen Transporter).
+
+Geklemmt wird nur die FLUSS-Achse. Quer hindurchgetragen zu werden und dabei
+auszuweichen bleibt möglich – sonst wäre die Strömung eine Wand, und Wände
+gibt es schon.
+
+Die Regel zum Mitnehmen: Wo der Beweis eine ABSOLUTE Aussage macht, darf die
+Physik sie nicht mit einer Zahl nur ANNÄHERN. Sonst stimmt das Modell bis zu
+dem Tag, an dem jemand Schwung mitbringt.
+
 ## M100 „Die Spur kachelt" ✓ (v3.35.0)
 
 Gemeldet in einem Satz: „Der nachleuchtende Boden sieht noch nicht so gut aus.

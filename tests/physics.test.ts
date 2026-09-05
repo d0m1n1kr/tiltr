@@ -136,6 +136,32 @@ describe('Strömungen', () => {
     expect(wind.ball.x).toBeLessThan(100);
   });
 
+  it('auch MIT SCHWUNG kommt niemand durch – Einbahnstraße heißt Einbahnstraße', () => {
+    // Die Lücke, die das hier schließt: Die Kraft (3400) übertrifft die
+    // Neigung (2600) nur um 800 px/s². Über die 100 px einer Zelle bremst das
+    // einen Ball erst unter 400 px/s ab – wer mit voller Fahrt (maxSpeed 900)
+    // ankommt, ROLLTE EINFACH DURCH. Gemeldet als „man soll auf keinen Fall
+    // durchkommen können".
+    const world = new World([], new Ball(215, 150, 22), { x: 900, y: 900, r: 30 });
+    world.currents = [{ x: 100, y: 100, w: 100, h: 100, fx: 3400, fy: 0, dir: 'e' }];
+    world.ball.vx = -world.maxSpeed; // volle Fahrt stromaufwärts
+    let minX = world.ball.x;
+    for (let i = 0; i < 240; i++) {
+      world.step(1 / 60, { x: -1, y: 0 });
+      minX = Math.min(minX, world.ball.x);
+    }
+    expect(minX, 'stromaufwärts durchgerutscht').toBeGreaterThan(100);
+  });
+
+  it('quer durch die Strömung bleibt möglich – geklemmt wird nur die Fluss-Achse', () => {
+    // Sonst wäre eine Strömung eine Wand: Man soll hindurchgetragen werden und
+    // dabei ausweichen können, nur eben nicht dagegen ankommen.
+    const world = new World([], new Ball(150, 150, 22), { x: 900, y: 900, r: 30 });
+    world.currents = [{ x: 100, y: 100, w: 100, h: 100, fx: 3400, fy: 0, dir: 'e' }];
+    for (let i = 0; i < 30; i++) world.step(1 / 60, { x: 0, y: -1 });
+    expect(world.ball.y, 'quer festgenagelt').toBeLessThan(150);
+  });
+
   it('reißt einen ruhenden Ball mit', () => {
     const world = new World([], new Ball(150, 150, 22), { x: 500, y: 500, r: 30 });
     world.currents = [{ x: 100, y: 100, w: 100, h: 100, fx: 3400, fy: 0, dir: 'e' }];

@@ -704,6 +704,20 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   `#diag` Typ/Winkel/natürliche Lage, β/γ/α, accelerationIncludingGravity und
   tilt – Geräte weichen von der Spec ab (Tablets!), also ERST messen, dann
   korrigieren. `input.diagnostics()` ist die eine Quelle (Menü + Debug-Status).
+- `src/core/physics.ts` – EINBAHNSTRASSE STEHT IN DER REGEL, NICHT IN DER ZAHL
+  (M101, v3.37.0): Die Strömung galt als unüberwindbar, weil ihre Kraft (3400)
+  über der Neigung (2600) liegt. Netto sind das 800 px/s², und über die 100 px
+  einer Zelle bremst das einen Ball erst unter 400 px/s ab – wer mit voller
+  Fahrt ankam (`maxSpeed` 900), ROLLTE EINFACH DURCH. Eine Kraft, die auch das
+  schafft, müsste über 6600 liegen und jeden Eintritt zur Katapultfahrt machen.
+  Deshalb klemmt `step` innerhalb einer Strömungszelle jede Geschwindigkeit
+  GEGEN die Fließrichtung auf null – genau das, was das Lösbarkeits-Modell seit
+  M9 annimmt (eine GERICHTETE Kante wie beim Transporter). Physik und Beweis
+  sagen damit dasselbe. Geklemmt wird nur die FLUSS-Achse: quer hindurch-
+  getragen werden und dabei ausweichen bleibt möglich, sonst wäre die Strömung
+  eine Wand. Regel zum Mitnehmen: Wo der Beweis eine ABSOLUTE Aussage macht,
+  darf die Physik sie nicht mit einer Zahl nur ANNÄHERN – sonst stimmt das
+  Modell bis zu dem Tag, an dem jemand Schwung mitbringt.
 - `src/core/breathing.ts` – Atem-Uhr (öffnen → offen → schließen → zu) für
   atmende Löcher, Schiebewände UND die Play-Vorschau des Editors: EINE
   Quelle für alle drei (`breathAt`, `breathOpenRemaining`), deterministisch,
