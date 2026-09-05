@@ -2,18 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { CAMPAIGN_LEVELS, WORLDS } from '../src/levels/campaign';
 import { loadLevel } from '../src/levels/loader';
 import { setWall } from '../src/core/maze';
-import type { DoorDef } from '../src/levels/schema';
+import { parseLevel, type DoorDef } from '../src/levels/schema';
 import { buildFloorCells, cellKey, coopReachable, reachable, validateLevel } from './helpers';
 import { switchDoorSteps, timerSeconds } from '../src/levels/validate';
 
 describe('Kampagne', () => {
-  it('Welt 1 hat 10, Welt 2–3 je 6, Welt 4 sieben (Kristallgang, M44), Welt 5 sieben (Trugbild, M48); IDs eindeutig, Intro + Par überall', () => {
+  it('Welt 1 hat 10, Welt 2–3 je 6, Welt 4 sieben (Kristallgang, M44), Welt 5 acht (Trugbild M48 + Stimmton M97); IDs eindeutig, Intro + Par überall', () => {
     expect(WORLDS[0]!.levels).toHaveLength(10);
     expect(WORLDS[1]!.levels).toHaveLength(6);
     expect(WORLDS[2]!.levels).toHaveLength(6);
     expect(WORLDS[3]!.levels).toHaveLength(7);
-    expect(WORLDS[4]!.levels).toHaveLength(7);
-    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(36);
+    expect(WORLDS[4]!.levels).toHaveLength(8);
+    expect(new Set(CAMPAIGN_LEVELS.map((l) => l.id)).size).toBe(37);
+    // DIE ARRAY-ORDNUNG IST DIE SPIELREIHENFOLGE, die ID ist ein Schlüssel
+    // (wie im Coop-Kapitel, M93): „Der Stimmton" (w5-08) steht VOR dem Finale
+    // „Dämmerung" (w5-07), denn nach dem Finale zu lehren wäre sinnlos – und
+    // umnummeriert wird eine ID nie, sonst verliert jemand seinen Fortschritt.
+    expect(WORLDS[4]!.levels.map((l) => l.id).slice(-2)).toEqual(['w5-08', 'w5-07']);
     for (const l of CAMPAIGN_LEVELS) {
       expect(l.intro?.length ?? 0, l.id).toBeGreaterThan(20);
       expect(l.parTimeS, l.id).toBeGreaterThan(0);
@@ -234,6 +239,40 @@ describe('Kampagne', () => {
         expect(c.ok, `${lvl.id}: ${c.key} (${c.detail ?? ''})`).toBe(true);
       }
     }
+  });
+
+  // DER STIMMTON (M97): Das Lehrlevel zu M96 lebt von einer KETTE – Feld mit
+  // Vorgabe-Ton, Tür mit „bleibt offen", nichts sonst. Fällt ein Glied weg,
+  // ist das Level unspielbar, und genau das prüfen die drei Proben hier.
+  it('w5-08 „Der Stimmton": Vorgabe-Ton, „bleibt offen", und ohne die Tür kein Ziel', () => {
+    const def = CAMPAIGN_LEVELS.find((l) => l.id === 'w5-08')!;
+    const els = def.floors[0]!.elements;
+    const field = els.find((e) => e.type === 'plate')!;
+    expect(field).toMatchObject({ tune: 'unison', pitch: 1200 });
+    // Allein hält man das Feld nur, solange man darauf liegt (M95) – also
+    // MUSS die Tür einrasten, sonst zählt der Öffner nicht.
+    expect(els.find((e) => e.type === 'door')).toMatchObject({ latch: true });
+    // Und die Fackel, die es im Dunkeln überhaupt findbar macht: ein
+    // Resonanzfeld ist STUMM, bis man daraufrollt.
+    expect(els.some((e) => e.type === 'torch')).toBe(true);
+    const closed = reachable(def, { brittleOpen: true, doorsOpen: false });
+    expect(closed.has(cellKey(0, def.floors[0]!.goal!)), 'Ziel ohne Tür erreichbar').toBe(false);
+  });
+
+  it('… und ohne „bleibt offen" wäre es UNLÖSBAR (die Kette einmal rot gesehen)', () => {
+    const def = CAMPAIGN_LEVELS.find((l) => l.id === 'w5-08')!;
+    // `mirror` MUSS mitkommen: Die Def-Koordinaten sind schon gespiegelt, das
+    // Seed-RAUSCHEN spiegelt `buildFloorCells` erst anhand dieses Feldes. Ohne
+    // es steht ein anderes Labyrinth da – die erste Fassung dieser Probe war
+    // deshalb grün, obwohl die Kette gebrochen war.
+    const noLatch = parseLevel({
+      ...def,
+      floors: def.floors.map((f) => ({
+        ...f,
+        elements: f.elements.map((e) => (e.type === 'door' ? { ...e, latch: false } : e)),
+      })),
+    });
+    expect(validateLevel(noLatch).filter((c) => !c.ok).map((c) => c.key)).toContain('goal');
   });
 
   it('Wächter- und Wanderloch-Patrouillen verlaufen achsenparallel durch offene Gänge', () => {

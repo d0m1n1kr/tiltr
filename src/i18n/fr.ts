@@ -785,6 +785,9 @@ export const fr: Dict = {
   'lv.w5-06.name': 'Meule',
   'lv.w5-06.intro':
     'Deux pierres que tu pousses devant toi – avec de l’élan, une case à la fois. L’une va sur la plaque de pression qui maintient la porte devant l’arrivée. L’autre dans le trou qui te barre la route. Écoute le raclement, écoute le choc : la pierre te dit où elle est.',
+  'lv.w5-08.name': 'Le ton donné',
+  'lv.w5-08.intro':
+    'Un champ qui chante – mais seulement quand tu t’y poses. C’est pourquoi une lumière brûle à côté. Il te donne un ton, et tu l’accordes avec ton inclinaison : une brève impulsion suffit, le ton reste ensuite en place. Quand le battement ralentit, tu y es presque. Dès que l’unisson tient, la porte se bloque ouverte – alors seulement le chemin continue. Un éclat repose à l’écart.',
   'lv.w5-07.name': 'Crépuscule',
   'lv.w5-07.intro':
     'Trois étages : clair, sombre, clair. Au milieu dort un gardien – ton ping le réveillerait, juste là où tu en aurais besoin. Des sabliers offrent du temps, cinq gemmes sont à l’écart, et tout en bas joue un juke-box. La campagne s’achève en musique. Bouge comme un murmure.',

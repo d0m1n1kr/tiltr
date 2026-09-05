@@ -785,6 +785,9 @@ export const es: Dict = {
   'lv.w5-06.name': 'Piedra de molino',
   'lv.w5-06.intro':
     'Dos piedras que empujas ante ti, con impulso, una celda a la vez. Una va sobre la placa de presión que mantiene la puerta ante la meta. La otra, al agujero que te cierra el paso. Oye el roce, oye el golpe: la piedra te dice dónde está.',
+  'lv.w5-08.name': 'El tono dado',
+  'lv.w5-08.intro':
+    'Un campo que canta, pero solo cuando te posas en él. Por eso arde una luz al lado. Te da un tono y tú lo afinas con la inclinación: basta un toque breve, luego el tono se queda. Cuando el batido se ralentiza, estás cerca. En cuanto el unísono se sostiene, la puerta se traba abierta y solo entonces el camino sigue. Un destello queda a un lado.',
   'lv.w5-07.name': 'Crepúsculo',
   'lv.w5-07.intro':
     'Tres plantas: clara, oscura, clara. En medio duerme un guardián: tu ping lo despertaría justo donde lo necesitarías. Los relojes de arena regalan tiempo, cinco gemas quedan apartadas y al fondo suena una máquina de discos. La campaña termina con música. Muévete como un susurro.',

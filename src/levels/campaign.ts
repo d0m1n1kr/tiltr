@@ -1275,6 +1275,50 @@ const defs5: unknown[] = [
     ],
   },
   {
+    // DER STIMMTON (M97): das Lehrlevel zu M96. Ein Resonanzfeld gibt den
+    // GEGENTON vor, man stimmt mit der Neigungsrichtung dagegen – und weil man
+    // dabei selbst darauf steht, MUSS die Tür „bleibt offen" haben (M95).
+    // Genau diese Kette soll das Level zeigen, deshalb sonst nichts im Weg.
+    // EINE FACKEL AM FELD: Ein Resonanzfeld ist STUMM, bis man daraufrollt –
+    // im Dunkeln also nicht zu finden. Helles Licht (bright) hätte das Level
+    // verschenkt, Dämmerung hilft nicht (sie blendet 2 s nach der ersten
+    // Wandberührung aus, und in einem Ein-Zellen-Gang berührt man sofort).
+    // Also die Fackel (M66): Licht und nur Licht, genau dort, wo das Feld
+    // liegt – der Rest bleibt dunkel. Sie bekommt damit ihr erstes
+    // eingebautes Level, und die beiden Merkmale erklären sich gegenseitig.
+    id: 'w5-08',
+    name: 'Der Stimmton',
+    intro:
+      'Ein Feld, das singt – aber erst, wenn du darauf liegst. Deshalb brennt ein Licht daneben. Es gibt dir einen Ton vor, und du stimmst mit der Neigung dagegen: kurz antippen genügt, der Ton bleibt dann stehen. Hörst du die Schwebung langsamer werden, bist du nah dran. Steht der Einklang, rastet die Tür ein und bleibt offen – erst dann führt der Weg weiter. Ein Funkeln liegt abseits.',
+    parTimeS: 85,
+    pingBudget: 4,
+    floors: [
+      {
+        size: [6, 6],
+        maze: {
+          seed: 580,
+          // Rückgrat: Reihe 0 nach rechts, dann Spalte 5 hinab – die Tür sitzt
+          // mittendrin. Der Stichgang in Spalte 0 führt zum Feld, von dort
+          // geht es noch zwei Zellen weiter zum Gem.
+          carve: [...right(0, 0, 5), ...down(5, 0, 5), ...down(0, 0, 3), ...right(3, 0, 2)],
+          // Der Stichgang ist eine SACKGASSE: Ohne diese Wände würfelt der
+          // Seed einen Weg vom Gem hinab in Reihe 4 und von dort UNTER der Tür
+          // hindurch ans Ziel – die Tür wäre Zierde.
+          add: [[[0, 3], 's'], [[1, 3], 's'], [[2, 3], 's'], [[2, 3], 'e']],
+        },
+        elements: [
+          { type: 'plate', cell: [0, 3], opens: 'stimm', tune: 'unison', pitch: 1200 },
+          { type: 'torch', cell: [0, 2], r: 150 },
+          { type: 'door', id: 'stimm', edge: [[5, 2], 's'], latch: true },
+          { type: 'gem', cell: [2, 3] },
+          { type: 'checkpoint', cell: [5, 0] },
+        ],
+        start: [0, 0],
+        goal: [5, 5],
+      },
+    ],
+  },
+  {
     id: 'w5-07',
     name: 'Dämmerung',
     intro:
@@ -1371,6 +1415,7 @@ const MIRRORS: Record<string, MirrorAxis> = {
   'w5-04': 'x',
   'w5-05': 'y',
   'w5-06': 'xy',
+  'w5-08': 'x',
   'w5-07': 'x',
 };
 

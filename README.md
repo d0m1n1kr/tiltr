@@ -42,7 +42,7 @@ animation below.
   one every day, serverless and reproducible. Your first finish is the
   daily score, streaks 🔥 reward playing daily. `#daily=DATE&t=TIME` links
   challenge friends to beat your time, for past days too.
-- **🌍 Campaign** — five hand-built worlds, 36 levels. World 1 teaches
+- **🌍 Campaign** — five hand-built worlds, 37 levels. World 1 teaches
   guards, keys and doors, gems, breathing holes, wind and brittle walls;
   World 2 goes multi-floor with transporters and screen-scrolling expanses;
   World 3 "The Clockwork" is timing (sliding walls, time locks, one-way

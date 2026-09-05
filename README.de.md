@@ -43,7 +43,7 @@ die Animation unten trägt.
   ein neues, serverlos und reproduzierbar. Der erste Zieleinlauf zählt als
   Tageswert, Serien 🔥 belohnen tägliches Spielen. `#daily=DATUM&t=ZEIT`-Links
   fordern Freunde heraus, auch für vergangene Tage.
-- **🌍 Kampagne** – fünf handgebaute Welten, 36 Level. Welt 1 lehrt
+- **🌍 Kampagne** – fünf handgebaute Welten, 37 Level. Welt 1 lehrt
   Wächter, Schlüssel und Türen, Gems, atmende Löcher, Wind und brüchige
   Wände; Welt 2 geht in die Tiefe mit Transportern und Weiten, über die die
   Kamera scrollt; Welt 3 „Das Räderwerk" ist Timing (Schiebewände,

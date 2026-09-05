@@ -551,8 +551,22 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   Rollstein, Schläfer). Wand-Varianten und Türen brauchen existierende bzw.
   offene Kanten: erst Karte drucken (mazeprint), dann Kanten eintragen. Ein
   grüner `boulder`-Beweis heißt nicht spielbar: Seiteneingänge in Steinkanäle
-  zumauern (Mühlstein). Kampagne: 36 Level, fünf Welten, Debug-Import
+  zumauern (Mühlstein). Kampagne: 37 Level, fünf Welten, Debug-Import
   `builtin-w5` automatisch über WORLDS.
+  DER STIMMTON (M97, v3.32.0): w5-08 lehrt das Resonanzfeld mit Vorgabe-Ton
+  (M96) – Feld, Tür mit „bleibt offen", sonst nichts im Weg. Es steht im Array
+  VOR dem Finale w5-07 „Dämmerung" (Array-Ordnung = Spielreihenfolge, die ID
+  ist nur ein Schlüssel – wie im Coop-Kapitel M93; umnummeriert wird nie,
+  sonst verliert jemand seinen Fortschritt). Dazu die FACKEL, die bis dahin in
+  keinem eingebauten Level vorkam: Ein Resonanzfeld ist STUMM, bis man
+  daraufrollt, also findet man es im Dunkeln nur an seinem Licht (hell hätte
+  das Level verschenkt, `dusk` blendet 2 s nach der ersten Wandberührung aus
+  und hilft in einem Ein-Zellen-Gang nicht). Der Stichgang zum Feld ist mit
+  `add` zur SACKGASSE gemauert – sonst würfelt der Seed einen Weg unter der
+  Tür hindurch. WER EIN LEVEL NACHBAUT ODER SABOTIERT, NIMMT `mirror` MIT:
+  Die Def-Koordinaten sind schon gespiegelt, das Seed-RAUSCHEN spiegelt
+  `buildFloorCells` erst anhand dieses Feldes – ohne es steht ein anderes
+  Labyrinth da, und die Gegenprobe war grün, obwohl die Kette gebrochen war.
 - `src/levels/puzzle.ts` – TÜR-RÄTSEL für die Generatoren (M42):
   `planDoorPuzzle` setzt EINE Tür auf den Pflichtweg einer Ebene, alle Öffner
   (Schlüssel, optional Zeitschloss ≤ 6 Zellen davor, 8 s) in den

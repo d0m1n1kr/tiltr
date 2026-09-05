@@ -789,6 +789,9 @@ export const de = {
   'lv.w5-06.name': 'Mühlstein',
   'lv.w5-06.intro':
     'Zwei Steine, die du vor dir herschiebst – mit Schwung, eine Zelle weit. Einer gehört auf die Druckplatte, die die Tür vor dem Ziel hält. Der andere in das Loch, das dir den Weg versperrt. Hör das Mahlen, hör den Schlag: Der Stein sagt dir, wo er steht.',
+  'lv.w5-08.name': 'Der Stimmton',
+  'lv.w5-08.intro':
+    'Ein Feld, das singt – aber erst, wenn du darauf liegst. Deshalb brennt ein Licht daneben. Es gibt dir einen Ton vor, und du stimmst mit der Neigung dagegen: kurz antippen genügt, der Ton bleibt dann stehen. Hörst du die Schwebung langsamer werden, bist du nah dran. Steht der Einklang, rastet die Tür ein und bleibt offen – erst dann führt der Weg weiter. Ein Funkeln liegt abseits.',
   'lv.w5-07.name': 'Dämmerung',
   'lv.w5-07.intro':
     'Drei Ebenen: hell, dunkel, hell. In der Mitte schläft ein Wächter – dein Ping würde ihn wecken, genau dort, wo du ihn bräuchtest. Sanduhren schenken Zeit, fünf Gems liegen abseits, und ganz unten spielt ein Automat. Die Kampagne endet mit Musik. Beweg dich wie ein Flüstern.',

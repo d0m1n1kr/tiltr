@@ -551,13 +551,13 @@ if (want("4")) {
     await page.waitForTimeout(200);
     const items = page.locator(".level-item");
     check(
-      `Kampagnen-Liste zeigt 36 Level (${await items.count()})`,
-      (await items.count()) === 36,
+      `Kampagnen-Liste zeigt 37 Level (${await items.count()})`,
+      (await items.count()) === 37,
     );
     const lockedCount = await page.locator(".level-item.locked").count();
     check(
-      `nur Level 1 ist freigeschaltet (${36 - lockedCount} offen)`,
-      lockedCount === 35,
+      `nur Level 1 ist freigeschaltet (${37 - lockedCount} offen)`,
+      lockedCount === 36,
     );
 
     await items.first().click();
@@ -592,8 +592,8 @@ if (want("4")) {
     await page.waitForTimeout(200);
     const lockedAfter = await page.locator(".level-item.locked").count();
     check(
-      `Level 2 nach Sieg freigeschaltet (${36 - lockedAfter} offen)`,
-      lockedAfter === 34,
+      `Level 2 nach Sieg freigeschaltet (${37 - lockedAfter} offen)`,
+      lockedAfter === 35,
     );
     const firstMeta = (
       await page.locator(".level-item .level-meta").first().textContent()
@@ -640,8 +640,8 @@ if (want("5")) {
     const items = await page.locator(".level-item").count();
     const headers = await page.locator(".world-header").count();
     check(
-      `Kampagne: 36 Level in 5 Welten (${items}/${headers})`,
-      items === 36 && headers === 5,
+      `Kampagne: 37 Level in 5 Welten (${items}/${headers})`,
+      items === 37 && headers === 5,
     );
     const locked = await page.locator(".level-item.locked").count();
     check("?unlock schaltet alles frei", locked === 0);
@@ -6032,9 +6032,9 @@ if (want("33")) {
     };
 
     await pageA.goto(`${BASE}/?mpcode=TESTMP33&nosplash`);
-    // Menü-Untertitel der Kampagne zählt aus den Daten (M64): fünf Welten, 36 Level.
+    // Menü-Untertitel der Kampagne zählt aus den Daten (M64): fünf Welten, 37 Level.
     const campSub = (await pageA.textContent("#campaignSub")).trim();
-    check(`Kampagnen-Untertitel aus den Daten ("${campSub}")`, campSub === "5 Welten, 36 Level");
+    check(`Kampagnen-Untertitel aus den Daten ("${campSub}")`, campSub === "5 Welten, 37 Level");
     await pageA.click("#workshopBtn");
     await pageA.click("#wsImportBtn");
     await pageA.fill("#wsImportText", JSON.stringify(def));

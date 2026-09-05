@@ -785,6 +785,9 @@ export const en: Dict = {
   'lv.w5-06.name': 'Millstone',
   'lv.w5-06.intro':
     'Two stones you shove ahead of you – with momentum, one cell at a time. One belongs on the pressure plate that holds the door before the goal. The other in the hole that blocks your way. Hear the grinding, hear the thud: the stone tells you where it stands.',
+  'lv.w5-08.name': 'The Given Tone',
+  'lv.w5-08.intro':
+    'A field that sings – but only once you rest on it. That is why a light burns beside it. It gives you a tone, and you tune against it with your tilt: a short nudge is enough, the tone then stays put. When the beating slows, you are close. Once the unison holds, the door locks open – only then does the way go on. A sparkle lies aside.',
   'lv.w5-07.name': 'Dusk',
   'lv.w5-07.intro':
     'Three floors: bright, dark, bright. In the middle a guard sleeps – your ping would wake it, right where you’d need it. Hourglasses grant time, five gems lie off the path, and at the very bottom a jukebox plays. The campaign ends with music. Move like a whisper.',

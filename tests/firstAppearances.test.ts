@@ -37,6 +37,11 @@ describe('Erst-Vorkommen (M43)', () => {
     expect(first.get('listener')).toBe('w4-01');
     expect(first.get('fogZone')).toBe('w4-02');
     expect(first.get('ice')).toBe('w4-03');
+    // M97: Resonanzfeld und Fackel hatten bis 3.31 KEIN eingebautes Level –
+    // beide lernt man jetzt in „Der Stimmton", und sie erklären sich dort
+    // gegenseitig (ein stummes Feld findet man im Dunkeln nur an seinem Licht).
+    expect(first.get('resonance')).toBe('w5-08');
+    expect(first.get('torch')).toBe('w5-08');
   });
 
   it('newFeaturesIn nennt nur, was GENAU dieses Level neu bringt', () => {
@@ -47,5 +52,6 @@ describe('Erst-Vorkommen (M43)', () => {
     expect(newFeaturesIn(TEACH, 'w1-05')).toEqual([]);
     expect(newFeaturesIn(TEACH, 'w1-10')).toEqual([]);
     expect(newFeaturesIn(TEACH, 'gibt-es-nicht')).toEqual([]);
+    expect(newFeaturesIn(TEACH, 'w5-08').sort()).toEqual(['resonance', 'torch']);
   });
 });

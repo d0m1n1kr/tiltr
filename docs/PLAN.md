@@ -651,6 +651,36 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M97 „Der Stimmton als Lehrlevel" ✓ (v3.32.0)
+
+M96 gab dem Resonanzfeld einen Vorgabe-Ton, aber kein eingebautes Level nutzte
+ihn – eine Mechanik, die nur im Editor existiert, hat kein Publikum. w5-08
+„Der Stimmton" ist die Kette in Reinform: ein Feld mit Vorgabe (Oktave), eine
+Tür mit „bleibt offen", ein Gem abseits, sonst nichts im Weg.
+
+DIE FACKEL KOMMT MIT, und nicht aus Laune: Ein Resonanzfeld ist STUMM, bis man
+daraufrollt – im Dunkeln also nicht zu finden. `bright` hätte das Level
+verschenkt, `dusk` hilft nicht (es blendet 2 s nach der ersten Wandberührung
+aus, und in einem Ein-Zellen-Gang berührt man sofort). Die Fackel (M66) ist
+Licht und nur Licht, genau dort, wo das Feld liegt. Sie hatte bis 3.31 KEIN
+eingebautes Level; jetzt erklären sich die beiden Merkmale gegenseitig, und
+`firstAppearances` nennt für w5-08 genau diese zwei.
+
+Reihenfolge: Das Level steht im Array VOR dem Finale w5-07 „Dämmerung" – die
+Array-Ordnung ist die Spielreihenfolge, die ID ist ein Schlüssel (dieselbe
+Regel wie im Coop-Kapitel, M93). Nach dem Finale zu lehren wäre sinnlos, und
+eine ID umzunummerieren kostet Fortschritt.
+
+ZWEI FALLEN BEIM BAUEN, beide festgeschrieben:
+1. Der Stichgang zum Feld muss eine SACKGASSE sein. Ohne die vier `add`-Wände
+   würfelt der Seed vom Gem hinab in Reihe 4 und von dort UNTER der Tür
+   hindurch ans Ziel – die Tür wäre Zierde, alle Badges grün.
+2. Wer eine Def für eine Gegenprobe umbaut, nimmt `mirror` MIT. Die
+   Koordinaten sind schon gespiegelt, das Seed-RAUSCHEN spiegelt
+   `buildFloorCells` erst anhand dieses Feldes. Die erste Fassung der Probe
+   „ohne ‚bleibt offen‘ ist es unlösbar" war grün, weil sie ein ANDERES
+   Labyrinth prüfte.
+
 ## M96 „Der Stimmton" ✓ (v3.31.0)
 
 Gefragt in einem Satz: „Und was ist mit Resonanz? Hier könnte der Computer ja
