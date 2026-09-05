@@ -747,7 +747,12 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   darunter verschwunden. Zeitraffer = mehrere Mitschnitt-Bilder je
   gezeichnetem Bild (`drawThisFrame`, Zeichenarbeit ist das Teure). `lightGain`
   liest `replay.bright` UND `cast.opts.bright` (Abspann). REC = roter Punkt an
-  der Uhr (`#timer.rec`), kein eigener Chip (390 px). `saveBlobFile` teilt die
+  der Uhr (`#timer.rec`), kein eigener Chip (390 px). VORSCHAU VOR DEM SENDEN
+  (v3.42.0): Das Video steht als `<video>` in der Karte (`InterOpts.video`,
+  Objekt-URL lebt bis zum nächsten Video oder Menü), „⚙ Anpassen" führt zurück
+  ins Sheet – `openCastSheet(resultCard)` merkt sich, wohin nach der Aufnahme
+  (Ergebnis) und wohin bei Abbrechen (woher man kam). Der Abspann trägt den
+  Credit (`splash.credit`) zwischen Zeit und Adresse. `saveBlobFile` teilt die
   Datei ohne Titeltext. `window.__tiltrCast` (E2E Lauf 55). Phasen 3–4
   (Highlights mit Überblendung, Offline-Render) stehen in PLAN.md.
 - SAND (M103, v3.39.0, `src/elements/sand.ts`): der zähe Untergrund, das

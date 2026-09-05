@@ -128,6 +128,7 @@ const interSecondary = $<HTMLButtonElement>('interSecondary');
 const interExtra = $<HTMLButtonElement>('interExtra');
 const interReplay = $<HTMLButtonElement>('interReplay');
 const interCast = $<HTMLButtonElement>('interCast');
+const interVideo = $<HTMLVideoElement>('interVideo');
 const castSheet = $('castSheet');
 
 fixStandaloneViewport();
@@ -437,6 +438,9 @@ interface InterOpts {
   replay?: InterAction;
   /** „🎬 Screencast" (M104, Phase 2): Optionen, dann Aufnahme des Replays. */
   cast?: InterAction;
+  /** Vorschau (M104, Phase 2): Objekt-URL des fertigen Videos – erst ansehen,
+   *  dann teilen. Die URL lebt, bis ein neues Video kommt oder das Menü. */
+  video?: string;
   /** Sterne-Vorschau (M43): was der zweite und dritte Stern verlangen. */
   stars?: string;
   /** „Neu hier" (M43): Element-Typen, die dieses Level zum ersten Mal bringt –
@@ -446,6 +450,16 @@ interface InterOpts {
 function showInterstitial(opts: InterOpts): void {
   lastInter = opts;
   interTitle.textContent = opts.title;
+  if (opts.video) {
+    if (interVideo.src !== opts.video) {
+      interVideo.pause();
+      interVideo.src = opts.video;
+    }
+    interVideo.classList.remove('hidden');
+  } else {
+    interVideo.pause();
+    interVideo.classList.add('hidden');
+  }
   interText.textContent = opts.text;
   interStars.textContent = opts.stars ?? '';
   interStars.classList.toggle('hidden', !opts.stars);
@@ -765,6 +779,10 @@ function showMenu(): void {
   timerEl.classList.remove('rec');
   timerEl.title = '';
   castSheet.classList.add('hidden');
+  if (castVideoUrl) {
+    URL.revokeObjectURL(castVideoUrl);
+    castVideoUrl = null;
+  }
   silenceWorld();
   audio.setHeading(0);
   audio.stopMusic();
@@ -3104,17 +3122,21 @@ function renderCastChips(): void {
   $('castLight1').classList.toggle('active', castOpts.bright);
 }
 
+/** Wohin nach der Aufnahme zurück (die Ergebniskarte) und wohin bei
+ *  „Abbrechen" (die Karte, von der man kam – Ergebnis oder Vorschau). */
 let castCard: InterOpts | null = null;
-function openCastSheet(): void {
+let castFrom: InterOpts | null = null;
+function openCastSheet(resultCard: InterOpts | null = null): void {
   if (!lastRun) return;
-  castCard = lastInter;
+  castFrom = lastInter;
+  castCard = resultCard ?? lastInter;
   hideInterstitial();
   renderCastChips();
   castSheet.classList.remove('hidden');
 }
 function closeCastSheet(): void {
   castSheet.classList.add('hidden');
-  if (castCard) showInterstitial(castCard);
+  if (castFrom) showInterstitial(castFrom);
 }
 $('castSpeed1').addEventListener('click', () => {
   castOpts = { ...castOpts, speed: 1 };
@@ -3193,6 +3215,7 @@ function drawCast(rafNow: number): void {
     subtitle: cast.subtitle,
     timeText: fmtTime(secs),
     endLine: t('cast.endLine', { time: fmtTime(secs) }),
+    credit: t('splash.credit'),
     byline: `tiltr · ${APP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}`,
   });
   if (cast.state === 'recording' && cast.endedAt !== null && rafNow - cast.endedAt >= TAIL_MS) void finishCast();
@@ -3215,9 +3238,16 @@ async function finishCast(): Promise<void> {
     return;
   }
   const name = castFileName(c.def.id, lastReplay?.time ?? 0, c.session.mime);
+  // VORSCHAU VOR DEM SENDEN: Das Video steht in der Karte, man sieht es sich an
+  // – und kann mit ⚙ zurück ins Sheet, die Einstellungen ändern und neu
+  // aufnehmen, ohne dass etwas verschickt wurde. Die alte Objekt-URL wird erst
+  // freigegeben, wenn ein neues Video da ist (oder das Menü kommt).
+  if (castVideoUrl) URL.revokeObjectURL(castVideoUrl);
+  castVideoUrl = URL.createObjectURL(blob);
   showInterstitial({
     title: t('cast.doneTitle', { size: fmtBytes(blob.size) }),
     text: t('cast.doneText'),
+    video: castVideoUrl,
     extra: {
       label: t('cast.save'),
       onClick: () => {
@@ -3226,9 +3256,12 @@ async function finishCast(): Promise<void> {
         });
       },
     },
+    secondary: { label: t('cast.adjust'), onClick: () => openCastSheet(c.card) },
     primary: back,
   });
 }
+/** Objekt-URL des zuletzt fertigen Videos (Vorschau). */
+let castVideoUrl: string | null = null;
 
 /* --- GEMEINSAM ANKOMMEN (M90) ----------------------------------------------
    Gewonnen wird, wenn BEIDE gleichzeitig in ihren Zielzonen liegen. Die Regel

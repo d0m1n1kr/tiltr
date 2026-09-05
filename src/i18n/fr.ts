@@ -482,13 +482,14 @@ export const fr: Dict = {
   'cast.rec': '● REC',
   'cast.unsupported': 'Cet appareil ne peut pas enregistrer de vidéo du plateau (pas de MediaRecorder).',
   'cast.doneTitle': 'Vidéo prête · {size}',
-  'cast.doneText': 'Partager ou enregistrer comme fichier. Au casque, on entend l’espace – le ping vient de la même direction que dans le jeu.',
+  'cast.doneText': 'Regarde d’abord, puis partage ou enregistre – ou change vitesse et lumière avec ⚙ et réenregistre. Au casque, on entend l’espace.',
   'cast.failed': 'L’enregistrement est resté vide – cet appareil ne fournit pas de données vidéo.',
   'cast.save': '📤 Partager / Enregistrer',
   'cast.saved': '✓ Enregistré',
   'cast.shared': '✓ Partagé',
   'cast.back': 'Retour au résultat',
   'cast.endLine': 'Arrivée en {time}',
+  'cast.adjust': '⚙ Ajuster',
   'res.winTitle': 'Arrivée en {time} 🎉',
 
   /* --- Défi du jour --- */

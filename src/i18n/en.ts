@@ -482,13 +482,14 @@ export const en: Dict = {
   'cast.rec': '● REC',
   'cast.unsupported': 'This device cannot record video from the playfield (no MediaRecorder).',
   'cast.doneTitle': 'Video ready · {size}',
-  'cast.doneText': 'Share or save as a file. With headphones you hear the space – the ping comes from the same direction as in the game.',
+  'cast.doneText': 'Watch it first, then share or save – or change speed and light with ⚙ and record again. With headphones you hear the space.',
   'cast.failed': 'The recording stayed empty – this device delivers no video data.',
   'cast.save': '📤 Share / Save',
   'cast.saved': '✓ Saved',
   'cast.shared': '✓ Shared',
   'cast.back': 'Back to result',
   'cast.endLine': 'Goal in {time}',
+  'cast.adjust': '⚙ Adjust',
   'res.winTitle': 'Goal in {time} 🎉',
 
   /* --- Daily challenge --- */

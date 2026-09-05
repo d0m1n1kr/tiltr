@@ -651,7 +651,7 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
-## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phase 2 ✓ (v3.41.0), Phasen 3–4 geplant
+## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phase 2 ✓ (v3.41.0, Vorschau v3.42.0), Phasen 3–4 geplant
 
 Gewünscht: „Der Weg wird ja bereits protokolliert. Ich möchte, dass man das
 geschaffte Level als Screencast rendern kann (um es zu sharen). Entweder
@@ -775,10 +775,20 @@ schon zu ist – `cast.opts.bright`; sonst fiel die Welt unter der Abspannkarte
 ins Dunkel. Der REC-Hinweis ist ein roter Punkt AN DER UHR: ein eigener Chip
 passte auf 390 px nicht neben Pings und Knöpfe.
 
+VORSCHAU VOR DEM SENDEN (gewünscht, v3.42.0): Das fertige Video steht als
+`<video controls>` in der Karte – man sieht (und hört) es an, bevor irgendetwas
+verschickt ist, und „⚙ Anpassen" führt zurück ins Sheet: Tempo oder Licht
+ändern, neu aufnehmen. Abbrechen im Sheet kehrt dorthin zurück, woher man kam
+(Ergebnis oder Vorschau). Die Objekt-URL lebt, bis ein neues Video da ist oder
+das Menü kommt. Der ABSPANN trägt den Credit (dieselbe Zeile wie der Splash:
+`splash.credit`) zwischen Zeit und Adresse – wer das Video teilt, teilt auch,
+wer es gebaut hat.
+
 Teilen als Datei ohne Titeltext (`saveBlobFile`, Signal-Lektion), sonst
 Download; Dateiname `tiltr-<level>-<zeit>s.<ext>`. E2E Lauf 55: Sheet,
-Zeitraffer + hell, Bytes, Dauer ≈ erwartet, Video-Karte mit Größe, Download
-mit passender Endung. `window.__tiltrCast`.
+Zeitraffer + hell, Bytes, Dauer ≈ erwartet, Video-Karte mit Größe und
+Vorschau, ⚙ zurück ins Sheet und wieder zur Vorschau, Download mit passender
+Endung. `window.__tiltrCast`.
 
 ### Phasen 3–4 (offen)
 

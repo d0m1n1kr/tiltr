@@ -126,6 +126,8 @@ export interface CastOverlay {
   timeText: string;
   /** Abspann: Zeile mit der Endzeit */
   endLine: string;
+  /** Abspann: der Credit (dieselbe Zeile wie auf dem Splash) */
+  credit: string;
   /** Abspann: Adresse */
   byline: string;
 }
@@ -141,6 +143,7 @@ function card(
   big: string,
   small: string,
   dim: number,
+  third?: string,
 ): void {
   if (alpha <= 0.01) return;
   ctx.save();
@@ -159,6 +162,13 @@ function card(
   ctx.fillStyle = th.accent;
   ctx.font = `500 ${smallPx}px ${th.font}`;
   ctx.fillText(small, w / 2, h / 2 + bigPx * 0.75, w * 0.86);
+  if (third) {
+    // Dritte Zeile (Abspann: die Adresse unter dem Credit) – leiser, in Textfarbe.
+    ctx.fillStyle = th.text;
+    ctx.globalAlpha = alpha * 0.75;
+    ctx.font = `500 ${Math.round(smallPx * 0.85)}px ${th.font}`;
+    ctx.fillText(third, w / 2, h / 2 + bigPx * 0.75 + smallPx * 1.6, w * 0.86);
+  }
   ctx.restore();
   void dpr;
 }
@@ -197,7 +207,7 @@ export function drawCastOverlay(ctx: CanvasRenderingContext2D, w: number, h: num
   if (ta > 0) card(ctx, w, h, dpr, th, ta, o.title, o.subtitle, 0.82);
   if (o.sinceEndMs !== null) {
     const ea = tailAlpha(o.sinceEndMs);
-    if (ea > 0) card(ctx, w, h, dpr, th, ea, o.endLine, o.byline, 0.55);
+    if (ea > 0) card(ctx, w, h, dpr, th, ea, o.endLine, o.credit, 0.55, o.byline);
   } else if (ta < 1) {
     timeChip(ctx, w, dpr, th, o.timeText);
   }

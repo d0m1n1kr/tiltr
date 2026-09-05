@@ -486,13 +486,14 @@ export const de = {
   'cast.rec': '● REC',
   'cast.unsupported': 'Dieses Gerät kann kein Video aus dem Spielfeld aufzeichnen (MediaRecorder fehlt).',
   'cast.doneTitle': 'Video fertig · {size}',
-  'cast.doneText': 'Als Datei teilen oder speichern. Mit Kopfhörern hört man den Raum – der Ping kommt aus derselben Richtung wie im Spiel.',
+  'cast.doneText': 'Erst ansehen, dann teilen oder speichern – oder mit ⚙ Tempo und Licht ändern und neu aufnehmen. Mit Kopfhörern hört man den Raum.',
   'cast.failed': 'Die Aufnahme ist leer geblieben – dieses Gerät liefert keine Videodaten.',
   'cast.save': '📤 Teilen / Speichern',
   'cast.saved': '✓ Gespeichert',
   'cast.shared': '✓ Geteilt',
   'cast.back': 'Zurück zum Ergebnis',
   'cast.endLine': 'Ziel in {time}',
+  'cast.adjust': '⚙ Anpassen',
   'res.winTitle': 'Ziel in {time} 🎉',
 
   /* --- Tages-Challenge --- */

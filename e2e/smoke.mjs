@@ -9463,6 +9463,21 @@ if (want("55")) {
     await until(async () => !(await interHidden()), { timeout: 10000 });
     const title = (await page.textContent("#interTitle")) ?? "";
     check(`Die Video-Karte nennt die Größe („${title.trim()}")`, /Video fertig · \d/.test(title));
+    // VORSCHAU VOR DEM SENDEN: Das Video steht in der Karte …
+    const vid = await page.evaluate(() => {
+      const v = document.getElementById("interVideo");
+      return v ? { visible: !v.classList.contains("hidden"), src: v.getAttribute("src") ?? "", controls: v.hasAttribute("controls") } : null;
+    });
+    check(`Die Karte zeigt eine Vorschau des Videos (${JSON.stringify(vid)})`, vid?.visible === true && vid.src.startsWith("blob:") && vid.controls);
+    // … und ⚙ führt zurück ins Sheet (Einstellungen ändern), Abbrechen zurück zur Vorschau.
+    check(`Die Karte bietet „Anpassen" an („${((await page.textContent("#interSecondary")) ?? "").trim()}")`, /Anpassen/.test((await page.textContent("#interSecondary")) ?? ""));
+    await page.click("#interSecondary");
+    await until(async () => await page.locator("#castSheet").isVisible());
+    const sheetAgain = await page.locator("#castSheet").isVisible();
+    await page.click("#castBack");
+    await until(async () => !(await interHidden()), { timeout: 5000 });
+    const backToPreview = await page.evaluate(() => !document.getElementById("interVideo")?.classList.contains("hidden"));
+    check(`⚙ öffnet das Sheet wieder, Abbrechen kehrt zur Vorschau zurück (${sheetAgain}, ${backToPreview})`, sheetAgain && backToPreview);
     const recAfter = await page.evaluate(() => document.getElementById("timer")?.classList.contains("rec"));
     check(`Der REC-Punkt an der Uhr ist wieder weg (${recAfter})`, recAfter === false);
 

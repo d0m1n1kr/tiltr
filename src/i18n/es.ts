@@ -482,13 +482,14 @@ export const es: Dict = {
   'cast.rec': '● REC',
   'cast.unsupported': 'Este dispositivo no puede grabar vídeo del tablero (sin MediaRecorder).',
   'cast.doneTitle': 'Vídeo listo · {size}',
-  'cast.doneText': 'Compartir o guardar como archivo. Con auriculares se oye el espacio – el ping llega de la misma dirección que en el juego.',
+  'cast.doneText': 'Míralo primero, luego comparte o guarda – o cambia velocidad y luz con ⚙ y graba de nuevo. Con auriculares se oye el espacio.',
   'cast.failed': 'La grabación quedó vacía – este dispositivo no entrega datos de vídeo.',
   'cast.save': '📤 Compartir / Guardar',
   'cast.saved': '✓ Guardado',
   'cast.shared': '✓ Compartido',
   'cast.back': 'Volver al resultado',
   'cast.endLine': 'Meta en {time}',
+  'cast.adjust': '⚙ Ajustar',
   'res.winTitle': 'Meta en {time} 🎉',
 
   /* --- Reto diario --- */

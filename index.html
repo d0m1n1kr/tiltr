@@ -392,6 +392,7 @@
     .inter-buttons { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-2); }
     .inter-card .inter-stars { font-size: var(--fs-small); opacity: 0.75; letter-spacing: 0.02em; }
     .inter-new { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+    .inter-video { width: 100%; max-height: 42vh; border-radius: var(--radius-m, 12px); background: var(--bg-deep); }
     .inter-new .chip { border-color: var(--accent); color: var(--accent); }
 
     #banners {
@@ -1005,6 +1006,9 @@
       <!-- „Neu hier" (M43): Elemente, die dieses Level zum ersten Mal bringt.
            Ein Tap spielt die Klang-Signatur aus der Galerie. -->
       <div id="interNew" class="inter-new hidden"></div>
+      <!-- Vorschau des Screencasts (M104, Phase 2): erst ansehen, dann teilen –
+           oder mit ⚙ die Einstellungen ändern und neu aufnehmen. -->
+      <video id="interVideo" class="inter-video hidden" controls playsinline preload="metadata"></video>
       <!-- Leise Zusatzaktion (Duell herausfordern/Revanche): schließt die
            Karte NICHT, man teilt und entscheidet dann weiter. -->
       <button id="interExtra" class="btn btn-soft hidden"></button>
