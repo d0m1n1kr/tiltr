@@ -1000,11 +1000,20 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   Zellmitte in Weltkoordinaten, damit der Renderer nichts zurückrechnet);
   `launch` leert sie, `pruneGlow` räumt Verglühtes weg – sonst wüchse sie über
   einen langen Lauf mit jeder betretenen Zelle. Gezeichnet wird sie ZUERST
-  (unter den Wänden) als weicher Fleck in der BALL-Farbe: Sie gehört dem
-  Spieler, nicht der Welt, und sie deckt nichts auf – man sieht nur, wo man
-  selbst war. Ein gefülltes Rechteck sah aus wie Bodenbelag, deshalb ein
-  auslaufender Radial-Verlauf (`FLOOR_GLOW_ALPHA` 0,16 – ein Fünftel des
-  Ball-Kerns).
+  (unter den Wänden) in der BALL-Farbe: Sie gehört dem Spieler, nicht der Welt,
+  und sie deckt nichts auf – man sieht nur, wo man selbst war.
+  FLÄCHIG, NICHT WEICH (v3.35.0, gemeldet: „eher nicht verbundene unscharfe
+  Punkte"): Die erste Fassung malte je Zelle einen auslaufenden Fleck – der
+  fällt zwischen zwei Zellmitten auf NULL, und daraus wurde eine Perlenkette
+  statt einer Spur. Jetzt wird die GANZE Zelle gefüllt (`FLOOR_GLOW_ALPHA` 0,1
+  statt 0,16 – die alte Zahl war das Spitzen-Alpha eines Verlaufs, im Mittel
+  etwa 0,1): Zellen kacheln lückenlos, also ist die Spur von selbst
+  zusammenhängend. Gebündelt wird wie bei den Wänden nach Alpha-Stufe – EIN
+  Pfad je Stufe statt eines Zeichenbefehls je Zelle (die M94b-Lektion gilt
+  weiter), und innerhalb einer Stufe gibt es damit keine Nähte; ein halber
+  Gerätepixel Überstand tilgt die Haarlinie zwischen zwei Stufen. Regel daraus:
+  Was eine LINIE erzählen soll, darf zwischen seinen Stützstellen nicht auf
+  null gehen – entweder es überlappt, oder es kachelt.
   ZEICHENARBEIT JE OBJEKT UND BILD IST IN DER CI TEUER (hier gelernt): Die
   erste Fassung baute je glühender Zelle und je Bild einen
   `createRadialGradient`. Lokal grün – in der CI fiel Lauf 9 „Coop" (zwei volle

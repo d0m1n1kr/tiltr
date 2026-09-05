@@ -651,6 +651,33 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M100 „Die Spur kachelt" ✓ (v3.35.0)
+
+Gemeldet in einem Satz: „Der nachleuchtende Boden sieht noch nicht so gut aus.
+Es sind jetzt eher nicht verbundene unscharfe Punkte." Stimmt, und der Grund
+steckte in der Begründung von M94b: Ein gefülltes Rechteck sah nach BODENBELAG
+aus, also wurde je Zelle ein auslaufender Fleck gemalt. Ein Verlauf fällt aber
+zwischen zwei Zellmitten auf NULL – nebeneinander ergibt das eine Perlenkette,
+keine Spur.
+
+Zellen KACHELN dagegen lückenlos: Eine gefüllte Zelle grenzt exakt an die
+nächste, und damit ist die Spur von selbst zusammenhängend – ohne dass irgendwo
+ein Pfad, eine Punktliste oder eine zweite Datenquelle nötig wäre. Das MODELL
+(die Ladung je Zelle, M94/M94b) bleibt vollständig unberührt; geändert hat sich
+nur, WIE gezeichnet wird.
+
+Zahlen und Kniffe: `FLOOR_GLOW_ALPHA` fällt von 0,16 auf 0,1 – die alte Zahl
+war das SPITZEN-Alpha eines Verlaufs (im Mittel etwa 0,1), eine Fläche mit 0,16
+wäre fast doppelt so präsent gewesen. Gebündelt wird wie bei den Wänden nach
+Alpha-Stufe (1 %): EIN Pfad je Stufe statt eines Zeichenbefehls je Zelle, denn
+die M94b-Lektion („Zeichenarbeit je Objekt und Bild ist in der CI teuer") gilt
+weiter; das vorgezeichnete Fleck-Sprite entfällt damit ganz. Innerhalb einer
+Stufe gibt es keine Nähte, und zwischen zwei Stufen tilgt ein halber
+Gerätepixel Überstand die Haarlinie, die das Kantenglätten sonst stehen ließe.
+
+Die Regel zum Mitnehmen: Was eine LINIE erzählen soll, darf zwischen seinen
+Stützstellen nicht auf null gehen – entweder es überlappt, oder es kachelt.
+
 ## M99 „Ein Öffner, mehrere Türen" ✓ (v3.34.0)
 
 Gefragt in einem Satz: „wäre es möglich, dass eine Platte mit mehreren Türen

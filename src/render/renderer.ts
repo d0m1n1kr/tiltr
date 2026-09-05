@@ -50,8 +50,11 @@ export interface DrawOptions {
 }
 
 /** Höchstes Alpha der Bodenspur (M94b). Bewusst klein: Sie ist eine
- *  Erinnerung, kein Signal – der Ball-Kern ist fünfmal so hell. */
-export const FLOOR_GLOW_ALPHA = 0.16;
+ *  Erinnerung, kein Signal – der Ball-Kern ist fünfmal so hell. Seit v3.35.0
+ *  wird die Zelle FLÄCHIG gefüllt statt als weicher Fleck; 0,16 war das
+ *  SPITZEN-Alpha eines auslaufenden Verlaufs (im Mittel etwa 0,1), eine Fläche
+ *  mit 0,16 wäre also fast doppelt so präsent gewesen. */
+export const FLOOR_GLOW_ALPHA = 0.1;
 
 /** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
  *  Alles Fremde (Partner, Geist) bleibt darunter. */
@@ -134,7 +137,6 @@ export class Renderer {
    *  Zwei-Seiten-Lauf über die Zeit zu drücken (Lauf 9, Klick-Timeout) – der
    *  Verlauf hängt aber nur am RADIUS, also wird er einmal gemalt und danach
    *  nur noch geblittet (`globalAlpha` macht die Helligkeit). */
-  private glowSprite: { r: number; img: HTMLCanvasElement } | null = null;
   /** Hat der letzte Frame die Kugel gezeichnet? (Gegenstück zu `goalLit`:
    *  Der Renderer sagt selbst, was im Bild steht – prüfbar ohne Pixel.) */
   ballDrawn = false;
@@ -237,25 +239,6 @@ export class Renderer {
     this.offsetY += (ty - this.offsetY) * k;
   }
 
-  /** Der Fleck der Bodenspur in Radius `r` (Gerätepixel) – einmal gemalt,
-   *  danach wiederverwendet. Neu nur, wenn sich die Skalierung ändert. */
-  private spotImage(r: number): HTMLCanvasElement {
-    const size = Math.max(2, Math.ceil(r * 2));
-    if (this.glowSprite && this.glowSprite.r === size) return this.glowSprite.img;
-    const img = document.createElement('canvas');
-    img.width = size;
-    img.height = size;
-    const c = img.getContext('2d')!;
-    const g = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    g.addColorStop(0, `rgba(${WORLD.ballGlow}, 1)`);
-    g.addColorStop(0.6, `rgba(${WORLD.ballGlow}, 0.5)`);
-    g.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
-    c.fillStyle = g;
-    c.fillRect(0, 0, size, size);
-    this.glowSprite = { r: size, img };
-    return img;
-  }
-
   draw(world: World, opts: DrawOptions): void {
     const { debug = false, revealAll = false, now = performance.now() } = opts;
     const gain = debug ? 1 : Math.max(0, Math.min(1, opts.revealGain ?? 1));
@@ -349,20 +332,35 @@ export class Renderer {
     // länger (dieselbe Ladung wie an der Wand). Sie leuchtet in der Farbe der
     // KUGEL, denn sie gehört dem Spieler, nicht der Welt – und sie deckt nichts
     // auf: Man sieht nur, wo man selbst schon war.
-    // Weicher Fleck, keine Kachel: Ein gefülltes Rechteck sähe aus wie ein
-    // BODENBELAG (also wie Welt), ein auslaufender Schein wie eine Spur. Der
-    // Fleck ist vorgezeichnet (`spotImage`) und wird nur geblittet.
+    // DIE GANZE ZELLE, OHNE WEICHZEICHNER (v3.35.0, gemeldet: „eher nicht
+    // verbundene unscharfe Punkte"): Die erste Fassung malte je Zelle einen
+    // auslaufenden Fleck – nebeneinander ergaben sie eine Perlenkette statt
+    // einer Spur, weil der Verlauf zwischen zwei Zellmitten auf null fiel.
+    // Zellen KACHELN dagegen lückenlos: Eine gefüllte Zelle grenzt exakt an
+    // die nächste, und daraus wird die Spur von selbst zusammenhängend.
+    // Gebündelt wird wie bei den Wänden nach Alpha-Stufe – EIN Pfad je Stufe
+    // statt eines Zeichenbefehls je Zelle (Lektion aus M94b: Zeichenarbeit je
+    // Objekt und Bild ist in der CI teuer), und innerhalb einer Stufe gibt es
+    // damit keine Nähte.
     if (opts.floorGlow) {
-      const r = CELL * 0.62 * s;
-      const img = this.spotImage(r);
-      const half = img.width / 2;
+      const lanes = new Map<number, Path2D>();
       for (const c of opts.floorGlow) {
-        const a = glowNow(c, now) * FLOOR_GLOW_ALPHA;
-        if (a <= 0.004) continue;
-        ctx.globalAlpha = a;
-        ctx.drawImage(img, tx(c.x) - half, ty(c.y) - half);
+        // Stufen von 1 %: Der Unterschied zwischen zwei Stufen liegt bei einem
+        // Grund-Alpha von 0,1 unter einem Tausendstel – unsichtbar, aber es
+        // spart die Zeichenbefehle.
+        const q = Math.ceil(glowNow(c, now) * FLOOR_GLOW_ALPHA * 100) / 100;
+        if (q <= 0.004) continue;
+        let path = lanes.get(q);
+        if (!path) lanes.set(q, (path = new Path2D()));
+        // Gespeichert ist die ZELLMITTE (app.ts) – gefüllt wird die Zelle.
+        // Der halbe Gerätepixel Überstand tilgt die Haarlinie, die zwischen
+        // zwei getrennt gefüllten Pfaden durch das Kantenglätten entstünde.
+        path.rect(tx(c.x - CELL / 2) - 0.5, ty(c.y - CELL / 2) - 0.5, CELL * s + 1, CELL * s + 1);
       }
-      ctx.globalAlpha = 1;
+      for (const [q, path] of lanes) {
+        ctx.fillStyle = `rgba(${WORLD.ballGlow}, ${q})`;
+        ctx.fill(path);
+      }
     }
 
     for (const w of world.walls) {
