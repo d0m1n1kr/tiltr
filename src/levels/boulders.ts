@@ -73,17 +73,24 @@ interface State {
   ball: number; // Zellindex
   stones: number[]; // je Stein: fl*100000 + idx, -1 = versunken
   filled: number[]; // gefüllte Loch-IDs (sortiert)
+  /** EINGERASTET BLEIBT EINGERASTET (M95, wie M78 im Erreichbarkeits-Beweis):
+   *  Bitmaske der Platten-Türen mit „bleibt offen", auf deren Platte der BALL
+   *  schon stand. Sie gehört in den Zustand, weil sie den Rest der Fahrt
+   *  verändert – ein Stein muss sie danach nicht mehr halten. Die Maske ist
+   *  winzig (so viele Bits wie latchende Platten-Türen, meist null). */
+  latched: number;
 }
 
-const stateKey = (s: State): string => `${s.fl}:${s.ball}|${s.stones.join(',')}|${s.filled.join(',')}`;
+const stateKey = (s: State): string =>
+  `${s.fl}:${s.ball}|${s.stones.join(',')}|${s.filled.join(',')}|${s.latched}`;
 
 /** Türen, die NUR Druckplatten als Öffner haben – die einzigen, die der Stein bewegt. */
-function plateOnlyDoors(def: LevelDef): Map<string, { require: 'any' | 'all'; plates: number }> {
+function plateOnlyDoors(def: LevelDef): Map<string, { require: 'any' | 'all'; plates: number; latch: boolean }> {
   const openers = new Map<string, { plates: number; other: number }>();
-  const doors = new Map<string, 'any' | 'all'>();
+  const doors = new Map<string, { require: 'any' | 'all'; latch: boolean }>();
   for (const f of def.floors) {
     for (const el of f.elements) {
-      if (el.type === 'door') doors.set(el.id, el.require ?? 'any');
+      if (el.type === 'door') doors.set(el.id, { require: el.require ?? 'any', latch: el.latch === true });
       if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
         const o = openers.get(el.opens) ?? { plates: 0, other: 0 };
         if (el.type === 'plate') o.plates++;
@@ -92,10 +99,10 @@ function plateOnlyDoors(def: LevelDef): Map<string, { require: 'any' | 'all'; pl
       }
     }
   }
-  const out = new Map<string, { require: 'any' | 'all'; plates: number }>();
-  for (const [id, req] of doors) {
+  const out = new Map<string, { require: 'any' | 'all'; plates: number; latch: boolean }>();
+  for (const [id, d] of doors) {
     const o = openers.get(id);
-    if (o && o.plates > 0 && o.other === 0) out.set(id, { require: req, plates: o.plates });
+    if (o && o.plates > 0 && o.other === 0) out.set(id, { require: d.require, plates: o.plates, latch: d.latch });
   }
   return out;
 }
@@ -186,13 +193,39 @@ export function boulderProof(
   if (goalFl < 0) return { goal: false, softlock: false, states: 0, detail: 'kein Ziel', stonePlates: new Set() };
   const goalIdx = idxOf(def.floors[goalFl]!.size[0], def.floors[goalFl]!.goal!);
 
+  // Latchende Platten-Türen bekommen je ein Bit; `latchBitsAt` sagt, welche
+  // davon einrasten, wenn der Ball auf DIESER Zelle steht. Ohne das wäre der
+  // Stein-Beweis strenger als das Spiel: Eine Tür mit „bleibt offen" rastet
+  // ein, sobald jemand einmal auf der Platte stand – danach ist der Stein frei
+  // (und im SOLO ist das der Weg, eine Platten-Tür ohne Stein zu öffnen, M95).
+  const latchBit = new Map<string, number>();
+  const bitsAt = new Map<number, number>(); // fl*100000+idx -> Bitmaske
+  {
+    let bit = 1;
+    for (const [id, pd] of plateDoors) {
+      if (!pd.latch) continue;
+      latchBit.set(id, bit);
+      floors.forEach((fm, ffl) => {
+        for (const pl of fm.plates) {
+          if (pl.opens !== id || pl.tune) continue;
+          const at = ffl * 100000 + pl.idx;
+          bitsAt.set(at, (bitsAt.get(at) ?? 0) | bit);
+        }
+      });
+      bit <<= 1;
+    }
+  }
+  const latchBitsAt = (fl: number, idx: number): number => bitsAt.get(fl * 100000 + idx) ?? 0;
+
   /** Kante offen für den Ball im Zustand s (Wände, Schiebewände offen wie im
-   *  offenen Modell; Platten-Türen nur, wenn ihre Platten von Steinen gehalten). */
+   *  offenen Modell; Platten-Türen nur, wenn ihre Platten von Steinen gehalten
+   *  werden – oder die Tür schon eingerastet ist). */
   const edgeOpenForBall = (s: State, fl: number, x: number, y: number, d: Dir): boolean => {
     const m = floors[fl]!;
     if (m.cells[y * m.cols + x]![d]) return false;
     for (const [doorId, edges] of m.doorEdges) {
       if (!edges.has(`${x},${y},${d}`)) continue;
+      if ((s.latched & (latchBit.get(doorId) ?? 0)) !== 0) continue; // eingerastet
       const pd = plateDoors.get(doorId)!;
       let held = 0;
       let total = 0;
@@ -226,7 +259,8 @@ export function boulderProof(
 
   const inBounds = (m: FloorModel, x: number, y: number) => x >= 0 && y >= 0 && x < m.cols && y < m.rows;
 
-  const start0: State = { fl: 0, ball: idxOf(def.floors[0]!.size[0], start ?? def.floors[0]!.start), stones, filled: [] };
+  const startIdx = idxOf(def.floors[0]!.size[0], start ?? def.floors[0]!.start);
+  const start0: State = { fl: 0, ball: startIdx, stones, filled: [], latched: latchBitsAt(0, startIdx) };
   const seen = new Map<string, State>();
   const edges = new Map<string, string[]>(); // Vorwärtskanten für die Rückwärtssuche
   const goalStates: string[] = [];
@@ -297,9 +331,13 @@ export function boulderProof(
         if (!m.ice.has(tIdx)) break;
       }
       if (!moved) continue;
-      next.push({ fl: s.fl, ball: nIdx, stones: stones2, filled: filled2 });
+      next.push({ fl: s.fl, ball: nIdx, stones: stones2, filled: filled2, latched: s.latched });
     }
     for (const j of m.jumps) if (j.from === s.ball) next.push({ ...s, fl: j.toFloor, ball: j.toIdx });
+
+    // Wer auf einer Platte landet, rastet ihre latchende Tür ein – EINE Stelle
+    // für alle Nachfolger (Schritt, Stoß, Transporter).
+    for (const n of next) n.latched |= latchBitsAt(n.fl, n.ball);
 
     const outKeys: string[] = [];
     for (const n of next) {

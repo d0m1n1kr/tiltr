@@ -301,9 +301,24 @@ export function coopReachable(
   def: LevelDef,
   bannedDoors: Set<string> = new Set(),
   from?: StartPos,
-  opts: { plates?: boolean; brittle?: BrittleState; latched?: ReadonlySet<string> } = {},
+  opts: {
+    plates?: boolean;
+    brittle?: BrittleState;
+    latched?: ReadonlySet<string>;
+    /** EIN SPIELER, EINE KUGEL (M95): Solo kann niemand auf der Platte stehen
+     *  UND durch die Tür rollen – dieselbe Regel wie M74, nur ohne Partner.
+     *  Eine Platte zählt dort deshalb nur, wenn ein STEIN sie halten kann
+     *  (`stone`, aus dem Stein-Beweis) oder die Tür „bleibt offen" hat: dann
+     *  rastet sie beim Draufrollen ein und man rollt weiter. Fehlt die Option,
+     *  gilt das alte Modell (zwei Spieler bzw. Aufrufer, die selbst filtern). */
+    solo?: { stone: ReadonlySet<string> };
+  } = {},
 ): Set<string> {
   const plates = opts.plates ?? true;
+  const solo = opts.solo;
+  const latchDoors = new Set(
+    def.floors.flatMap((f) => f.elements.filter((e) => e.type === 'door' && e.latch === true).map((e) => (e as { id: string }).id)),
+  );
   // EINGERASTET BLEIBT EINGERASTET (M78): Eine Tür mit „bleibt offen", die
   // schon aufgegangen ist, kann nicht wieder zufallen – der Softlock-Beweis
   // muss sie ab dort als offen führen, sonst meldet er einen Riegel, den es
@@ -313,13 +328,22 @@ export function coopReachable(
   // (core/doors.ts: alle gleichzeitig erfüllt). Reihenfolge und Timing
   // prüft das Modell nicht – es fragt nur nach Erreichbarkeit.
   const requireAll = new Set<string>();
-  const openersOf = new Map<string, Array<{ fl: number; cell: readonly [number, number] }>>();
+  const openersOf = new Map<string, Array<{ fl: number; cell: readonly [number, number]; dead?: boolean }>>();
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (el.type === 'door' && el.require === 'all') requireAll.add(el.id);
       if ((plates && el.type === 'plate') || el.type === 'key' || el.type === 'timedSwitch') {
+        // Solo: eine Platte zählt nur mit Stein oder „bleibt offen" (s. o.).
+        // Sie fällt nicht aus der Liste, sie wird UNERFÜLLBAR – sonst ginge
+        // eine 'all'-Tür aus Schlüssel UND Platte plötzlich mit dem Schlüssel
+        // allein auf, weil ihre zweite Bedingung verschwunden wäre.
+        const dead =
+          solo !== undefined &&
+          el.type === 'plate' &&
+          !latchDoors.has(el.opens) &&
+          !solo.stone.has(cellKey(fl, el.cell));
         const list = openersOf.get(el.opens) ?? [];
-        list.push({ fl, cell: el.cell });
+        list.push({ fl, cell: el.cell, dead });
         openersOf.set(el.opens, list);
       }
     }
@@ -329,7 +353,7 @@ export function coopReachable(
     let changed = false;
     for (const [doorId, openers] of openersOf) {
       if (bannedDoors.has(doorId) || openDoorIds.has(doorId)) continue;
-      const reached = openers.filter((o) => seen.has(cellKey(o.fl, o.cell))).length;
+      const reached = openers.filter((o) => !o.dead && seen.has(cellKey(o.fl, o.cell))).length;
       const opens = requireAll.has(doorId) ? reached === openers.length : reached > 0;
       if (opens) {
         openDoorIds.add(doorId);
@@ -803,9 +827,6 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // 'coop'/'race' diesen Check: Dort hat jeder Spieler seinen Start, sein
   // Ziel und seine Öffner – „vom Start 1 zum Ziel 1 mit Platten als Öffner"
   // wäre für den Gast weder notwendig noch hinreichend.
-  const fromStart = coopReachable(def);
-  if (!two) push('goal', fromStart.has(goalKey));
-
   // Zwei Spieler (M57): Für den festen Modus EIN Badge, bei 'any' beide –
   // die Lobby darf dann wählen, also muss beides bewiesen sein. Detail nennt
   // den Spieler, der sein Ziel nicht erreicht.
@@ -833,6 +854,20 @@ export function validateLevel(raw: unknown): CheckResult[] {
   if (two && def.floors.some((f) => f.elements.some((e) => e.type === 'boulder'))) {
     for (const k of boulderProof(def, def.floors[0]!.start2 ?? def.floors[0]!.start, heldBy(1)).stonePlates) stonePlates.add(k);
   }
+  // EIN SPIELER, EINE KUGEL (M95): Solo zählt eine Platte nur, wenn ein STEIN
+  // sie halten kann oder die Tür „bleibt offen" hat – niemand steht darauf und
+  // rollt gleichzeitig durch. Dieselbe Regel bekommt JEDE Solo-Abfrage unten
+  // (Öffner, Softlock): Zwei Checks mit zwei Meinungen war schon einmal der Bug.
+  const solo = two ? undefined : { stone: stonePlates as ReadonlySet<string> };
+  const soloReach = (
+    banned: Set<string> = new Set(),
+    from?: StartPos,
+    o: { brittle?: BrittleState; latched?: ReadonlySet<string> } = {},
+  ): Set<string> => coopReachable(def, banned, from, { ...o, solo });
+
+  const fromStart = soloReach();
+  if (!two) push('goal', fromStart.has(goalKey));
+
   const coopPair = two ? pairReachable(def, true, new Set(), undefined, {}, stonePlates) : null;
   const racePair = two ? pairReachable(def, false, new Set(), undefined, {}, stonePlates) : null;
   if (two && def.mpMode !== 'race') {
@@ -905,7 +940,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
           const pr = pairReachable(def, pairCoop, new Set([doorId]), undefined, {}, stonePlates);
           return new Set([...pr.p1, ...pr.p2]);
         })()
-      : coopReachable(def, new Set([doorId]));
+      : soloReach(new Set([doorId]));
     // ERREICHBAR IST NICHT HALTBAR (M76/M77): Eine 'all'-Tür mit zwei Platten
     // verlangt zwei Halter. Wie viele Füße frei sind, entscheidet die Tür –
     // fällt sie wieder zu, rollt einer durch und hält nichts; „bleibt offen"
@@ -1123,16 +1158,16 @@ export function validateLevel(raw: unknown): CheckResult[] {
     }
   } else {
     const without = new Map(
-      oneWayWalls.map((w) => [w, coopReachable(def, new Set(), undefined, { brittle: { sealedBrittle: new Set([w]) } })]),
+      oneWayWalls.map((w) => [w, soloReach(new Set(), undefined, { brittle: { sealedBrittle: new Set([w]) } })]),
     );
-    const noLatch = new Map(latchIds.map((d) => [d, coopReachable(def, new Set([d]))]));
+    const noLatch = new Map(latchIds.map((d) => [d, soloReach(new Set([d]))]));
     for (const k of fromStart) {
       const latchedHere = latchedAt(k, noLatch);
       const brittleHere = brokenAt(k, without);
-      if (!coopReachable(def, new Set(), parse(k), { brittle: brittleHere, latched: latchedHere }).has(goalKey)) {
+      if (!soloReach(new Set(), parse(k), { brittle: brittleHere, latched: latchedHere }).has(goalKey)) {
         softlockOk = false;
         softlockDetail = `${k} – ${nameCause(k, goalKey, latchedHere, (open, alt = def) =>
-          coopReachable(alt, new Set(), parse(k), { brittle: brittleHere, latched: open }).has(goalKey),
+          coopReachable(alt, new Set(), parse(k), { brittle: brittleHere, latched: open, solo }).has(goalKey),
         )}`;
         softlockAt = placeOf(k);
         break;

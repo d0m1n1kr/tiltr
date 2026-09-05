@@ -214,6 +214,7 @@ export const es: Dict = {
   'ed.tune.off': 'apagado (placa normal)',
   'ed.tune.unison': 'Unísono',
   'ed.tune.fifth': 'Quinta',
+  'ed.plateSoloHint': 'En solitario: quien está sobre la placa no cruza la puerta al mismo tiempo. Se vuelve jugable con una ROCA empujada encima, o con una puerta en «se queda abierta»: entonces se traba al rodar sobre la placa.',
   'ed.resonanceHint': 'Campo de resonancia: el cuenco retiene la bola y la dirección de inclinación afina el tono (arriba = fundamental, abajo = quinta). La puerta se abre cuando AMBOS tonos están en el intervalo: coloca dos campos con el mismo intervalo y pon la puerta en «todos los abridores + se queda abierta».',
   'ed.f.opens': 'Abre puerta',
   'ed.f.id': 'ID de puerta',

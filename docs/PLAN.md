@@ -651,6 +651,49 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M95 „Die Druckplatte darf allein" ✓ (v3.30.0)
+
+Gemeldet in einem Satz: „Druckplatten kann es auch im Solo geben. Zusammen mit
+Steinen ist das lösbar." Stimmt – und die Palette versteckte sie dort trotzdem,
+mit einer Begründung, die nur halb wahr war (M57: „solo hielte sie niemand").
+Niemand HÄLT sie, aber es gibt zwei Wege, sie trotzdem zu nutzen:
+
+- ein ROLLSTEIN, den man daraufschiebt – er hält sie dauerhaft
+  (`plate.boulder`, seit M47), und
+- eine Tür mit „bleibt offen" (`door.latch`, M76) – sie rastet ein, sobald man
+  einmal über die Platte rollt.
+
+Was NICHT geht, ist selbst darauf stehen und gleichzeitig durch die Tür rollen.
+Das ist dieselbe Regel wie M74 („wer hält die Platte"), nur ohne Partner – und
+genau die fehlte im Modell: `coopReachable` zählte im Solo JEDE erreichbare
+Platte als Öffner, ein Level mit Platte war also GRÜN und unspielbar. Deshalb
+die Notbremse in der Palette; jetzt fällt die Notbremse weg und die Regel steht
+im Beweis.
+
+UNERFÜLLBAR, NICHT ABWESEND: Eine Solo-Platte ohne Stein und ohne „bleibt
+offen" fällt nicht aus der Öffner-Liste, sie wird als unerfüllbar geführt.
+Sonst hätte eine 'all'-Tür aus Schlüssel UND Platte plötzlich nur noch eine
+Bedingung – und ginge mit dem Schlüssel allein auf. (Ein Test hält das fest.)
+
+EINE REGEL FÜR ALLE SOLO-ABFRAGEN: `validateLevel` reicht sie über den Helfer
+`soloReach` an goal, openers und die Softlock-Schleife durch. Zwei Checks
+derselben Datei mit zwei Meinungen war schon einmal der Bug (der `openers`-Fall
+in M41), also gibt es hier gar nicht erst zwei Wege. Dafür wandert die
+Berechnung von `stonePlates` (aus dem Stein-Beweis) VOR den `goal`-Check.
+
+EINGERASTET BLEIBT EINGERASTET – auch im Stein-Beweis: `boulderProof` kannte
+„bleibt offen" nicht und hätte eine Platten-Tür weiter nur mit Stein geöffnet.
+Der Zustand trägt jetzt eine Bitmaske `latched` über die latchenden
+Platten-Türen (winzig: ein Bit je Tür, meist null), gesetzt, sobald der BALL
+auf einer ihrer Platten stand. Das ist dieselbe Idee wie M78 im
+Erreichbarkeits-Beweis und M68 bei den brüchigen Wänden.
+
+Im Editor steht der Weg jetzt VOR dem roten Badge: Wer im Solo eine Platte
+auswählt, liest `ed.plateSoloHint` („Rollstein daraufschieben – oder der Tür
+„bleibt offen" geben"). Units in tests/soloPlate.test.ts (fünf Fälle, drei
+davon einmal rot gesehen); die Fixtures mauern JEDE Kante ausdrücklich, denn
+der Seed hatte im ersten Anlauf einen Umweg um die Tür gewürfelt.
+
 ## M94b „Der Boden glüht mit" ✓ (v3.29.0)
 
 Nachtrag zu M94, und zugleich die Korrektur eines MISSVERSTÄNDNISSES: Der

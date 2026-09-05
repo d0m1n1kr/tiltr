@@ -1605,9 +1605,13 @@ export function setupEditor(opts: {
     elementsGrid.id = 'edElementGrid';
     elementsCard.append(elementsHead, elementsGrid);
     elementsWrap.append(elementsCard);
-    // Druckplatte nur bei zwei Spielern (siehe PLACEABLE), hinter der Tür.
+    // Druckplatte hinter der Tür (sie gehört zur Tür-Familie, steht aber nicht
+    // in PLACEABLE). SEIT M95 AUCH IM SOLO: Ein ROLLSTEIN hält sie dauerhaft
+    // (`plate.boulder`), und eine Tür mit „bleibt offen" rastet ein, sobald man
+    // einmal darauf rollt – beides ist allein lösbar, und der Beweis rechnet
+    // genau das (coopReachable mit `solo`).
     const placeable: string[] = [...PLACEABLE];
-    if (twoPlayers()) placeable.splice(placeable.indexOf('door') + 1, 0, 'plate');
+    placeable.splice(placeable.indexOf('door') + 1, 0, 'plate');
     for (const type of placeable) {
       const b = document.createElement('button');
       b.id = `edEl-${type}`;
@@ -2063,6 +2067,16 @@ export function setupEditor(opts: {
         });
         tune.id = 'edPlateTune';
         propsEl.append(field(t('ed.f.tune'), tune));
+        // Solo: Wer selbst draufsteht, rollt nicht gleichzeitig durch die Tür.
+        // Der Beweis sagt das hinterher (rotes „Ziel erreichbar"), hier steht
+        // vorher, wie es geht: Rollstein oder „bleibt offen" an der Tür.
+        if (!twoPlayers()) {
+          const soloHint = document.createElement('p');
+          soloHint.className = 'menu-meta';
+          soloHint.id = 'edPlateSoloHint';
+          soloHint.textContent = t('ed.plateSoloHint');
+          propsEl.append(soloHint);
+        }
         if (el.tune) {
           const hint = document.createElement('p');
           hint.className = 'menu-meta';
@@ -2269,7 +2283,6 @@ export function setupEditor(opts: {
           for (const el of f.elements) if (el.type === 'transporter') delete el.player;
         }
         toolPlayer = 1;
-        if (placeType === 'plate') placeType = 'hole';
         testPlayer = 1;
       }
       renderPalette();

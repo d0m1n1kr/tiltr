@@ -447,10 +447,22 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   dem Phone nicht erreichbar – ● und ◎ tragen `toolPlayer` (Feld „Setzt für"
   im Eigenschaften-Panel, aktive Kachel nochmal tippen wechselt). Wer ein
   Werkzeug braucht, macht es zur Eigenschaft eines vorhandenen, nicht zur
-  siebten Kachel. Die DRUCKPLATTE steht nur
-  bei zwei Spielern in der Palette: solo hielte sie niemand, und
-  `coopReachable` zählte sie trotzdem als Öffner – ein grünes, unlösbares
-  Level. JEDER Öffner-Typ braucht im Editor drei Dinge: Auto-Link beim
+  siebten Kachel. DIE DRUCKPLATTE GIBT ES AUCH IM SOLO (M95, v3.30.0 – bis
+  dahin versteckte die Palette sie dort): Allein hält sie ein ROLLSTEIN
+  (`plate.boulder`, dauerhaft) oder die Tür mit „bleibt offen" – dann rastet
+  sie beim Draufrollen ein. Was NICHT geht, ist selbst darauf stehen und
+  gleichzeitig durchrollen (M74 ohne Partner), und genau das rechnet der
+  Beweis: `coopReachable(…, { solo: { stone } })` führt so eine Platte als
+  UNERFÜLLBAREN Öffner mit – nicht als fehlenden, sonst ginge eine
+  'all'-Tür aus Schlüssel UND Platte plötzlich mit dem Schlüssel allein auf.
+  Die Regel bekommt JEDE Solo-Abfrage über den Helfer `soloReach` in
+  `validateLevel` (goal, openers, Softlock): zwei Checks mit zwei Meinungen
+  war schon einmal der Bug. `stonePlates` wird dafür VOR dem `goal`-Check
+  gerechnet. Der Stein-Beweis kennt jetzt auch „bleibt offen"
+  (`State.latched`, eine Bitmaske über latchende Platten-Türen – eingerastet
+  bleibt eingerastet, wie M78 im Erreichbarkeits-Beweis). Im Editor steht der
+  Weg dorthin am Platten-Panel (`ed.plateSoloHint`), bevor das rote Badge
+  kommt. JEDER Öffner-Typ braucht im Editor drei Dinge: Auto-Link beim
   Setzen (`placeAt` → `nearestDoorId`), das Feld „Öffnet Tür" + 🔗 in
   `renderProps` und einen Fallback in `normalizeDraft` – die Platte hatte
   keins davon, parste nicht und blieb unsichtbar (M60). Werkstatt: „👥 Zu zweit" statt Spielen → Lobby mit `#mpCustomItem`,

@@ -218,6 +218,7 @@ export const de = {
   'ed.tune.off': 'aus (normale Platte)',
   'ed.tune.unison': 'Einklang',
   'ed.tune.fifth': 'Quinte',
+  'ed.plateSoloHint': 'Allein: Wer selbst auf der Platte steht, rollt nicht gleichzeitig durch die Tür. Lösbar wird es mit einem ROLLSTEIN, den du daraufschiebst – oder wenn die Tür „bleibt offen\u00a0(latch)" hat: Dann rastet sie beim Draufrollen ein.',
   'ed.resonanceHint': 'Resonanzfeld: Die Schale hält die Kugel, die Neigungsrichtung stimmt den Ton (oben = Grundton, unten = Quinte). Das Tor öffnet, wenn BEIDE Töne im Intervall stehen – setze zwei Felder mit demselben Intervall und gib der Tür „alle Öffner\u00a0+\u00a0bleibt offen".',
   'ed.f.opens': 'Öffnet Tür',
   'ed.f.id': 'Tür-ID',

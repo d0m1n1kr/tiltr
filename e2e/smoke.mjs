@@ -6336,7 +6336,9 @@ if (want("33")) {
     await pageA.locator("#workshopList .ws-item").first().locator("button", { hasText: "Entwurf verwerfen" }).click();
     await until(async () => !(await pageA.locator("#editor").getAttribute("class")).includes("hidden"));
 
-    // Spieler-Schalter im Editor: 1 räumt ●²/◎²/Platte und Gast-Koordinaten weg, 2 holt die Werkzeuge zurück.
+    // Spieler-Schalter im Editor: 1 räumt ●²/◎² und Gast-Koordinaten weg, 2
+    // holt sie zurück. Die PLATTE bleibt in beiden Fällen (M95): Solo hält sie
+    // ein Rollstein oder eine Tür mit „bleibt offen".
     await until(async () => !!(await pageA.evaluate(() => window.__tiltrEd?.def?.id === "custom-m57")));
     await pageA.selectOption("#edPlayers", "1");
     const solo = await pageA.evaluate(() => ({
@@ -6348,8 +6350,8 @@ if (want("33")) {
       mode: window.__tiltrEd?.def?.mpMode,
     }));
     check(
-      `Schalter auf 1: kein „Setzt für"-Feld, keine Platte mehr, start2/goal2/mpMode weg (${JSON.stringify(solo)})`,
-      !solo.start2 && !solo.plate && solo.players === 1 && solo.s2 === undefined && solo.g2 === undefined && solo.mode === undefined,
+      `Schalter auf 1: kein „Setzt für"-Feld, Platte bleibt (M95), start2/goal2/mpMode weg (${JSON.stringify(solo)})`,
+      !solo.start2 && solo.plate && solo.players === 1 && solo.s2 === undefined && solo.g2 === undefined && solo.mode === undefined,
     );
     const soloBadges = await until(async () => {
       const b = await pageA.locator("#edBadges .ed-badge").allTextContents();
@@ -6367,7 +6369,7 @@ if (want("33")) {
       plate: !!document.getElementById("edEl-plate"),
       mode: window.__tiltrEd?.def?.mpMode,
     }));
-    check(`Schalter auf 2: „Setzt für"-Feld am ◎, sechs Kacheln, Platte zurück, Modus wieder coop (${JSON.stringify(two)})`, two.field && two.tiles === 6 && two.plate && two.mode === "coop");
+    check(`Schalter auf 2: „Setzt für"-Feld am ◎, sechs Kacheln, Platte da, Modus wieder coop (${JSON.stringify(two)})`, two.field && two.tiles === 6 && two.plate && two.mode === "coop");
 
     await ctx.close();
   } catch (e) {

@@ -214,6 +214,7 @@ export const fr: Dict = {
   'ed.tune.off': 'désactivé (plaque normale)',
   'ed.tune.unison': 'Unisson',
   'ed.tune.fifth': 'Quinte',
+  'ed.plateSoloHint': 'En solo : celui qui est sur la plaque ne franchit pas la porte en même temps. Cela devient jouable avec un ROCHER poussé dessus – ou avec une porte réglée sur « reste ouverte » : elle se bloque ouverte dès qu’on roule dessus.',
   'ed.resonanceHint': 'Champ de résonance : la coupe retient la bille, la direction de l’inclinaison accorde le son (haut = fondamentale, bas = quinte). La porte s’ouvre quand les DEUX sons sont dans l’intervalle – place deux champs avec le même intervalle et règle la porte sur « tous les ouvreurs + reste ouverte ».',
   'ed.f.opens': 'Ouvre la porte',
   'ed.f.id': 'ID de porte',
