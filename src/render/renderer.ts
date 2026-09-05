@@ -3,6 +3,7 @@
 
 import type { World } from '../core/physics';
 import { BALL_R } from '../core/constants';
+import { GLOW_FADE_MS, glowNow } from '../core/afterglow';
 import { WORLD } from './palette';
 
 export interface DrawOptions {
@@ -295,7 +296,9 @@ export class Renderer {
       if (debug || revealAll) return 0.55 * gain;
       let a = 0;
       if (w.litFrom && now < w.litFrom) a = 0;
-      else if (w.litUntil && w.litUntil > now) a = Math.min(1, (w.litUntil - now) / 1200) * 0.9;
+      // Voll hell, bis die letzte Spanne anbricht – ein AUFGELADENES Glühen
+      // (M94) steht damit einfach länger, ohne eigene Regel im Renderer.
+      else if (w.litUntil && w.litUntil > now) a = Math.min(1, (w.litUntil - now) / GLOW_FADE_MS) * 0.9;
       return Math.max(a, spotAlpha(wallType(w), 0.55), 0.55 * torchGain(w.x + w.w / 2, w.y + w.h / 2));
     };
     // Aufdeckbare Objekte: sichtbar bei Debug/Reveal oder nach Ping (litFrom/litUntil).
@@ -303,7 +306,7 @@ export class Renderer {
       if (debug || revealAll) return base * gain;
       let a = 0;
       if (o.litFrom && now < o.litFrom) a = 0;
-      else if (o.litUntil && o.litUntil > now) a = Math.min(1, (o.litUntil - now) / 1200) * base;
+      else if (o.litUntil && o.litUntil > now) a = Math.min(1, (o.litUntil - now) / GLOW_FADE_MS) * base;
       if (o.x !== undefined && o.y !== undefined) a = Math.max(a, base * torchGain(o.x, o.y));
       return type ? Math.max(a, spotAlpha(type, base)) : a;
     };
@@ -515,16 +518,21 @@ export class Renderer {
     // RESONANZFELD (M91) trägt seine eigene Farbe – es ist eine Platte, aber
     // eine, die man nur zu zweit hält.
     for (const pl of world.plates) {
+      // GLÜHT, WEIL JEMAND DARAUFSTAND (M94): `glowNow` liest den Ladezustand
+      // der Berührung – nicht `litUntil`, denn das setzt auch der Ping, und
+      // ein Ping ist keine Berührung. Gehalten bleibt kräftiger als die Spur.
+      const heat = glowNow(pl, now);
       const alpha = debug || revealAll ? 0.9 * gain : revealAlpha(pl, 0.9, 'plate');
-      if (alpha <= 0.01 && !pl.held) continue;
-      const a = Math.max(alpha, pl.held ? 0.9 : 0);
+      if (alpha <= 0.01 && !pl.held && heat <= 0.01) continue;
+      const a = Math.max(alpha, pl.held ? 0.9 : heat * 0.9);
       const r = pl.r * s;
       const hue = pl.tune ? WORLD.resonance : WORLD.plate;
       ctx.strokeStyle = `rgba(${hue}, ${a})`;
       ctx.lineWidth = 2.5 * this.dpr;
       ctx.strokeRect(tx(pl.x) - r, ty(pl.y) - r, r * 2, r * 2);
-      if (pl.held) {
-        ctx.fillStyle = `rgba(${hue}, 0.35)`;
+      const fill = pl.held ? 0.35 : heat * 0.22;
+      if (fill > 0.01) {
+        ctx.fillStyle = `rgba(${hue}, ${fill})`;
         ctx.fillRect(tx(pl.x) - r + 3, ty(pl.y) - r + 3, r * 2 - 6, r * 2 - 6);
       }
     }

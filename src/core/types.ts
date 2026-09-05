@@ -45,6 +45,12 @@ export interface Wall {
   litFrom?: number;
   /** Aufleuchten bis (ms) */
   litUntil?: number;
+  /** Ladezustand der Berührung (M94, core/afterglow.ts): Wer an einer Wand
+   *  entlangschrammt, lädt sie auf – sie glüht danach länger nach. Getrennt
+   *  von `litUntil`, denn das setzt auch der PING, und ein Ping berührt nicht. */
+  glowFrom?: number;
+  glowAt?: number;
+  glowUntil?: number;
 }
 
 export interface Breathing {
@@ -187,6 +193,10 @@ export interface Plate {
   tune?: 'unison' | 'fifth';
   litFrom?: number;
   litUntil?: number;
+  /** Wie bei der Wand (M94): Stehen lädt, danach glüht es aus. */
+  glowFrom?: number;
+  glowAt?: number;
+  glowUntil?: number;
 }
 
 export interface TimedSwitch {

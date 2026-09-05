@@ -18,6 +18,7 @@ import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Ma
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
 import { brittleBreakable } from './core/brittle';
+import { type GlowState, glowTouch } from './core/afterglow';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, Plate, PlaylistEntry, WindZone } from './core/types';
 import type { Ball } from './core/physics';
@@ -1606,6 +1607,30 @@ function shield(dx: number, dy: number): number {
   return shielded(world.walls, b.x, b.y, b.x + dx, b.y + dy) ? ABSORB_GAIN : 1;
 }
 
+
+/** Längstes verbleibendes Nachglühen (ms) in einer Liste – für die Testhaken. */
+function maxGlow(list: ReadonlyArray<GlowState>, now: number): number {
+  let best = 0;
+  for (const o of list) best = Math.max(best, (o.glowUntil ?? 0) - now);
+  return best;
+}
+/**
+ * BERÜHRT = AUFGELADEN (M94). Eine Wand (oder Platte), die man streift, glüht
+ * kurz nach; wer sich anlehnt oder entlangschrammt, lädt sie auf und sie glüht
+ * lange nach. `glowTouch` (core/afterglow.ts) rechnet die Kurve, hier wird nur
+ * zugewiesen: `litFrom = 0`, damit die Berührung SOFORT leuchtet (ohne die
+ * Wellenfront-Verzögerung des Pings), und `litUntil` nimmt das längere von
+ * beidem – ein Ping darf ein aufgeladenes Glühen nicht abschneiden.
+ */
+function chargeGlow(o: GlowState & { litFrom?: number; litUntil?: number }, now: number): void {
+  const g = glowTouch(o, now);
+  o.glowFrom = g.glowFrom;
+  o.glowAt = g.glowAt;
+  o.glowUntil = g.glowUntil;
+  o.litFrom = 0;
+  o.litUntil = Math.max(o.litUntil ?? 0, g.glowUntil);
+}
+
 // Echo-Ping: Umgebung im Radius aufdecken (als Wellenfront) und die
 // Reflexionen verzögert & räumlich zurückkommen lassen.
 function firePing(now: number): void {
@@ -1622,7 +1647,8 @@ function firePing(now: number): void {
     const dist = Math.hypot(b.x - cx, b.y - cy);
     if (dist > PING_RANGE) continue;
     w.litFrom = now + (dist / PING_SPEED) * 1000;
-    w.litUntil = w.litFrom + 1000;
+    // Ein aufgeladenes Glühen (M94) überlebt den Ping – er deckt auf, er löscht nicht.
+    w.litUntil = Math.max(w.litUntil ?? 0, w.litFrom + 1000);
     // Schallschutzwand: die Wellenfront deckt sie auf (Licht), aber sie
     // antwortet NICHT – ein stilles Stück Richtung ist ihr Signal.
     if (w.absorb) continue;
@@ -3151,8 +3177,9 @@ function frame(now: number): void {
         duskStart = now;
         flash(t('st.dusk'));
       }
-      wall.litFrom = 0; // Berührung leuchtet sofort, ohne Ping-Verzögerung
-      wall.litUntil = now + 1200; // Echo: berührte Wand kurz sichtbar machen
+      // Berührung leuchtet sofort (ohne Ping-Verzögerung) und LÄDT (M94):
+      // je länger der Kontakt, desto länger das Nachglühen.
+      chargeGlow(wall, now);
       const intensity = Math.min(1, hit.impact / 500);
       if (intensity <= 0.06) continue;
       audio.hit(intensity, hit.nx, hit.ny, wall.absorb === true);
@@ -3180,6 +3207,13 @@ function frame(now: number): void {
         }
       }
     }
+
+    // DIE PLATTE LÄDT WIE EINE WAND (M94): Wer darauf steht, bringt sie zum
+    // Glühen, und sie klingt nach demselben Gesetz aus. Das ist auch die
+    // Antwort auf „stehe ich wirklich drauf?" – bisher sagte das Bild das nur,
+    // wenn die Tür daran hing (`held`); ein Resonanzfeld, dessen Duett noch
+    // nicht steht, blieb dunkel.
+    for (const pl of world.platesUnderBall()) chargeGlow(pl, now);
 
     audio.setRolling(Math.min(1, world.ball.speed / world.maxSpeed));
 
@@ -3799,6 +3833,11 @@ function frame(now: number): void {
     // Ladung DIESES Spielers – damit sagt der Haken „ist es für MICH hell?"
     // und macht „bei einem hell, beim anderen dunkel" prüfbar (E2E Lauf 49).
     bright: bright(),
+    // NACHGLÜHEN (M94): das längste verbliebene Glühen AUS BERÜHRUNG (ms), für
+    // Wände und für Platten. Bewusst NICHT `litUntil` – das setzt auch der
+    // Ping, und dann wäre „lädt sich die Wand auf?" nicht mehr messbar.
+    glowMs: Math.round(maxGlow(world.walls, now)),
+    plateGlowMs: Math.round(maxGlow(world.plates, now)),
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,
     spotlight: [...spotTypes],

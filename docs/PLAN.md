@@ -651,6 +651,55 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M94 „Nachglühen lädt sich auf" ✓ (v3.28.0)
+
+Rein visuell, und trotzdem eine Regel: Eine berührte Wand leuchtete bisher
+IMMER GLEICH LANG nach – jeder Kontaktframe setzte `litUntil = now + 1200`.
+Ein Streifschuss im Vorbeirollen und zwei Sekunden Anlehnen hinterließen
+dasselbe Bild. Damit verschenkte die Darstellung die einzige Spur, die im
+Dunkeln wirklich etwas über den Raum sagt: wo man sich AUFGEHALTEN hat.
+
+Jetzt LÄDT die Berührung (`src/core/afterglow.ts`, rein, Units): Die
+Kontaktdauer bestimmt die Nachglühdauer, von 1,2 s (Antippen) bis 4,2 s
+(Sättigung nach 1,6 s Kontakt). Drei Entscheidungen stecken darin:
+
+- DIE KURVE IST EINE WURZEL, keine Gerade. Der häufigste Fall ist der kurze
+  Rempler; linear läge er kaum über dem allerkürzesten. Mit der Wurzel bringt
+  schon ein Viertel der Ladezeit die halbe Ladung, und das lange Anlehnen
+  läuft in die Sättigung, statt endlos zu wachsen.
+- DAUER, NICHT HELLIGKEIT. Ausgeblendet wird weiter über dieselbe letzte
+  Spanne (`GLOW_FADE_MS`, 1200 ms, jetzt EIN Name für Wand, Platte und alles
+  Aufgedeckte); ein geladenes Glühen steht also einfach länger. Helligkeit
+  bedeutet in dieser Welt NÄHE (Ping-Wellenfront, Fackel) – hätte die Ladung
+  auch die Helligkeit gehoben, hieße dieselbe Farbe zwei Dinge.
+- EIN PING LÄDT NICHT. Er deckt auf, er berührt nicht. Deshalb wohnt die
+  Ladung in `glowUntil` (plus `glowFrom`/`glowAt` für die laufende Berührung)
+  und nicht in `litUntil`, das auch die Wellenfront setzt. Umgekehrt DARF der
+  Ping ein geladenes Glühen nicht abschneiden: `litUntil` nimmt das längere
+  von beidem.
+
+DIE DRUCKPLATTE GLÜHT MIT (der zweite Teil des Wunsches): Wer darauf steht,
+lädt sie wie eine Wand, und sie klingt genauso aus – Füllung 0,22 gegen 0,35
+im gehaltenen Zustand, die Spur ist schwächer als die Wirkung. Das schließt
+nebenbei eine echte Lücke: Bisher zeigte das Bild „ich stehe drauf" nur, wenn
+die TÜR daran hing (`held`); ein Resonanzfeld (M91), dessen Duett noch nicht
+steht, blieb dunkel, obwohl die Kugel mitten darin lag.
+
+KONTAKTLÜCKE (`GLOW_GAP_MS` 180 ms): Ein rollender Ball berührt eine Wand
+nicht in jedem Bild. Ohne die Nachsicht begänne die Ladung beim Entlangschrammen
+ständig von vorn, und genau dieser Fall – die Wand, an der man entlangfährt –
+sollte am deutlichsten leuchten. Und ein Glühen wird NIE KÜRZER: Eine frische
+Berührung an einer noch geladenen Wand beginnt zwar eine neue Ladung, schneidet
+die alte Frist aber nicht ab (`Math.max`).
+
+Prüfbar: `__tiltrWorld.glowMs` / `.plateGlowMs` (längstes verbliebenes Glühen
+AUS BERÜHRUNG). E2E Lauf 50 lehnt sich an eine Wand, bis geladen IST (Warten
+auf den Zustand, nicht auf eine Zeit – die erste Fassung hielt fest lange und
+lag mit 2,4 s haarscharf über der Schwelle), pingt (nichts wird abgeschnitten)
+und sieht es danach ausklingen; Lauf 48 prüft das Resonanzfeld, das glüht,
+BEVOR das Tor aufgeht. Beide Zusicherungen einmal rot gesehen (GLOW_MAX_MS auf
+den alten Festwert gesetzt).
+
 ## M93 „Das Coop-Kapitel" ✓ (v3.27.0) – Einklang zuerst, und drei Level, die unterrichten
 
 Die Mittel für zwei Spieler waren fertig (M88 hören, M89 markieren, M90

@@ -101,6 +101,7 @@ const KNOWN_RUNS = [
   "47",
   "48",
   "49",
+  "50",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -8475,6 +8476,18 @@ if (want("48")) {
       duckOn !== null,
     );
 
+    // DIE PLATTE GLÜHT, WEIL JEMAND DARAUFSTEHT (M94) – auch bevor das Duett
+    // steht und die Tür aufgeht. Geladen wird wie an einer Wand, also wächst
+    // der Wert, solange die Kugel liegen bleibt.
+    const plateGlow = await until(async () => {
+      const v = await page.evaluate(() => window.__tiltrWorld?.plateGlowMs ?? null);
+      return v !== null && v >= 3500 ? v : null;
+    }, { timeout: 12000 });
+    check(
+      `Stehen lädt das Resonanzfeld, obwohl das Tor noch zu ist (${plateGlow} ms Nachglühen)`,
+      plateGlow !== null,
+    );
+
     // GESTIMMT WIRD MIT EINEM TIPP: Nach Osten antippen ist die Mitte der
     // Skala (600 Cent, seit sie eine OKTAVE trägt), und der Ton BLEIBT stehen –
     // ein Stimmknopf springt nicht zurück.
@@ -8679,6 +8692,63 @@ if (want("49")) {
   } catch (e) {
     check(
       `Lauf 49 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 50: Nachglühen lädt sich auf (M94). Eine berührte Wand leuchtet und
+// glüht nach – und je länger der Kontakt, desto länger das Nachglühen. Der
+// Haken `__tiltrWorld.glowMs` misst das LÄNGSTE verbliebene Glühen AUS
+// BERÜHRUNG (nicht litUntil, das setzt auch der Ping). Geprüft: vorher null,
+// Anlehnen lädt auf, der Ping löscht nichts, und nach dem Loslassen klingt es
+// aus statt abzureißen. ---
+if (want("50")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 800 }, locale: "de-DE" });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(`${BASE}/?nosplash&seed=4242`);
+    await page.click("#quickBtn");
+    const glow = () => page.evaluate(() => window.__tiltrWorld?.glowMs ?? null);
+    await until(async () => (await glow()) !== null, { timeout: 15000 });
+    const cold = await glow();
+    check(`Vor der ersten Berührung glüht keine Wand (${cold} ms)`, cold === 0);
+
+    // Anlehnen, bis die Wand geladen IST – gewartet wird auf den Zustand, nicht
+    // auf eine Zeit: Unter Last dauert das länger, aber der Wert ist derselbe.
+    // (Ein festes „halten und dann messen" lag bei 2,4 s haarscharf über der
+    // Schwelle und wäre auf einer schnelleren Maschine gekippt.)
+    await page.keyboard.down("ArrowDown");
+    const charged = await until(async () => {
+      const v = await glow();
+      return v !== null && v >= 3500 ? v : null;
+    }, { timeout: 20000 });
+    await page.keyboard.up("ArrowDown");
+    check(
+      `Anlehnen lädt die Wand auf – weit über dem Antipp-Wert 1200 ms (${charged} ms)`,
+      charged !== null && charged >= 3500,
+    );
+
+    // Der Ping deckt auf, er löscht nicht: Ein aufgeladenes Glühen überlebt ihn.
+    await page.keyboard.press("Space");
+    const afterPing = await glow();
+    check(
+      `Der Ping schneidet das geladene Glühen nicht ab (${afterPing} ms)`,
+      afterPing > 2500,
+    );
+
+    // Und es klingt AUS: ohne Berührung wird der Rest kleiner und ist am Ende weg.
+    const decayed = await until(async () => {
+      const v = await glow();
+      return v !== null && charged !== null && v < charged - 500 ? v : null;
+    }, { timeout: 6000 });
+    check(`Ohne Berührung klingt es aus (${decayed} ms < ${charged} ms)`, decayed !== null);
+    const gone = await until(async () => ((await glow()) === 0 ? true : null), { timeout: 8000 });
+    check("Am Ende glüht wieder nichts", gone === true);
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 50 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

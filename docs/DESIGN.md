@@ -207,6 +207,18 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
 - `--t-tap` 120 ms (Button-Feedback), `--t-panel` 250 ms (Ein-/Ausblenden),
   immer `ease-out`. Spielfeld-Animationen (Echo 1200 ms, Reveal 4000 ms)
   sind Gameplay, nicht UI – sie bleiben im Renderer.
+- **Berührtes glüht nach, und zwar nach Kontaktdauer** (M94,
+  `src/core/afterglow.ts`): Eine gestreifte Wand leuchtet 1,2 s nach, eine, an
+  der man sich anlehnt oder entlangschrammt, bis zu 4,2 s – die Kurve ist eine
+  WURZEL (nach einem Viertel der Ladezeit ist die halbe Ladung da), damit der
+  häufige kurze Rempler sich vom mittleren unterscheidet und das lange Anlehnen
+  in eine Sättigung läuft. Ausgeblendet wird immer über dieselbe letzte Spanne
+  (`GLOW_FADE_MS` 1200 ms), also steht ein geladenes Glühen einfach länger, statt
+  heller zu sein: Helligkeit heißt in dieser Welt NÄHE (Ping, Fackel), Dauer
+  heißt „hier war ich". Dieselbe Regel gilt für die DRUCKPLATTE, solange jemand
+  daraufsteht (Füllung 0,22 gegen 0,35 im gehaltenen Zustand – die Spur ist
+  schwächer als die Wirkung). Ein PING lädt nichts: Er deckt auf, er berührt
+  nicht – deshalb hängt das Glühen an `glowUntil` und nicht an `litUntil`.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
   darf nur die Welt. Zwei endliche Ausnahmen. Erstens das
   **Sieges-Konfetti**: zwei Kanonen aus den unteren Bildecken, Farben aus der

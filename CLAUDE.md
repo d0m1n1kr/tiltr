@@ -884,6 +884,30 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   schickt der Host nur die ID; kennt der Gast sie nicht, stieg `mpOnMessage`
   still aus und BEIDE warteten in der Lobby – jetzt steht dort `mp.needsUpdate`
   wie beim Merkmals-Gate (das Gate deckt neue SPIELMITTEL, nicht neue Level).
+- `src/core/afterglow.ts` – NACHGLÜHEN LÄDT SICH AUF (M94): Eine berührte Wand
+  glüht nach, und zwar UMSO LÄNGER, je länger der Kontakt war (1,2 s Antippen
+  bis 4,2 s Sättigung nach 1,6 s). Vorher setzte jeder Kontaktframe dieselbe
+  feste Frist – Streifschuss und Anlehnen sahen gleich aus, und damit fehlte
+  die einzige Spur, die im Dunkeln etwas über den Raum sagt („hier war ich").
+  Die KURVE IST EINE WURZEL (`glowCharge`): Der häufige kurze Rempler soll sich
+  vom mittleren unterscheiden, das lange Anlehnen in eine Sättigung laufen.
+  DAUER, NICHT HELLIGKEIT: Ausgeblendet wird über dieselbe letzte Spanne
+  (`GLOW_FADE_MS`, EIN Name für Wand, Platte und alles Aufgedeckte), ein
+  geladenes Glühen steht also länger – Helligkeit heißt in dieser Welt NÄHE
+  (Ping, Fackel). EIN PING LÄDT NICHT (er deckt auf, er berührt nicht), darf
+  aber auch nichts abschneiden: Die Ladung wohnt in `glowUntil`
+  (+ `glowFrom`/`glowAt`), `litUntil` nimmt das LÄNGERE von Ladung und Ping.
+  `GLOW_GAP_MS` (180 ms) hält eine Berührung über die Bilder zusammen, in denen
+  ein rollender Ball die Wand kurz nicht berührt – sonst begänne genau beim
+  Entlangschrammen die Ladung ständig von vorn; und ein Glühen wird NIE kürzer
+  (`Math.max`), eine frische Berührung löscht die alte Ladung nicht.
+  DIE DRUCKPLATTE LÄDT GENAUSO, solange jemand daraufsteht (`chargeGlow` in
+  app.ts für `world.platesUnderBall()`; Renderer-Füllung 0,22 gegen 0,35 im
+  gehaltenen Zustand – die Spur ist schwächer als die Wirkung). Das schließt
+  eine Lücke: Bisher zeigte das Bild „ich stehe drauf" nur, wenn die TÜR daran
+  hing; ein Resonanzfeld ohne stehendes Duett blieb dunkel. Wer ein weiteres
+  berührbares Ding aufladen will, ruft `chargeGlow` – nicht `litUntil = …`.
+  `__tiltrWorld.glowMs`/`.plateGlowMs` (E2E Lauf 50, Platte in Lauf 48).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,
