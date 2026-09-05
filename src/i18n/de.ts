@@ -337,7 +337,7 @@ export const de = {
   'ed.help.openers': 'Pro Tür: Bleibt GENAU DIESE Tür für immer zu, ist mindestens einer ihrer Öffner noch erreichbar? Rot heißt: Der Schlüssel liegt hinter der Tür, die er öffnet.',
   'ed.help.timer': 'Der Zeitschalter hält lange genug für den Weg zu seiner Tür (mit Sicherheitsfaktor). Nur eine Warnung: Ein knapper Timer ist Schwierigkeit, kein Riegel.',
   'ed.help.softlock': 'Von JEDER erreichbaren Stelle bleibt das Ziel erreichbar. Rot heißt: Ab der genannten Zelle kommt man nicht mehr hin, und der Bericht nennt den Grund – eine Tür, die hinter dir zufällt, ein Transporter in eine Ebene ohne Rückweg, eine Einbahn-Strömung oder eine brüchige Wand. Gerechnet wird nur mit Wänden, Türen, Strömungen und Transportern: Horcher und Wächter sind hier NIE der Grund (Wächter prüft das eigene Badge).',
-  'ed.help.guards': 'An jedem Wächter kommt man vorbei: Eine Zelle seiner Patrouille muss frei bleiben, während man passiert. Rot: Er versiegelt den Gang – Ausweichbucht oder Quer-Passage einbauen.',
+  'ed.help.guards': 'An jedem Wächter kommt man vorbei: Eine Zelle seiner Patrouille muss frei bleiben, während man passiert. Auch eine Strömungs-Nische zählt (zwei Strömungen, die auf eine Kante zeigen): Dort klemmt die Kugel auf der Naht, und ein Wächter der Nachbarzellen kommt nicht heran. Rot: Er versiegelt den Gang – Ausweichbucht, Quer-Passage oder Nische einbauen.',
   'ed.help.items': 'Gems, Kristalle und Sanduhren liegen erreichbar. Nur eine Warnung – ein unerreichbares Sammelziel kostet den dritten Stern, sperrt aber nichts.',
   'ed.help.jukebox': 'Der Automat ist ein massiver Kasten: Er darf nicht auf Start, Ziel oder einer Patrouille stehen, muss anrempelbar sein und keinen Pflichtweg blockieren.',
   'ed.help.resonance':

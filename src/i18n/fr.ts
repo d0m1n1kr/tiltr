@@ -333,7 +333,7 @@ export const fr: Dict = {
   'ed.help.openers': 'Par porte : si CETTE porte ne s’ouvre jamais, au moins un de ses ouvreurs reste-t-il accessible ? Rouge : la clé est derrière la porte qu’elle ouvre.',
   'ed.help.timer': 'Le minuteur tient assez longtemps pour le trajet jusqu’à sa porte (avec marge). Simple avertissement : un minuteur juste, c’est de la difficulté.',
   'ed.help.softlock': 'Depuis CHAQUE case atteignable, le but reste atteignable. Rouge : depuis la case nommée il n’y a plus de retour, et le rapport en nomme la cause – une porte qui se referme derrière toi, un téléporteur vers un étage sans retour, un courant à sens unique ou un mur fragile. Seuls murs, portes, courants et téléporteurs comptent ici : les guetteurs et les gardes ne sont JAMAIS la cause (les gardes ont leur propre badge).',
-  'ed.help.guards': 'On peut passer chaque gardien : une case de sa patrouille doit rester libre. Rouge : il scelle le couloir – ajoute un renfoncement ou un passage transversal.',
+  'ed.help.guards': 'On peut passer chaque gardien : une case de sa patrouille doit rester libre. Une niche de courants compte aussi (deux courants pointant vers une même arête) : la bille y est bloquée sur la jointure, hors de portée d’un gardien des cellules voisines. Rouge : il scelle le couloir – ajoute un renfoncement ou un passage transversal.',
   'ed.help.items': 'Gemmes, cristaux et sabliers sont accessibles. Simple avertissement – un objet inaccessible coûte la troisième étoile, rien de plus.',
   'ed.help.jukebox': 'Le juke-box est un bloc massif : ni sur le départ, ni sur le but, ni sur une patrouille ; il doit être heurtable et ne pas bloquer un passage obligé.',
   'ed.help.resonance':

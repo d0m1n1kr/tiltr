@@ -651,6 +651,52 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M105 „Strömungs-Nische" ✓ (v3.45.0)
+
+Gemeldet: „Der Check der Passierbarkeit von Wächtern muss erweitert werden:
+Wenn man zwei Strömungen auf eine Kante zeigen lässt und rechts und links ein
+Wächter läuft und man genau dazwischen auf der Kante steht, kommt man an den
+Wächtern vorbei."
+
+Er hat recht, und die Physik sagt warum: Seit M101 gibt es in einer
+Strömungszelle keine Geschwindigkeit gegen den Strom. Zwei Strömungen, die über
+eine offene Kante aufeinander zeigen, klemmen die Kugel deshalb GENAU auf die
+Naht – sie pendelt um weniger als ein Pixel. Dort ist sie CELL/2 = 50 von
+beiden Zellmitten entfernt; ein Wächter läuft durch die Zellmitte und berührt
+ab r + BALL_R = 26 + 22 = 48. Zwei Einheiten Luft, aber Luft. Die Naht ist ein
+sicherer Halt mitten in der Patrouille.
+
+WARUM DER BEWEIS ROT WAR: Zwei offene Bahnen nebeneinander galten schon vorher
+als passierbar (die Nachbarbahn zählt als Bucht). Rot wurde es erst, als die
+STRÖMUNGEN dazukamen – aus einer Strömungszelle folgte der BFS nur der
+Fließrichtung und ließ die Wächter-Kanten aus (`continue` vor den Sprüngen),
+und die Fließrichtung führt in die Gegenströmung. Die Strömungen, die die
+Passage sicher machen, machten sie im Modell dicht.
+
+IM MODELL ist die Naht ein ZUGANG der Patrouille an der Stelle der Nischen-Zelle
+(`currentPockets` findet die Paare, `guardEdges` trägt sie ein). Damit teilt
+sie den Weg über die Patrouille in zwei Teile, die je für sich eine freie Zelle
+für den Wächter brauchen – dieselbe Regel wie bisher, nur mit einem Halt
+dazwischen. Beide Nischen-Zellen sind verbunden, denn die Kugel liegt auf der
+Kante zwischen ihnen: So trägt eine Nische auch über zwei Patrouillen (links
+und rechts je ein Wächter, das gemeldete Bild). Ausgeschlossen: Die Patrouille
+läuft von der einen Nischen-Zelle in die andere (der Wächter kreuzt die Naht),
+oder der Wächter ist so dick, dass r + BALL_R ≥ CELL/2. Aus einer Nischen-Zelle
+folgt der BFS den Wächter-Kanten, obwohl sie eine Strömungszelle ist.
+
+UND DAS OFFENE MODELL KENNT DIE NAHT ALS DURCHGANG QUER ZUM STROM: Die Kugel
+liegt in beiden Zellen zugleich und kann längs der Naht rollen, wenn auf dieser
+Seite BEIDE Zellen offen sind UND zwischen den beiden Nachbarzellen keine Wand
+steht (die Kugel überlappt mit 22 Einheiten beide Seiten). Fehlt das, ist die
+Nische eine FALLE – beide Ströme sind stärker als die Neigung, und das Ziel
+bleibt zu Recht rot (Unit „Wandfenster ohne Ausgang"). Alles andere an der
+Strömung bleibt konservativ (kein Sog längs der Naht, kein Transporter).
+
+Die Units (tests/guardPocket.test.ts) enthalten die PHYSIK-PROBE dazu: Ein
+Wächter läuft durch die Nischen-Zelle, die Kugel klemmt auf der Naht, und
+`guardCaught()` bleibt null – der Beweis behauptet nichts, was die Simulation
+nicht hält (Lektion M101).
+
 ## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phase 2 ✓ (v3.41.0, Vorschau v3.42.0), Phase 3 ✓ (v3.43.0), Phase 4 geplant
 
 Gewünscht: „Der Weg wird ja bereits protokolliert. Ich möchte, dass man das

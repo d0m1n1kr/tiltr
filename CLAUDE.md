@@ -157,6 +157,30 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   Ein-Zellen-Korridor NICHT vorbei, also werden Patrouillen abschnittsweise
   gequert – nur solange eine Patrouillenzelle für den Wächter frei bleibt.
   Neue Level mit Wächtern brauchen Ausweichbuchten oder Quer-Passagen.
+  STRÖMUNGS-NISCHE (M105, v3.45.0): Zwei Strömungen, die über eine offene Kante
+  aufeinander zeigen, klemmen die Kugel GENAU auf die Naht (M101-Klemme); dort
+  ist sie CELL/2 = 50 von beiden Zellmitten entfernt, berührt wird ab
+  r + BALL_R = 48 – ein Wächter der Nachbarzellen kommt nicht heran. Gemeldet
+  als Lücke: „wenn man zwei Strömungen auf eine Kante zeigen lässt und rechts
+  und links ein Wächter läuft und man genau dazwischen auf der Kante steht,
+  kommt man an den Wächtern vorbei." Im Modell (`currentPockets`, `guardEdges`)
+  ist die Naht ein ZUGANG mitten in der Patrouille: Sie teilt den Weg in zwei
+  Teile, die je für sich eine freie Zelle für den Wächter brauchen, und beide
+  Nischen-Zellen sind verbunden (wer in der einen steht, steht in der anderen)
+  – so bringt sie einen auch über zwei Patrouillen. ROT WAR ES VORHER, weil der
+  BFS aus einer Strömungszelle nur der Fließrichtung folgte und die
+  Wächter-Kanten ausließ: Die Strömungen, die die Passage sicher machen,
+  machten sie im Modell dicht. Im OFFENEN Modell ist die Naht ein Durchgang
+  QUER zum Strom, wenn auf dieser Seite beide Zellen offen sind und zwischen
+  den Nachbarzellen keine Wand steht; sonst ist die Nische eine FALLE (beide
+  Ströme stärker als die Neigung) und das Ziel bleibt zu Recht rot. NICHT, wenn die Patrouille
+  von der einen Nischen-Zelle in die andere läuft (der Wächter kreuzt die Naht)
+  oder der Wächter so dick ist, dass r + BALL_R ≥ CELL/2. Aus einer
+  Nischen-Zelle folgen im `reachable`-BFS die Wächter-Kanten, obwohl sie eine
+  Strömungszelle ist (`pockets`); alles andere an der Strömung bleibt
+  konservativ. Units in tests/guardPocket.test.ts, darunter die Physik-Probe:
+  Wächter läuft durch die Nischen-Zelle, die Kugel auf der Naht wird nicht
+  gefangen.
   TÜR NUR FÜR EINEN SPIELER (M72): `door.player` 1|2 – für den anderen ist sie
   eine WAND, überall gleich: Das Element baut sie ohne `door`-Eigenschaft
   (`ctx.player` im BuildContext), `buildFloorCells` mauert die Kante in JEDEM

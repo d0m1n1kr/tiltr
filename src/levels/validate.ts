@@ -10,6 +10,7 @@
 // liegen. Jukebox-Zellen sind dagegen IMMER gesperrt: Der Automat ist ein
 // massiver Kasten, keine Gefahr, die man umgehen könnte.
 
+import { BALL_R, CELL } from '../core/constants';
 import { generateMaze, mirrorCells, setWall, type Cell } from '../core/maze';
 import { MUSIC_IDS } from '../music';
 import { mulberry32 } from '../core/rng';
@@ -140,6 +141,57 @@ const NEIGHBORS = [
   ['w', -1, 0],
 ] as const;
 
+const DELTA: Record<'n' | 'e' | 's' | 'w', readonly [number, number]> = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
+
+/** Patrouillen samt Wächter-Radius – für die Strömungs-Nische zählt, ob der
+ *  Wächter an der Kante vorbeikommt, ohne die Kugel zu berühren. */
+function patrolGuards(floor: FloorDef): Array<{ line: Array<[number, number]>; r: number }> {
+  const out: Array<{ line: Array<[number, number]>; r: number }> = [];
+  const lines = patrolLines(floor);
+  let i = 0;
+  for (const el of floor.elements) {
+    if (el.type !== 'guard') continue;
+    const line = lines[i++];
+    if (line) out.push({ line, r: el.r });
+  }
+  return out;
+}
+
+/** STRÖMUNGS-NISCHE (M105): Zwei Strömungen, die über eine OFFENE Kante
+ *  aufeinander zeigen, klemmen die Kugel GENAU auf die Kante (M101: in der
+ *  Zelle gibt es keine Geschwindigkeit gegen den Strom, also pendelt sie auf
+ *  der Naht). Dort ist sie CELL/2 von beiden Zellmitten entfernt – ein
+ *  Wächter, der durch eine der beiden Zellen läuft, kommt nur bis auf 50
+ *  heran, und berührt wird ab `r + BALL_R` (Vorgabe 26 + 22 = 48). Die Naht
+ *  ist also ein sicherer Halt mitten in der Patrouille: Man wartet dort, bis
+ *  er vorbei ist. Gemeldet als Lücke des Beweises: „wenn man zwei Strömungen
+ *  auf eine Kante zeigen lässt und rechts und links ein Wächter läuft und man
+ *  genau dazwischen auf der Kante steht, kommt man an den Wächtern vorbei."
+ *  Gefunden werden Paare (A, B) mit A → B und B → A; die Kante muss offen
+ *  sein (sonst wäre die Strömung ein Dauer-Pin, den der Loader ablehnt). */
+function currentPockets(floor: FloorDef, cells: Cell[]): Array<{ a: [number, number]; b: [number, number] }> {
+  const [cols, rows] = floor.size;
+  const dirAt = new Map<number, 'n' | 'e' | 's' | 'w'>();
+  for (const el of floor.elements) if (el.type === 'current') dirAt.set(el.cell[1] * cols + el.cell[0], el.dir);
+  const out: Array<{ a: [number, number]; b: [number, number] }> = [];
+  for (const el of floor.elements) {
+    if (el.type !== 'current') continue;
+    // Nur 'e' und 's' – jedes Paar genau einmal.
+    if (el.dir !== 'e' && el.dir !== 's') continue;
+    const [ax, ay] = el.cell;
+    const [dx, dy] = DELTA[el.dir];
+    const bx = ax + dx;
+    const by = ay + dy;
+    if (bx >= cols || by >= rows) continue;
+    if (dirAt.get(by * cols + bx) !== OPPOSITE[el.dir]) continue;
+    if (cells[ay * cols + ax]![el.dir]) continue; // Wand dazwischen: keine Naht
+    out.push({ a: [ax, ay], b: [bx, by] });
+  }
+  return out;
+}
+
+const sameCell = (a: readonly [number, number], b: readonly [number, number]) => a[0] === b[0] && a[1] === b[1];
+
 /**
  * Wächter-Modell für reachable(guardSafe): Patrouillenzellen werden gesperrt
  * und stattdessen durch GERICHTETE Kanten zwischen ihren Zugängen ersetzt –
@@ -151,11 +203,18 @@ const NEIGHBORS = [
 function guardEdges(
   floor: FloorDef,
   cells: Cell[],
-): { blocked: number[]; edges: Array<{ from: readonly [number, number]; to: readonly [number, number] }> } {
+  pockets: Array<{ a: [number, number]; b: [number, number] }>,
+): {
+  blocked: number[];
+  edges: Array<{ from: readonly [number, number]; to: readonly [number, number] }>;
+} {
   const [cols, rows] = floor.size;
   const blocked: number[] = [];
   const edges: Array<{ from: readonly [number, number]; to: readonly [number, number] }> = [];
-  for (const line of patrolLines(floor)) {
+  // Die Naht verbindet beide Nischen-Zellen: Wer in der einen „steht", steht
+  // in der anderen – die Kugel liegt ja auf der Kante zwischen ihnen.
+  for (const { a, b } of pockets) edges.push({ from: a, to: b }, { from: b, to: a });
+  for (const { line, r } of patrolGuards(floor)) {
     for (const [x, y] of line) blocked.push(y * cols + x);
     // Zugänge: offene Nachbarzellen außerhalb dieser Patrouille
     const access: Array<{ at: number; cell: [number, number] }> = [];
@@ -169,6 +228,27 @@ function guardEdges(
         access.push({ at, cell: [nx, ny] });
       }
     });
+    // STRÖMUNGS-NISCHE (M105): Liegt eine Nischen-Zelle auf dieser Patrouille,
+    // ist die Naht ein Zugang MITTEN in der Linie – ein sicherer Halt, der den
+    // Weg in zwei Teile teilt, die je für sich eine freie Zelle für den
+    // Wächter brauchen. Nicht, wenn die Patrouille von der Zelle in die andere
+    // Nischen-Zelle läuft (dann kreuzt der Wächter die Naht) und nicht, wenn
+    // er dick genug ist, um von der Zellmitte bis zur Naht zu reichen.
+    if (r + BALL_R < CELL / 2) {
+      for (const { a, b } of pockets) {
+        for (const [mine, other] of [
+          [a, b],
+          [b, a],
+        ] as const) {
+          const at = line.findIndex((p) => sameCell(p, mine));
+          if (at === -1) continue;
+          const prev = line[at - 1];
+          const next = line[at + 1];
+          if ((prev && sameCell(prev, other)) || (next && sameCell(next, other))) continue;
+          access.push({ at, cell: [mine[0], mine[1]] });
+        }
+      }
+    }
     for (const a of access) {
       // Die Patrouillenzelle selbst betreten (und wieder verlassen).
       if (line.length > 1) edges.push({ from: a.cell, to: line[a.at]! });
@@ -184,9 +264,19 @@ function guardEdges(
 export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<string> {
   const floors = def.floors.map((f, fi) => {
     const cells = buildFloorCells(f, cfg, def.mirror, fi);
-    const guards = cfg.guardSafe ? guardEdges(f, cells) : null;
+    // Strömungs-Nischen (M105) gelten in JEDEM Modell: Die Naht ist ein Ort,
+    // den die Kugel wirklich einnimmt – der Wächter-Beweis macht daraus einen
+    // sicheren Halt, das offene Modell einen Durchgang quer zum Strom.
+    const pocketPairs = currentPockets(f, cells);
+    const pocketPartner = new Map<number, number>();
+    for (const { a, b } of pocketPairs) {
+      pocketPartner.set(a[1] * f.size[0] + a[0], b[1] * f.size[0] + b[0]);
+      pocketPartner.set(b[1] * f.size[0] + b[0], a[1] * f.size[0] + a[0]);
+    }
+    const guards = cfg.guardSafe ? guardEdges(f, cells, pocketPairs) : null;
     return {
     cells,
+    pocketPartner,
     cols: f.size[0],
     rows: f.size[1],
     jumps: [
@@ -257,6 +347,41 @@ export function reachable(def: LevelDef, cfg: CellConfig, from?: StartPos): Set<
       if (flow === 'e' && !c.e && x < floor.cols - 1) push(fl, x + 1, y, 'e');
       if (flow === 's' && !c.s && y < floor.rows - 1) push(fl, x, y + 1, 's');
       if (flow === 'w' && !c.w && x > 0) push(fl, x - 1, y, 'w');
+      // STRÖMUNGS-NISCHE (M105): Die Kugel liegt auf der NAHT zwischen beiden
+      // Zellen – sie ist in beiden zugleich (Partner), und QUER zum Strom kann
+      // sie die Naht entlangrollen, wenn auf dieser Seite BEIDE Zellen offen
+      // sind UND zwischen den beiden Nachbarzellen keine Wand steht (die Kugel
+      // überlappt mit 22 Einheiten beide Seiten der Naht). Ein Sog längs der
+      // Naht bleibt tabu, Transporter ebenso.
+      const partnerIdx = floor.pocketPartner.get(y * floor.cols + x);
+      if (partnerIdx !== undefined) {
+        const px = partnerIdx % floor.cols;
+        const py = Math.floor(partnerIdx / floor.cols);
+        push(fl, px, py);
+        const pc = floor.cells[partnerIdx]!;
+        const axisX = flow === 'e' || flow === 'w';
+        for (const [ldir, ldx, ldy] of NEIGHBORS) {
+          const lateral = axisX ? ldir === 'n' || ldir === 's' : ldir === 'e' || ldir === 'w';
+          if (!lateral || c[ldir] || pc[ldir]) continue;
+          const nx = x + ldx;
+          const ny = y + ldy;
+          const qx = px + ldx;
+          const qy = py + ldy;
+          if (nx < 0 || ny < 0 || nx >= floor.cols || ny >= floor.rows) continue;
+          if (qx < 0 || qy < 0 || qx >= floor.cols || qy >= floor.rows) continue;
+          // Wand zwischen den beiden Nachbarzellen? Die Kante von n nach q.
+          const nc = floor.cells[ny * floor.cols + nx]!;
+          const towardQ = qx > nx ? 'e' : qx < nx ? 'w' : qy > ny ? 's' : 'n';
+          if (nc[towardQ]) continue;
+          push(fl, nx, ny, ldir);
+          push(fl, qx, qy, ldir);
+        }
+        // Wächter-Kanten aus der Nische: Von der Naht wartet man, bis der
+        // Wächter vorbei ist, und huscht dann zum nächsten Zugang.
+        for (const j of floor.jumps) {
+          if ('guardEdge' in j && j.from[0] === x && j.from[1] === y) push(j.toFloor, j.toCell[0], j.toCell[1], undefined, true);
+        }
+      }
       continue;
     }
     if (!c.n && y > 0) push(fl, x, y - 1, 'n');
