@@ -90,11 +90,14 @@ export class World {
   iceFriction = 0.15; // Dämpfung auf Eis: der Ball gleitet weiter
   iceControl = 0.45; // Anteil der Neigungs-Beschleunigung auf Eis (schwammig)
   /** Reibung im Sand (M103). Die Endgeschwindigkeit ist `accel / friction`:
-   *  auf Stein 2600/1,4 (über `maxSpeed`, also volle 900), im Sand 2600/5,0 =
-   *  520 – gut die Hälfte. Genau das heißt „langsam": nicht klebrig, sondern
-   *  gedeckelt. Gelenkt wird weiter voll (kein eigener `control`) – im Sand
-   *  fehlt der Schwung, nicht der Grip. */
-  sandFriction = 5.0;
+   *  auf Stein 2600/1,4 (über `maxSpeed`, also volle 900), im Sand 2600/12 ≈
+   *  217 – knapp ein Viertel. Und die Zeitkonstante 1/12 s heißt: Wer mit
+   *  voller Fahrt hineinrollt, ist nach rund 80 ms auf Sandtempo – man SPÜRT
+   *  die Kante. Die erste Fassung (5,0 → 520, „gut die Hälfte") war gemeldet
+   *  zu schwach: „Sand soll viel stärker bremsen" (v3.44.0). „Langsam" heißt
+   *  weiter gedeckelt, nicht klebrig: Gelenkt wird voll (kein eigener
+   *  `control`) – im Sand fehlt der Schwung, nicht der Grip. */
+  sandFriction = 12;
   /** Ab dieser Ballgeschwindigkeit gilt "in Bewegung" (Horcher jagt) */
   listenerWakeSpeed = 40;
 

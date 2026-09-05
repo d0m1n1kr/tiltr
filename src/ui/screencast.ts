@@ -16,8 +16,18 @@
 
 import { tailAlpha, titleAlpha } from '../core/cast';
 
+/** Was die Aufnahme an TON bekommen hat – beim Start festgehalten. Ohne das
+ *  ist „Video ohne Ton" nicht von „Ton ohne Spur" zu trennen (v3.44.0). */
+export interface CastDiag {
+  audioTracks: number;
+  muted: boolean[];
+  enabled: boolean[];
+  ready: string[];
+}
+
 export interface CastSession {
   readonly mime: string;
+  readonly diag: CastDiag;
   /** Bisher angelieferte Bytes (wächst in Stücken, nicht je Bild). */
   bytes(): number;
   /** Aufnahme anhalten / weiterführen (Phase 3: stummes Vorspulen zwischen
@@ -56,6 +66,13 @@ export function startCast(canvas: HTMLCanvasElement, audio: MediaStream | null, 
   const video = canvas.captureStream(CAST_FPS);
   const tracks = [...video.getVideoTracks(), ...(audio ? audio.getAudioTracks() : [])];
   const stream = new MediaStream(tracks);
+  const at = audio ? audio.getAudioTracks() : [];
+  const diag: CastDiag = {
+    audioTracks: at.length,
+    muted: at.map((t) => t.muted),
+    enabled: at.map((t) => t.enabled),
+    ready: at.map((t) => t.readyState),
+  };
   const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: CAST_BITRATE });
   const chunks: Blob[] = [];
   let total = 0;
@@ -73,6 +90,7 @@ export function startCast(canvas: HTMLCanvasElement, audio: MediaStream | null, 
   };
   return {
     mime,
+    diag,
     bytes: () => total,
     pause: () => {
       if (rec.state === 'recording') rec.pause();

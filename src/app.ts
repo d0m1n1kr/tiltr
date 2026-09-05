@@ -69,7 +69,7 @@ import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel, type TestRun, type TestStart } from './ui/editor';
 import { isShareable, validateLevel } from './levels/validate';
 import { APP_URL, promoCaption, promoShare } from './promo';
-import { DEFAULT_CAST, TAIL_MS, TITLE_HOLD_MS, castFileName, expectedCastMs, fmtBytes, highlightSeconds, pickCastMime, type CastOptions } from './core/cast';
+import { DEFAULT_CAST, TAIL_MS, TITLE_HOLD_MS, castExtension, castFileName, castFormats, expectedCastMs, fileHasAudioTrack, fmtBytes, highlightSeconds, pickCastMime, pickCastMimeFor, type CastOptions } from './core/cast';
 import { DEFAULT_HIGHLIGHTS, selectHighlights, type Segment } from './core/highlights';
 import { castSupported, castTheme, drawCastOverlay, mimeSupported, startCast, type CastSession, type CastTheme } from './ui/screencast';
 import { setupWorkshopPanel } from './ui/workshopPanel';
@@ -343,6 +343,9 @@ let lastCast: {
   mode: CastOptions['mode'];
   segments: number | null;
   skips: number;
+  /** Tonspur in der Datei? null = Container unbekannt / leer */
+  hasAudio: boolean | null;
+  diag: CastSession['diag'];
 } | null = null;
 let lastReplay: { frames: number; drift: number; goal: boolean; time: number | null } | null = null;
 /** Die zuletzt gezeigte Karte – nach einem Replay kommt sie wieder. */
@@ -3147,6 +3150,12 @@ function renderCastChips(): void {
   $('castLight1').classList.toggle('active', castOpts.bright);
   $('castMode0').classList.toggle('active', castOpts.mode === 'full');
   $('castMode1').classList.toggle('active', castOpts.mode === 'highlights');
+  // Format nur zur Wahl, wenn es eine ist (Chrome: mp4 und webm; Safari: nur mp4).
+  const formats = castFormats(mimeSupported);
+  $('castFormatRow').classList.toggle('hidden', formats.length < 2);
+  const chosen = castOpts.format === 'auto' ? castExtension(pickCastMime(mimeSupported) ?? 'video/webm') : castOpts.format;
+  $('castFmt0').classList.toggle('active', chosen === 'mp4');
+  $('castFmt1').classList.toggle('active', chosen === 'webm');
   // Was dabei herauskommt – damit die Wahl eine Wahl ist und kein Rätsel.
   const rec = lastRun?.rec;
   if (rec) {
@@ -3198,12 +3207,20 @@ $('castMode1').addEventListener('click', () => {
   castOpts = { ...castOpts, mode: 'highlights' };
   renderCastChips();
 });
+$('castFmt0').addEventListener('click', () => {
+  castOpts = { ...castOpts, format: 'mp4' };
+  renderCastChips();
+});
+$('castFmt1').addEventListener('click', () => {
+  castOpts = { ...castOpts, format: 'webm' };
+  renderCastChips();
+});
 $('castBack').addEventListener('click', closeCastSheet);
 $('castGo').addEventListener('click', () => void startCastRecording());
 
 async function startCastRecording(): Promise<void> {
   if (!lastRun || replay || cast) return;
-  const mime = pickCastMime(mimeSupported);
+  const mime = (castOpts.format === 'auto' ? null : pickCastMimeFor(castOpts.format, mimeSupported)) ?? pickCastMime(mimeSupported);
   if (!mime || !castSupported()) return;
   const { rec, def } = lastRun;
   castSheet.classList.add('hidden');
@@ -3289,6 +3306,13 @@ async function finishCast(): Promise<void> {
   timerEl.classList.remove('rec');
   timerEl.title = '';
   const durationMs = performance.now() - c.startedAt;
+  // TONSPUR PRÜFEN (v3.44.0): Ein Gerät lieferte ein Video ohne Ton, während
+  // man beim Aufnehmen Ton hörte. Bytes zählen sagt darüber nichts – der
+  // Dateikopf schon (core/cast.ts). Die Karte sagt es dann in Klartext, mit
+  // dem, was die Aufnahme an Spuren bekommen hat.
+  const head = new Uint8Array(await blob.slice(0, 2_000_000).arrayBuffer());
+  const hasAudio = blob.size > 0 ? fileHasAudioTrack(head) : null;
+  const diagText = `${c.session.diag.audioTracks} ${t('cast.trackWord')}, muted ${c.session.diag.muted.join('/') || '-'}, ${blob.type || c.session.mime}`;
   lastCast = {
     bytes: blob.size,
     mime: blob.type,
@@ -3298,6 +3322,8 @@ async function finishCast(): Promise<void> {
     mode: c.opts.mode,
     segments: c.segments?.length ?? null,
     skips: c.skips,
+    hasAudio,
+    diag: c.session.diag,
   };
   const back: InterAction = { label: t('cast.back'), onClick: () => { if (c.card) showInterstitial(c.card); } };
   if (blob.size === 0) {
@@ -3311,9 +3337,13 @@ async function finishCast(): Promise<void> {
   // freigegeben, wenn ein neues Video da ist (oder das Menü kommt).
   if (castVideoUrl) URL.revokeObjectURL(castVideoUrl);
   castVideoUrl = URL.createObjectURL(blob);
+  const otherFormat = castFormats(mimeSupported).length > 1;
   showInterstitial({
     title: t('cast.doneTitle', { size: fmtBytes(blob.size) }),
-    text: t('cast.doneText'),
+    text:
+      hasAudio === false
+        ? `${t('cast.noAudio', { diag: diagText })}${otherFormat ? ` ${t('cast.tryOther')}` : ''}\n${t('cast.doneText')}`
+        : t('cast.doneText'),
     video: castVideoUrl,
     extra: {
       label: t('cast.save'),

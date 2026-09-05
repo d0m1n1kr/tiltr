@@ -836,7 +836,10 @@ interessante Frage war, was „langsam" heißt.
 LANGSAM HEISST GEDECKELT, NICHT KLEBRIG. Eine hohe Reibung könnte auch heißen
 „die Kugel bleibt stehen, wenn man loslässt" – das wäre eine Bremse, kein
 Untergrund. Die Endgeschwindigkeit ist `accel / friction`: auf Stein 2600/1,4 (also über `maxSpeed`, volle 900), im
-Sand 2600/5,0 = 520. Wer neigt, rollt – nur nie schnell. Und GELENKT wird
+Sand 2600/12 ≈ 217 (seit v3.44.0; die erste Fassung mit 5,0 → 520 war
+gemeldet zu schwach: „Sand soll viel stärker bremsen" – jetzt spürt man die
+Kante, von voller Fahrt in ~80 ms auf Sandtempo). Wer neigt, rollt – nur nie
+schnell. Und GELENKT wird
 weiter voll: Sand bekommt bewusst KEINEN eigenen `control` wie das Eis (0,45).
 Eis nimmt den Grip in beide Richtungen, Sand nimmt nur den Schwung. Zwei
 Untergründe, zwei verschiedene Aussagen – sonst wäre Sand nur „Eis mit

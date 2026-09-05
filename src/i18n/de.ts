@@ -500,6 +500,10 @@ export const de = {
   'cast.infoFull': 'Video ≈ {s} s',
   'cast.infoHighlights': '{n} Szenen · Video ≈ {s} s',
   'cast.highlightsTag': 'Highlights',
+  'cast.format': 'Format',
+  'cast.noAudio': '⚠ Die Datei hat keine Tonspur ({diag}).',
+  'cast.tryOther': 'Mit ⚙ das Format wechseln und neu aufnehmen.',
+  'cast.trackWord': 'Spur(en)',
   'res.winTitle': 'Ziel in {time} 🎉',
 
   /* --- Tages-Challenge --- */

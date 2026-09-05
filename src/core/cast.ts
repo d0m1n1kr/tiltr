@@ -75,6 +75,52 @@ export function tailAlpha(sinceEndMs: number): number {
   return Math.min(1, sinceEndMs / TAIL_FADE_MS);
 }
 
+/** Hat die fertige Datei eine TONSPUR? Byte-Blick in den Kopf: mp4 führt je
+ *  Spur einen `hdlr` mit 'soun' bzw. 'vide'; webm nennt den Codec im Klartext
+ *  (A_OPUS, A_AAC, A_VORBIS). null = Container unbekannt, keine Aussage.
+ *  Gebaut, weil ein Gerät ein Video OHNE Ton lieferte, während man beim
+ *  Aufnehmen Ton hörte (v3.44.0) – Bytes zählen sagt darüber nichts. */
+export function fileHasAudioTrack(head: Uint8Array): boolean | null {
+  let txt = '';
+  const n = Math.min(head.length, 2_000_000);
+  for (let i = 0; i < n; i++) {
+    const c = head[i]!;
+    txt += c >= 32 && c < 127 ? String.fromCharCode(c) : '.';
+  }
+  const isMp4 = txt.includes('ftyp') || txt.includes('moov');
+  const isWebm = txt.includes('webm') || txt.includes('matroska');
+  if (isMp4) return txt.includes('soun');
+  if (isWebm) return /A_(OPUS|AAC|VORBIS|PCM)/.test(txt);
+  return null;
+}
+
+export type CastFormat = 'mp4' | 'webm';
+
+/** Welche Container das Gerät kann – für den Format-Regler (nur gezeigt,
+ *  wenn es mehr als einen gibt) und als Ausweg, wenn eine Datei ohne Tonspur
+ *  herauskam. */
+export function castFormats(supported: (mime: string) => boolean): CastFormat[] {
+  const out: CastFormat[] = [];
+  for (const f of ['mp4', 'webm'] as const) {
+    if (CAST_MIMES.some((m) => castExtension(m) === f && safeSupported(supported, m))) out.push(f);
+  }
+  return out;
+}
+
+function safeSupported(supported: (mime: string) => boolean, m: string): boolean {
+  try {
+    return supported(m);
+  } catch {
+    return false;
+  }
+}
+
+/** Den besten Kandidaten EINES Formats wählen. */
+export function pickCastMimeFor(format: CastFormat, supported: (mime: string) => boolean): string | null {
+  for (const m of CAST_MIMES) if (castExtension(m) === format && safeSupported(supported, m)) return m;
+  return null;
+}
+
 export interface CastOptions {
   /** Zeitraffer: so viele Mitschnitt-Bilder je gezeichnetem Bild */
   speed: 1 | 2;
@@ -82,9 +128,11 @@ export interface CastOptions {
   bright: boolean;
   /** Ganz oder nur die Fenster der Highlight-Schere (Phase 3) */
   mode: 'full' | 'highlights';
+  /** Container: 'auto' = bester Kandidat (mp4 vor webm), sonst erzwungen */
+  format: 'auto' | CastFormat;
 }
 
-export const DEFAULT_CAST: CastOptions = { speed: 1, bright: true, mode: 'full' };
+export const DEFAULT_CAST: CastOptions = { speed: 1, bright: true, mode: 'full', format: 'auto' };
 
 /** Summe der Fensterlängen in Sekunden – das, was ein Highlight-Video zeigt. */
 export function highlightSeconds(segments: readonly { from: number; to: number }[]): number {

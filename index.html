@@ -1036,6 +1036,15 @@
           <button id="castMode1" class="btn chip" data-i18n="cast.highlights"></button>
         </span>
       </div>
+      <!-- Nur, wenn das Gerät mehr als einen Container kann (Chrome: mp4 UND
+           webm). Ein Ausweg, wenn eine Datei ohne Tonspur herauskommt. -->
+      <div id="castFormatRow" class="cast-row hidden">
+        <span data-i18n="cast.format"></span>
+        <span class="cast-chips">
+          <button id="castFmt0" class="btn chip">mp4</button>
+          <button id="castFmt1" class="btn chip">webm</button>
+        </span>
+      </div>
       <div class="cast-row">
         <span data-i18n="cast.speed"></span>
         <span class="cast-chips">

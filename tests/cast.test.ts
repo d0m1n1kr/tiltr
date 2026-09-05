@@ -10,9 +10,12 @@ import {
   TITLE_MS,
   castExtension,
   castFileName,
+  castFormats,
   expectedCastMs,
+  fileHasAudioTrack,
   fmtBytes,
   highlightSeconds,
+  pickCastMimeFor,
   pickCastMime,
   tailAlpha,
   titleAlpha,
@@ -64,6 +67,26 @@ describe('Screencast (M104, Phase 2)', () => {
     expect(TITLE_HOLD_MS).toBe(TITLE_MS - TITLE_FADE_MS);
     expect(expectedCastMs(10, 1)).toBe(TITLE_HOLD_MS + 10000 + TAIL_MS);
     expect(expectedCastMs(10, 2)).toBe(TITLE_HOLD_MS + 5000 + TAIL_MS);
+  });
+
+  it('erkennt eine Tonspur im Dateikopf – mp4 über soun, webm über den Codec', () => {
+    const enc = (s: string) => new TextEncoder().encode(s);
+    expect(fileHasAudioTrack(enc('....ftypisom....moov....trak....hdlr....vide....trak....hdlr....soun....'))).toBe(true);
+    expect(fileHasAudioTrack(enc('....ftypisom....moov....trak....hdlr....vide....'))).toBe(false);
+    expect(fileHasAudioTrack(enc('.Eß£.B†.B÷.B‚.B„webmB‡.B….V_VP9...A_OPUS...'))).toBe(true);
+    expect(fileHasAudioTrack(enc('....webm....V_VP9....'))).toBe(false);
+    expect(fileHasAudioTrack(enc('irgendwas ohne Container'))).toBeNull();
+  });
+
+  it('Format-Regler: welche Container das Gerät kann, und der beste je Format', () => {
+    const chromium = (m: string) => m === 'video/mp4' || m.startsWith('video/webm');
+    expect(castFormats(chromium)).toEqual(['mp4', 'webm']);
+    expect(pickCastMimeFor('webm', chromium)).toBe('video/webm;codecs=vp9,opus');
+    expect(pickCastMimeFor('mp4', chromium)).toBe('video/mp4');
+    const safari = (m: string) => m.startsWith('video/mp4');
+    expect(castFormats(safari)).toEqual(['mp4']);
+    expect(pickCastMimeFor('webm', safari)).toBeNull();
+    expect(castFormats(() => false)).toEqual([]);
   });
 
   it('Highlights zeigen die Fenstersumme, nicht den Lauf', () => {

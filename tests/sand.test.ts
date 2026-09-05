@@ -65,12 +65,26 @@ describe('Sandfeld (M103)', () => {
     // Die Schrittrechnung landet ein paar Prozent unter dem stetigen Wert –
     // geprüft wird die AUSSAGE (das Gleichgewicht aus accel und sandFriction),
     // nicht die dritte Stelle.
+    // Bei Reibung 12 ist der Bild-Schritt (1/60 s) gegen die Zeitkonstante
+    // (1/12 s) nicht mehr klein: exp(−12/60) je Bild ergibt 195 statt 217.
     const cap = sand.accel / sand.sandFriction;
-    expect(sandSpeed).toBeGreaterThan(cap * 0.94);
+    expect(sandSpeed).toBeGreaterThan(cap * 0.85);
     expect(sandSpeed).toBeLessThan(cap * 1.02);
-    expect(sandSpeed).toBeLessThan(stoneSpeed * 0.65);
+    expect(sandSpeed).toBeLessThan(stoneSpeed * 0.3);
     // „Langsam" heißt gedeckelt, nicht stehengeblieben – wer neigt, rollt.
-    expect(sandSpeed).toBeGreaterThan(300);
+    expect(sandSpeed).toBeGreaterThan(150);
+  });
+
+  it('bremst an der Kante hart: von voller Fahrt in ~0,2 s auf Sandtempo', () => {
+    const w = world();
+    roll(w, 3); // volle Fahrt auf Stein (900)
+    const v0 = w.ball.speed;
+    w.sand.push({ x: 0, y: 0, w: 100000, h: 100000 });
+    for (let i = 0; i < 12; i++) w.step(1 / 60, { x: 1, y: 0 });
+    // Nach 0,2 s ist der Schwung weg: nahe am Sand-Gleichgewicht, nicht mehr
+    // beim Stein-Tempo. Das ist die Kante, die man spürt.
+    expect(w.ball.speed).toBeLessThan(v0 * 0.35);
+    expect(w.ball.speed).toBeLessThan((w.accel / w.sandFriction) * 1.3);
   });
 
   it('lenkt weiter voll: quer aus voller Fahrt heraus geht sofort', () => {

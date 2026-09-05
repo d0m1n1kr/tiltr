@@ -496,6 +496,10 @@ export const es: Dict = {
   'cast.infoFull': 'Vídeo ≈ {s} s',
   'cast.infoHighlights': '{n} escenas · vídeo ≈ {s} s',
   'cast.highlightsTag': 'Momentos clave',
+  'cast.format': 'Formato',
+  'cast.noAudio': '⚠ El archivo no tiene pista de audio ({diag}).',
+  'cast.tryOther': 'Cambia el formato con ⚙ y graba de nuevo.',
+  'cast.trackWord': 'pista(s)',
   'res.winTitle': 'Meta en {time} 🎉',
 
   /* --- Reto diario --- */

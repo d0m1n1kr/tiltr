@@ -754,6 +754,16 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   (Ergebnis) und wohin bei Abbrechen (woher man kam). Der Abspann trägt den
   Credit (`splash.credit`) zwischen Zeit und Adresse. `saveBlobFile` teilt die
   Datei ohne Titeltext. `window.__tiltrCast` (E2E Lauf 55).
+  DIE DATEI WIRD AUF EINE TONSPUR GEPRÜFT (v3.44.0): Gemeldet „Video ohne
+  Ton, beim Aufnehmen hört man aber Ton". In Headless-Chromium hat die mp4
+  eine Opus-Spur – auf dem Gerät fehlte sie also aus einem Grund, den man von
+  außen nicht sieht. Deshalb: `fileHasAudioTrack` (rein, Byte-Blick: mp4
+  `soun`, webm `A_OPUS`/`A_AAC`) prüft die fertige Datei, `CastSession.diag`
+  hält fest, was die Aufnahme an Spuren bekam (Zahl, muted, readyState), die
+  Karte sagt beides in Klartext, und ein FORMAT-Regler (mp4/webm, nur wo das
+  Gerät beides kann) ist der Ausweg. Lauf 55 verlangt seit dem eine lebende,
+  nicht stumme Spur UND `soun`/`A_OPUS` in der Datei – Bytes zählen hätte ein
+  stummes Video nie gefunden.
   HIGHLIGHTS (Phase 3, v3.43.0): Umfang „Ganz/Highlights" im Sheet, die
   Fenster kommen aus `selectHighlights`, die Info-Zeile nennt Szenen und Länge
   vorab. Zwischen den Fenstern wird STUMM VORGESPULT (`castSegmentStep`):
@@ -767,8 +777,10 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
 - SAND (M103, v3.39.0, `src/elements/sand.ts`): der zähe Untergrund, das
   Gegenstück zum Eis. LANGSAM HEISST GEDECKELT, NICHT KLEBRIG: Die
   Endgeschwindigkeit ist `accel / friction` – auf Stein 2600/1,4 (über
-  `maxSpeed`, also volle 900), im Sand 2600/5,0 = 520. Wer neigt, rollt, nur
-  nie schnell. GELENKT wird weiter voll: Sand bekommt bewusst KEINEN eigenen
+  `maxSpeed`, also volle 900), im Sand 2600/12 ≈ 217 (diskret bei 60 Hz 195).
+  Die erste Fassung (5,0 → 520) war gemeldet zu schwach: „Sand soll viel
+  stärker bremsen" (v3.44.0) – jetzt ist man von voller Fahrt in ~80 ms auf
+  Sandtempo, man SPÜRT die Kante. Wer neigt, rollt, nur nie schnell. GELENKT wird weiter voll: Sand bekommt bewusst KEINEN eigenen
   `control` wie das Eis (0,45) – Eis nimmt den Grip in beide Richtungen, Sand
   nur den Schwung; sonst wäre es „Eis mit anderem Vorzeichen". SAND STICHT EIS
   (ausgesprochen in `step`), sonst hinge das Verhalten an der Reihenfolge

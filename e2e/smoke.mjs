@@ -9461,9 +9461,18 @@ if (want("55")) {
       `Die Aufnahme liefert Daten (${done?.bytes} B, ${done?.mime}, ${Math.round(done?.durationMs ?? 0)} ms für einen ${runTime.toFixed(1)}-s-Lauf, erwartet ≈ ${Math.round(expectMs)} ms)`,
       (done?.bytes ?? 0) > 1000 && typeof done?.mime === "string" && Math.abs((done?.durationMs ?? 0) - expectMs) < 1500,
     );
+    // DIE DATEI HAT EINE TONSPUR (v3.44.0): Ein Gerät lieferte ein stummes
+    // Video, während man beim Aufnehmen Ton hörte – Bytes zählen hätte das
+    // nie gefunden. Der Dateikopf sagt es (soun / A_OPUS), und die Aufnahme
+    // muss eine lebende, nicht stumme Tonspur bekommen haben.
+    check(
+      `Die Datei hat eine Tonspur (hasAudio ${done?.hasAudio}, Spuren ${done?.diag?.audioTracks}, muted ${JSON.stringify(done?.diag?.muted)}, ready ${JSON.stringify(done?.diag?.ready)})`,
+      done?.hasAudio === true && done?.diag?.audioTracks === 1 && done?.diag?.muted?.[0] === false && done?.diag?.ready?.[0] === "live",
+    );
     await until(async () => !(await interHidden()), { timeout: 10000 });
     const title = (await page.textContent("#interTitle")) ?? "";
     check(`Die Video-Karte nennt die Größe („${title.trim()}")`, /Video fertig · \d/.test(title));
+    check(`Die Karte warnt NICHT vor fehlendem Ton („${((await page.textContent("#interText")) ?? "").slice(0, 40)}")`, !/Tonspur/.test((await page.textContent("#interText")) ?? ""));
     // VORSCHAU VOR DEM SENDEN: Das Video steht in der Karte …
     const vid = await page.evaluate(() => {
       const v = document.getElementById("interVideo");

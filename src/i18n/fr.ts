@@ -496,6 +496,10 @@ export const fr: Dict = {
   'cast.infoFull': 'Vidéo ≈ {s} s',
   'cast.infoHighlights': '{n} scènes · vidéo ≈ {s} s',
   'cast.highlightsTag': 'Moments forts',
+  'cast.format': 'Format',
+  'cast.noAudio': '⚠ Le fichier n’a pas de piste audio ({diag}).',
+  'cast.tryOther': 'Change le format avec ⚙ et réenregistre.',
+  'cast.trackWord': 'piste(s)',
   'res.winTitle': 'Arrivée en {time} 🎉',
 
   /* --- Défi du jour --- */

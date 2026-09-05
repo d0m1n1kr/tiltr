@@ -496,6 +496,10 @@ export const en: Dict = {
   'cast.infoFull': 'Video ≈ {s} s',
   'cast.infoHighlights': '{n} scenes · video ≈ {s} s',
   'cast.highlightsTag': 'Highlights',
+  'cast.format': 'Format',
+  'cast.noAudio': '⚠ The file has no audio track ({diag}).',
+  'cast.tryOther': 'Switch the format with ⚙ and record again.',
+  'cast.trackWord': 'track(s)',
   'res.winTitle': 'Goal in {time} 🎉',
 
   /* --- Daily challenge --- */
