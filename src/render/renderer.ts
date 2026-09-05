@@ -129,6 +129,12 @@ export class Renderer {
   goalLit = false;
   /** Wurde der Partner im letzten Frame als fester Ball gezeichnet (M62)? */
   buddySolid = false;
+  /** Vorgezeichneter Fleck der Bodenspur (M94b). Ein `createRadialGradient`
+   *  JE ZELLE UND BILD kostete in der CI genug, um den ohnehin knappen
+   *  Zwei-Seiten-Lauf über die Zeit zu drücken (Lauf 9, Klick-Timeout) – der
+   *  Verlauf hängt aber nur am RADIUS, also wird er einmal gemalt und danach
+   *  nur noch geblittet (`globalAlpha` macht die Helligkeit). */
+  private glowSprite: { r: number; img: HTMLCanvasElement } | null = null;
   /** Hat der letzte Frame die Kugel gezeichnet? (Gegenstück zu `goalLit`:
    *  Der Renderer sagt selbst, was im Bild steht – prüfbar ohne Pixel.) */
   ballDrawn = false;
@@ -231,6 +237,25 @@ export class Renderer {
     this.offsetY += (ty - this.offsetY) * k;
   }
 
+  /** Der Fleck der Bodenspur in Radius `r` (Gerätepixel) – einmal gemalt,
+   *  danach wiederverwendet. Neu nur, wenn sich die Skalierung ändert. */
+  private spotImage(r: number): HTMLCanvasElement {
+    const size = Math.max(2, Math.ceil(r * 2));
+    if (this.glowSprite && this.glowSprite.r === size) return this.glowSprite.img;
+    const img = document.createElement('canvas');
+    img.width = size;
+    img.height = size;
+    const c = img.getContext('2d')!;
+    const g = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, `rgba(${WORLD.ballGlow}, 1)`);
+    g.addColorStop(0.6, `rgba(${WORLD.ballGlow}, 0.5)`);
+    g.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
+    c.fillStyle = g;
+    c.fillRect(0, 0, size, size);
+    this.glowSprite = { r: size, img };
+    return img;
+  }
+
   draw(world: World, opts: DrawOptions): void {
     const { debug = false, revealAll = false, now = performance.now() } = opts;
     const gain = debug ? 1 : Math.max(0, Math.min(1, opts.revealGain ?? 1));
@@ -324,20 +349,20 @@ export class Renderer {
     // länger (dieselbe Ladung wie an der Wand). Sie leuchtet in der Farbe der
     // KUGEL, denn sie gehört dem Spieler, nicht der Welt – und sie deckt nichts
     // auf: Man sieht nur, wo man selbst schon war.
-    for (const c of opts.floorGlow ?? []) {
-      const a = glowNow(c, now) * FLOOR_GLOW_ALPHA;
-      if (a <= 0.004) continue;
-      // Weicher Fleck, keine Kachel: Ein gefülltes Rechteck sähe aus wie ein
-      // BODENBELAG (also wie Welt), ein auslaufender Schein wie eine Spur.
-      const px = tx(c.x),
-        py = ty(c.y),
-        r = CELL * 0.62 * s;
-      const spot = ctx.createRadialGradient(px, py, 0, px, py, r);
-      spot.addColorStop(0, `rgba(${WORLD.ballGlow}, ${a})`);
-      spot.addColorStop(0.6, `rgba(${WORLD.ballGlow}, ${a * 0.5})`);
-      spot.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
-      ctx.fillStyle = spot;
-      ctx.fillRect(px - r, py - r, r * 2, r * 2);
+    // Weicher Fleck, keine Kachel: Ein gefülltes Rechteck sähe aus wie ein
+    // BODENBELAG (also wie Welt), ein auslaufender Schein wie eine Spur. Der
+    // Fleck ist vorgezeichnet (`spotImage`) und wird nur geblittet.
+    if (opts.floorGlow) {
+      const r = CELL * 0.62 * s;
+      const img = this.spotImage(r);
+      const half = img.width / 2;
+      for (const c of opts.floorGlow) {
+        const a = glowNow(c, now) * FLOOR_GLOW_ALPHA;
+        if (a <= 0.004) continue;
+        ctx.globalAlpha = a;
+        ctx.drawImage(img, tx(c.x) - half, ty(c.y) - half);
+      }
+      ctx.globalAlpha = 1;
     }
 
     for (const w of world.walls) {

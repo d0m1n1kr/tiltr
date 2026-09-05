@@ -1610,7 +1610,7 @@ function shield(dx: number, dy: number): number {
 
 
 /** Längstes verbleibendes Nachglühen (ms) in einer Liste – für die Testhaken. */
-function maxGlow(list: ReadonlyArray<GlowState>, now: number): number {
+function maxGlow(list: Iterable<GlowState>, now: number): number {
   let best = 0;
   for (const o of list) best = Math.max(best, (o.glowUntil ?? 0) - now);
   return best;
@@ -3859,7 +3859,7 @@ function frame(now: number): void {
     // Ping, und dann wäre „lädt sich die Wand auf?" nicht mehr messbar.
     glowMs: Math.round(maxGlow(world.walls, now)),
     plateGlowMs: Math.round(maxGlow(world.plates, now)),
-    floorGlowMs: Math.round(maxGlow([...glowOnFloor(activeFloor).values()], now)),
+    floorGlowMs: Math.round(maxGlow(glowOnFloor(activeFloor).values(), now)),
     floorGlowCells: glowOnFloor(activeFloor).size,
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,
