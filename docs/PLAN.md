@@ -651,6 +651,109 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phasen 2–4 geplant
+
+Gewünscht: „Der Weg wird ja bereits protokolliert. Ich möchte, dass man das
+geschaffte Level als Screencast rendern kann (um es zu sharen). Entweder
+komplett (wie es war, schneller, hell) oder nur Highlights. Für Highlights
+müssen die Schlüsselstellen (Türöffnung, Horcher-Angriff, Jukebox, Zielankunft
+etc.) dem Spiel als Zeitpunkte markiert werden, damit es später sauber
+geschnitten werden kann. Gerne auch Überblendeffekte. Und mit dem Originalton
+(auch 3D-Audio), geht das?"
+
+Es geht, auch mit dem 3D-Ton – und zwar OHNE den Ton aufzunehmen: Er wird beim
+Rendern aus demselben Audio-Graphen neu erzeugt, den das Spiel spielt. HRTF-
+Panner laufen in einem OfflineAudioContext genauso wie in einem MediaStream-
+Mitschnitt. Wer das Video mit Kopfhörern sieht, hört den Ping aus derselben
+Richtung wie der Spieler.
+
+### Der Plan
+
+DER GEIST REICHT NICHT: 8 Hz, nur die Kugel, kein Weltzustand. Ein Video
+daraus ruckelte und wüsste nichts von Türen, Wächtern oder Aufdeckungen.
+Stattdessen ein DEMO-MITSCHNITT wie in Doom: pro Bild Uhr, Schritt (dt),
+Neigungsvektor und Ping-Taste, dazu die Kugel als Wahrheit (Ebene, Ort,
+Geschwindigkeit). Ein 90-Sekunden-Lauf sind rund 50.000 Zahlen, delta-kodiert
+ein paar Kilobyte, und der Mitschnitt altert nicht, weil er keine
+Weltzustände enthält, die jedem neuen Element nachgeführt werden müssten.
+
+DAS REPLAY FÄHRT DIE ECHTE SPIELSCHLEIFE UNTER EINER VIRTUELLEN UHR. `core/`
+war schon deterministisch; app.ts las aber an 19 Stellen `performance.now()`
+selbst (Ping, Schlüssel, Zeitschalter, Aufleuchten, Meldungen). Jetzt gibt es
+EINE Quelle, `nowMs()`: im Spiel die Wanduhr, im Replay `t0 + t` aus dem
+Mitschnitt – dieselbe Regel wie beim Licht (`lightGain`), eine Quelle, sonst
+zwei Wahrheiten. Zwei Wecker liefen außerdem auf setTimeout (Respawn 1,3 s,
+Ebenenwechsel 0,7 s) – auf der Wanduhr fielen sie im Replay auf ein anderes
+Bild; sie hängen jetzt an der Spiel-Uhr (`after(ms, fn)`, gefeuert am Anfang
+des Bildes). Und der Ping feuert IM Bild statt im Pointer-Ereignis, damit er
+im Mitschnitt an seinem Bild steht.
+
+INNERHALB EINES BILDES STEHT DIE UHR (aus der CI gelernt): Lokal war Lauf 54
+grün, unter vier Arbeitern fiel er – „Replay undefined s". `performance.now()`
+läuft während eines Bildes weiter, unter Last um Dutzende Millisekunden; der
+Wecker für den Respawn wurde mit dieser SPÄTEREN Zeit gestellt, im Replay aber
+mit der Bild-Uhr des Mitschnitts, fiel also ein Bild früher. Die nachgezogene
+Kugel stand in diesem Bild noch im Loch, fiel ein zweites Mal, und der
+Mitschnitt war zu Ende, bevor das Ziel kam. `frameNow` friert die Uhr für die
+Dauer eines Bildes auf den rAF-Zeitstempel – und NUR für die Dauer eines
+Bildes (`finally`): Die erste Fassung galt auch zwischen den Bildern, zwei
+Netz-Nachrichten im selben Intervall bekamen dt = 0, und der Rollanteil des
+Partners blieb bei 0,05 (Lauf 45). Regel: Wer eine Zeit im Bild braucht, nimmt
+die des Bildes; wer eine Zeit zwischen Bildern braucht (Netz, Lobby,
+Hintergrund), die Wanduhr – `nowMs()` weiß, wo es gerade steht.
+
+ZWEI ZEITEN JE BILD: Die Schleife klemmt dt bei 50 ms, die Uhr springt aber
+weiter. Atmende Löcher, Türtimer und Nachglühen hängen an der UHR, Physik und
+Wächter am SCHRITT – nur mit beiden ist das Replay exakt. Lauf 54 prüft genau
+das mit einem atmenden Loch: Ob die Kugel hineinfällt, hängt an der Uhr, der
+Lauf ist also zufällig – und das Replay traf ihn trotzdem auf die
+Millisekunde (1× gestürzt, 3,123 s beide).
+
+DIE KUGEL WIRD NACHGEZOGEN: Nach jedem Bild steht sie auf dem aufgezeichneten
+Wert. Math.sin und Math.exp weichen zwischen Engines um ein Ulp ab, und
+Kollisionen sind chaotisch – ein Lauf vom iPhone könnte in Chrome sonst
+anders enden. So bleibt die Bahn die wahre, und die Welt (Türen, Wächter,
+Horcher, Steine, Klang) reagiert auf sie.
+
+SCHLÜSSELSTELLEN sind ein Ereignis-Protokoll im Mitschnitt (`marks`: t, Art,
+Ebene, Ort), geschrieben an den Stellen, die es schon gibt: Start, Tür geht
+auf (`applyDoors`), Schlüssel, Kristall, Sanduhr, Gem, Checkpoint, Transporter,
+Horcher-Angriff, Wächter, Sturz, Glas bricht, brüchige Wand bricht, Rollstein
+rollt/versinkt, Glocke, Zehrfeld, Zeitschalter, Resonanz-Tor steht, Automat
+(erste Note UND Rempler), Ziel. Die SCHERE ist rein (`core/highlights.ts`):
+Fenster mit 2 s Vor- und 1,5 s Nachlauf, überlappende verschmelzen, über dem
+Budget (25 s) fallen die leichtesten (Gewicht je Art: Ziel 10, Sturz/Angriff
+8, Tür 6 … Gem 2), Start und Ziel bleiben immer, Ausgabe in Zeitordnung mit
+Überblenddauer je Fenster.
+
+### Phase 1 ✓ – Mitschnitt, Marker, „Lauf ansehen"
+
+`core/recording.ts` (RunRecorder, frameAt, duration), `core/highlights.ts`
+(selectHighlights), die Uhr-Umstellung in app.ts, Marker an allen Stellen, und
+auf jeder Solo-Ergebniskarte „▶ Lauf ansehen": Der Mitschnitt läuft in der
+echten Schleife, mit Klang, danach steht dieselbe Karte wieder da. Kein Geist,
+keine Bestzeit, kein Profil wird dabei geschrieben (`winRun` verzweigt VOR
+`onWin`). `window.__tiltrRun` legt Mitschnitt, Replay und Ergebnis offen.
+Nicht im Netz (die Partnerbahn käme von drüben), nicht im MP-Testmodus (zwei
+Kugeln, eine Hand).
+
+### Phasen 2–4 (offen)
+
+2. VIDEO IN ECHTZEIT: `canvas.captureStream(30)` + MediaStreamAudioDestination
+   am Master → MediaRecorder (iOS mp4, Chrome webm). Optionen Ganz/Highlights,
+   Tempo 1×/2×, hell/dunkel; Titelkarte und Abspann mit Adresse (Promo-
+   Lektion: ein geteiltes Video ohne Link ist wertlos); Teilen als Datei ohne
+   Titeltext (Signal-Lektion). Dazu eine SONDE wie `iceProbe`: MediaRecorder-
+   Typen, VideoEncoder/AudioEncoder – erst messen, dann bauen.
+3. HIGHLIGHTS MIT ÜBERBLENDUNG: Zwischen den Fenstern wird stumm vorgespult,
+   das letzte Bild eines Fensters blendet 400 ms über den Anfang des nächsten,
+   der Ton bekommt eine Gain-Rampe am Aufnahme-Bus.
+4. OFFLINE-PFAD wo die Sonde grün ist: zweiter Renderer auf Offscreen-Canvas
+   (720×1280, 30 fps) → VideoEncoder, Ton aus OfflineAudioContext mit
+   suspend/resume im Bildtakt (dafür `audio.start(ctx)` injizierbar), mp4-muxer
+   (MIT). Schneller als Echtzeit, bildgenau, mp4 überall – webm spielt in
+   iPhone-Nachrichten nicht.
+
 ## M103 „Sand" ✓ (v3.39.0)
 
 Gewünscht in einem Satz: „Als Nächstes noch weiteren Untergrund: Sand (langsam,

@@ -473,6 +473,8 @@ export const de = {
   'res.tutTitle': '{name} – geschafft! 🎉',
   'res.tutProgress': 'Tutorial: {done}/{total}',
   'res.tutDone': 'Tutorial abgeschlossen – du bist bereit für die Dunkelheit!',
+  'res.replay': '▶ Lauf ansehen',
+  'st.replay': 'Wiedergabe – so war der Lauf',
   'res.winTitle': 'Ziel in {time} 🎉',
 
   /* --- Tages-Challenge --- */

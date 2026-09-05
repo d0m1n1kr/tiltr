@@ -39,6 +39,7 @@ import { galleryEntries } from './elements/registry';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang, type Dict } from './i18n';
 import { GhostRecorder, loadGhost, saveGhost, sampleGhost, type GhostData } from './ghost';
+import { RunRecorder, frameAt, type MarkKind, type Recording } from './core/recording';
 import { decodeDuel, duelUrl, validateGhostRun } from './levels/duel';
 import { showSplash } from './ui/splash';
 import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
@@ -123,6 +124,7 @@ const interNew = $('interNew');
 const interPrimary = $<HTMLButtonElement>('interPrimary');
 const interSecondary = $<HTMLButtonElement>('interSecondary');
 const interExtra = $<HTMLButtonElement>('interExtra');
+const interReplay = $<HTMLButtonElement>('interReplay');
 
 fixStandaloneViewport();
 document.documentElement.lang = currentLang();
@@ -258,6 +260,41 @@ let spotUntil = 0;
 const SPOT_MS = 4000;
 const TEACH_LEVELS = [...TUTORIAL_LEVELS, ...CAMPAIGN_LEVELS];
 let t0 = 0;
+/* ZEIT HAT EINE QUELLE (M104): Im Spiel die Wanduhr, im Replay die Uhr des
+   Mitschnitts. Alles, was einen ZEITPUNKT braucht (Ping, Türtimer,
+   Aufleuchten, Meldungen, Respawn), fragt `nowMs()` – nicht performance.now().
+   Sonst liefe ein Replay mit zwei Uhren, und Türen fielen zu anderen Bildern
+   zu als im Original. `frame()` bekommt seine Uhr von hier oder vom Mitschnitt. */
+let virtualNow: number | null = null;
+/** Die Uhr des LAUFENDEN Bildes. `performance.now()` läuft während eines Bildes
+ *  weiter – unter Last um Dutzende Millisekunden. Ein Wecker, der damit
+ *  gestellt wurde (Respawn), fiel im Replay ein Bild FRÜHER als im Original,
+ *  die nachgezogene Kugel stand dann noch im Loch, fiel ein zweites Mal, und
+ *  der Mitschnitt war zu Ende, bevor das Ziel kam (CI, Lauf 54: „Replay
+ *  undefined s"). Deshalb steht die Uhr innerhalb eines Bildes STILL. */
+let frameNow: number | null = null;
+const nowMs = (): number => virtualNow ?? frameNow ?? performance.now();
+/** Ein Wecker auf der SPIEL-Uhr: Sturz und Ebenenwechsel warten nicht mit
+ *  setTimeout (Wanduhr), sondern auf `nowMs()` – im Replay fällt der Respawn
+ *  damit auf dasselbe Bild wie im Original. Es gibt höchstens einen: Sturz und
+ *  Warp schließen sich aus. Gefeuert wird am Anfang des Bildes, VOR dem
+ *  Mitschnitt, damit die Kugel, mit der ein Bild beginnt, in beiden Läufen
+ *  dieselbe ist. */
+let gameTimer: { at: number; run: () => void } | null = null;
+function after(ms: number, run: () => void): void {
+  gameTimer = { at: nowMs() + ms, run };
+}
+/** Ping-Taste seit dem letzten Bild gedrückt? Der Ping feuert IM Bild
+ *  (M104), nicht im Ereignis – so steht er im Mitschnitt an seinem Bild. */
+let pendingPing = false;
+/* MITSCHNITT (M104): der laufende Rekorder, der letzte fertige Lauf (für
+   „Lauf ansehen"), das laufende Replay und sein Ergebnis (E2E). */
+let recorder: RunRecorder | null = null;
+let lastRun: { rec: Recording; def: LevelDef } | null = null;
+let replay: { rec: Recording; i: number; drift: number } | null = null;
+let lastReplay: { frames: number; drift: number; goal: boolean; time: number | null } | null = null;
+/** Die zuletzt gezeigte Karte – nach einem Replay kommt sie wieder. */
+let lastInter: InterOpts | null = null;
 let message = '';
 let messageUntil = 0;
 let pings = 0;
@@ -330,7 +367,7 @@ function nextSeed(): number {
 
 const flash = (text: string, ms = 1800) => {
   message = text;
-  messageUntil = performance.now() + ms;
+  messageUntil = nowMs() + ms;
 };
 
 const fmtTime = (s: number) => `${s.toFixed(1)} s`;
@@ -359,7 +396,7 @@ function starLine(def: LevelDef): string | undefined {
   return t('inter.stars', { par: def.parTimeS, third: gems > 0 ? t('inter.gems', { n: gems }) : t('inter.noFall') });
 }
 
-function showInterstitial(opts: {
+interface InterOpts {
   title: string;
   text: string;
   primary?: InterAction;
@@ -367,12 +404,17 @@ function showInterstitial(opts: {
   /** Leise Zusatzaktion (Duell herausfordern/Revanche): Karte bleibt offen,
    *  man teilt den Link und entscheidet danach weiter. */
   extra?: InterAction;
+  /** „▶ Lauf ansehen" (M104): spielt den Mitschnitt in der echten Schleife
+   *  ab und kommt danach zu DIESER Karte zurück. */
+  replay?: InterAction;
   /** Sterne-Vorschau (M43): was der zweite und dritte Stern verlangen. */
   stars?: string;
   /** „Neu hier" (M43): Element-Typen, die dieses Level zum ersten Mal bringt –
    *  je ein Chip, Tap spielt die Galerie-Signatur. */
   news?: string[];
-}): void {
+}
+function showInterstitial(opts: InterOpts): void {
+  lastInter = opts;
   interTitle.textContent = opts.title;
   interText.textContent = opts.text;
   interStars.textContent = opts.stars ?? '';
@@ -387,13 +429,18 @@ function showInterstitial(opts: {
     interNew.append(chip);
   }
   interNew.classList.toggle('hidden', !opts.news?.length);
-  if (opts.extra) {
-    interExtra.textContent = opts.extra.label;
-    interExtra.onclick = () => opts.extra!.onClick();
-    interExtra.classList.remove('hidden');
-  } else {
-    interExtra.classList.add('hidden');
-    interExtra.onclick = null;
+  for (const [btn, action] of [
+    [interExtra, opts.extra],
+    [interReplay, opts.replay],
+  ] as const) {
+    if (action) {
+      btn.textContent = action.label;
+      btn.onclick = () => action.onClick();
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+      btn.onclick = null;
+    }
   }
   for (const [btn, action] of [
     [interPrimary, opts.primary],
@@ -675,6 +722,11 @@ function showMenu(): void {
   mpTest = null;
   world = null;
   currentDef = null;
+  replay = null;
+  virtualNow = null;
+  recorder = null;
+  lastRun = null;
+  gameTimer = null;
   silenceWorld();
   audio.setHeading(0);
   audio.stopMusic();
@@ -1075,7 +1127,7 @@ function lightGain(now: number): number {
   return 0;
 }
 function bright(): boolean {
-  return lightGain(performance.now()) > 0;
+  return lightGain(nowMs()) > 0;
 }
 /** Renderer-Optionen für Licht und Aufleuchten (M43) – an EINER Stelle für
  *  beide draw()-Aufrufe. Der Ping deckt voll auf, das Licht mit seinem Gain;
@@ -1149,7 +1201,7 @@ function launch(def: LevelDef): void {
   // Im MP-Testmodus gibt es keinen Geist: Eine Spur, die zwischen zwei Kugeln
   // springt, wäre keine Bestzeit, sondern ein Rätsel.
   ghost = mpTest ? null : mode?.kind === 'duel' ? mode.ghost : ghostable ? loadGhost(def.id) : null;
-  ghostRecorder = ghostable && !mpTest ? new GhostRecorder() : null;
+  ghostRecorder = ghostable && !mpTest && !replay ? new GhostRecorder() : null;
   rivalAhead = null;
   audio.setRival(0, 0, 0);
   audio.setBuddy(0, 0, 0, 0);
@@ -1194,13 +1246,21 @@ function launch(def: LevelDef): void {
   // das Level neu bringt, und die erste Signatur spielt einmal.
   const teaching = mode?.kind === 'tutorial' || mode?.kind === 'campaign';
   spotTypes = new Set(teaching ? newFeaturesIn(TEACH_LEVELS, def.id) : []);
-  spotUntil = spotTypes.size > 0 ? performance.now() + SPOT_MS : 0;
+  spotUntil = spotTypes.size > 0 ? nowMs() + SPOT_MS : 0;
   const firstNew = [...spotTypes][0];
   const demo = firstNew !== undefined ? featureDemo(firstNew) : undefined;
   if (demo) void audio.start().then(() => demo(audio));
   // Bundle: „weiter, wo ich aufgehört habe" – der Stand ist der zuletzt GESTARTETE Level.
   if (mode?.kind === 'bundle') profile.setBundlePos(mode.bundleId, mode.index);
-  t0 = performance.now();
+  t0 = nowMs();
+  gameTimer = null;
+  pendingPing = false;
+  // MITSCHNITT (M104): jeder Solo-Lauf, nicht im Netz (die Partnerbahn käme
+  // von drüben), nicht im Testmodus (zwei Kugeln, eine Hand) und nicht, wenn
+  // gerade ein Mitschnitt ABGESPIELT wird.
+  recorder = !replay && !mpTest && mode?.kind !== 'mp' ? new RunRecorder(def.id, t0, fpOn()) : null;
+  if (!replay) lastRun = null;
+  mark('start', loaded.world.ball.x, loaded.world.ball.y);
   state = 'playing';
   revealUntil = 0;
   statusEl.textContent = '';
@@ -1236,7 +1296,8 @@ function startWarp(tx: number, ty: number, targetFloor: number, dir: 'up' | 'dow
   audio.setPortal(0, 0, 0);
   audio.warp(dir);
   haptics.checkpoint();
-  setTimeout(() => {
+  mark('warp', world.ball.x, world.ball.y);
+  after(700, () => {
     if (!loaded || state !== 'warp') return;
     activateFloor(targetFloor);
     const b = world!.ball;
@@ -1257,7 +1318,7 @@ function startWarp(tx: number, ty: number, targetFloor: number, dir: 'up' | 'dow
           ? t('st.floorUp', { n: targetFloor + 1 })
           : t('st.portal'),
     );
-  }, 700);
+  });
 }
 
 function respawn(): void {
@@ -1295,6 +1356,7 @@ function onWin(seconds: number): void {
         // Zurückschlagen kann nur, wer schneller war – sonst wäre die
         // „Revanche" ein Link mit schlechterer Zeit.
         extra: won ? challengeAction(def, seconds, t('duel.rematch')) : undefined,
+        replay: replayAction(),
         primary: { label: t('common.again'), onClick: beginLevel },
         secondary: { label: t('common.menu'), onClick: showMenu },
       });
@@ -1323,6 +1385,7 @@ function onWin(seconds: number): void {
         title: t('daily.resultTitle', { date: formatDate(date), time: fmtTime(seconds) }),
         text: lines.join('\n'),
         extra: challengeAction(def, seconds, t('duel.challenge')),
+        replay: replayAction(),
         primary: {
           label: t('daily.share'),
           onClick: () => {
@@ -1345,6 +1408,7 @@ function onWin(seconds: number): void {
         text:
           `${t('res.time', { time: fmtTime(seconds) })}${isRecord ? t('res.newBest') : ''}\n` +
           (hasNext ? t('res.tutProgress', { done, total }) : t('res.tutDone')),
+        replay: replayAction(),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -1382,6 +1446,7 @@ function onWin(seconds: number): void {
         title: `${lvName(def)} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`,
         text: lines.join('\n'),
         extra: challengeAction(def, seconds, t('duel.challenge')),
+        replay: replayAction(),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -1404,6 +1469,7 @@ function onWin(seconds: number): void {
         title: hasNext ? t('res.winTitle', { time: fmtTime(seconds) }) : `${t('res.bundleDone')} ${fmtTime(seconds)}`,
         text: isRecord ? t('res.newBestLine') : bundle ? `${bundle.title} · ${index + 1}/${bundle.levels.length}` : '',
         extra: challengeAction(def, seconds, t('duel.challenge')),
+        replay: replayAction(),
         primary: hasNext
           ? {
               label: t('common.next'),
@@ -1427,6 +1493,7 @@ function onWin(seconds: number): void {
         // Im Editor-Preview gibt es nichts zu teilen (der Entwurf ist noch
         // nicht mal gespeichert) – im normalen Spiel schon.
         extra: fromEditor ? undefined : challengeAction(def, seconds, t('duel.challenge')),
+        replay: replayAction(),
         primary: fromEditor
           ? {
               label: t('ed.backToEditor'),
@@ -1453,6 +1520,7 @@ function onWin(seconds: number): void {
           : best !== null
             ? t('menu.quick.best', { preset: t(`preset.${profile.preset}`), time: fmtTime(best) })
             : '',
+        replay: replayAction(),
         primary: { label: t('common.again'), onClick: beginLevel },
         secondary: { label: t('common.menu'), onClick: showMenu },
       });
@@ -1567,6 +1635,8 @@ function updateJukeboxes(nowMs: number): void {
   if (nearest.epoch === null) {
     nearest.epoch = now + 0.06;
     nearest.scheduledS = 0;
+    // Der Automat beginnt zu spielen – eine Schlüsselstelle (M104).
+    mark('jukebox', nearest.x, nearest.y);
   }
   // Zurückgekommener Hintergrund-Tab: Wir sind Sekunden hinterher. NICHT
   // nachplanen – das wären hunderte Noten auf einen Schlag, alle in der
@@ -1597,7 +1667,10 @@ function skipJukebox(j: Jukebox, hard01: number, nowMs: number, auto = false): v
   audio.stopMusic();
   // Kein Kratzer, wenn der Automat von selbst weiterlegt – niemand hat ihn
   // angestoßen. Der Titelname erscheint trotzdem: Er ist die Information.
-  if (!auto) audio.scratch(hard01, j.x - world.ball.x, j.y - world.ball.y);
+  if (!auto) {
+    audio.scratch(hard01, j.x - world.ball.x, j.y - world.ball.y);
+    mark('jukebox', j.x, j.y);
+  }
   j.index = advance(j.playlist, j.index);
   rewindJukebox(j);
   const next = tuneOf(j.playlist[j.index]);
@@ -1779,9 +1852,11 @@ function firePing(now: number): void {
   );
 }
 
-canvas.addEventListener('pointerdown', () => firePing(performance.now()));
+canvas.addEventListener('pointerdown', () => {
+  pendingPing = true;
+});
 window.addEventListener('keydown', (e) => {
-  if (e.key === ' ' && !e.repeat) firePing(performance.now());
+  if (e.key === ' ' && !e.repeat) pendingPing = true;
   // „p" wie player: Spieler wechseln im MP-Testmodus (Desktop-Testen).
   if ((e.key === 'p' || e.key === 'P') && !e.repeat) mpTestSwap();
   // „m" wie Marke: Wegmarke legen/aufnehmen (Desktop-Testen).
@@ -2098,7 +2173,7 @@ function iceLine(): string {
 function mpLobbyTick(): void {
   if (mpLobby.classList.contains('hidden')) return;
   const info = mp?.transport.info() ?? null;
-  const waitingS = (performance.now() - mpLobbyAt) / 1000;
+  const waitingS = (nowMs() - mpLobbyAt) / 1000;
   const health = relayHealth(info?.relays ?? []);
   const hint = info === null ? 'connecting' : lobbyHint(health, waitingS, info.iceFailed);
   const connected = (info?.peers.length ?? 0) > 0;
@@ -2153,7 +2228,7 @@ function mpShowLobby(status: string): void {
   mpChoose.classList.add('hidden');
   mpLobby.classList.remove('hidden');
   $('mpLobbyStatus').textContent = status;
-  mpLobbyAt = performance.now();
+  mpLobbyAt = nowMs();
   iceProbeStart();
   // Gespielt wird durch Neigen, gewartet wird mit dem Bildschirm an: Sperrt
   // das Phone in der Lobby, stirbt die Verbindung zu den Vermittlern.
@@ -2294,7 +2369,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
 function mpPeerLeft(): void {
   if (!mp) return;
   if (mp.phase === 'playing' || mp.phase === 'done') {
-    mp.disconnectedAt = performance.now();
+    mp.disconnectedAt = nowMs();
   } else {
     $('mpLobbyStatus').textContent = t('mp.leftLobby');
     if (interstitial && !interstitial.classList.contains('hidden')) hideInterstitial();
@@ -2370,7 +2445,7 @@ function mpOnMessage(type: string, payload: unknown): void {
     // folgt aus zwei Meldungen (alle 80 ms) und wird geglättet. Ein Feld mehr
     // hätte beide Seiten ohne Not auf dieselbe Version festgelegt. Ein Sprung
     // über eine Ebene ist keine Bewegung, sondern ein Warp: dann nichts messen.
-    const at = performance.now();
+    const at = nowMs();
     const dt = (at - mp.remote.lastAt) / 1000;
     if (mp.remote.lastAt > 0 && dt < 1 && p.f === mp.remote.floor)
       mp.remote.speed = smoothSpeed(mp.remote.speed, Math.hypot(p.x - mp.remote.x, p.y - mp.remote.y) / dt, dt);
@@ -2405,7 +2480,7 @@ function mpOnMessage(type: string, payload: unknown): void {
     const key = loaded?.floors[p.f]?.world.keys[p.i];
     if (key && !key.collected) {
       key.collected = true;
-      updateDoors(performance.now());
+      updateDoors(nowMs());
       flash(t('mp.partnerKey'));
     }
   } else if (type === 'switch') {
@@ -2413,14 +2488,14 @@ function mpOnMessage(type: string, payload: unknown): void {
     const p = payload as { f: number; i: number; ms: number };
     const sw = loaded?.floors[p.f]?.world.switches[p.i];
     if (sw) {
-      const fresh = sw.openUntil === null || sw.openUntil <= performance.now();
-      sw.openUntil = performance.now() + p.ms;
+      const fresh = sw.openUntil === null || sw.openUntil <= nowMs();
+      sw.openUntil = nowMs() + p.ms;
       if (fresh) {
         sw.litFrom = 0;
-        sw.litUntil = performance.now() + 2000;
+        sw.litUntil = nowMs() + 2000;
         flash(t('mp.partnerSwitch'));
       }
-      updateDoors(performance.now());
+      updateDoors(nowMs());
     }
   } else if (type === 'boulder') {
     // Stein des Partners (M84): derselbe Stoß in meiner Welt. Klang und
@@ -2461,7 +2536,7 @@ function mpOnMessage(type: string, payload: unknown): void {
     // „playing", `sees: false`). Deshalb ist seine `finish`-Meldung der
     // verlässliche Anlass: Sie kommt nur, wenn er MICH im Ziel gesehen hat –
     // dieselbe Beweislage, die auch meine Seite benutzt.
-    if (togetherMode() && !mp.localFinished) mpTogetherWin(performance.now());
+    if (togetherMode() && !mp.localFinished) mpTogetherWin(nowMs());
   } else if (type === 'rematch') {
     mp.rematchPeer = true;
     mpMaybeRematch();
@@ -2751,14 +2826,17 @@ function applyDoors(sources: readonly World[], targets: readonly World[], now: n
       if (state.open) openNow.add(w.door.id);
       const dx = w.x + w.w / 2 - world.ball.x;
       const dy = w.y + w.h / 2 - world.ball.y;
+      const doorFloor = loaded?.floors.findIndex((f) => f.world === fw) ?? -1;
       if (state.permanent) {
         fw.walls.splice(i, 1);
         fw.debris.push({ ...w, litUntil: now + 2000 });
         if (fw === world) audio.doorOpen(dx, dy);
+        mark('door', w.x + w.w / 2, w.y + w.h / 2, doorFloor < 0 ? activeFloor : doorFloor);
         continue;
       }
       if (state.open !== (w.door.open ?? false)) {
         w.door.open = state.open;
+        if (state.open) mark('door', w.x + w.w / 2, w.y + w.h / 2, doorFloor < 0 ? activeFloor : doorFloor);
         w.litFrom = 0;
         w.litUntil = now + 1500;
         if (fw === world) {
@@ -2885,7 +2963,65 @@ function winRun(now: number, seconds: number): void {
   silenceWorld();
   celebrate();
   statusEl.textContent = t('st.win', { time: fmtTime(seconds) });
+  // REPLAY (M104): Der Mitschnitt ist im Ziel – keine Bestzeit, kein Geist,
+  // kein Profil; nur zurück zur Karte, von der das Ansehen ausging.
+  if (replay) return replayFinished(seconds);
+  if (world) mark('goal', world.ball.x, world.ball.y);
+  if (recorder && currentDef) {
+    const rec = recorder.result(seconds);
+    lastRun = rec ? { rec, def: currentDef } : null;
+    recorder = null;
+  }
   onWin(seconds);
+}
+
+/* --- MITSCHNITT & REPLAY (M104) --------------------------------------------
+   Der Lauf wird als EINGABE mitgeschnitten (core/recording.ts): je Bild Uhr,
+   Schritt, Neigung, Ping-Taste – und die Kugel als Wahrheit. „Lauf ansehen"
+   fährt dieselbe Schleife noch einmal, mit der Uhr des Mitschnitts statt der
+   Wanduhr (`virtualNow`) und der Neigung aus dem Mitschnitt statt aus dem
+   Sensor. Türen, Wächter, Aufdeckungen und der KLANG entstehen dabei neu, aus
+   demselben Code wie im Spiel – deshalb klingt das Replay wie der Lauf, und
+   deshalb kann daraus später ein Video werden (Phase 2). Die Kugel wird je
+   Bild auf den aufgezeichneten Wert gesetzt: Zwei Engines rechnen Math.sin um
+   ein Ulp verschieden, und Kollisionen sind chaotisch – so bleibt die Bahn die
+   wahre, die Welt reagiert auf sie. */
+
+/** Schlüsselstelle in den Mitschnitt schreiben – das, was die
+ *  Highlight-Schere (core/highlights.ts) später schneidet. */
+function mark(kind: MarkKind, x: number, y: number, floor = activeFloor): void {
+  recorder?.mark(nowMs() - t0, kind, floor, x, y);
+}
+
+function replayAction(): InterAction | undefined {
+  return lastRun ? { label: t('res.replay'), onClick: startReplay } : undefined;
+}
+
+function startReplay(): void {
+  if (!lastRun || replay) return;
+  const { rec, def } = lastRun;
+  hideInterstitial();
+  replay = { rec, i: 0, drift: 0 };
+  // Die virtuelle Uhr beginnt beim t0 des Mitschnitts – `launch` liest sie
+  // über nowMs(), also steht t0 danach exakt wie im Original.
+  virtualNow = rec.t0;
+  currentDef = def;
+  launch(def);
+  flash(t('st.replay'), 2500);
+}
+
+/** Ende des Replays – im Ziel (time) oder weil der Mitschnitt aus ist (null,
+ *  dann ist die Bahn abgedriftet oder der Lauf endete ohne Ziel). Zurück zur
+ *  Karte, die vorher stand: Sie trägt den Knopf, man kann es wieder ansehen. */
+function replayFinished(time: number | null): void {
+  if (!replay) return;
+  lastReplay = { frames: replay.i, drift: replay.drift, goal: time !== null, time };
+  replay = null;
+  virtualNow = null;
+  state = 'won';
+  silenceWorld();
+  const card = lastInter;
+  if (card) setTimeout(() => { if (state === 'won' && !replay) showInterstitial(card); }, time !== null ? 1800 : 300);
 }
 
 /* --- GEMEINSAM ANKOMMEN (M90) ----------------------------------------------
@@ -2955,7 +3091,7 @@ function mpCheckResult(): void {
   if (!mp || mp.phase !== 'playing' || !mp.localFinished || !mp.remote.finished) return;
   mp.phase = 'done';
   state = 'won';
-  revealUntil = performance.now() + 4000;
+  revealUntil = nowMs() + 4000;
   silenceWorld();
   audio.stopMusic();
   const mine = mp.localElapsed ?? 0;
@@ -3093,10 +3229,10 @@ $('mpTurnPaste').addEventListener('click', () => {
 let mpHiddenAt: number | null = null;
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') {
-    mpHiddenAt = performance.now();
+    mpHiddenAt = nowMs();
     return;
   }
-  const away = mpHiddenAt === null ? 0 : (performance.now() - mpHiddenAt) / 1000;
+  const away = mpHiddenAt === null ? 0 : (nowMs() - mpHiddenAt) / 1000;
   mpHiddenAt = null;
   if (away > 3 && mp?.phase === 'lobby' && mp.transport.info().peers.length === 0) mpReconnect();
 });
@@ -3168,15 +3304,69 @@ checkChallengeHash();
 window.addEventListener('hashchange', checkChallengeHash);
 
 let last = performance.now();
-function frame(now: number): void {
+function frame(rafNow: number): void {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - last) / 1000);
-  last = now;
+  // Innerhalb eines Bildes steht die Uhr still – und NUR dort: Zwischen den
+  // Bildern (Lobby-Ticker, Netz-Nachrichten, Rückkehr aus dem Hintergrund,
+  // wo rAF gar nicht läuft) gilt wieder die Wanduhr.
+  frameNow = rafNow;
+  try {
+    frameBody(rafNow);
+  } finally {
+    frameNow = null;
+  }
+}
+
+function frameBody(rafNow: number): void {
+  let now = rafNow;
+  let dt = Math.min(0.05, (rafNow - last) / 1000);
+  last = rafNow;
+  let tiltIn = input.tilt;
+  let ping = pendingPing;
+  pendingPing = false;
+  // REPLAY (M104): Das Bild kommt aus dem Mitschnitt – Uhr, Schritt, Neigung,
+  // Ping-Taste. Die Schleife darunter ist dieselbe wie im Spiel.
+  if (replay && world) {
+    const f = frameAt(replay.rec, replay.i);
+    if (!f) {
+      replayFinished(null);
+      return;
+    }
+    replay.i++;
+    virtualNow = replay.rec.t0 + f.t;
+    now = virtualNow;
+    dt = f.dt;
+    tiltIn = { x: f.tx, y: f.ty };
+    ping = f.ping;
+  }
   // Konfetti hängt an DIESER Schleife (keine zweite rAF): Es fällt weiter,
   // während die Ergebnis-Karte aufzieht – und es fällt auch, wenn kein Level
   // geladen ist (deshalb VOR dem world-Check).
   confetti.step(dt);
   if (!world) return;
+  // Wecker auf der Spiel-Uhr (Respawn, Ebenenwechsel) – VOR Mitschnitt und
+  // Sprung, damit die Kugel, mit der das Bild beginnt, in beiden Läufen
+  // dieselbe ist.
+  if (gameTimer && now >= gameTimer.at) {
+    const { run } = gameTimer;
+    gameTimer = null;
+    run();
+  }
+  if (replay) {
+    // Die Kugel auf die Wahrheit setzen (siehe Kopf von MITSCHNITT & REPLAY).
+    const f = frameAt(replay.rec, replay.i - 1)!;
+    if (f.floor !== activeFloor) replay.drift++;
+    else {
+      const b = world.ball;
+      b.x = f.x;
+      b.y = f.y;
+      b.vx = f.vx;
+      b.vy = f.vy;
+    }
+  } else {
+    recorder?.frame(now - t0, dt, tiltIn, ping, activeFloor, world.ball);
+  }
+  if (ping) firePing(now);
 
   // Gemeinsam ankommen (M90): EINMAL je Frame gerechnet – Statuszeile, Chip,
   // Ruf und das eigene Ziel-Licht sagen dann dasselbe. Gerechnet wird NACH
@@ -3197,7 +3387,7 @@ function frame(now: number): void {
     // rollt weiter (die Uhr steht) – im Coop wartet man dort nicht untätig,
     // sondern hilft dem Nachzügler an den Platten.
     const disconnected = mp?.disconnectedAt != null;
-    let tilt = disconnected ? { x: 0, y: 0 } : input.tilt;
+    let tilt = disconnected ? { x: 0, y: 0 } : tiltIn;
     if (fpOn()) {
       // First Person: Lenkrad drehen, Schub entlang der Blickrichtung.
       // Kamera, Physik und Hörer hängen alle am SELBEN geglätteten Heading.
@@ -3211,6 +3401,7 @@ function frame(now: number): void {
     for (const ev of world.consumeBoulderEvents()) {
       const dx = ev.x - world.ball.x,
         dy = ev.y - world.ball.y;
+      if (ev.kind === 'roll' || ev.kind === 'sink') mark('boulder', ev.x, ev.y);
       if (ev.kind === 'roll') {
         audio.boulderRoll(dx, dy);
         // ZU ZWEIT ROLLT ER FÜR BEIDE (M84): Übertragen wird der STOSS, nicht
@@ -3239,6 +3430,7 @@ function frame(now: number): void {
     // Glocke nur die eigenen, und „ich läute, du schleichst vorbei" gäbe es
     // nicht. Im Testmodus dieselbe Glocke in der anderen Welt (wie die Platten).
     for (const bl of world.consumeRings()) {
+      mark('bell', bl.x, bl.y);
       audio.bellRing(bl.x - world.ball.x, bl.y - world.ball.y);
       haptics.checkpoint();
       flash(t('st.bell'));
@@ -3277,6 +3469,7 @@ function frame(now: number): void {
           const i = world.walls.indexOf(wall);
           if (i !== -1) world.walls.splice(i, 1);
           world.debris.push({ ...wall, litUntil: now + 1500 });
+          mark('brittle', wall.x + wall.w / 2, wall.y + wall.h / 2);
           audio.crumble(hit.nx, hit.ny);
           haptics.crumble();
           flash(t('st.wallDown'));
@@ -3406,6 +3599,7 @@ function frame(now: number): void {
       }
       if (kd < key.r + world.ball.r) {
         key.collected = true;
+        mark('key', key.x, key.y);
         audio.collectKey();
         haptics.checkpoint();
         // Coop (M59): Schlüssel gelten für beide – dem Partner melden. Im Race
@@ -3431,6 +3625,7 @@ function frame(now: number): void {
       if (hg.collected) continue;
       if (Math.hypot(hg.x - world.ball.x, hg.y - world.ball.y) < hg.r + world.ball.r) {
         hg.collected = true;
+        mark('hourglass', hg.x, hg.y);
         bonusS += hg.bonusS;
         audio.collectHourglass();
         haptics.checkpoint();
@@ -3443,6 +3638,7 @@ function frame(now: number): void {
       if (gem.collected) continue;
       if (Math.hypot(gem.x - world.ball.x, gem.y - world.ball.y) < gem.r + world.ball.r) {
         gem.collected = true;
+        mark('gem', gem.x, gem.y);
         audio.collectGem();
         haptics.checkpoint();
         flash(t('st.gem'));
@@ -3454,6 +3650,7 @@ function frame(now: number): void {
       if (c.collected) continue;
       if (Math.hypot(c.x - world.ball.x, c.y - world.ball.y) < c.r + world.ball.r) {
         c.collected = true;
+        mark('crystal', c.x, c.y);
         pings++;
         audio.collectCrystal();
         haptics.checkpoint();
@@ -3478,6 +3675,7 @@ function frame(now: number): void {
           flash(t('st.glass'));
         } else {
           g.state = 2;
+          mark('glass', g.x + g.w / 2, g.y + g.h / 2);
           world.holes.push({ x: g.x + g.w / 2, y: g.y + g.h / 2, r: world.ball.r * 1.05, openness: 1 });
           audio.glassShatter();
           haptics.crumble();
@@ -3527,6 +3725,7 @@ function frame(now: number): void {
     // Blind-Stern zählt PINGS, die man gefeuert hat, nicht solche, die einem
     // genommen wurden.
     for (const d of world.consumeDrains()) {
+      mark('drain', d.x, d.y);
       const before = pings;
       pings = Math.max(0, pings - d.cost);
       audio.drainPay();
@@ -3538,7 +3737,9 @@ function frame(now: number): void {
     // Klang, Türregel (heldIds) und der Haken für die E2E müssen dasselbe
     // sagen. Gerechnet wird NACH `world.step()` (Lektion aus M90): „stehe ich
     // auf dem Feld?" ist eine Frage an die neue Lage, nicht an die alte.
+    const duetWasOpen = duet.open;
     duet = duetFrame(now, tilt);
+    if (duet.open && !duetWasOpen) mark('resonance', world.ball.x, world.ball.y);
     audio.setResonance(
       duet.mine !== null ? centsToHz(duet.mine) : null,
       duet.theirs !== null ? centsToHz(duet.theirs) : null,
@@ -3596,6 +3797,7 @@ function frame(now: number): void {
         }
         if (!sw.held) {
           sw.held = true;
+          mark('switch', sw.x, sw.y);
           sw.litFrom = 0;
           sw.litUntil = now + 2000;
           audio.switchPress();
@@ -3627,6 +3829,7 @@ function frame(now: number): void {
       if (cp.reached) continue;
       if (Math.hypot(cp.x - world.ball.x, cp.y - world.ball.y) < cp.r) {
         cp.reached = true;
+        mark('checkpoint', cp.x, cp.y);
         cp.litUntil = now + 2000;
         respawnPoint = { floor: activeFloor, x: cp.x, y: cp.y };
         // Auffüllen bis zum Budget – ein Kristall-Überschuss bleibt erhalten.
@@ -3715,6 +3918,7 @@ function frame(now: number): void {
       // damit der Respawn nicht sofort wieder in seinen Fängen landet.
       state = 'fell';
       falls++;
+      mark('listener', world.ball.x, world.ball.y);
       heard.litFrom = 0;
       heard.litUntil = now + 1500;
       heard.x = heard.home.x;
@@ -3722,25 +3926,27 @@ function frame(now: number): void {
       audio.caught();
       haptics.fall();
       statusEl.textContent = t('st.caught');
-      setTimeout(respawn, 1300);
+      after(1300, respawn);
     } else if (fallen) {
       state = 'fell';
       falls++;
+      mark('fall', fallen.x, fallen.y);
       fallen.litFrom = 0;
       fallen.litUntil = now + 1500;
       audio.fall();
       haptics.fall();
       statusEl.textContent = t('st.fell');
-      setTimeout(respawn, 1300);
+      after(1300, respawn);
     } else if (caught) {
       state = 'fell';
       falls++;
+      mark('guard', caught.x, caught.y);
       caught.litFrom = 0;
       caught.litUntil = now + 1500;
       audio.caught();
       haptics.fall();
       statusEl.textContent = t('st.caught');
-      setTimeout(respawn, 1300);
+      after(1300, respawn);
     } else if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
       statusEl.textContent = t('mp.lostCountdown', { n: remaining.toFixed(0) });
@@ -3864,6 +4070,17 @@ function frame(now: number): void {
           // nicht von „der Partner hat zufällig getroffen" zu unterscheiden.
           given: duet.given,
         };
+  // MITSCHNITT & REPLAY (M104): Bilder und Marker des laufenden Mitschnitts,
+  // der letzte fertige Lauf, das laufende Replay und das Ergebnis des letzten
+  // Replays – „kommt es zur selben Zeit ins Ziel?" ist nur so prüfbar.
+  (window as unknown as { __tiltrRun?: unknown }).__tiltrRun = {
+    recording: recorder ? { frames: recorder.count } : null,
+    lastRun: lastRun
+      ? { frames: lastRun.rec.frames.length / 10, marks: lastRun.rec.marks.map((m) => m.kind), time: lastRun.rec.time }
+      : null,
+    replay: replay ? { i: replay.i, total: replay.rec.frames.length / 10, drift: replay.drift } : null,
+    lastReplay,
+  };
   (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {
     left: markMax() - ownCount(marks),
     max: markMax(),

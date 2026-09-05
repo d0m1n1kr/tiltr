@@ -105,6 +105,7 @@ const KNOWN_RUNS = [
   "51",
   "52",
   "53",
+  "54",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -9260,6 +9261,111 @@ if (want("53")) {
   } catch (e) {
     check(
       `Lauf 53 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 54: Mitschnitt & Replay (M104, Phase 1). Ein Lauf wird als EINGABE
+// mitgeschnitten (Uhr, Schritt, Neigung, Ping, Kugel) und mit Marken an den
+// Schlüsselstellen versehen; „▶ Lauf ansehen" fährt ihn in der echten Schleife
+// unter der Uhr des Mitschnitts noch einmal. Die Zusage, an der alles hängt:
+// Das Replay kommt zur SELBEN Zeit ins Ziel wie der Lauf – sonst wäre jede
+// Tür, jeder Wächter im späteren Video zu einem anderen Bild. ---
+if (want("54")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const def = {
+      id: "custom-m104",
+      name: "Mitschnitt",
+      floors: [
+        {
+          // Gang in Reihe 0: Checkpoint in der Mitte (eine Marke zwischen
+          // Start und Ziel) und davor ein ATMENDES Loch – ob und wie oft die
+          // Kugel hineinfällt, hängt an der Uhr, also ist der LAUF zufällig.
+          // Genau deshalb steht es hier: Der Wecker (Respawn nach 1,3 s) und
+          // der Atem (Wanduhr) müssen im Replay auf dieselben Bilder fallen,
+          // sonst stimmt die Zielzeit nicht.
+          size: [8, 2],
+          maze: {
+            seed: 3,
+            carve: [0, 1, 2, 3, 4, 5, 6].map((x) => [[x, 0], "e"]),
+            add: [0, 1, 2, 3, 4, 5, 6, 7].map((x) => [[x, 0], "s"]),
+          },
+          elements: [
+            { type: "checkpoint", cell: [3, 0] },
+            { type: "hole", cell: [5, 0], breathing: { open: 2.4, closed: 0.7, ramp: 0.3 } },
+          ],
+          start: [0, 0],
+          goal: [7, 0],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    await page.click("#edTest");
+    const interHidden = () =>
+      page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden") === true);
+    await until(interHidden, { timeout: 20000 });
+    const run = () => page.evaluate(() => window.__tiltrRun ?? null);
+
+    // Der Rekorder läuft vom ersten Bild an.
+    const early = await until(async () => {
+      const r = await run();
+      return r?.recording && r.recording.frames > 5 ? r : null;
+    }, { timeout: 8000 });
+    check(`Der Mitschnitt läuft vom Start an (${early?.recording?.frames} Bilder)`, (early?.recording?.frames ?? 0) > 5);
+
+    // Rollen bis ins Ziel: Die Karte kommt 1,8 s nach dem Sieg.
+    await page.keyboard.down("ArrowRight");
+    await until(async () => !(await interHidden()), { timeout: 25000 });
+    await page.keyboard.up("ArrowRight");
+    const done = await run();
+    const marks = done?.lastRun?.marks ?? [];
+    const fallsInRun = marks.filter((m) => m === "fall").length;
+    check(
+      `Der fertige Lauf trägt Bilder und Marken (${done?.lastRun?.frames} Bilder, ${fallsInRun}× gestürzt, Marken: ${marks.join(",")})`,
+      (done?.lastRun?.frames ?? 0) > 30 && marks[0] === "start" && marks.includes("checkpoint") && marks[marks.length - 1] === "goal",
+    );
+    check(`Der Rekorder ist mit dem Sieg abgeschlossen (laufend: ${JSON.stringify(done?.recording)})`, done?.recording === null);
+    const replayBtn = page.locator("#interReplay");
+    const btnText = (await replayBtn.isVisible()) ? (await replayBtn.textContent()).trim() : null;
+    check(`Die Ergebniskarte bietet „Lauf ansehen" an („${btnText}")`, btnText?.includes("Lauf ansehen") === true);
+
+    // Ansehen: Die Kugel rollt OHNE Taste – die Neigung kommt aus dem Mitschnitt.
+    await replayBtn.click();
+    const rolling = await until(async () => {
+      const r = await run();
+      const x = await page.evaluate(() => window.__tiltrBall?.x ?? 0);
+      return r?.replay && x > 250 ? { i: r.replay.i, x } : null;
+    }, { timeout: 15000 });
+    check(`Im Replay rollt die Kugel aus dem Mitschnitt (Bild ${rolling?.i}, x ${Math.round(rolling?.x ?? 0)})`, rolling !== null);
+    const midRun = await run();
+    check(`Während des Replays wird NICHT mitgeschnitten (${JSON.stringify(midRun?.recording)})`, midRun?.recording === null);
+
+    // Zurück auf der Karte: Ziel erreicht, keine Ebenen-Abweichung, DIESELBE Zeit.
+    await until(async () => !(await interHidden()), { timeout: 30000 });
+    const after = await run();
+    const lr = after?.lastReplay;
+    const dtMs = lr && done?.lastRun ? Math.abs((lr.time ?? 0) - done.lastRun.time) * 1000 : NaN;
+    check(
+      `Das Replay kommt ins Ziel – zur selben Zeit (Lauf ${done?.lastRun?.time?.toFixed(3)} s, Replay ${lr?.time?.toFixed(3)} s, Δ ${dtMs.toFixed(1)} ms, Abweichung ${lr?.drift})`,
+      lr?.goal === true && lr.drift === 0 && dtMs < 1,
+    );
+    check(`Nach dem Replay steht die Karte wieder (mit dem Knopf: ${await replayBtn.isVisible()})`, await replayBtn.isVisible());
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 54 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

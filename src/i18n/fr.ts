@@ -469,6 +469,8 @@ export const fr: Dict = {
   'res.tutTitle': '{name} – réussi ! 🎉',
   'res.tutProgress': 'Tutoriel : {done}/{total}',
   'res.tutDone': 'Tutoriel terminé – tu es prêt pour l’obscurité !',
+  'res.replay': '▶ Revoir la course',
+  'st.replay': 'Relecture – la course telle qu’elle était',
   'res.winTitle': 'Arrivée en {time} 🎉',
 
   /* --- Défi du jour --- */

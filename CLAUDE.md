@@ -704,6 +704,36 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   `#diag` Typ/Winkel/natürliche Lage, β/γ/α, accelerationIncludingGravity und
   tilt – Geräte weichen von der Spec ab (Tablets!), also ERST messen, dann
   korrigieren. `input.diagnostics()` ist die eine Quelle (Menü + Debug-Status).
+- MITSCHNITT & REPLAY (M104, v3.40.0, `src/core/recording.ts`,
+  `src/core/highlights.ts`): Jeder Solo-Lauf wird als EINGABE mitgeschnitten
+  (je Bild Uhr, Schritt, Neigung, Ping-Taste, Kugel) und trägt MARKEN an den
+  Schlüsselstellen (`mark(kind, x, y)` in app.ts – Tür, Schlüssel, Sturz,
+  Horcher, Automat, Ziel …); „▶ Lauf ansehen" auf der Ergebniskarte fährt
+  die ECHTE Schleife noch einmal, mit Klang, und kommt zur Karte zurück.
+  ZEIT HAT EINE QUELLE: app.ts liest die Uhr NUR über `nowMs()` (Wanduhr, im
+  Replay die Uhr des Mitschnitts) – wer `performance.now()` schreibt, baut
+  eine zweite Uhr ein, und im Replay fällt seine Tür zu einem anderen Bild.
+  Wecker (Respawn, Warp) laufen über `after(ms, fn)` auf der Spiel-Uhr, NICHT
+  über setTimeout; der Ping feuert IM Bild (`pendingPing`). INNERHALB EINES
+  BILDES STEHT DIE UHR (`frameNow`, gesetzt in `frame`, in `finally` wieder
+  null): `performance.now()` läuft während eines Bildes weiter, unter Last um
+  Dutzende Millisekunden – ein Wecker, der damit gestellt wurde, fiel im
+  Replay ein Bild FRÜHER, die nachgezogene Kugel stand noch im Loch, fiel ein
+  zweites Mal, der Mitschnitt war vor dem Ziel zu Ende (CI, Lauf 54). Und NUR
+  innerhalb des Bildes: Die erste Fassung ließ die Bild-Uhr auch zwischen den
+  Bildern gelten, zwei Netz-Nachrichten im selben Intervall bekamen dt = 0 und
+  der Partner-Rollanteil blieb bei 0,05 (Lauf 45). ZWEI ZEITEN JE
+  BILD: dt ist bei 50 ms geklemmt, die Uhr springt weiter – Atem, Türtimer
+  und Glühen hängen an der Uhr, Physik und Wächter am Schritt; beide stehen
+  im Mitschnitt. Die Kugel wird je Bild NACHGEZOGEN (Ulp-Drift zwischen
+  Engines, chaotische Kollisionen), die Welt reagiert auf die wahre Bahn.
+  Wer ein Ereignis einführt, das ein Video zeigen soll, ruft `mark` – die
+  Schere (`selectHighlights`, rein, Gewichte in `MARK_WEIGHT`) schneidet
+  daraus. `winRun` verzweigt im Replay VOR `onWin`: kein Geist, keine
+  Bestzeit, kein Profil. Nicht im Netz, nicht im MP-Testmodus.
+  `window.__tiltrRun` (E2E Lauf 54: Replay kommt auf die Millisekunde zur
+  selben Zeit ins Ziel, auch mit atmendem Loch und Sturz). Phasen 2–4
+  (Video, Highlights mit Überblendung, Offline-Render) stehen in PLAN.md.
 - SAND (M103, v3.39.0, `src/elements/sand.ts`): der zähe Untergrund, das
   Gegenstück zum Eis. LANGSAM HEISST GEDECKELT, NICHT KLEBRIG: Die
   Endgeschwindigkeit ist `accel / friction` – auf Stein 2600/1,4 (über
