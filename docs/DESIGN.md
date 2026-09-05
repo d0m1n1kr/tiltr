@@ -230,7 +230,11 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
   Zellmitten auf null. Zellen KACHELN dagegen lückenlos, und daraus wird die
   Spur von selbst zusammenhängend. Regel daraus: Was eine LINIE erzählen soll,
   darf zwischen seinen Stützstellen nicht auf null gehen; entweder es
-  überlappt, oder es kachelt.
+  überlappt, oder es kachelt. Und die Kachel zeigt sich als Kachel: Jede Zelle
+  ist um die halbe `FLOOR_GLOW_GAP` (8 Welteinheiten von 100) eingerückt, so
+  dass eine Fuge stehen bleibt – die Welt IST ein Gitter, und die Spur darf das
+  zeigen. Die Lücke steht in Welt-, nicht in Gerätepixeln: Sie soll mit dem
+  Zoom mitwachsen.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
   darf nur die Welt. Zwei endliche Ausnahmen. Erstens das
   **Sieges-Konfetti**: zwei Kanonen aus den unteren Bildecken, Farben aus der

@@ -1010,10 +1010,15 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   etwa 0,1): Zellen kacheln lückenlos, also ist die Spur von selbst
   zusammenhängend. Gebündelt wird wie bei den Wänden nach Alpha-Stufe – EIN
   Pfad je Stufe statt eines Zeichenbefehls je Zelle (die M94b-Lektion gilt
-  weiter), und innerhalb einer Stufe gibt es damit keine Nähte; ein halber
-  Gerätepixel Überstand tilgt die Haarlinie zwischen zwei Stufen. Regel daraus:
-  Was eine LINIE erzählen soll, darf zwischen seinen Stützstellen nicht auf
-  null gehen – entweder es überlappt, oder es kachelt.
+  weiter). Regel daraus: Was eine LINIE erzählen soll, darf zwischen seinen
+  Stützstellen nicht auf null gehen – entweder es überlappt, oder es kachelt.
+  UND SIE ZEIGT DAS RASTER (v3.36.0, nachgereicht: „Gut wäre schon, wenn man
+  sieht, dass es ein Grid ist"): Jede Zelle wird um die halbe `FLOOR_GLOW_GAP`
+  eingerückt, es bleibt also eine Fuge zwischen zwei Nachbarn. Die Lücke steht
+  in WELTeinheiten (8 von 100), damit sie mit dem Zoom mitwächst – als feste
+  Pixelzahl wäre sie mal Fuge, mal Haarriss; nach unten begrenzt ein halber
+  Gerätepixel, damit sie nie ganz verschwindet. Die Welt IST ein Gitter, und
+  die Spur darf das zeigen.
   ZEICHENARBEIT JE OBJEKT UND BILD IST IN DER CI TEUER (hier gelernt): Die
   erste Fassung baute je glühender Zelle und je Bild einen
   `createRadialGradient`. Lokal grün – in der CI fiel Lauf 9 „Coop" (zwei volle

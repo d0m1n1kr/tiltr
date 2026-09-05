@@ -56,6 +56,14 @@ export interface DrawOptions {
  *  mit 0,16 wäre also fast doppelt so präsent gewesen. */
 export const FLOOR_GLOW_ALPHA = 0.1;
 
+/** Lücke zwischen zwei Zellen der Bodenspur, in WELTeinheiten (Zelle = 100) –
+ *  sie soll mit dem Zoom mitwachsen, sonst wäre sie mal Fuge, mal Haarriss.
+ *  Gewünscht so (v3.36.0): „Gut wäre schon, wenn man sieht, dass es ein Grid
+ *  ist." Klein genug, dass die Spur als Spur zusammenhängt, groß genug, dass
+ *  das RASTER darin sichtbar wird – die Welt ist ein Gitter, und die Spur darf
+ *  das zeigen. Aufgeteilt auf beide Seiten: je Zelle die halbe Lücke. */
+export const FLOOR_GLOW_GAP = 8;
+
 /** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
  *  Alles Fremde (Partner, Geist) bleibt darunter. */
 export const BALL_CORE_ALPHA = 0.5;
@@ -352,10 +360,12 @@ export class Renderer {
         if (q <= 0.004) continue;
         let path = lanes.get(q);
         if (!path) lanes.set(q, (path = new Path2D()));
-        // Gespeichert ist die ZELLMITTE (app.ts) – gefüllt wird die Zelle.
-        // Der halbe Gerätepixel Überstand tilgt die Haarlinie, die zwischen
-        // zwei getrennt gefüllten Pfaden durch das Kantenglätten entstünde.
-        path.rect(tx(c.x - CELL / 2) - 0.5, ty(c.y - CELL / 2) - 0.5, CELL * s + 1, CELL * s + 1);
+        // Gespeichert ist die ZELLMITTE (app.ts) – gefüllt wird die Zelle,
+        // eingerückt um die halbe Lücke: So bleibt zwischen zwei Nachbarn eine
+        // Fuge stehen und man SIEHT das Raster. Mindestens ein halber
+        // Gerätepixel, damit die Fuge auch weit herausgezoomt nicht verschwindet.
+        const inset = Math.max((FLOOR_GLOW_GAP / 2) * s, 0.5);
+        path.rect(tx(c.x - CELL / 2) + inset, ty(c.y - CELL / 2) + inset, CELL * s - 2 * inset, CELL * s - 2 * inset);
       }
       for (const [q, path] of lanes) {
         ctx.fillStyle = `rgba(${WORLD.ballGlow}, ${q})`;

@@ -678,6 +678,14 @@ Gerätepixel Überstand die Haarlinie, die das Kantenglätten sonst stehen ließ
 Die Regel zum Mitnehmen: Was eine LINIE erzählen soll, darf zwischen seinen
 Stützstellen nicht auf null gehen – entweder es überlappt, oder es kachelt.
 
+NACHGEREICHT (v3.36.0): „Gut wäre schon, wenn man sieht, dass es ein Grid ist."
+Also bleibt zwischen zwei Zellen eine Fuge – jede Zelle wird um die halbe
+`FLOOR_GLOW_GAP` (8 Welteinheiten von 100) eingerückt. In WELTeinheiten, damit
+die Fuge mit dem Zoom mitwächst; als feste Pixelzahl wäre sie mal Fuge, mal
+Haarriss. Damit fällt auch der halbe Gerätepixel Überstand wieder weg, der
+vorher die Naht zwischen zwei Alpha-Stufen tilgen sollte: Wo eine Lücke ist,
+gibt es keine Naht.
+
 ## M99 „Ein Öffner, mehrere Türen" ✓ (v3.34.0)
 
 Gefragt in einem Satz: „wäre es möglich, dass eine Platte mit mehreren Türen
