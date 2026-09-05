@@ -25,6 +25,7 @@ import './reverbZone';
 import './roamingHole';
 import './boulder';
 import './torch';
+import './drain';
 
 export { buildElements, galleryEntries, registerElement } from './registry';
 export type { BuildContext, ElementModule, GalleryEntry } from './registry';

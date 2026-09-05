@@ -103,6 +103,7 @@ const KNOWN_RUNS = [
   "49",
   "50",
   "51",
+  "52",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -9027,6 +9028,135 @@ if (want("51")) {
   } catch (e) {
     check(
       `Lauf 51 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 52: Zehrfeld (M102). Ein Feld, das Echo-Pings FRISST – damit lässt
+// sich eine Abkürzung bepreisen statt versperren. Zwei Zusagen prüft der Lauf:
+// Der Preis ist im Editor einstellbar UND steht danach im Spiel auf dem Feld
+// (das Element trägt die Zahl), und eine Überfahrt kostet GENAU einmal – wer
+// darauf liegen bleibt, zahlt nicht weiter. ---
+if (want("52")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const def = {
+      id: "custom-m102",
+      name: "Zehrfeld",
+      pingBudget: 3,
+      floors: [
+        {
+          // Gang in Reihe 0, Reihe 1 abgemauert: Start links, Zehrfeld in der
+          // Mitte, Ziel weit rechts – die Kugel MUSS hindurch.
+          size: [6, 2],
+          maze: {
+            seed: 3,
+            carve: [0, 1, 2, 3, 4].map((x) => [[x, 0], "e"]),
+            add: [0, 1, 2, 3, 4, 5].map((x) => [[x, 0], "s"]),
+          },
+          elements: [{ type: "drain", cell: [2, 0], cost: 2 }],
+          start: [0, 0],
+          goal: [5, 0],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+
+    // Der Preis ist eine EIGENSCHAFT des Feldes (Regel aus M58): auswählen,
+    // und „Kosten (Pings)" steht im Eigenschaften-Panel.
+    const tap = async (cx, cy) => {
+      const pt = await page.evaluate(
+        ([x, y]) => {
+          const ed = window.__tiltrEd;
+          const box = document.getElementById("edCanvas").getBoundingClientRect();
+          return {
+            x: box.left + (ed.ox + (x * 100 + 50) * ed.scale) / ed.dpr,
+            y: box.top + (ed.oy + (y * 100 + 50) * ed.scale) / ed.dpr,
+          };
+        },
+        [cx, cy],
+      );
+      await page.mouse.click(pt.x, pt.y);
+      await page.waitForTimeout(250);
+    };
+    await page.locator(".ed-tile", { hasText: "☝" }).first().click();
+    await tap(2, 0);
+    const costField = page.locator('#edProps input[type="number"]').first();
+    const costValue = (await costField.count()) === 1 ? await costField.inputValue() : null;
+    check(
+      `Editor: der Preis ist eine Eigenschaft des Feldes (Feld: ${await costField.count()}, Wert: ${costValue})`,
+      costValue === "2",
+    );
+    // … und er lässt sich stellen.
+    await costField.fill("1");
+    await costField.dispatchEvent("change");
+    await page.waitForTimeout(200);
+    const cost = await page.evaluate(() => window.__tiltrEd.def.floors[0].elements[0].cost);
+    check(`Der Preis lässt sich einstellen (2 → ${cost})`, cost === 1);
+
+    await page.click("#edTest");
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 20000 },
+    );
+    const read = () =>
+      page.evaluate(() => ({
+        drains: window.__tiltrWorld?.drains ?? [],
+        pings: document.getElementById("pings")?.textContent ?? "",
+        x: window.__tiltrBall?.x ?? 0,
+      }));
+    const start = await until(async () => {
+      const r = await read();
+      return r.drains.length === 1 ? r : null;
+    }, { timeout: 12000 });
+    check(
+      `Das Feld trägt seinen Preis in die Welt (${JSON.stringify(start?.drains)}, Vorrat „${start?.pings}")`,
+      start?.drains[0]?.cost === 1 && start.pings === "●●●",
+    );
+
+    // Hinüberrollen: der Vorrat sinkt um GENAU den Preis, und die Statuszeile
+    // sagt, was passiert ist. Gewartet wird auf den ZUSTAND (die Kugel im
+    // Feld), nicht auf eine Zeit.
+    await page.keyboard.down("ArrowRight");
+    const paid = await until(async () => {
+      const r = await read();
+      return r.drains[0]?.inside === true ? r : null;
+    }, { timeout: 15000 });
+    await page.keyboard.up("ArrowRight");
+    check(
+      `Überfahren kostet den Preis (Vorrat „${paid?.pings}", einer weg)`,
+      paid?.pings === "●●○",
+    );
+    const said = await until(async () => {
+      const txt = (await page.textContent("#status")).trim();
+      return txt.includes("Zehrfeld") ? txt : null;
+    }, { timeout: 8000 });
+    check(`Die Statuszeile nennt die Rechnung („${String(said).slice(0, 40)}")`, said !== null);
+
+    // EINMAL ist einmal: Die Kugel rollt weiter durch das Feld und kommt an
+    // der Wand zur Ruhe – der Vorrat darf sich dabei nicht weiter leeren.
+    // Würde je BILD abgerechnet, stünde hier „○○○".
+    await settled(page);
+    const after = await read();
+    check(
+      `Eine Überfahrt kostet genau einmal (Vorrat „${after.pings}", im Feld: ${after.drains[0]?.inside})`,
+      after.pings === "●●○",
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 52 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

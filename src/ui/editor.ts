@@ -374,6 +374,7 @@ const PLACEABLE = [
   'checkpoint',
   'gem',
   'echoCrystal',
+  'drain',
   'key',
   'door',
   'timedSwitch',
@@ -2058,6 +2059,13 @@ export function setupEditor(opts: {
       if (el.type === 'hourglass') {
         if (el.bonusS === undefined) el.bonusS = 10;
         num(t('ed.f.bonusS'), 'bonusS', 5, 60, 5);
+      }
+      // ZEHRFELD (M102): Der Preis ist die ganze Einstellung – und er steht
+      // im Spiel auf dem Feld, also ist die Zahl hier auch das, was der
+      // Bauende dort später liest.
+      if (el.type === 'drain') {
+        if (el.cost === undefined) el.cost = 1;
+        num(t('ed.f.drainCost'), 'cost', 1, 9, 1);
       }
       if (el.type === 'key' || el.type === 'timedSwitch' || el.type === 'plate') {
         // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel und

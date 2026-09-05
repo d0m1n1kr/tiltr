@@ -7,6 +7,7 @@ import type {
   Checkpoint,
   Collectible,
   Current,
+  Drain,
   FogZone,
   GlassPlate,
   Hourglass,
@@ -59,6 +60,9 @@ export class World {
   crystals: Collectible[] = [];
   hourglasses: Hourglass[] = [];
   bells: Bell[] = [];
+  /** Zehrfelder (M102): Überrollen kostet Pings – die Kugel zahlt beim
+   *  BETRETEN (Kanten-Trigger), die Buchführung macht app.ts. */
+  drains: Drain[] = [];
   reverbZones: ReverbZone[] = [];
   boulders: Boulder[] = [];
   /** Rollstein (M47): ab dieser Aufprallgeschwindigkeit (px/s) rollt er */
@@ -164,6 +168,7 @@ export class World {
       this.advanceGuards(h);
       this.advanceHoles(h);
       this.updateBells(h);
+      this.updateDrains();
       this.updateListeners(h);
 
       // Sog-Anker: Anziehung wächst zum Zentrum hin, bleibt aber immer unter
@@ -543,6 +548,7 @@ export class World {
   /** Lockglocken (M46): Nachklang herunterzählen, Überrollen als Kanten-Trigger
    *  anschlagen. Liefert die in diesem Schritt NEU angeschlagenen Glocken. */
   private rungNow: Bell[] = [];
+  private drainedNow: Drain[] = [];
   private updateBells(dt: number): void {
     const b = this.ball;
     for (const bl of this.bells) {
@@ -560,6 +566,26 @@ export class World {
     const r = this.rungNow;
     this.rungNow = [];
     return r;
+  }
+
+  /** Zehrfeld (M102): Kanten-Trigger wie bei der Glocke – bezahlt wird beim
+   *  BETRETEN, nicht je Bild. Wer wieder hinüberrollt, zahlt wieder: Es ist
+   *  ein Zoll, keine einmalige Falle. Die Physik BUCHT nichts (der Vorrat
+   *  gehört der Runde, nicht der Welt) – sie meldet nur, was fällig ist. */
+  private updateDrains(): void {
+    const b = this.ball;
+    for (const d of this.drains) {
+      const on = Math.hypot(d.x - b.x, d.y - b.y) < d.r + b.r * 0.5;
+      if (on && !d.inside) this.drainedNow.push(d);
+      d.inside = on;
+    }
+  }
+
+  /** Seit dem letzten Aufruf überfahrene Zehrfelder (Kosten + Klang). */
+  consumeDrains(): Drain[] {
+    const d = this.drainedNow;
+    this.drainedNow = [];
+    return d;
   }
 
   /**

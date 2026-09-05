@@ -203,6 +203,20 @@ export interface Plate {
   glowUntil?: number;
 }
 
+/** Zehrfeld (M102): Überrollen kostet `cost` Echo-Pings. `inside` ist der
+ *  Kanten-Trigger wie bei der Lockglocke – bezahlt wird je ÜBERFAHRT, nicht je
+ *  Bild, und wer erneut hinüberrollt, zahlt erneut. Es ist ein Zoll, keine
+ *  einmalige Falle. */
+export interface Drain {
+  x: number;
+  y: number;
+  r: number;
+  cost: number;
+  inside: boolean;
+  litFrom?: number;
+  litUntil?: number;
+}
+
 export interface TimedSwitch {
   x: number;
   y: number;

@@ -699,6 +699,31 @@ export class Renderer {
 
     // Sog-Anker: violetter Kern mit offenen Spiral-Ringen; im Debug/Reveal
     // zusätzlich der Wirkradius.
+    // ZEHRFELD (M102): Trichter aus drei Ringen – und die ZIFFER darin, denn
+    // der Preis steht auf dem Feld. Ohne die Zahl wäre es eine Falle, und
+    // Fallen ohne Ansage gibt es hier nicht; sichtbar ist sie genau dann, wenn
+    // die Zelle aufgedeckt ist (Ping, Fackel, helle Ebene, Debug).
+    for (const d of world.drains) {
+      const alpha = revealAlpha(d, 0.9, 'drain');
+      if (alpha <= 0.01) continue;
+      const cx = tx(d.x),
+        cy = ty(d.y);
+      ctx.strokeStyle = `rgba(${WORLD.drain}, ${alpha})`;
+      ctx.lineWidth = 1.6 * this.dpr;
+      for (const f of [1, 0.66]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, d.r * s * f, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(${WORLD.drain}, ${alpha})`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `700 ${Math.round(d.r * s * 0.9)}px system-ui, sans-serif`;
+      ctx.fillText(String(d.cost), cx, cy + 1 * this.dpr);
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
+    }
+
     for (const a of world.anchors) {
       const alpha = revealAlpha(a, 0.9, 'anchor');
       if (alpha <= 0.01) continue;

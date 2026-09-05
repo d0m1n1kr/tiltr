@@ -53,6 +53,10 @@ export const WORLD = {
   crystal: '75, 224, 200',
   /** Sog-Anker: helles Violett – Gefahr-Familie der Löcher, eigener Ton */
   anchor: '170, 110, 240',
+  /** Zehrfeld (M102): AUSGEWASCHENES Ping-Teal. Die Nähe zum Kristall ist
+   *  Absicht – beide handeln mit demselben Gut –, aber dies hier ist die
+   *  leere Seite davon: entsättigt und dunkel, ein Kristall ohne Licht. */
+  drain: '96, 148, 142',
   /** Jukebox: warmes Magenta-Rosa – nahe der Portal-Familie (auch sie ist
    *  „Technik in der Wand"), aber wärmer: ein Möbelstück, keine Gefahr. */
   jukebox: '236, 118, 178',

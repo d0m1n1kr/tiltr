@@ -651,6 +651,40 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M102 „Zehrfeld" ✓ (v3.38.0)
+
+Gewünscht in einem Satz: „Ein Feld, auf dem man bis zu einer bestimmten Anzahl
+Pings verliert (einstellbar im Editor), wenn man darüber fährt. Kann zum
+Beispiel eine Abkürzung bestrafen." Genau so gebaut – und damit die erste
+Mechanik, die den Ping-Vorrat KLEINER macht. Der Kristall füllt auf, der
+Checkpoint gleicht aus; hier zahlt man. Eine Abkürzung kostet dann nicht Zeit,
+sondern SICHT, und das ist in diesem Spiel die härtere Währung.
+
+DER PREIS STEHT DRAUF, und zwar wörtlich: Der Renderer schreibt die Ziffer in
+die Zelle, sobald sie aufgedeckt ist. Dazu ein eigener Klang in der Nähe (ein
+saugendes Zehren) und ein schlürfender Abwärtston beim Bezahlen. Beides ist
+Pflicht, nicht Zierde: Alles Gefährliche in tiltr klingt, bevor es zuschlägt –
+ein stummes Feld, das Pings frisst, wäre eine Falle.
+
+Klangwahl: RAUSCHEN um 300 Hz mit langsamem Atem (0,7 Hz), nicht tonal. Die
+tonalen Stimmen sind vergeben (Schlüssel, Stimmgabel, Resonanz, Partner), und
+ein Ton hier klänge nach etwas, das man HOLEN soll. Der Atem trennt es vom Wind
+(breit und stetig) und von der Strömung (gerichtet und drängend): Dies zieht,
+ohne zu schieben.
+
+KANTEN-TRIGGER WIE DIE GLOCKE (M46): Bezahlt wird beim Betreten, nicht je Bild;
+wer erneut hinüberrollt, zahlt erneut. Es ist ein Zoll, keine einmalige Falle.
+Die PHYSIK bucht dabei nichts – `consumeDrains()` meldet nur, was fällig ist,
+und app.ts führt Buch. Der Vorrat gehört der Runde, nicht der Welt. Und
+`pingsUsed` bleibt unberührt: Der Blind-Stern zählt Pings, die man GEFEUERT
+hat, nicht solche, die einem genommen wurden.
+
+Kein Beweis ändert sich. Pings sind nie Pflicht (es gibt den Blind-Stern), also
+ist ein Zehrfeld Schwierigkeit und kein Riegel – dieselbe Einordnung wie beim
+Glas seit M39. Im Netz meldet das Merkmals-Gate den neuen Element-Typ
+(`needsFor(…, drain)`), statt den Gast mit einem rohen Ladefehler stehen zu
+lassen (M93).
+
 ## M101 „Die Strömung ist eine Einbahnstraße" ✓ (v3.37.0)
 
 Gemeldet in einem Satz: „Und Fluss soll stärker sein. Man soll auf keinen Fall

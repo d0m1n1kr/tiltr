@@ -92,6 +92,8 @@ export class GameAudio {
   private iceGain!: GainNode;
   private iceVibrato!: OscillatorNode;
   private anchorGain!: GainNode;
+  private drainGain!: GainNode;
+  private drainPanner!: PannerNode;
   private anchorPanner!: PannerNode;
   private rivalGain!: GainNode;
   private rivalFilter!: BiquadFilterNode;
@@ -509,6 +511,75 @@ export class GameAudio {
     }
     anchorFilter.connect(this.anchorGain);
     this.anchorGain.connect(this.anchorPanner).connect(this.master);
+
+    // ZEHRFELD (M102): ein SAUGENDES Zehren – schmalbandiges Rauschen um
+    // 300 Hz mit langsamem Atem (0,7 Hz). Bewusst RAUSCHEN und nicht tonal:
+    // Die tonalen Stimmen sind vergeben (Schlüssel, Stimmgabel, Resonanz,
+    // Partner), und ein Ton hier klänge nach etwas, das man holen soll. Der
+    // Atem trennt es vom Wind (breit und stetig) und von der Strömung
+    // (gerichtet und drängend): Dies hier zieht, ohne zu schieben.
+    this.drainGain = this.ctx.createGain();
+    this.drainGain.gain.value = 0;
+    this.drainPanner = this.panner();
+    const drainFilter = this.ctx.createBiquadFilter();
+    drainFilter.type = 'bandpass';
+    drainFilter.frequency.value = 300;
+    drainFilter.Q.value = 3.5;
+    const drainNoise = this.ctx.createBufferSource();
+    drainNoise.buffer = this.noiseBuffer('brown');
+    drainNoise.loop = true;
+    const drainBreath = this.ctx.createGain();
+    drainBreath.gain.value = 0.55;
+    const breathLfo = this.ctx.createOscillator();
+    breathLfo.type = 'sine';
+    breathLfo.frequency.value = 0.7;
+    const breathDepth = this.ctx.createGain();
+    breathDepth.gain.value = 0.45;
+    breathLfo.connect(breathDepth).connect(drainBreath.gain);
+    breathLfo.start();
+    drainNoise.connect(drainFilter).connect(drainBreath).connect(this.drainGain);
+    this.drainGain.connect(this.drainPanner).connect(this.master);
+    drainNoise.start();
+  }
+
+  /** Zehrfeld in Hörweite (M102): closeness01 = 1 mittendrin, 0 außer Reichweite. */
+  setDrain(closeness01: number, dx: number, dy: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.drainGain.gain.setTargetAtTime(Math.min(0.4, closeness01 ** 1.4 * 0.45), t, 0.12);
+    if (closeness01 > 0) this.place(this.drainPanner, dx, dy);
+  }
+
+  /** Bezahlt (M102): ein schlürfender Abwärtston plus Rausch-Zug – das
+   *  Gegenstück zum hellen Aufwärts-Anschlag des Echo-Kristalls. Ungepannt:
+   *  Es passiert AN einem selbst, nicht irgendwo im Raum. */
+  drainPay(): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(620, t);
+    osc.frequency.exponentialRampToValueAtTime(140, t + 0.45);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.3, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(g).connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.55);
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer('white');
+    const nf = this.ctx.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.setValueAtTime(900, t);
+    nf.frequency.exponentialRampToValueAtTime(200, t + 0.4);
+    nf.Q.value = 2;
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.22, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    noise.connect(nf).connect(ng).connect(this.master);
+    noise.start(t);
+    noise.stop(t + 0.5);
   }
 
   // Sog-Anker: closeness01 = 1 im Zentrum, 0 = außer Hörweite.
@@ -1558,6 +1629,7 @@ export class GameAudio {
     this.setListener(0, 0, 0, 0);
     this.setIce(0);
     this.setAnchor(0, 0, 0);
+    this.setDrain(0, 0, 0);
     this.setRolling(0);
   }
 

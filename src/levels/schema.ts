@@ -283,6 +283,23 @@ export const glassDef = z.object({
 
 /** Fackel (M66): macht in ihrem Radius HELL – das einzige Element ohne
  *  Klang, denn Licht ist hier die Information. Kein Physik-Einfluss. */
+/* --- Zehrfeld (M102) --------------------------------------------------------
+   Ein Feld, das Echo-Pings FRISST: Wer darüberrollt, zahlt `cost` Pings. Damit
+   lässt sich eine Abkürzung BEPREISEN statt versperren – die erste Kosten-
+   Mechanik im Spiel, und die einzige, die den Vorrat kleiner macht (der
+   Kristall macht ihn größer, der Checkpoint füllt auf).
+
+   Der Preis STEHT auf dem Feld: Der Renderer schreibt die Ziffer hinein,
+   sobald die Zelle aufgedeckt ist. Ein Preisschild, das man nicht lesen kann,
+   wäre eine Falle – und Fallen ohne Ansage gibt es in diesem Spiel nicht. */
+export const drainDef = z.object({
+  ...base,
+  type: z.literal('drain'),
+  /** Wie viele Pings eine Überfahrt kostet (die Ziffer auf dem Feld) */
+  cost: z.number().int().min(1).max(9).default(1),
+  r: z.number().positive().default(38),
+});
+
 export const torchDef = z.object({
   ...base,
   type: z.literal('torch'),
@@ -371,6 +388,7 @@ export const elementDef = z.discriminatedUnion('type', [
   roamingHoleDef,
   boulderDef,
   torchDef,
+  drainDef,
 ]);
 export type ElementDef = z.infer<typeof elementDef>;
 export type HoleDef = z.infer<typeof holeDef>;
@@ -397,6 +415,7 @@ export type BellDef = z.infer<typeof bellDef>;
 export type RoamingHoleDef = z.infer<typeof roamingHoleDef>;
 export type BoulderDef = z.infer<typeof boulderDef>;
 export type TorchDef = z.infer<typeof torchDef>;
+export type DrainDef = z.infer<typeof drainDef>;
 export type JukeboxDef = z.infer<typeof jukeboxDef>;
 export type TuneDef = z.infer<typeof tuneSchema>;
 export type PlaylistEntry = z.infer<typeof playlistEntry>;

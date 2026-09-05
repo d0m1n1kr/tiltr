@@ -11,7 +11,7 @@
 // spielt weiter mit jeder älteren Fassung. Rein – Units in tests/features.test.ts.
 
 /** Merkmale, die DIESE Fassung beherrscht. Neues Spielmittel ⇒ hier eintragen. */
-export const FEATURES: readonly string[] = ['marks', 'together', 'duet', 'multiOpens'];
+export const FEATURES: readonly string[] = ['marks', 'together', 'duet', 'multiOpens', 'drain'];
 
 /** Was ein Level verlangt: `marks` > 0 heißt „beide müssen Bojen legen
  *  können", `together` heißt „beide müssen nach der Rendezvous-Regel spielen"
@@ -22,12 +22,22 @@ export const FEATURES: readonly string[] = ['marks', 'together', 'duet', 'multiO
  *  3.34 liest `opens` nur als EINE ID, das Level lädt bei ihr gar nicht. Hier
  *  geht es also nicht um halbe Regeln, sondern um „geht überhaupt" – und
  *  gemeldet gehört es trotzdem in der Lobby, nicht als roher Ladefehler. */
-export function needsFor(marks: number, together = false, duet = false, multiOpens = false): string[] {
+export function needsFor(
+  marks: number,
+  together = false,
+  duet = false,
+  multiOpens = false,
+  drain = false,
+): string[] {
   const needs: string[] = [];
   if (marks > 0) needs.push('marks');
   if (together) needs.push('together');
   if (duet) needs.push('duet');
   if (multiOpens) needs.push('multiOpens');
+  // `drain` heißt „das Level hat ein Zehrfeld" (M102): ein neuer ELEMENT-Typ,
+  // den eine Fassung vor 3.38 nicht einmal laden kann. Auch das gehört in die
+  // Lobby gemeldet und nicht als roher Ladefehler (M93).
+  if (drain) needs.push('drain');
   return needs;
 }
 

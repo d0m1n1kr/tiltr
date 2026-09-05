@@ -90,6 +90,7 @@ const CURRENT_HEAR = CELL * 2; // Hörweite des Strömungs-Pulsierens
 const SLIDE_HEAR = CELL * 2.2; // Hörweite von Schleifen/Warn-Takt der Schiebewände
 const LISTENER_HEAR = CELL * 2.4; // Hörweite des Horcher-Schnüffelns
 const ANCHOR_HEAR = CELL * 0.8; // Zusatz-Hörweite ÜBER den Wirkradius hinaus
+const DRAIN_HEAR = CELL * 1.2; // Zehrfeld: weiter hörbar als der Anker – man soll es UMFAHREN können
 const MUSIC_HEAR = CELL * 3.2; // Hörweite der Jukebox – weiter als alles andere
 /** Lookahead des Musik-Schedulers: So weit im Voraus liegen Noten im
  *  Audio-Takt. 250 ms überbrücken jeden Frame-Ruckler; viel mehr würde einen
@@ -1722,6 +1723,9 @@ function firePing(now: number): void {
   for (const c of world.crystals) if (!c.collected) reveal(c, 2637);
   // Sog-Anker: tiefes, elektrisches Echo.
   for (const a of world.anchors) reveal(a, 200);
+  // Zehrfeld (M102): dumpfe, tiefe Antwort – der Ping, der es aufdeckt, ist
+  // zugleich der Ping, den es kosten will.
+  for (const d of world.drains) reveal(d, 310);
   // Glasboden: gläsern-heller Einzelblip.
   for (const g of world.glass) {
     if (g.state === 2) continue;
@@ -2266,7 +2270,13 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
           mode: mp.mode,
           levelId: mp.level.id,
           def: mp.custom ? mp.level : undefined,
-          needs: needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance'), hasMultiOpens(mp.level)),
+          needs: needsFor(
+            mp.level.marks,
+            mp.level.together,
+            levelFeatures(mp.level).has('resonance'),
+            hasMultiOpens(mp.level),
+            levelFeatures(mp.level).has('drain'),
+          ),
         });
         $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
@@ -2339,7 +2349,13 @@ function mpOnMessage(type: string, payload: unknown): void {
     if (
       mp.host &&
       mp.level &&
-      !canDo(needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance'), hasMultiOpens(mp.level)), p?.features)
+      !canDo(needsFor(
+            mp.level.marks,
+            mp.level.together,
+            levelFeatures(mp.level).has('resonance'),
+            hasMultiOpens(mp.level),
+            levelFeatures(mp.level).has('drain'),
+          ), p?.features)
     ) {
       $('mpLobbyStatus').textContent = t('mp.needsUpdate');
       return;
@@ -3485,6 +3501,35 @@ function frame(now: number): void {
     if (nearAnchor) audio.setAnchor(anchorClose * shield(nearAnchor.dx, nearAnchor.dy), nearAnchor.dx, nearAnchor.dy);
     else audio.setAnchor(0, 0, 0);
 
+    // ZEHRFELD (M102): Man HÖRT es, bevor man es bezahlt – ein Feld, das
+    // Pings frisst und sich nicht meldet, wäre eine Falle. Wie jede Quelle:
+    // das NÄCHSTE klingt (ein Bus, eine Richtung), abgeschirmt hinter einer
+    // Schallschutzwand, gedämpft im Nebel.
+    let drainClose = 0;
+    let nearDrain: { dx: number; dy: number } | null = null;
+    for (const d of world.drains) {
+      const dist = Math.hypot(d.x - world.ball.x, d.y - world.ball.y);
+      const c = Math.max(0, 1 - dist / (d.r + DRAIN_HEAR));
+      if (c > drainClose) {
+        drainClose = c;
+        nearDrain = { dx: d.x - world.ball.x, dy: d.y - world.ball.y };
+      }
+    }
+    if (nearDrain) audio.setDrain(drainClose * shield(nearDrain.dx, nearDrain.dy), nearDrain.dx, nearDrain.dy);
+    else audio.setDrain(0, 0, 0);
+
+    // … und die Rechnung: Überfahren kostet, was auf dem Feld steht. Der
+    // Vorrat fällt nie unter null, und `pingsUsed` bleibt unberührt – der
+    // Blind-Stern zählt PINGS, die man gefeuert hat, nicht solche, die einem
+    // genommen wurden.
+    for (const d of world.consumeDrains()) {
+      const before = pings;
+      pings = Math.max(0, pings - d.cost);
+      audio.drainPay();
+      haptics.hit(0.7);
+      flash(t('st.drain', { n: String(before - pings) }));
+    }
+
     // DUETT (M91): Die beiden Resonanztöne – EINMAL je Frame gerechnet, denn
     // Klang, Türregel (heldIds) und der Haken für die E2E müssen dasselbe
     // sagen. Gerechnet wird NACH `world.step()` (Lektion aus M90): „stehe ich
@@ -3881,6 +3926,7 @@ function frame(now: number): void {
     hourglasses: world.hourglasses.length,
     bonusS,
     bells: world.bells.length,
+    drains: world.drains.map((d) => ({ cost: d.cost, inside: d.inside })),
     ringing: world.bells.filter((b) => b.ringLeft > 0).length,
     reverbZones: world.reverbZones.length,
     inReverb: world.inReverb(),

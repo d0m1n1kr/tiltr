@@ -704,6 +704,25 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   `#diag` Typ/Winkel/natürliche Lage, β/γ/α, accelerationIncludingGravity und
   tilt – Geräte weichen von der Spec ab (Tablets!), also ERST messen, dann
   korrigieren. `input.diagnostics()` ist die eine Quelle (Menü + Debug-Status).
+- ZEHRFELD (M102, v3.38.0, `src/elements/drain.ts`): Ein Feld, das ECHO-PINGS
+  frisst – jede Überfahrt kostet `drain.cost` (1…9, Editor-Feld „Kosten
+  (Pings)"). Damit lässt sich eine Abkürzung BEPREISEN statt versperren: Der
+  kurze Weg kostet dann nicht Zeit, sondern SICHT. Es ist die erste Mechanik,
+  die den Vorrat KLEINER macht (Kristall größer, Checkpoint füllt auf).
+  DER PREIS STEHT DRAUF: Der Renderer schreibt die Ziffer in die Zelle, sobald
+  sie aufgedeckt ist, und in der Nähe hört man ein saugendes Zehren
+  (`audio.setDrain`, Rausch-Band um 300 Hz mit 0,7-Hz-Atem – tonal war nichts
+  mehr frei, und ein Ton klänge nach etwas, das man HOLEN soll). Eine Falle
+  ohne Ansage wäre ein Bruch mit dem Rest des Spiels.
+  KANTEN-TRIGGER WIE DIE GLOCKE: Bezahlt wird beim BETRETEN, nicht je Bild;
+  wer erneut hinüberrollt, zahlt erneut – ein Zoll, keine einmalige Falle. Die
+  PHYSIK bucht nichts (`consumeDrains` meldet nur, was fällig ist): Der Vorrat
+  gehört der Runde, nicht der Welt. `pingsUsed` bleibt unberührt – der
+  Blind-Stern zählt Pings, die man GEFEUERT hat, nicht solche, die einem
+  genommen wurden.
+  KEIN BEWEIS ÄNDERT SICH: Pings sind nie Pflicht (es gibt den Blind-Stern),
+  also ist ein Zehrfeld Schwierigkeit und kein Riegel – wie das Glas seit M39.
+  Im Netz deckt das Merkmals-Gate den neuen Element-Typ (`needsFor(…, drain)`).
 - `src/core/physics.ts` – EINBAHNSTRASSE STEHT IN DER REGEL, NICHT IN DER ZAHL
   (M101, v3.37.0): Die Strömung galt als unüberwindbar, weil ihre Kraft (3400)
   über der Neigung (2600) liegt. Netto sind das 800 px/s², und über die 100 px
