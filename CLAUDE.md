@@ -753,8 +753,17 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   ins Sheet – `openCastSheet(resultCard)` merkt sich, wohin nach der Aufnahme
   (Ergebnis) und wohin bei Abbrechen (woher man kam). Der Abspann trägt den
   Credit (`splash.credit`) zwischen Zeit und Adresse. `saveBlobFile` teilt die
-  Datei ohne Titeltext. `window.__tiltrCast` (E2E Lauf 55). Phasen 3–4
-  (Highlights mit Überblendung, Offline-Render) stehen in PLAN.md.
+  Datei ohne Titeltext. `window.__tiltrCast` (E2E Lauf 55).
+  HIGHLIGHTS (Phase 3, v3.43.0): Umfang „Ganz/Highlights" im Sheet, die
+  Fenster kommen aus `selectHighlights`, die Info-Zeile nennt Szenen und Länge
+  vorab. Zwischen den Fenstern wird STUMM VORGESPULT (`castSegmentStep`):
+  MediaRecorder.pause, `audio.monitor(false)` trennt den Lautsprecher-Zweig,
+  bis 240 Mitschnitt-Bilder je rAF ohne Zeichnen – gesprungen wird nur im
+  Zeichnen, die Simulation bleibt exakt. ÜBERBLENDUNG: Ton-Rampe am
+  `captureGain` VOR dem Abgriff (nur die Aufnahme), Bild als Schnappschuss des
+  letzten Fensterbildes mit sinkendem Alpha (`crossfade` im Overlay), beides in
+  Wanduhr-Sekunden fade/speed. E2E Lauf 56. Phase 4 (Offline-Render) steht in
+  PLAN.md.
 - SAND (M103, v3.39.0, `src/elements/sand.ts`): der zähe Untergrund, das
   Gegenstück zum Eis. LANGSAM HEISST GEDECKELT, NICHT KLEBRIG: Die
   Endgeschwindigkeit ist `accel / friction` – auf Stein 2600/1,4 (über

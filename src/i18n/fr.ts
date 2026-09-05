@@ -490,6 +490,12 @@ export const fr: Dict = {
   'cast.back': 'Retour au résultat',
   'cast.endLine': 'Arrivée en {time}',
   'cast.adjust': '⚙ Ajuster',
+  'cast.mode': 'Étendue',
+  'cast.full': 'Complet',
+  'cast.highlights': 'Moments forts',
+  'cast.infoFull': 'Vidéo ≈ {s} s',
+  'cast.infoHighlights': '{n} scènes · vidéo ≈ {s} s',
+  'cast.highlightsTag': 'Moments forts',
   'res.winTitle': 'Arrivée en {time} 🎉',
 
   /* --- Défi du jour --- */

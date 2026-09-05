@@ -20,6 +20,11 @@ export interface CastSession {
   readonly mime: string;
   /** Bisher angelieferte Bytes (wächst in Stücken, nicht je Bild). */
   bytes(): number;
+  /** Aufnahme anhalten / weiterführen (Phase 3: stummes Vorspulen zwischen
+   *  Highlight-Fenstern – die Pause fehlt im Video, nicht als Lücke, sondern
+   *  gar nicht). */
+  pause(): void;
+  resume(): void;
   /** Aufnahme beenden – die Datei kommt als Blob. */
   stop(): Promise<Blob>;
   /** Abbrechen: Stream schließen, nichts liefern. */
@@ -69,6 +74,12 @@ export function startCast(canvas: HTMLCanvasElement, audio: MediaStream | null, 
   return {
     mime,
     bytes: () => total,
+    pause: () => {
+      if (rec.state === 'recording') rec.pause();
+    },
+    resume: () => {
+      if (rec.state === 'paused') rec.resume();
+    },
     stop: () =>
       new Promise<Blob>((resolve) => {
         rec.addEventListener(
@@ -130,6 +141,9 @@ export interface CastOverlay {
   credit: string;
   /** Abspann: Adresse */
   byline: string;
+  /** Überblendung (Phase 3): das letzte Bild des vorigen Fensters, das mit
+   *  `alpha` über dem neuen liegt – null, wenn keine läuft. */
+  crossfade: { image: CanvasImageSource; alpha: number } | null;
 }
 
 /** Mit Alpha eine Karte zeichnen: dunkle Fläche, große Zeile, kleine Zeile. */
@@ -203,6 +217,11 @@ function timeChip(ctx: CanvasRenderingContext2D, w: number, dpr: number, th: Cas
 export function drawCastOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number, th: CastTheme, o: CastOverlay): void {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (o.crossfade && o.crossfade.alpha > 0.005) {
+    ctx.globalAlpha = Math.min(1, o.crossfade.alpha);
+    ctx.drawImage(o.crossfade.image, 0, 0, w, h);
+    ctx.globalAlpha = 1;
+  }
   const ta = titleAlpha(o.sinceStartMs);
   if (ta > 0) card(ctx, w, h, dpr, th, ta, o.title, o.subtitle, 0.82);
   if (o.sinceEndMs !== null) {

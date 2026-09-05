@@ -12,6 +12,7 @@ import {
   castFileName,
   expectedCastMs,
   fmtBytes,
+  highlightSeconds,
   pickCastMime,
   tailAlpha,
   titleAlpha,
@@ -59,9 +60,16 @@ describe('Screencast (M104, Phase 2)', () => {
     expect(tailAlpha(TAIL_MS)).toBe(1);
   });
 
-  it('erwartete Länge: Titel-Pause + Lauf (im Zeitraffer halb) + Abspann', () => {
+  it('erwartete Länge: Titel-Pause + gezeigte Sekunden (im Zeitraffer halb) + Abspann', () => {
     expect(TITLE_HOLD_MS).toBe(TITLE_MS - TITLE_FADE_MS);
     expect(expectedCastMs(10, 1)).toBe(TITLE_HOLD_MS + 10000 + TAIL_MS);
     expect(expectedCastMs(10, 2)).toBe(TITLE_HOLD_MS + 5000 + TAIL_MS);
+  });
+
+  it('Highlights zeigen die Fenstersumme, nicht den Lauf', () => {
+    const segs = [{ from: 0, to: 2.5 }, { from: 6, to: 9.5 }, { from: 14, to: 16 }];
+    expect(highlightSeconds(segs)).toBeCloseTo(8, 6);
+    expect(expectedCastMs(highlightSeconds(segs), 1)).toBe(TITLE_HOLD_MS + 8000 + TAIL_MS);
+    expect(highlightSeconds([{ from: 3, to: 3 }])).toBe(0);
   });
 });

@@ -80,9 +80,16 @@ export interface CastOptions {
   speed: 1 | 2;
   /** Labyrinth aufgedeckt zeigen (der Zuschauer sieht, was der Spieler hörte) */
   bright: boolean;
+  /** Ganz oder nur die Fenster der Highlight-Schere (Phase 3) */
+  mode: 'full' | 'highlights';
 }
 
-export const DEFAULT_CAST: CastOptions = { speed: 1, bright: true };
+export const DEFAULT_CAST: CastOptions = { speed: 1, bright: true, mode: 'full' };
+
+/** Summe der Fensterlängen in Sekunden – das, was ein Highlight-Video zeigt. */
+export function highlightSeconds(segments: readonly { from: number; to: number }[]): number {
+  return segments.reduce((s, x) => s + Math.max(0, x.to - x.from), 0);
+}
 
 /** So lange steht die Kugel unter der Titelkarte, bevor der Lauf beginnt –
  *  der Lauf startet, wenn die Karte zu verblassen beginnt. Ohne diese Pause
@@ -90,7 +97,8 @@ export const DEFAULT_CAST: CastOptions = { speed: 1, bright: true };
  *  darunter verschwunden (E2E: 1,1 s Lauf, 3,6 s Video). */
 export const TITLE_HOLD_MS = TITLE_MS - TITLE_FADE_MS;
 
-/** Erwartete Videolänge in ms: Titel-Pause + Lauf (im Zeitraffer kürzer) + Abspann. */
-export function expectedCastMs(runSeconds: number, speed: number): number {
-  return TITLE_HOLD_MS + (runSeconds * 1000) / speed + TAIL_MS;
+/** Erwartete Videolänge in ms: Titel-Pause + gezeigte Sekunden (ganz: der
+ *  Lauf; Highlights: die Fenstersumme), im Zeitraffer kürzer, + Abspann. */
+export function expectedCastMs(shownSeconds: number, speed: number): number {
+  return TITLE_HOLD_MS + (shownSeconds * 1000) / speed + TAIL_MS;
 }

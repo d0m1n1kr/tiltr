@@ -490,6 +490,12 @@ export const en: Dict = {
   'cast.back': 'Back to result',
   'cast.endLine': 'Goal in {time}',
   'cast.adjust': '⚙ Adjust',
+  'cast.mode': 'Scope',
+  'cast.full': 'Full',
+  'cast.highlights': 'Highlights',
+  'cast.infoFull': 'Video ≈ {s} s',
+  'cast.infoHighlights': '{n} scenes · video ≈ {s} s',
+  'cast.highlightsTag': 'Highlights',
   'res.winTitle': 'Goal in {time} 🎉',
 
   /* --- Daily challenge --- */

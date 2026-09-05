@@ -39,7 +39,7 @@ import { galleryEntries } from './elements/registry';
 import { generateDailyLevel, todayUTC } from './levels/daily';
 import { t, applyI18n, setLang, currentLang, onLangChange, lvName, lvIntro, formatDate, type Lang, type Dict } from './i18n';
 import { GhostRecorder, loadGhost, saveGhost, sampleGhost, type GhostData } from './ghost';
-import { RunRecorder, frameAt, type MarkKind, type Recording } from './core/recording';
+import { RunRecorder, duration as recDuration, frameAt, type MarkKind, type Recording } from './core/recording';
 import { decodeDuel, duelUrl, validateGhostRun } from './levels/duel';
 import { showSplash } from './ui/splash';
 import { fixStandaloneViewport, viewportDiagnostics } from './ui/viewport';
@@ -69,7 +69,8 @@ import { setupInstallHint, hideInstallHint } from './ui/install';
 import { setupEditor, type RawLevel, type TestRun, type TestStart } from './ui/editor';
 import { isShareable, validateLevel } from './levels/validate';
 import { APP_URL, promoCaption, promoShare } from './promo';
-import { DEFAULT_CAST, TAIL_MS, TITLE_HOLD_MS, castFileName, fmtBytes, pickCastMime, type CastOptions } from './core/cast';
+import { DEFAULT_CAST, TAIL_MS, TITLE_HOLD_MS, castFileName, expectedCastMs, fmtBytes, highlightSeconds, pickCastMime, type CastOptions } from './core/cast';
+import { DEFAULT_HIGHLIGHTS, selectHighlights, type Segment } from './core/highlights';
 import { castSupported, castTheme, drawCastOverlay, mimeSupported, startCast, type CastSession, type CastTheme } from './ui/screencast';
 import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
@@ -317,10 +318,32 @@ interface Cast {
   title: string;
   subtitle: string;
   state: 'recording' | 'ending';
+  /** HIGHLIGHTS (Phase 3): die Fenster der Schere, null = ganzer Lauf. */
+  segments: Segment[] | null;
+  segIndex: number;
+  /** 'play' im Fenster, 'skip' beim stummen Vorspulen zum nächsten */
+  segState: 'play' | 'skip';
+  /** Ausblendung des laufenden Fensters schon gestartet? */
+  fadingOut: boolean;
+  /** letztes Bild des vorigen Fensters – blendet über den Anfang des nächsten */
+  snap: HTMLCanvasElement | null;
+  /** Wanduhr, als das laufende Fenster zu spielen begann (für die Überblendung) */
+  segStartedAt: number;
+  /** wie oft vorgespult wurde (E2E) */
+  skips: number;
 }
 let cast: Cast | null = null;
 let castOpts: CastOptions = { ...DEFAULT_CAST };
-let lastCast: { bytes: number; mime: string; durationMs: number; speed: number; bright: boolean } | null = null;
+let lastCast: {
+  bytes: number;
+  mime: string;
+  durationMs: number;
+  speed: number;
+  bright: boolean;
+  mode: CastOptions['mode'];
+  segments: number | null;
+  skips: number;
+} | null = null;
 let lastReplay: { frames: number; drift: number; goal: boolean; time: number | null } | null = null;
 /** Die zuletzt gezeigte Karte – nach einem Replay kommt sie wieder. */
 let lastInter: InterOpts | null = null;
@@ -775,6 +798,8 @@ function showMenu(): void {
   if (cast) {
     cast.session.cancel();
     cast = null;
+    audio.monitor(true);
+    audio.setCaptureGain(1, 0.01);
   }
   timerEl.classList.remove('rec');
   timerEl.title = '';
@@ -3120,6 +3145,17 @@ function renderCastChips(): void {
   $('castSpeed2').classList.toggle('active', castOpts.speed === 2);
   $('castLight0').classList.toggle('active', !castOpts.bright);
   $('castLight1').classList.toggle('active', castOpts.bright);
+  $('castMode0').classList.toggle('active', castOpts.mode === 'full');
+  $('castMode1').classList.toggle('active', castOpts.mode === 'highlights');
+  // Was dabei herauskommt – damit die Wahl eine Wahl ist und kein Rätsel.
+  const rec = lastRun?.rec;
+  if (rec) {
+    const total = recDuration(rec);
+    const segs = castOpts.mode === 'highlights' ? selectHighlights(rec.marks, total) : null;
+    const shown = segs ? highlightSeconds(segs) : total;
+    const s = String(Math.round(expectedCastMs(shown, castOpts.speed) / 1000));
+    $('castInfo').textContent = segs ? t('cast.infoHighlights', { n: String(segs.length), s }) : t('cast.infoFull', { s });
+  } else $('castInfo').textContent = '';
 }
 
 /** Wohin nach der Aufnahme zurück (die Ergebniskarte) und wohin bei
@@ -3154,6 +3190,14 @@ $('castLight1').addEventListener('click', () => {
   castOpts = { ...castOpts, bright: true };
   renderCastChips();
 });
+$('castMode0').addEventListener('click', () => {
+  castOpts = { ...castOpts, mode: 'full' };
+  renderCastChips();
+});
+$('castMode1').addEventListener('click', () => {
+  castOpts = { ...castOpts, mode: 'highlights' };
+  renderCastChips();
+});
 $('castBack').addEventListener('click', closeCastSheet);
 $('castGo').addEventListener('click', () => void startCastRecording());
 
@@ -3170,8 +3214,11 @@ async function startCastRecording(): Promise<void> {
   virtualNow = rec.t0;
   currentDef = def;
   launch(def);
-  const subtitle =
-    mode?.kind === 'campaign' ? t(`world.w${campaignPos(mode.index).world + 1}` as keyof Dict).split(' – ')[0]! : 'tiltr';
+  const world0 = mode?.kind === 'campaign' ? t(`world.w${campaignPos(mode.index).world + 1}` as keyof Dict).split(' – ')[0]! : 'tiltr';
+  // HIGHLIGHTS (Phase 3): Die Schere (core/highlights.ts) liefert die Fenster;
+  // ein einziges Fenster über alles ist dasselbe wie „ganz".
+  const segments = castOpts.mode === 'highlights' ? selectHighlights(rec.marks, recDuration(rec)) : null;
+  const subtitle = segments ? `${world0} · ${t('cast.highlightsTag')}` : world0;
   let session: CastSession;
   try {
     session = startCast(canvas, audio.captureStream(), mime);
@@ -3191,7 +3238,15 @@ async function startCastRecording(): Promise<void> {
     title: lvName(def),
     subtitle,
     state: 'recording',
+    segments,
+    segIndex: 0,
+    segState: 'play',
+    fadingOut: false,
+    snap: null,
+    segStartedAt: performance.now(),
+    skips: 0,
   };
+  audio.setCaptureGain(1, 0.01);
   // Der rote Punkt an der Uhr sagt „Aufnahme läuft" (ein eigener Chip passte
   // auf dem Phone nicht neben Pings und Knöpfe).
   timerEl.classList.add('rec');
@@ -3217,6 +3272,7 @@ function drawCast(rafNow: number): void {
     endLine: t('cast.endLine', { time: fmtTime(secs) }),
     credit: t('splash.credit'),
     byline: `tiltr · ${APP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}`,
+    crossfade: castCrossfade(rafNow),
   });
   if (cast.state === 'recording' && cast.endedAt !== null && rafNow - cast.endedAt >= TAIL_MS) void finishCast();
 }
@@ -3225,13 +3281,24 @@ async function finishCast(): Promise<void> {
   if (!cast) return;
   const c = cast;
   c.state = 'ending';
+  audio.monitor(true);
   const blob = await c.session.stop();
+  audio.setCaptureGain(1, 0.01);
   if (cast !== c) return; // zwischendurch ins Menü
   cast = null;
   timerEl.classList.remove('rec');
   timerEl.title = '';
   const durationMs = performance.now() - c.startedAt;
-  lastCast = { bytes: blob.size, mime: blob.type, durationMs, speed: c.opts.speed, bright: c.opts.bright };
+  lastCast = {
+    bytes: blob.size,
+    mime: blob.type,
+    durationMs,
+    speed: c.opts.speed,
+    bright: c.opts.bright,
+    mode: c.opts.mode,
+    segments: c.segments?.length ?? null,
+    skips: c.skips,
+  };
   const back: InterAction = { label: t('cast.back'), onClick: () => { if (c.card) showInterstitial(c.card); } };
   if (blob.size === 0) {
     showInterstitial({ title: t('cast.title'), text: t('cast.failed'), primary: back });
@@ -3262,6 +3329,92 @@ async function finishCast(): Promise<void> {
 }
 /** Objekt-URL des zuletzt fertigen Videos (Vorschau). */
 let castVideoUrl: string | null = null;
+
+/* --- HIGHLIGHTS (M104, Phase 3) ----------------------------------------------
+   Die Schere (core/highlights.ts) hat die FENSTER gewählt; hier wird zwischen
+   ihnen STUMM VORGESPULT: Die Aufnahme pausiert (MediaRecorder.pause – die
+   Pause fehlt im Video nicht als Lücke, sondern gar nicht), der Lautsprecher-
+   Zweig ist getrennt (audio.monitor), und die Schleife rechnet bis zu 240
+   Mitschnitt-Bilder je rAF ohne zu zeichnen. Ein Fenster von 60 s Abstand ist
+   so in ~15 Bildern erreicht, die Seite bleibt bedienbar. NICHT alles in
+   einem Bild: Ein Sprung über eine Minute wären 3600 Schleifenläufe, und die
+   Uhr des Spiels stünde dabei still – gefühlt ein Hänger.
+   ÜBERBLENDUNG: Ton – der Abgriff-Gain rampt in den letzten `fade` Sekunden
+   des Fensters auf 0 und am Anfang des nächsten wieder auf 1 (nur die
+   AUFNAHME, nicht das Mithören). Bild – das letzte Bild des Fensters wird
+   festgehalten und liegt mit sinkendem Alpha über dem Anfang des nächsten.
+   Beides in WANDUHR-Sekunden fade/speed, damit es im Zeitraffer gleich lang
+   aussieht. */
+
+/** Zeit (s) des nächsten Mitschnitt-Bildes, das gespielt würde. */
+function replayNextS(): number {
+  if (!replay) return Infinity;
+  const f = frameAt(replay.rec, replay.i);
+  return f ? f.t / 1000 : Infinity;
+}
+
+/** Ein Schritt der Fenster-Maschine. true = dieses Bild spult (nicht spielen). */
+function castSegmentStep(rafNow: number): boolean {
+  const c = cast;
+  if (!c || !c.segments || !replay || c.state !== 'recording') return false;
+  const segs = c.segments;
+  const fadeWall = DEFAULT_HIGHLIGHTS.fade / replay.speed;
+  const last = c.segIndex >= segs.length - 1;
+  if (c.segState === 'play') {
+    const seg = segs[c.segIndex]!;
+    if (!last && !c.fadingOut && replayNextS() >= seg.to - DEFAULT_HIGHLIGHTS.fade) {
+      audio.setCaptureGain(0, fadeWall);
+      c.fadingOut = true;
+    }
+    if (!last && replayNextS() >= seg.to) {
+      // Fenster zu Ende: letztes Bild festhalten, Aufnahme anhalten, springen.
+      const snap = document.createElement('canvas');
+      snap.width = canvas.width;
+      snap.height = canvas.height;
+      snap.getContext('2d')?.drawImage(canvas, 0, 0);
+      c.snap = snap;
+      c.segIndex++;
+      c.segState = 'skip';
+      c.fadingOut = false;
+      c.skips++;
+      c.session.pause();
+      audio.monitor(false);
+    }
+  }
+  if (c.segState === 'skip') {
+    const target = segs[c.segIndex]!.from;
+    let n = 0;
+    drawThisFrame = false;
+    while (replay && replayNextS() < target && n < 240) {
+      frameBody(rafNow);
+      n++;
+    }
+    drawThisFrame = true;
+    if (!replay || replayNextS() >= target) {
+      c.segState = 'play';
+      c.segStartedAt = rafNow;
+      c.session.resume();
+      audio.monitor(true);
+      audio.setCaptureGain(1, fadeWall);
+      return false; // ab jetzt spielt dieses Bild normal
+    }
+    return true;
+  }
+  return false;
+}
+
+/** Die laufende Bild-Überblendung (letztes Bild des vorigen Fensters). */
+function castCrossfade(rafNow: number): { image: CanvasImageSource; alpha: number } | null {
+  const c = cast;
+  if (!c || !c.snap || !c.segments || c.segIndex === 0) return null;
+  const fadeMs = (DEFAULT_HIGHLIGHTS.fade / (replay?.speed ?? 1)) * 1000;
+  const alpha = 1 - (rafNow - c.segStartedAt) / fadeMs;
+  if (alpha <= 0) {
+    c.snap = null;
+    return null;
+  }
+  return { image: c.snap, alpha };
+}
 
 /* --- GEMEINSAM ANKOMMEN (M90) ----------------------------------------------
    Gewonnen wird, wenn BEIDE gleichzeitig in ihren Zielzonen liegen. Die Regel
@@ -3555,6 +3708,9 @@ function frame(rafNow: number): void {
   replayHold = cast !== null && cast.state === 'recording' && rafNow - cast.startedAt < TITLE_HOLD_MS;
   const steps = replay && !replayHold ? replay.speed : 1;
   try {
+    // HIGHLIGHTS (Phase 3): zwischen den Fenstern stumm vorspulen – solange
+    // gesprungen wird, spielt dieses Bild nicht normal weiter.
+    if (!replayHold && castSegmentStep(rafNow)) return;
     for (let k = 0; k < steps; k++) {
       drawThisFrame = k === steps - 1;
       frameBody(rafNow);
@@ -4333,7 +4489,7 @@ function frameBody(rafNow: number): void {
   // der letzte fertige Lauf, das laufende Replay und das Ergebnis des letzten
   // Replays – „kommt es zur selben Zeit ins Ziel?" ist nur so prüfbar.
   (window as unknown as { __tiltrRun?: unknown }).__tiltrRun = {
-    recording: recorder ? { frames: recorder.count } : null,
+    recording: recorder ? { frames: recorder.count, marks: recorder.markCount } : null,
     lastRun: lastRun
       ? { frames: lastRun.rec.frames.length / 10, marks: lastRun.rec.marks.map((m) => m.kind), time: lastRun.rec.time }
       : null,
@@ -4349,6 +4505,10 @@ function frameBody(rafNow: number): void {
     bytes: cast?.session.bytes() ?? null,
     speed: replay?.speed ?? null,
     bright: replay?.bright ?? null,
+    mode: cast?.opts.mode ?? null,
+    segments: cast?.segments?.length ?? null,
+    segIndex: cast?.segIndex ?? null,
+    skips: cast?.skips ?? null,
     last: lastCast,
   };
   (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {

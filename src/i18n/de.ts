@@ -494,6 +494,12 @@ export const de = {
   'cast.back': 'Zurück zum Ergebnis',
   'cast.endLine': 'Ziel in {time}',
   'cast.adjust': '⚙ Anpassen',
+  'cast.mode': 'Umfang',
+  'cast.full': 'Ganz',
+  'cast.highlights': 'Highlights',
+  'cast.infoFull': 'Video ≈ {s} s',
+  'cast.infoHighlights': '{n} Szenen · Video ≈ {s} s',
+  'cast.highlightsTag': 'Highlights',
   'res.winTitle': 'Ziel in {time} 🎉',
 
   /* --- Tages-Challenge --- */

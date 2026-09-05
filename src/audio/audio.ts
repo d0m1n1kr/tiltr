@@ -68,6 +68,10 @@ export class GameAudio {
   private rollGain!: GainNode;
   /** Abgriff für den Screencast (M104): dasselbe Signal wie am Lautsprecher. */
   private captureDest: MediaStreamAudioDestinationNode | null = null;
+  /** Gain VOR dem Abgriff (Phase 3): die Rampe der Überblendung liegt nur auf
+   *  der Aufnahme, nicht auf dem, was der Spieler nebenbei hört. */
+  private captureGain: GainNode | null = null;
+  private monitorOn = true;
   private sandRollFilter!: BiquadFilterNode;
   private sandRollGain!: GainNode;
   private windGain!: GainNode;
@@ -924,9 +928,37 @@ export class GameAudio {
     if (!this.ctx) return null;
     if (!this.captureDest) {
       this.captureDest = this.ctx.createMediaStreamDestination();
-      this.fogFilter.connect(this.captureDest);
+      this.captureGain = this.ctx.createGain();
+      this.captureGain.gain.value = 1;
+      this.fogFilter.connect(this.captureGain).connect(this.captureDest);
     }
     return this.captureDest.stream;
+  }
+
+  /** Ton der AUFNAHME rampen (Überblendung zwischen Highlight-Fenstern,
+   *  Phase 3): linear auf `value` in `rampS` Sekunden. */
+  setCaptureGain(value: number, rampS: number): void {
+    if (!this.ctx || !this.captureGain) return;
+    const g = this.captureGain.gain;
+    const t = this.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(value, t + Math.max(0.01, rampS));
+  }
+
+  /** Mithören am Lautsprecher an/aus – aus beim stummen Vorspulen zwischen
+   *  Highlight-Fenstern: Dort feuern in einem Bild Dutzende Pings und Treffer,
+   *  die niemand hören soll (die Aufnahme pausiert dabei ohnehin). Trennt nur
+   *  den Lautsprecher-Zweig; der Abgriff bleibt verbunden. */
+  monitor(on: boolean): void {
+    if (!this.ctx || this.monitorOn === on) return;
+    this.monitorOn = on;
+    try {
+      if (on) this.fogFilter.connect(this.ctx.destination);
+      else this.fogFilter.disconnect(this.ctx.destination);
+    } catch {
+      /* schon getrennt/verbunden */
+    }
   }
 
   setRolling(speed01: number, sand01 = 0): void {

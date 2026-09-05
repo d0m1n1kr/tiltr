@@ -1030,6 +1030,13 @@
       <h2 data-i18n="cast.title"></h2>
       <p id="castText" data-i18n="cast.text"></p>
       <div class="cast-row">
+        <span data-i18n="cast.mode"></span>
+        <span class="cast-chips">
+          <button id="castMode0" class="btn chip" data-i18n="cast.full"></button>
+          <button id="castMode1" class="btn chip" data-i18n="cast.highlights"></button>
+        </span>
+      </div>
+      <div class="cast-row">
         <span data-i18n="cast.speed"></span>
         <span class="cast-chips">
           <button id="castSpeed1" class="btn chip">1×</button>
@@ -1043,6 +1050,8 @@
           <button id="castLight1" class="btn chip" data-i18n="cast.bright"></button>
         </span>
       </div>
+      <!-- Was dabei herauskommt: Szenen und ungefähre Länge (Phase 3). -->
+      <p id="castInfo" class="inter-stars"></p>
       <div class="inter-buttons">
         <button id="castBack" class="btn btn-ghost" data-i18n="common.cancel"></button>
         <button id="castGo" class="btn btn-primary" data-i18n="cast.go"></button>

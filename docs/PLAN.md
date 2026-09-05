@@ -651,7 +651,7 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
-## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phase 2 ✓ (v3.41.0, Vorschau v3.42.0), Phasen 3–4 geplant
+## M104 „Screencast" – Phase 1 ✓ (v3.40.0), Phase 2 ✓ (v3.41.0, Vorschau v3.42.0), Phase 3 ✓ (v3.43.0), Phase 4 geplant
 
 Gewünscht: „Der Weg wird ja bereits protokolliert. Ich möchte, dass man das
 geschaffte Level als Screencast rendern kann (um es zu sharen). Entweder
@@ -790,11 +790,37 @@ Zeitraffer + hell, Bytes, Dauer ≈ erwartet, Video-Karte mit Größe und
 Vorschau, ⚙ zurück ins Sheet und wieder zur Vorschau, Download mit passender
 Endung. `window.__tiltrCast`.
 
-### Phasen 3–4 (offen)
+### Phase 3 ✓ – Highlights mit Überblendung (v3.43.0)
 
-3. HIGHLIGHTS MIT ÜBERBLENDUNG: Zwischen den Fenstern wird stumm vorgespult,
-   das letzte Bild eines Fensters blendet 400 ms über den Anfang des nächsten,
-   der Ton bekommt eine Gain-Rampe am Aufnahme-Bus.
+Im Sheet ein dritter Regler, „Umfang": Ganz oder Highlights. Bei Highlights
+wählt die Schere (`selectHighlights`, Phase 1) die Fenster, und eine Info-Zeile
+sagt vorher, was herauskommt („3 Szenen · Video ≈ 12 s") – damit die Wahl
+eine Wahl ist und kein Rätsel.
+
+STUMM VORSPULEN: Zwischen zwei Fenstern pausiert der MediaRecorder (die Pause
+fehlt im Video nicht als Lücke, sondern gar nicht), der Lautsprecher-Zweig ist
+getrennt (`audio.monitor(false)` – in einem Bild feuern sonst Dutzende Pings
+und Treffer, die niemand hören soll), und die Schleife rechnet bis zu 240
+Mitschnitt-Bilder je rAF ohne zu zeichnen (`castSegmentStep`). Ein Abstand von
+60 s ist so in etwa 15 Bildern übersprungen, die Seite bleibt bedienbar.
+Bewusst NICHT alles in einem Bild: 3600 Schleifenläufe wären ein gefühlter
+Hänger. Das Replay bleibt dabei exakt – gesprungen wird nur im Zeichnen, nicht
+in der Simulation.
+
+ÜBERBLENDUNG in zwei Hälften: Der Ton rampt am AUFNAHME-Gain (`captureGain`,
+vor dem Abgriff) in den letzten 0,4 s eines Fensters auf 0 und am Anfang des
+nächsten auf 1 – nur die Aufnahme, nicht das Mithören. Das Bild hält das
+letzte Bild des Fensters als Schnappschuss fest und legt es mit sinkendem
+Alpha über den Anfang des nächsten (`crossfade` im Overlay). Beides in
+Wanduhr-Sekunden fade/speed, damit es im Zeitraffer gleich lang aussieht. Die
+Titelkarte trägt „· Highlights" im Untertitel.
+
+E2E Lauf 56: Gang mit zwei Checkpoints und absichtlichen Pausen (der Lauf wird
+16 s lang, die Fenster 8 s) – drei Fenster, zwei Sprünge, und das Video ist so
+lang wie die Fenster plus Titel-Pause und Abspann, nicht wie der Lauf.
+
+### Phase 4 (offen)
+
 4. OFFLINE-PFAD wo die Sonde grün ist: zweiter Renderer auf Offscreen-Canvas
    (720×1280, 30 fps) → VideoEncoder, Ton aus OfflineAudioContext mit
    suspend/resume im Bildtakt (dafür `audio.start(ctx)` injizierbar), mp4-muxer

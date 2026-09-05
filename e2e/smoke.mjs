@@ -107,6 +107,7 @@ const KNOWN_RUNS = [
   "53",
   "54",
   "55",
+  "56",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -9496,6 +9497,114 @@ if (want("55")) {
   } catch (e) {
     check(
       `Lauf 55 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 56: Highlights (M104, Phase 3). Ein Lauf mit zwei Checkpoints und
+// ABSICHTLICH langen Pausen dazwischen – die Schere legt drei Fenster, und
+// zwischen ihnen wird stumm vorgespult (Recorder pausiert). Geprüft wird: Das
+// Sheet nennt Szenen und Länge, die Aufnahme springt zweimal, und das Video ist
+// so lang wie die FENSTER (plus Titel-Pause und Abspann), nicht wie der Lauf. ---
+if (want("56")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const N = 21;
+    const def = {
+      id: "custom-m104c",
+      name: "Highlights",
+      floors: [
+        {
+          // Langer Gang: Checkpoints bei 3 und 12, Ziel bei 20. Nach dem Loslassen
+          // rollt die Kugel noch ~6 Zellen aus (v/friction) – die Checkpoints
+          // liegen so, dass sie erst mit der nächsten Taste erreicht werden.
+          size: [N, 2],
+          maze: {
+            seed: 3,
+            carve: Array.from({ length: N - 1 }, (_, x) => [[x, 0], "e"]),
+            add: Array.from({ length: N }, (_, x) => [[x, 0], "s"]),
+          },
+          elements: [
+            { type: "checkpoint", cell: [3, 0] },
+            { type: "checkpoint", cell: [12, 0] },
+          ],
+          start: [0, 0],
+          goal: [N - 1, 0],
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    await page.click("#edTest");
+    const interHidden = () =>
+      page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden") === true);
+    await until(interHidden, { timeout: 20000 });
+    const marks = () => page.evaluate(() => window.__tiltrRun?.recording?.marks ?? 0);
+
+    // Lauf mit Pausen: bis Checkpoint 1, warten, bis Checkpoint 2, warten, Ziel.
+    // Die Wartezeiten sind ABSICHT (sie machen den Lauf lang und die Fenster
+    // getrennt), keine Zusicherung, die auf eine Zeit wartet.
+    await page.keyboard.down("ArrowRight");
+    await until(async () => (await marks()) >= 2, { timeout: 15000 });
+    await page.keyboard.up("ArrowRight");
+    await settled(page);
+    await page.waitForTimeout(5000);
+    await page.keyboard.down("ArrowRight");
+    await until(async () => (await marks()) >= 3, { timeout: 15000 });
+    await page.keyboard.up("ArrowRight");
+    await settled(page);
+    await page.waitForTimeout(5000);
+    await page.keyboard.down("ArrowRight");
+    await until(async () => !(await interHidden()), { timeout: 25000 });
+    await page.keyboard.up("ArrowRight");
+    const runTime = (await page.evaluate(() => window.__tiltrRun?.lastRun?.time)) ?? 0;
+    check(`Der Lauf ist lang genug für getrennte Fenster (${runTime.toFixed(1)} s)`, runTime > 12);
+
+    // Sheet: Highlights wählen – die Info-Zeile nennt Szenen und Länge.
+    await page.click("#interCast");
+    await until(async () => await page.locator("#castSheet").isVisible());
+    await page.click("#castMode1");
+    await page.click("#castSpeed1");
+    const info = ((await page.textContent("#castInfo")) ?? "").trim();
+    const m = /(\d+) Szenen · Video ≈ (\d+) s/.exec(info);
+    check(`Das Sheet nennt Szenen und Länge („${info}")`, m !== null && Number(m[1]) === 3 && Number(m[2]) < runTime);
+    const expectMs = m ? Number(m[2]) * 1000 : NaN;
+
+    // Aufnehmen: Der Haken zeigt drei Fenster und zählt die Sprünge.
+    await page.click("#castGo");
+    const seen = await until(async () => {
+      const c = await page.evaluate(() => window.__tiltrCast);
+      return c?.state === "recording" && c.segments === 3 ? c : null;
+    }, { timeout: 15000 });
+    check(`Die Aufnahme kennt die Fenster (mode ${seen?.mode}, ${seen?.segments} Fenster)`, seen?.mode === "highlights" && seen?.segments === 3);
+    const done = await until(async () => {
+      const c = await page.evaluate(() => window.__tiltrCast);
+      return c?.last && c.last.mode === "highlights" ? c.last : null;
+    }, { timeout: 60000 });
+    const fullMs = 1400 + runTime * 1000 + 3000;
+    check(
+      `Zwischen den Fenstern wurde vorgespult (${done?.skips}× gesprungen, ${done?.segments} Fenster)`,
+      done?.skips === 2 && done?.segments === 3,
+    );
+    check(
+      `Das Video ist so lang wie die Fenster, nicht wie der Lauf (${Math.round(done?.durationMs ?? 0)} ms, erwartet ≈ ${Math.round(expectMs)} ms, ganz wären ${Math.round(fullMs)} ms)`,
+      (done?.bytes ?? 0) > 1000 && Math.abs((done?.durationMs ?? 0) - expectMs) < 2500 && (done?.durationMs ?? 0) < fullMs * 0.75,
+    );
+    await until(async () => !(await interHidden()), { timeout: 10000 });
+    check(`Die Video-Karte steht („${((await page.textContent("#interTitle")) ?? "").trim()}")`, /Video fertig/.test((await page.textContent("#interTitle")) ?? ""));
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 56 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

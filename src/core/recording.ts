@@ -129,6 +129,10 @@ export class RunRecorder {
     return this.frames.length / FRAME_STRIDE;
   }
 
+  get markCount(): number {
+    return this.marks.length;
+  }
+
   /** null, wenn der Lauf zu lang für einen Mitschnitt war. */
   result(time: number | null): Recording | null {
     if (this.overflow || this.frames.length === 0) return null;
