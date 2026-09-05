@@ -9,6 +9,9 @@ import {
   glowCharge,
   glowNow,
   glowTouch,
+  pruneGlow,
+  touchCell,
+  type GlowCell,
   type GlowState,
 } from '../src/core/afterglow';
 
@@ -72,5 +75,39 @@ describe('Nachglühen (M94)', () => {
     expect(glowNow(o, 10_000 - GLOW_FADE_MS)).toBe(1);
     expect(glowNow(o, 0)).toBe(1);
     expect(glowNow({}, 0)).toBe(0);
+  });
+});
+
+// DIE SPUR AUF DEM BODEN (M94b): dieselbe Ladung, nur je ZELLE. Der Boden hat
+// keine Objekte, also hält eine Karte den Zustand – und die muss sich selbst
+// wieder aufräumen.
+describe('Bodenspur (M94b)', () => {
+  const CELL = 100;
+
+  it('merkt sich die Zellmitte in Weltkoordinaten – der Renderer rechnet nichts zurück', () => {
+    const map = new Map<string, GlowCell>();
+    const c = touchCell(map, 2, 3, CELL, 1000);
+    expect([c.x, c.y]).toEqual([250, 350]);
+    expect(map.size).toBe(1);
+  });
+
+  it('dieselbe Zelle lädt weiter, eine andere beginnt bei null', () => {
+    const map = new Map<string, GlowCell>();
+    touchCell(map, 1, 1, CELL, 0);
+    for (let t = 16; t <= 1600; t += 16) touchCell(map, 1, 1, CELL, t);
+    const lang = map.get('1,1')!.glowUntil! - 1600;
+    const kurz = touchCell(map, 5, 1, CELL, 1600).glowUntil! - 1600;
+    expect(lang).toBeGreaterThan(kurz * 2);
+    expect(map.size).toBe(2);
+  });
+
+  it('verglühte Zellen werden weggeräumt – sonst wächst die Karte den ganzen Lauf', () => {
+    const map = new Map<string, GlowCell>();
+    for (let i = 0; i < 20; i++) touchCell(map, i, 0, CELL, i * 50);
+    expect(map.size).toBe(20);
+    pruneGlow(map, 1000);
+    expect(map.size).toBe(20); // noch glüht alles nach
+    pruneGlow(map, 20 * 50 + 5000);
+    expect(map.size).toBe(0);
   });
 });

@@ -73,3 +73,38 @@ export function glowNow(o: GlowState, now: number): number {
   const left = (o.glowUntil ?? 0) - now;
   return left <= 0 ? 0 : Math.min(1, left / GLOW_FADE_MS);
 }
+
+/* --- Die Spur auf dem BODEN (M94b) ---------------------------------------
+ * Dieselbe Ladung, nur je ZELLE statt je Wand: Wo die Kugel rollt, glimmt der
+ * Boden kurz auf; wo sie liegen bleibt, länger. Der Boden ist keine Wand und
+ * kein Element – er hat keine Objekte, die man anfassen könnte, also hält eine
+ * KARTE den Zustand: Schlüssel „Spalte,Zeile", Wert Ladung plus Zellmitte in
+ * Weltkoordinaten (damit der Renderer nichts zurückrechnet).
+ */
+
+/** Ladezustand einer Bodenzelle plus ihre Mitte in Weltkoordinaten. */
+export interface GlowCell extends GlowState {
+  x: number;
+  y: number;
+}
+
+/** Die Zelle unter der Kugel berühren. Die Karte gehört dem Aufrufer (eine je
+ *  Ebene), die Zeit kommt herein – rein bleibt damit alles außer dieser einen
+ *  Zuweisung. */
+export function touchCell(map: Map<string, GlowCell>, col: number, row: number, size: number, now: number): GlowCell {
+  const key = `${col},${row}`;
+  const next: GlowCell = {
+    x: (col + 0.5) * size,
+    y: (row + 0.5) * size,
+    ...glowTouch(map.get(key) ?? {}, now),
+  };
+  map.set(key, next);
+  return next;
+}
+
+/** Verglühte Zellen wegräumen. Ohne das wüchse die Karte über einen langen
+ *  Lauf mit jeder betretenen Zelle weiter – und der Renderer liefe über
+ *  hunderte Einträge, von denen die meisten nichts mehr zeichnen. */
+export function pruneGlow(map: Map<string, GlowCell>, now: number): void {
+  for (const [k, v] of map) if ((v.glowUntil ?? 0) <= now) map.delete(k);
+}

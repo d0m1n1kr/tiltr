@@ -18,7 +18,7 @@ import { MARK_HEAR, applyPartnerMark, nearestMark, ownCount, toggleMark, type Ma
 import { ABSORB_GAIN, shielded } from './core/occlusion';
 import { collectOpeners, doorState } from './core/doors';
 import { brittleBreakable } from './core/brittle';
-import { type GlowState, glowTouch } from './core/afterglow';
+import { type GlowCell, type GlowState, glowTouch, pruneGlow, touchCell } from './core/afterglow';
 import { randomSeed, seedFromString } from './core/rng';
 import type { Hole, Jukebox, Plate, PlaylistEntry, WindZone } from './core/types';
 import type { Ball } from './core/physics';
@@ -1188,6 +1188,7 @@ function launch(def: LevelDef): void {
     mpTest.sides[mpTest.active]!.floor = activeFloor;
   }
   duskStart = null;
+  floorGlow.clear(); // die Bodenspur (M94b) gehört dem LAUF, nicht dem Spiel
   // Aufleuchten (M43): Nur Tutorial und Kampagne lehren – dort leuchtet, was
   // das Level neu bringt, und die erste Signatur spielt einmal.
   const teaching = mode?.kind === 'tutorial' || mode?.kind === 'campaign';
@@ -1614,6 +1615,18 @@ function maxGlow(list: ReadonlyArray<GlowState>, now: number): number {
   for (const o of list) best = Math.max(best, (o.glowUntil ?? 0) - now);
   return best;
 }
+
+/* --- Die Spur auf dem Boden (M94b) ----------------------------------------
+   Der Boden hat keine Objekte, an denen eine Ladung hängen könnte (Wände und
+   Platten haben welche) – also je EBENE eine Karte „Spalte,Zeile" → Ladung.
+   Sie lebt so lange wie der Lauf: `launch` leert sie, sonst schleppte man die
+   Spur des vorigen Levels mit. */
+const floorGlow = new Map<number, Map<string, GlowCell>>();
+const glowOnFloor = (fl: number): Map<string, GlowCell> => {
+  let m = floorGlow.get(fl);
+  if (!m) floorGlow.set(fl, (m = new Map()));
+  return m;
+};
 /**
  * BERÜHRT = AUFGELADEN (M94). Eine Wand (oder Platte), die man streift, glüht
  * kurz nach; wer sich anlehnt oder entlangschrammt, lädt sie auf und sie glüht
@@ -3215,6 +3228,13 @@ function frame(now: number): void {
     // nicht steht, blieb dunkel.
     for (const pl of world.platesUnderBall()) chargeGlow(pl, now);
 
+    // DER BODEN GLÜHT MIT (M94b): Die Zelle unter der Kugel lädt nach
+    // derselben Kurve – durchrollen glimmt kurz, liegen bleiben glüht lange.
+    // Das ist die Spur „hier war ich", die im Dunkeln beim Zurückfinden hilft.
+    const glowMap = glowOnFloor(activeFloor);
+    touchCell(glowMap, Math.floor(world.ball.x / CELL), Math.floor(world.ball.y / CELL), CELL, now);
+    pruneGlow(glowMap, now);
+
     audio.setRolling(Math.min(1, world.ball.speed / world.maxSpeed));
 
     const gdx = loaded!.goalPos.x - world.ball.x;
@@ -3784,6 +3804,7 @@ function frame(now: number): void {
     ...lightOpts(now),
     now,
     buddy,
+    floorGlow: glowOnFloor(activeFloor).values(),
     marks: floorMarks,
     ghost: ghostOpt,
     // M90: Im Rendezvous leuchtet das eigene Ziel ruhig weiter, solange ich
@@ -3838,6 +3859,8 @@ function frame(now: number): void {
     // Ping, und dann wäre „lädt sich die Wand auf?" nicht mehr messbar.
     glowMs: Math.round(maxGlow(world.walls, now)),
     plateGlowMs: Math.round(maxGlow(world.plates, now)),
+    floorGlowMs: Math.round(maxGlow([...glowOnFloor(activeFloor).values()], now)),
+    floorGlowCells: glowOnFloor(activeFloor).size,
     lightGain: lightGain(now),
     respawnFloor: respawnPoint.floor,
     spotlight: [...spotTypes],

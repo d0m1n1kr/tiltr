@@ -8737,6 +8737,27 @@ if (want("50")) {
       afterPing > 2500,
     );
 
+    // DER BODEN GLÜHT MIT (M94b): Die Zellen, über die die Kugel gerollt ist,
+    // glimmen nach – die Zelle, in der sie LIEGT, am längsten. Geprüft wird
+    // beides: dass überhaupt eine Spur da ist und dass sie MEHRERE Zellen
+    // umfasst (sonst leuchtete nur der Standplatz).
+    // Dafür muss die Kugel WEITERROLLEN – an der Wand gelehnt liegt sie in
+    // einer einzigen Zelle. Gewartet wird auf die zweite Zelle, nicht auf eine
+    // Zeit (unter Last dauert die Fahrt länger).
+    await page.keyboard.down("ArrowRight");
+    const trail = await until(async () => {
+      const r = await page.evaluate(() => ({
+        ms: window.__tiltrWorld?.floorGlowMs ?? null,
+        cells: window.__tiltrWorld?.floorGlowCells ?? null,
+      }));
+      return r.cells !== null && r.cells > 1 ? r : null;
+    }, { timeout: 15000 });
+    await page.keyboard.up("ArrowRight");
+    check(
+      `Die Kugel hinterlässt eine Spur auf dem Boden (${trail?.cells} Zellen, längste ${trail?.ms} ms)`,
+      trail !== null && trail.ms > 1000,
+    );
+
     // Und es klingt AUS: ohne Berührung wird der Rest kleiner und ist am Ende weg.
     const decayed = await until(async () => {
       const v = await glow();
@@ -8745,6 +8766,13 @@ if (want("50")) {
     check(`Ohne Berührung klingt es aus (${decayed} ms < ${charged} ms)`, decayed !== null);
     const gone = await until(async () => ((await glow()) === 0 ? true : null), { timeout: 8000 });
     check("Am Ende glüht wieder nichts", gone === true);
+    // Die Bodenspur räumt sich dabei selbst auf (pruneGlow) – sonst wüchse die
+    // Karte über einen langen Lauf mit jeder betretenen Zelle weiter.
+    const swept = await until(async () => {
+      const n = await page.evaluate(() => window.__tiltrWorld?.floorGlowCells ?? null);
+      return n !== null && n <= 1 ? n : null;
+    }, { timeout: 8000 });
+    check(`Die Spur verglüht und wird weggeräumt (${swept} Zellen übrig)`, swept !== null);
     await page.close();
   } catch (e) {
     check(

@@ -219,6 +219,12 @@ sich nach seiner Aktion auf. Nie mehr als zwei gleichzeitig.
   daraufsteht (Füllung 0,22 gegen 0,35 im gehaltenen Zustand – die Spur ist
   schwächer als die Wirkung). Ein PING lädt nichts: Er deckt auf, er berührt
   nicht – deshalb hängt das Glühen an `glowUntil` und nicht an `litUntil`.
+  Und der BODEN glüht mit (M94b): die Zelle unter der Kugel als weicher
+  Radial-Fleck in der BALL-Farbe (`FLOOR_GLOW_ALPHA` 0,16, ein Fünftel des
+  Ball-Kerns), gezeichnet ZUERST – unter allem anderen. Farbe und Ort sagen,
+  wem die Spur gehört: dem Spieler, nicht der Welt (wie die Wegmarken in
+  Kreide-Weiß). Ein gefülltes Rechteck wäre Bodenbelag gewesen, also läuft der
+  Fleck aus.
 - Keine Dauerschleifen-Animationen in der UI (Puls, Shimmer) – pulsieren
   darf nur die Welt. Zwei endliche Ausnahmen. Erstens das
   **Sieges-Konfetti**: zwei Kanonen aus den unteren Bildecken, Farben aus der

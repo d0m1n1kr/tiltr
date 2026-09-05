@@ -907,7 +907,22 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   eine Lücke: Bisher zeigte das Bild „ich stehe drauf" nur, wenn die TÜR daran
   hing; ein Resonanzfeld ohne stehendes Duett blieb dunkel. Wer ein weiteres
   berührbares Ding aufladen will, ruft `chargeGlow` – nicht `litUntil = …`.
-  `__tiltrWorld.glowMs`/`.plateGlowMs` (E2E Lauf 50, Platte in Lauf 48).
+  DER BODEN GLÜHT MIT (M94b, v3.29.0 – der eigentliche Wunsch, beim ersten Mal
+  falsch gelesen: „Bodenplatten" hieß der BODEN, nicht die Druckplatte, die es
+  nur zu zweit gibt): Die Zelle unter der Kugel lädt nach derselben Kurve –
+  durchrollen glimmt kurz, liegen bleiben glüht lange. Der Boden hat KEINE
+  Objekte, an denen eine Ladung hängen könnte, also hält eine Karte je EBENE
+  den Zustand (`touchCell`/`pruneGlow`, Schlüssel „Spalte,Zeile", Wert Ladung +
+  Zellmitte in Weltkoordinaten, damit der Renderer nichts zurückrechnet);
+  `launch` leert sie, `pruneGlow` räumt Verglühtes weg – sonst wüchse sie über
+  einen langen Lauf mit jeder betretenen Zelle. Gezeichnet wird sie ZUERST
+  (unter den Wänden) als weicher Fleck in der BALL-Farbe: Sie gehört dem
+  Spieler, nicht der Welt, und sie deckt nichts auf – man sieht nur, wo man
+  selbst war. Ein gefülltes Rechteck sah aus wie Bodenbelag, deshalb ein
+  auslaufender Radial-Verlauf (`FLOOR_GLOW_ALPHA` 0,16 – ein Fünftel des
+  Ball-Kerns).
+  `__tiltrWorld.glowMs`/`.plateGlowMs`/`.floorGlowMs`/`.floorGlowCells`
+  (E2E Lauf 50, Platte in Lauf 48).
 - `src/render/renderer.ts` – Der eigene Ball ist der EINZIGE feste Körper im
   Bild – in der DUNKLEN Welt. AUSNAHME M62: Im Coop auf einer hellen Ebene
   (`bright()`) ist der Partner ein fester roter Ball (`buddy.solid`,

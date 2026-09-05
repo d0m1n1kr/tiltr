@@ -651,6 +651,44 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M94b „Der Boden glüht mit" ✓ (v3.29.0)
+
+Nachtrag zu M94, und zugleich die Korrektur eines MISSVERSTÄNDNISSES: Der
+Wunsch lautete „das Gleiche für die Bodenplatten", und ich habe daraus die
+DRUCKPLATTE gemacht – die es nur in Zwei-Spieler-Leveln gibt, weshalb im
+normalen Spiel nichts zu sehen war („Der Boden leuchtet nicht"). Gemeint war
+der BODEN, über den die Kugel rollt.
+
+Jetzt lädt die Zelle unter der Kugel nach derselben Kurve wie eine Wand:
+durchrollen glimmt kurz (1,2 s), liegen bleiben glüht lange (bis 4,2 s).
+Daraus entsteht beim Spielen eine SPUR – und die ist genau das, was M94 für
+Wände begründet hat, nur dort, wo man sich wirklich bewegt: „hier war ich".
+
+WO DER ZUSTAND WOHNT: Wände und Platten sind Objekte, an denen eine Ladung
+hängen kann; der Boden ist keins. Also hält eine Karte je EBENE den Zustand
+(`touchCell`/`pruneGlow` in core/afterglow.ts): Schlüssel „Spalte,Zeile", Wert
+die Ladung plus die Zellmitte in Weltkoordinaten – so muss der Renderer nichts
+zurückrechnen und kennt weder Zellgröße noch Gitter. `launch` leert die Karten
+(die Spur gehört dem LAUF), und `pruneGlow` wirft verglühte Zellen weg: Ohne
+das wüchse die Karte über einen langen Lauf mit jeder betretenen Zelle, und
+der Renderer liefe über hunderte Einträge, von denen die meisten nichts mehr
+zeichnen.
+
+WIE SIE AUSSIEHT: gezeichnet ZUERST, unter den Wänden, als weicher
+Radial-Fleck in der BALL-Farbe. Zwei Entscheidungen dabei:
+- Die Farbe sagt, WEM die Spur gehört – dem Spieler, nicht der Welt (dieselbe
+  Logik wie die Wegmarken in Kreide-Weiß, M89). Sie deckt auch nichts auf: Man
+  sieht nur, wo man selbst schon war.
+- Ein gefülltes Rechteck sah aus wie BODENBELAG, also wie Welt; ein
+  auslaufender Fleck sieht aus wie eine Spur. `FLOOR_GLOW_ALPHA` 0,16 ist ein
+  Fünftel des Ball-Kerns – sichtbar, aber nie ein Signal.
+
+Prüfbar: `__tiltrWorld.floorGlowMs` / `.floorGlowCells`; E2E Lauf 50 rollt
+weiter, bis MEHR ALS EINE Zelle glüht (Warten auf den Zustand, nicht auf eine
+Zeit – an der Wand gelehnt liegt die Kugel in einer einzigen Zelle, daran ist
+die erste Fassung der Zusicherung gescheitert), und sieht die Karte danach
+wieder leerlaufen. Units für Karte und Aufräumen in tests/afterglow.test.ts.
+
 ## M94 „Nachglühen lädt sich auf" ✓ (v3.28.0)
 
 Rein visuell, und trotzdem eine Regel: Eine berührte Wand leuchtete bisher

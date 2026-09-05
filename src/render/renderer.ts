@@ -2,8 +2,8 @@
 // leuchten kurz auf ("Echo") und verblassen wieder – so offenbart sich die Welt.
 
 import type { World } from '../core/physics';
-import { BALL_R } from '../core/constants';
-import { GLOW_FADE_MS, glowNow } from '../core/afterglow';
+import { BALL_R, CELL } from '../core/constants';
+import { GLOW_FADE_MS, type GlowCell, glowNow } from '../core/afterglow';
 import { WORLD } from './palette';
 
 export interface DrawOptions {
@@ -38,11 +38,20 @@ export interface DrawOptions {
    *  Eine Boje deckt nichts auf, sie ist selbst der einzige Punkt, den sie
    *  zeigt – und sie gehört den Spielern, nicht der Welt. */
   marks?: ReadonlyArray<{ x: number; y: number; mine: boolean }>;
+  /** Die SPUR AUF DEM BODEN (M94b): Zellen, über die die Kugel gerollt ist –
+   *  je länger sie dort war, desto länger glimmen sie nach. Kein Aufdecken:
+   *  Die Spur zeigt nur, wo man SELBST war, und bleibt darum weit unter allem
+   *  anderen im Bild (`FLOOR_GLOW_ALPHA`). */
+  floorGlow?: Iterable<GlowCell>;
   /** Kugel weglassen: Es gibt EINE Kugel für alle Ebenen (loader.ts setzt sie
    *  auf den Start von Ebene 1). Auf einer anderen Ebene wäre sie ein
    *  Phantom – im Editor sah sie dort aus wie ein eigener Startpunkt. */
   hideBall?: boolean;
 }
+
+/** Höchstes Alpha der Bodenspur (M94b). Bewusst klein: Sie ist eine
+ *  Erinnerung, kein Signal – der Ball-Kern ist fünfmal so hell. */
+export const FLOOR_GLOW_ALPHA = 0.16;
 
 /** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
  *  Alles Fremde (Partner, Geist) bleibt darunter. */
@@ -310,6 +319,27 @@ export class Renderer {
       if (o.x !== undefined && o.y !== undefined) a = Math.max(a, base * torchGain(o.x, o.y));
       return type ? Math.max(a, spotAlpha(type, base)) : a;
     };
+    // DIE SPUR AUF DEM BODEN (M94b) – ganz unten im Bild, unter den Wänden:
+    // Wo die Kugel gerollt ist, glimmt der Boden nach, und wo sie liegen blieb,
+    // länger (dieselbe Ladung wie an der Wand). Sie leuchtet in der Farbe der
+    // KUGEL, denn sie gehört dem Spieler, nicht der Welt – und sie deckt nichts
+    // auf: Man sieht nur, wo man selbst schon war.
+    for (const c of opts.floorGlow ?? []) {
+      const a = glowNow(c, now) * FLOOR_GLOW_ALPHA;
+      if (a <= 0.004) continue;
+      // Weicher Fleck, keine Kachel: Ein gefülltes Rechteck sähe aus wie ein
+      // BODENBELAG (also wie Welt), ein auslaufender Schein wie eine Spur.
+      const px = tx(c.x),
+        py = ty(c.y),
+        r = CELL * 0.62 * s;
+      const spot = ctx.createRadialGradient(px, py, 0, px, py, r);
+      spot.addColorStop(0, `rgba(${WORLD.ballGlow}, ${a})`);
+      spot.addColorStop(0.6, `rgba(${WORLD.ballGlow}, ${a * 0.5})`);
+      spot.addColorStop(1, `rgba(${WORLD.ballGlow}, 0)`);
+      ctx.fillStyle = spot;
+      ctx.fillRect(px - r, py - r, r * 2, r * 2);
+    }
+
     for (const w of world.walls) {
       if (w.door?.open) continue; // offene Türen unten als Umriss, nicht als Fläche
       // Schiebewand: fährt sichtbar auf – die gezeichnete Länge schrumpft mit
