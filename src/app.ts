@@ -72,7 +72,7 @@ import { setupWorkshopPanel } from './ui/workshopPanel';
 import { setupHearingTest } from './ui/hearing';
 import { setupWakeLock } from './ui/wakelock';
 import { setupConfetti } from './ui/confetti';
-import { fpInitial, fpStep } from './core/fp';
+import { fpInitial, fpStep, startHeading } from './core/fp';
 import { breathAt, breathOpenRemaining } from './core/breathing';
 import { advance, compileTune, notesAt, type CompiledTune } from './audio/chiptune';
 import { compiledById } from './music';
@@ -1216,9 +1216,14 @@ function launch(def: LevelDef): void {
   if (mode?.kind === 'daily' && mode.target !== undefined) flash(t('daily.targetFlash', { time: fmtTime(mode.target) }), 4000);
   if (mpTest) flash(t('st.mpTestStart', { n: mpTest.active + 1 }), 3000);
   input.calibrate();
-  fpState = fpInitial();
+  // START-BLICK (M98): In First Person schaut man in eine ÖFFNUNG, nicht stur
+  // nach Norden – sonst fährt man als Erstes gegen eine Wand. Die Wahl fällt
+  // EINMAL hier; danach lenkt der Spieler. Beim Respawn bleibt der Blick, wie
+  // er war: Wer fällt, wird nicht neu ausgerichtet.
+  const look = fpOn() && world ? startHeading(world.walls, world.ball.x, world.ball.y) : 0;
+  fpState = { ...fpInitial(), heading: look };
   renderer.setFpView(fpOn());
-  audio.setHeading(0);
+  audio.setHeading(look);
 }
 
 // Ebenenwechsel: kurzes Innehalten, Schimmern in Richtung der Reise,

@@ -3536,9 +3536,12 @@ if (want("19")) {
     );
     await page.waitForTimeout(3400);
 
+    // In der offenen Arena ist Norden frei – dort bleibt der Startblick, wo er
+    // immer war (M98: Gleichstand behält Norden). Die Gegenprobe mit einer
+    // Wand im Norden steht am Ende dieses Laufs.
     const fp0 = await page.evaluate(() => window.__tiltrFp);
     check(
-      `FP aktiv, Heading startet nach Norden (${fp0?.heading?.toFixed(3)})`,
+      `FP aktiv, Heading startet im offenen Feld nach Norden (${fp0?.heading?.toFixed(3)})`,
       !!fp0 && Math.abs(fp0.heading) < 0.02 && !!fp0.view,
     );
 
@@ -3618,6 +3621,55 @@ if (want("19")) {
     check(
       `FP-Kamera hält die Kugel zentriert (Abweichung ${offCx.toFixed(1)}/${offCy.toFixed(1)} px)`,
       offCx < 10 && offCy < 10,
+    );
+
+    // START-BLICK IN EINE ÖFFNUNG (M98): Gemeldet als „es ist nicht so schön,
+    // wenn man direkt gegen eine Wand fährt". Derselbe Kontext, zweites
+    // Level – ein Ost-West-Gang, dessen Startzelle nach Norden UND Süden zu
+    // ist. Der Blick muss sich also nach Osten drehen (nach Westen ist der
+    // Rand). Ein zweiter Lauf dafür wäre teurer als dieser Import.
+    await page.click("#homeBtn");
+    await page.waitForTimeout(200);
+    const corridor = {
+      id: "custom-fp-gang",
+      name: "FP-Gang",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [4, 2],
+          maze: {
+            seed: 3,
+            carve: [0, 1, 2].map((x) => [[x, 0], "e"]),
+            add: [0, 1, 2, 3].map((x) => [[x, 0], "s"]),
+          },
+          elements: [],
+          start: [0, 0],
+          goal: [3, 0],
+        },
+      ],
+    };
+    await page.click("#workshopBtn");
+    // Der Import-Bereich ist ein UMSCHALTER und war vom ersten Import her
+    // schon offen – ein zweiter Klick hätte ihn zugeklappt (30-s-Timeout auf
+    // `fill`, so gesehen). Also erst fragen, dann klicken.
+    if (!(await page.locator("#wsImportText").isVisible())) await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(corridor));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 1);
+    await page.locator("#workshopList .ws-item").last().locator(".ws-actions .btn-primary").click();
+    // Gewartet wird auf den NEUEN Lauf, nicht auf „FP ist an": `__tiltrFp`
+    // trug noch das Heading des vorigen Levels (0,90 rad), und die Zusicherung
+    // prüfte damit die alte Welt. Die Kugel des Gangs startet in Zelle 0/0.
+    const looked = await until(
+      async () => {
+        const r = await page.evaluate(() => ({ fp: window.__tiltrFp, ball: window.__tiltrBall }));
+        return r.fp?.view && r.ball && r.ball.x < 100 && r.ball.y < 100 ? r.fp : null;
+      },
+      { timeout: 20000 },
+    );
+    check(
+      `Startblick geht in die Öffnung statt gegen die Wand (h=${looked?.heading?.toFixed(2)} rad, erwartet ${(Math.PI / 2).toFixed(2)})`,
+      looked !== null && Math.abs(looked.heading - Math.PI / 2) < 0.02,
     );
 
     // Zurück auf Draufsicht: der Umschalter wirkt in beide Richtungen.

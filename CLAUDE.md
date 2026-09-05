@@ -692,6 +692,18 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   ein gemeinsames, ruckelfreies Heading für Kamera, Schub und Ohr.
   Tastatur: ↑/↓ Schub, ←/→ drehen. `window.__tiltrFp` zeigt Heading und
   Ansicht; Kalibrier-Countdown sagt die Haltung je Modus an (Tablett/45°).
+  DER STARTBLICK GEHT IN EINE ÖFFNUNG (M98, v3.33.0): Bis 3.32 stand das
+  Heading beim Levelstart stur auf NORDEN – wer mit dem Rücken zur einzigen
+  Öffnung aufwachte, fuhr als Erstes gegen eine Wand. `startHeading(walls, x,
+  y)` (rein, in core/fp.ts) wählt unter den vier Himmelsrichtungen die mit der
+  meisten Luft; gemessen wird mit `freeAhead` und nur ZWEI ZELLEN weit
+  (`FP_LOOK`). Die kurze Reichweite ist Absicht: Sie trennt „Wand im Gesicht"
+  von „hier kann ich rollen", verrät aber nichts über das Labyrinth – so weit
+  trägt der erste Ping ohnehin, und eine Wahl „Richtung Ziel" wäre in diesem
+  Spiel Verrat. Gleichstand behält Norden, ganz eingemauert fällt es auf
+  Norden zurück. Gewählt wird EINMAL in `launch` (auch `audio.setHeading`
+  bekommt den Wert); beim RESPAWN bleibt der Blick, wie er war – wer fällt,
+  wird nicht neu ausgerichtet.
 - `src/core/buddy.ts` – DER PARTNER KLINGT (M88): Bis 3.21 war der Partner
   akustisch NICHT VORHANDEN (nur ein Schein, M62) – `setRival` gab es, aber nur
   fürs Duell. `buddySound(dist, speed, maxSpeed)` ist rein und liefert ZWEI

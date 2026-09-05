@@ -4,12 +4,15 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  FP_LOOK,
   FP_MAX_TURN,
   FP_TURN_SMOOTH_S,
   fpInitial,
   fpStep,
   headingVector,
+  freeAhead,
   normalizeAngle,
+  startHeading,
   turnCurve,
   type FpState,
 } from '../src/core/fp';
@@ -140,5 +143,53 @@ describe('Winkel-Haushalt', () => {
       const v = headingVector(h);
       expect(Math.hypot(v.x, v.y)).toBeCloseTo(1, 9);
     }
+  });
+});
+
+// START-BLICK (M98): Wer in First Person startet, soll in eine ÖFFNUNG
+// schauen. Gemeldet als „es ist nicht so schön, wenn man direkt gegen eine
+// Wand fährt" – bis 3.32 zeigte der Blick stur nach Norden.
+describe('Startblick (M98)', () => {
+  // Eine Zelle (0,0) mit 100 Einheiten Kantenlänge; der Ball liegt in ihrer
+  // Mitte. Wände sind dünne Rechtecke auf den Kanten – wie im Loader.
+  const T = 8;
+  const north = { x: 0, y: -T / 2, w: 100, h: T };
+  const south = { x: 0, y: 100 - T / 2, w: 100, h: T };
+  const west = { x: -T / 2, y: 0, w: T, h: 100 };
+  const east = { x: 100 - T / 2, y: 0, w: T, h: 100 };
+  const mid = { x: 50, y: 50 };
+
+  it('freie Sicht meldet die volle Reichweite, eine Wand die Strecke davor', () => {
+    expect(freeAhead([], mid.x, mid.y, 0)).toBe(FP_LOOK);
+    // Nordwand: von der Zellmitte sind es 50 Einheiten bis zur Kante.
+    expect(freeAhead([north], mid.x, mid.y, 0)).toBeLessThanOrEqual(50);
+    expect(freeAhead([north], mid.x, mid.y, 0)).toBeGreaterThanOrEqual(40);
+    // … und nach SÜDEN sieht dieselbe Wand niemand.
+    expect(freeAhead([north], mid.x, mid.y, Math.PI)).toBe(FP_LOOK);
+  });
+
+  it('im offenen Feld bleibt es bei Norden – wo die alte Regel gut war, ändert sich nichts', () => {
+    expect(startHeading([], mid.x, mid.y)).toBe(0);
+  });
+
+  it('Wand im Norden: der Blick dreht sich zur offenen Seite', () => {
+    // Sackgasse, nur nach OSTEN offen.
+    expect(startHeading([north, south, west], mid.x, mid.y)).toBeCloseTo(Math.PI / 2);
+    // Nur nach SÜDEN offen.
+    expect(startHeading([north, east, west], mid.x, mid.y)).toBeCloseTo(Math.PI);
+    // Nur nach WESTEN offen.
+    expect(startHeading([north, east, south], mid.x, mid.y)).toBeCloseTo(-Math.PI / 2);
+  });
+
+  it('bei mehreren Öffnungen gewinnt die mit der meisten Luft', () => {
+    // Norden ist nach eineinhalb Zellen zu, Osten bleibt offen – also Osten.
+    // Diese Probe unterscheidet die Regel von einem blossen „erste offene
+    // Richtung gewinnt": danach hätte Norden gewonnen.
+    const northWall = { x: 0, y: -100, w: 100, h: T };
+    expect(startHeading([northWall, south, west], mid.x, mid.y)).toBeCloseTo(Math.PI / 2);
+  });
+
+  it('ganz eingemauert: der Blick fällt auf Norden zurück (kein NaN, keine Wahl)', () => {
+    expect(startHeading([north, east, south, west], mid.x, mid.y)).toBe(0);
   });
 });

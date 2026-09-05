@@ -19,6 +19,7 @@
 // DASSELBE Heading benutzen, ist die Kameradrehung automatisch ruckelfrei,
 // ohne dass Sicht und Steuerung je auseinanderlaufen.
 
+import { CELL } from './constants';
 import type { Tilt } from './types';
 
 /** Volle Drehrate bei vollem Lenkeinschlag (rad/s). */
@@ -54,6 +55,68 @@ export function normalizeAngle(a: number): number {
 /** Blickrichtung als Welt-Einheitsvektor: heading 0 -> (0,-1) = oben. */
 export function headingVector(heading: number): { x: number; y: number } {
   return { x: Math.sin(heading), y: -Math.cos(heading) };
+}
+
+/* --- START-BLICK (M98) -------------------------------------------------------
+   Bis 3.32 startete First Person stur nach NORDEN – und wer mit dem Rücken zur
+   einzigen Öffnung aufwachte, fuhr als Erstes gegen eine Wand. Gemeldet als
+   „es ist nicht so schön, wenn man direkt gegen eine Wand fährt".
+
+   Gewählt wird unter den VIER Himmelsrichtungen die mit der meisten Luft, und
+   der Blick reicht dabei nur ZWEI ZELLEN weit (`FP_LOOK`). Das ist Absicht:
+   Zwei Zellen unterscheiden „Wand im Gesicht" von „hier kann ich rollen", aber
+   sie verraten nichts über das Labyrinth – so weit trägt der erste Ping
+   ohnehin. Eine Wahl „Richtung Ziel" wäre in diesem Spiel ein Verrat.
+
+   Gleichstand behält NORDEN (strikt größer gewinnt), dann Ost, Süd, West: Wo
+   die alte Regel schon gut war, ändert sich nichts. */
+
+/** Wie weit die Startblick-Wahl schaut (Welteinheiten = zwei Zellen). */
+export const FP_LOOK = CELL * 2;
+
+/** Alles, was den Blick versperrt – eine Wand ist ein Rechteck, mehr braucht
+ *  die Wahl nicht zu wissen (`Wall` passt strukturell). */
+export interface Blocker {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Freie Strecke von (x, y) in Blickrichtung, höchstens `max`. Abgetastet
+ *  statt analytisch geschnitten: Der Aufruf passiert EINMAL je Levelstart,
+ *  und ein Raster von 10 Einheiten ist feiner als jede Wandstärke. */
+export function freeAhead(
+  boxes: readonly Blocker[],
+  x: number,
+  y: number,
+  heading: number,
+  max = FP_LOOK,
+  step = 10,
+): number {
+  const d = headingVector(heading);
+  for (let t = step; t <= max; t += step) {
+    const px = x + d.x * t;
+    const py = y + d.y * t;
+    for (const b of boxes) {
+      if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h) return t - step;
+    }
+  }
+  return max;
+}
+
+/** Startblick in eine ÖFFNUNG statt stur nach Norden (M98). Rein. */
+export function startHeading(boxes: readonly Blocker[], x: number, y: number, max = FP_LOOK): number {
+  let best = 0;
+  let bestFree = -1;
+  for (const h of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    const free = freeAhead(boxes, x, y, h, max);
+    if (free > bestFree) {
+      bestFree = free;
+      best = h;
+    }
+  }
+  return best;
 }
 
 export interface FpStepResult extends FpState {

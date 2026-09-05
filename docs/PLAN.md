@@ -651,6 +651,30 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M98 „Der Startblick" ✓ (v3.33.0)
+
+Gemeldet in einem Satz: „Im First Person soll die Startrichtung nicht nach
+Norden, sondern Richtung einer Öffnung sein. Es ist nicht so schön, wenn man
+direkt gegen eine Wand fährt." Stimmt – `fpInitial()` setzte Heading 0, und
+das war eine Weltrichtung, keine Aussage über den Raum.
+
+`startHeading(walls, x, y)` in core/fp.ts ist die Antwort, rein und mit Units:
+Unter den vier Himmelsrichtungen gewinnt die mit der meisten Luft, gemessen
+über `freeAhead` (Abtastung mit 10 Einheiten – der Aufruf passiert EINMAL je
+Levelstart, ein analytischer Schnitt wäre Aufwand ohne Gewinn).
+
+DIE REICHWEITE IST DAS DESIGN: `FP_LOOK` = zwei Zellen, nicht mehr. Zwei
+Zellen trennen „Wand im Gesicht" von „hier kann ich rollen"; alles darüber
+würde etwas über das LABYRINTH verraten, und in einem Spiel, dessen Thema die
+Blindheit ist, wäre das ein Verrat – erst recht eine Wahl „Richtung Ziel".
+Gleichstand behält Norden (strikt größer gewinnt), ganz eingemauert fällt es
+auf Norden zurück: Wo die alte Regel gut war, ändert sich nichts.
+
+Gewählt wird in `launch`, und `audio.setHeading` bekommt denselben Wert – der
+Hörer darf nicht eine Viertelsekunde lang woanders stehen als die Kamera. Beim
+RESPAWN bleibt der Blick unverändert: Wer fällt, wird nicht neu ausgerichtet;
+das wäre eine zweite Desorientierung obendrauf.
+
 ## M97 „Der Stimmton als Lehrlevel" ✓ (v3.32.0)
 
 M96 gab dem Resonanzfeld einen Vorgabe-Ton, aber kein eingebautes Level nutzte
