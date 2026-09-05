@@ -260,6 +260,16 @@ export const iceDef = z.object({
   type: z.literal('ice'),
 });
 
+/* --- Sand (M103) ------------------------------------------------------------
+   Das Gegenstück zum Eis: Statt zu gleiten, ZEHRT der Boden am Schwung. Die
+   Zelle hat keine Einstellung – wie beim Eis ist der Untergrund selbst die
+   ganze Aussage; wie zäh er ist, gehört ins Spielgefühl (`World.sandFriction`)
+   und nicht in jedes einzelne Level. */
+export const sandDef = z.object({
+  ...base,
+  type: z.literal('sand'),
+});
+
 export const echoCrystalDef = z.object({
   ...base,
   type: z.literal('echoCrystal'),
@@ -378,6 +388,7 @@ export const elementDef = z.discriminatedUnion('type', [
   listenerDef,
   fogZoneDef,
   iceDef,
+  sandDef,
   echoCrystalDef,
   anchorDef,
   glassDef,
@@ -406,6 +417,7 @@ export type CurrentDef = z.infer<typeof currentDef>;
 export type ListenerDef = z.infer<typeof listenerDef>;
 export type FogZoneDef = z.infer<typeof fogZoneDef>;
 export type IceDef = z.infer<typeof iceDef>;
+export type SandDef = z.infer<typeof sandDef>;
 export type EchoCrystalDef = z.infer<typeof echoCrystalDef>;
 export type AnchorDef = z.infer<typeof anchorDef>;
 export type GlassDef = z.infer<typeof glassDef>;

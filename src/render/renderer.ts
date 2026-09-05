@@ -64,6 +64,15 @@ export const FLOOR_GLOW_ALPHA = 0.1;
  *  das zeigen. Aufgeteilt auf beide Seiten: je Zelle die halbe Lücke. */
 export const FLOOR_GLOW_GAP = 8;
 
+/** Körnung des Sandfelds (M103): feste Punkte in Zellkoordinaten (0…1).
+ *  FEST, nicht gewürfelt – ein Zufall je Bild ließe den Boden flimmern, und
+ *  je Zelle gewürfelt bräuchte der Renderer einen Zustand, den er nicht hat. */
+const SAND_GRAINS: ReadonlyArray<readonly [number, number]> = [
+  [0.22, 0.28], [0.44, 0.2], [0.68, 0.3], [0.82, 0.18],
+  [0.3, 0.5], [0.54, 0.46], [0.76, 0.56], [0.18, 0.72],
+  [0.42, 0.78], [0.64, 0.72], [0.86, 0.8], [0.5, 0.62],
+];
+
 /** Alpha des Ball-Glow-Kerns – der hellste ständige Punkt im Bild.
  *  Alles Fremde (Partner, Geist) bleibt darunter. */
 export const BALL_CORE_ALPHA = 0.5;
@@ -495,6 +504,7 @@ export class Renderer {
         gCur = zoneGain('current'),
         gFog = zoneGain('fogZone'),
         gIce = zoneGain('ice'),
+        gSand = zoneGain('sand'),
         gRev = zoneGain('reverbZone');
       // Hallraum (M46): luftige Fläche mit Nachhall-Bögen.
       if (gRev > 0)
@@ -529,6 +539,21 @@ export class Renderer {
         ctx.lineTo(tx(z.x + z.w * 0.8), ty(z.y + z.h * 0.42));
         ctx.stroke();
       }
+      // Sand (M103): Fläche mit KÖRNUNG statt Schlieren – Eis ist glatt und
+      // gerichtet, Sand ist stumpf und streut. Die Punkte stehen fest im
+      // Zellraster (kein Zufall je Bild, sonst flimmerte der Boden).
+      if (gSand > 0)
+        for (const z of world.sand) {
+          ctx.fillStyle = `rgba(${WORLD.sand}, ${0.14 * gSand})`;
+          ctx.fillRect(tx(z.x), ty(z.y), z.w * s, z.h * s);
+          ctx.fillStyle = `rgba(${WORLD.sand}, ${0.5 * gSand})`;
+          const r = Math.max(1, 0.022 * z.w * s);
+          for (const [fx, fy] of SAND_GRAINS) {
+            ctx.beginPath();
+            ctx.arc(tx(z.x + z.w * fx), ty(z.y + z.h * fy), r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
     }
 
     // Checkpoints: Ring – sichtbar bei Debug/Reveal oder kurz nach Aktivierung.

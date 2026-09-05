@@ -23,6 +23,7 @@ import type {
   Listener,
   PingWave,
   Plate,
+  SandPatch,
   Tilt,
   TimedSwitch,
   Transporter,
@@ -57,6 +58,8 @@ export class World {
   fogZones: FogZone[] = [];
   torches: Torch[] = [];
   ice: IcePatch[] = [];
+  /** Sandfelder (M103): das Gegenstück zum Eis – hier versickert der Schwung. */
+  sand: SandPatch[] = [];
   crystals: Collectible[] = [];
   hourglasses: Hourglass[] = [];
   bells: Bell[] = [];
@@ -86,6 +89,12 @@ export class World {
   maxSpeed = 900;
   iceFriction = 0.15; // Dämpfung auf Eis: der Ball gleitet weiter
   iceControl = 0.45; // Anteil der Neigungs-Beschleunigung auf Eis (schwammig)
+  /** Reibung im Sand (M103). Die Endgeschwindigkeit ist `accel / friction`:
+   *  auf Stein 2600/1,4 (über `maxSpeed`, also volle 900), im Sand 2600/5,0 =
+   *  520 – gut die Hälfte. Genau das heißt „langsam": nicht klebrig, sondern
+   *  gedeckelt. Gelenkt wird weiter voll (kein eigener `control`) – im Sand
+   *  fehlt der Schwung, nicht der Grip. */
+  sandFriction = 5.0;
   /** Ab dieser Ballgeschwindigkeit gilt "in Bewegung" (Horcher jagt) */
   listenerWakeSpeed = 40;
 
@@ -108,7 +117,11 @@ export class World {
     for (let i = 0; i < steps; i++) {
       // Eis: weniger Grip in beide Richtungen – schwächeres Lenken UND
       // schwächeres Bremsen (niedrigere Reibung unten).
-      const iced = this.onIce();
+      // Untergrund (M103): Sand STICHT Eis. Wer beides in eine Zelle legt, hat
+      // Sand AUF Eis gelegt, und darauf rutscht nichts mehr – die Regel muss
+      // eindeutig sein, sonst hinge das Verhalten an der Listen-Reihenfolge.
+      const sanded = this.onSand();
+      const iced = !sanded && this.onIce();
       const control = iced ? this.iceControl : 1;
       b.vx += tilt.x * this.accel * control * h;
       b.vy += tilt.y * this.accel * control * h;
@@ -144,7 +157,7 @@ export class World {
           else if (z.fy < 0) b.vy = Math.min(0, b.vy);
         }
       }
-      const damp = Math.exp(-(iced ? this.iceFriction : this.friction) * h);
+      const damp = Math.exp(-(sanded ? this.sandFriction : iced ? this.iceFriction : this.friction) * h);
       b.vx *= damp;
       b.vy *= damp;
       const sp = b.speed;
@@ -649,6 +662,12 @@ export class World {
   onIce(): boolean {
     const b = this.ball;
     return this.ice.some((z) => b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h);
+  }
+
+  /** … und auf Sand (M103)? Dieselbe Frage, das andere Extrem. */
+  onSand(): boolean {
+    const b = this.ball;
+    return this.sand.some((z) => b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h);
   }
 
   // Horcher, der den Ball gerade berührt, sonst null.

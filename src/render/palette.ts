@@ -49,6 +49,11 @@ export const WORLD = {
   fog: '160, 165, 185',
   /** Eis: kaltes Eisweiß – rutschiger Boden */
   ice: '185, 225, 240',
+  /** Sand (M103): stumpfe, dunkle Ocker – der GEGENPOL zum Eis, warm statt
+   *  kalt. Bewusst matter und dunkler als der Sanduhr-Sand (232,196,140):
+   *  Die Sanduhr ist ein GEGENSTAND und darf leuchten, der Boden ist Boden
+   *  und liegt unter allem. */
+  sand: '186, 152, 96',
   /** Echo-Kristall: Ping-Teal – er IST abgefüllter Ping (+1 Vorrat) */
   crystal: '75, 224, 200',
   /** Sog-Anker: helles Violett – Gefahr-Familie der Löcher, eigener Ton */

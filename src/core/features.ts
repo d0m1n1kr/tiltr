@@ -11,7 +11,7 @@
 // spielt weiter mit jeder älteren Fassung. Rein – Units in tests/features.test.ts.
 
 /** Merkmale, die DIESE Fassung beherrscht. Neues Spielmittel ⇒ hier eintragen. */
-export const FEATURES: readonly string[] = ['marks', 'together', 'duet', 'multiOpens', 'drain'];
+export const FEATURES: readonly string[] = ['marks', 'together', 'duet', 'multiOpens', 'drain', 'sand'];
 
 /** Was ein Level verlangt: `marks` > 0 heißt „beide müssen Bojen legen
  *  können", `together` heißt „beide müssen nach der Rendezvous-Regel spielen"
@@ -28,6 +28,7 @@ export function needsFor(
   duet = false,
   multiOpens = false,
   drain = false,
+  sand = false,
 ): string[] {
   const needs: string[] = [];
   if (marks > 0) needs.push('marks');
@@ -38,6 +39,9 @@ export function needsFor(
   // den eine Fassung vor 3.38 nicht einmal laden kann. Auch das gehört in die
   // Lobby gemeldet und nicht als roher Ladefehler (M93).
   if (drain) needs.push('drain');
+  // `sand` heißt „das Level hat ein Sandfeld" (M103) – derselbe Fall wie
+  // `drain`: ein Element-Typ, den eine Fassung vor 3.39 nicht laden kann.
+  if (sand) needs.push('sand');
   return needs;
 }
 

@@ -15,6 +15,7 @@ import './current';
 import './listener';
 import './fogZone';
 import './ice';
+import './sand';
 import './echoCrystal';
 import './anchor';
 import './glass';

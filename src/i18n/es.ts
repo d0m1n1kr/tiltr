@@ -640,6 +640,9 @@ export const es: Dict = {
   'el.ice.title': 'Placa de hielo',
   'el.ice.desc':
     'Liso como un espejo: una vez en marcha, sigues deslizándote – frenar se vuelve pesado, girar impreciso. Firma: un zumbido cristalino bajo la bola que crece con la velocidad. Planea el impulso antes de tomarlo.',
+  'el.sand.title': 'Placa de arena',
+  'el.sand.desc':
+    'Suelo pesado: el impulso se pierde, la bola no pasa de media velocidad – el giro sigue siendo pleno. Firma: el sonido de rodadura cambia del retumbo oscuro a un goteo seco. Un atajo por la arena cuesta tiempo.',
   'el.echoCrystal.title': 'Cristal de eco',
   'el.echoCrystal.desc':
     'Ping embotellado: recogerlo da +1 ping de eco – incluso por encima de la reserva de la ronda. Firma: una campanada clara y única como respuesta al ping, un golpe cristalino al recogerlo. ¿Vas a por la estrella ciega? Déjalo estar.',

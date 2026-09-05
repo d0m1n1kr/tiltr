@@ -66,6 +66,8 @@ export class GameAudio {
   private master!: GainNode;
   private rollFilter!: BiquadFilterNode;
   private rollGain!: GainNode;
+  private sandRollFilter!: BiquadFilterNode;
+  private sandRollGain!: GainNode;
   private windGain!: GainNode;
   private windPanner!: PannerNode;
   private rumbleGain!: GainNode;
@@ -187,6 +189,24 @@ export class GameAudio {
     this.rollGain.gain.value = 0;
     roll.connect(this.rollFilter).connect(this.rollGain).connect(this.master);
     roll.start();
+
+    // Rollen im SAND (M103): ZWEITE Spur statt eines Filter-Umbaus an der
+    // ersten – so kann `setRolling` zwischen den Untergründen ÜBERBLENDEN
+    // statt zu springen, und der Grundklang bleibt der, der er ist.
+    // WEISSES Rauschen durch einen breiten Bandpass weit oben: Stein grollt
+    // (braun, Tiefpass), Sand RIESELT. Beides ungepannt – es ist der eigene
+    // Ball.
+    const sandRoll = this.ctx.createBufferSource();
+    sandRoll.buffer = this.noiseBuffer('white');
+    sandRoll.loop = true;
+    this.sandRollFilter = this.ctx.createBiquadFilter();
+    this.sandRollFilter.type = 'bandpass';
+    this.sandRollFilter.frequency.value = 2600;
+    this.sandRollFilter.Q.value = 0.7;
+    this.sandRollGain = this.ctx.createGain();
+    this.sandRollGain.gain.value = 0;
+    sandRoll.connect(this.sandRollFilter).connect(this.sandRollGain).connect(this.master);
+    sandRoll.start();
 
     // Rivale (Geist-Duell): dasselbe Rollen wie das eigene, aber dumpfer und
     // GEPANNT – „ich" ist ungepannt, alles Fremde kommt aus einer Richtung.
@@ -890,11 +910,19 @@ export class GameAudio {
     return p;
   }
 
-  setRolling(speed01: number): void {
+  /** Rollgeräusch. `sand01` (M103) blendet vom Stein-Grollen ins Sand-Rieseln
+   *  – 0 = Stein, 1 = Sand. Der Anteil kommt aus `World.onSand()`, EINE
+   *  Aufrufstelle in der Schleife: Der Untergrund ist eine Eigenschaft DIESES
+   *  Rollens, kein eigener Klangkörper (anders als das Eis-Sirren, das ÜBER
+   *  dem Rollen liegt). Sand klingt leiser: Ein zäher Boden trägt weniger. */
+  setRolling(speed01: number, sand01 = 0): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.rollGain.gain.setTargetAtTime(Math.min(0.5, speed01 * 0.55), t, 0.06);
+    const g = Math.min(0.5, speed01 * 0.55);
+    this.rollGain.gain.setTargetAtTime(g * (1 - sand01), t, 0.06);
     this.rollFilter.frequency.setTargetAtTime(220 + speed01 * 1400, t, 0.08);
+    this.sandRollGain.gain.setTargetAtTime(g * 0.72 * sand01, t, 0.06);
+    this.sandRollFilter.frequency.setTargetAtTime(1800 + speed01 * 2200, t, 0.08);
   }
 
   // Windzone: closeness01 = 1 mittendrin, 0 = außer Hörweite.

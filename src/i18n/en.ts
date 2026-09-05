@@ -640,6 +640,9 @@ export const en: Dict = {
   'el.ice.title': 'Ice patch',
   'el.ice.desc':
     'Mirror-smooth: once you get rolling, you keep gliding – braking turns sluggish, steering mushy. Signature: a crystalline whirring under the ball that swells with speed. Plan your momentum before you take it.',
+  'el.sand.title': 'Sand patch',
+  'el.sand.desc':
+    'Heavy going: momentum drains away, the ball never gets past about half speed – steering stays fully responsive. Signature: the rolling sound switches from a dark rumble to a dry trickle. A shortcut through sand costs time.',
   'el.echoCrystal.title': 'Echo crystal',
   'el.echoCrystal.desc':
     'Bottled ping: collecting it grants +1 echo ping – even beyond the round budget. Signature: a bright, single bell tone as its ping response, a glass-clear strike when collected. Going for the blind star? Leave it be.',

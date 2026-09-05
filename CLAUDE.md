@@ -704,6 +704,25 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   `#diag` Typ/Winkel/natürliche Lage, β/γ/α, accelerationIncludingGravity und
   tilt – Geräte weichen von der Spec ab (Tablets!), also ERST messen, dann
   korrigieren. `input.diagnostics()` ist die eine Quelle (Menü + Debug-Status).
+- SAND (M103, v3.39.0, `src/elements/sand.ts`): der zähe Untergrund, das
+  Gegenstück zum Eis. LANGSAM HEISST GEDECKELT, NICHT KLEBRIG: Die
+  Endgeschwindigkeit ist `accel / friction` – auf Stein 2600/1,4 (über
+  `maxSpeed`, also volle 900), im Sand 2600/5,0 = 520. Wer neigt, rollt, nur
+  nie schnell. GELENKT wird weiter voll: Sand bekommt bewusst KEINEN eigenen
+  `control` wie das Eis (0,45) – Eis nimmt den Grip in beide Richtungen, Sand
+  nur den Schwung; sonst wäre es „Eis mit anderem Vorzeichen". SAND STICHT EIS
+  (ausgesprochen in `step`), sonst hinge das Verhalten an der Reihenfolge
+  zweier Listen. DAS
+  ROLLGERÄUSCH IST DER UNTERGRUND: keine eigene Quelle ÜBER dem Rollen (so
+  macht es das Eis mit seinem Sirren), sondern eine ZWEITE Rollspur, in die
+  `setRolling(speed01, sand01)` überblendet – Stein braunes Rauschen durch
+  Tiefpass (Grollen), Sand weißes durch einen breiten Bandpass weit oben
+  (Rieseln), etwas leiser. EINE Aufrufstelle in der Schleife, gespeist aus
+  `world.onSand()`. Für die Lösbarkeit ändert sich nichts (wie beim Eis); im
+  Netz deckt das Merkmals-Gate den Typ (`needsFor(…, sand)`). E2E Lauf 53
+  misst Sand gegen Stein IM SELBEN Lauf – eine absolute Zahl hinge an der
+  Bildrate der CI –, und zwar erst TIEF im Feld: Beim ersten Bild im Sand
+  trägt noch der Schwung von Stein (dort stand volle 900).
 - ZEHRFELD (M102, v3.38.0, `src/elements/drain.ts`): Ein Feld, das ECHO-PINGS
   frisst – jede Überfahrt kostet `drain.cost` (1…9, Editor-Feld „Kosten
   (Pings)"). Damit lässt sich eine Abkürzung BEPREISEN statt versperren: Der

@@ -104,6 +104,7 @@ const KNOWN_RUNS = [
   "50",
   "51",
   "52",
+  "53",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -9157,6 +9158,108 @@ if (want("52")) {
   } catch (e) {
     check(
       `Lauf 52 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 53: Sand (M103). Der zähe Untergrund – das Gegenstück zum Eis.
+// Drei Zusagen: Er steht in der Element-Palette (ein Element ohne Kachel gibt
+// es nicht), er kommt aus der Def in die Welt, und er ist LANGSAM – gemessen
+// als Tempo im Sand gegen das Tempo auf Stein IM SELBEN Lauf, denn eine
+// absolute Zahl hinge an der Bildrate der CI. ---
+if (want("53")) {
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const def = {
+      id: "custom-m103",
+      name: "Sand",
+      floors: [
+        {
+          // Ein langer Gang in Reihe 0: die ersten Zellen Stein (Anlauf), die
+          // hinteren Sand. Reihe 1 ist abgemauert.
+          size: [14, 2],
+          maze: {
+            seed: 3,
+            carve: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((x) => [[x, 0], "e"]),
+            add: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((x) => [[x, 0], "s"]),
+          },
+          elements: [7, 8, 9, 10, 11, 12].map((x) => ({ type: "sand", cell: [x, 0] })),
+          start: [0, 0],
+          goal: [13, 0],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+
+    // Kein Element ohne Kachel: Sand steht in der Palette und trägt seinen
+    // Namen aus dem Wörterbuch.
+    const tileText = (await page.locator("#edEl-sand").count()) === 1
+      ? (await page.textContent("#edEl-sand")).trim()
+      : null;
+    check(`Sand steht in der Element-Palette („${tileText}")`, tileText?.includes("Sand") === true);
+
+    // Sand sperrt nichts: Alle Badges bleiben grün.
+    const bad = await page.locator("#edBadges .ed-badge.bad").count();
+    check(`Sand ist kein Riegel – kein rotes Badge (${bad})`, bad === 0);
+
+    await page.click("#edTest");
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 20000 },
+    );
+    const read = () =>
+      page.evaluate(() => ({
+        sand: window.__tiltrWorld?.sand ?? 0,
+        onSand: window.__tiltrWorld?.onSand ?? false,
+        speed: window.__tiltrWorld?.speed ?? 0,
+        x: window.__tiltrBall?.x ?? 0,
+      }));
+    const start = await until(async () => {
+      const r = await read();
+      return r.sand === 6 ? r : null;
+    }, { timeout: 12000 });
+    check(`Die Sandfelder kommen in der Welt an (${start?.sand})`, start?.sand === 6);
+
+    // Volle Neigung nach rechts und dabei MESSEN: das höchste Tempo auf Stein
+    // (Zellen 0…6) gegen das höchste im Sand (ab Zelle 7). Gewartet wird auf
+    // den ZUSTAND (Kugel im Sand), nicht auf eine Zeit.
+    await page.keyboard.down("ArrowRight");
+    let stoneTop = 0;
+    await until(async () => {
+      const r = await read();
+      if (!r.onSand) stoneTop = Math.max(stoneTop, r.speed);
+      return r.onSand ? r : null;
+    }, { timeout: 20000 });
+    // Im Sand EINSCHWINGEN lassen: Der erste Meter zählt nicht – dort trägt
+    // noch der Schwung von Stein (beim ersten Bild im Sand stand hier volle
+    // 900). Gemessen wird tief drin (ab Zelle 11), wo das Gleichgewicht aus
+    // Neigung und Sandreibung steht.
+    let sandSpeed = Infinity;
+    await until(async () => {
+      const r = await read();
+      if (r.onSand && r.x > 1050) sandSpeed = Math.min(sandSpeed, r.speed);
+      return r.x > 1250 ? r : null;
+    }, { timeout: 20000 });
+    await page.keyboard.up("ArrowRight");
+    check(
+      `Sand ist langsam: Tempo im Sand deutlich unter dem auf Stein (${Math.round(stoneTop)} → ${Math.round(sandSpeed)})`,
+      stoneTop > 600 && sandSpeed > 100 && sandSpeed < stoneTop * 0.75,
+    );
+    await page.close();
+  } catch (e) {
+    check(
+      `Lauf 53 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

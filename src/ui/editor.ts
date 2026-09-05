@@ -369,6 +369,7 @@ const PLACEABLE = [
   'windZone',
   'current',
   'ice',
+  'sand',
   'fogZone',
   'glass',
   'checkpoint',

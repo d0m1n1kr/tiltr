@@ -640,6 +640,9 @@ export const fr: Dict = {
   'el.ice.title': 'Plaque de glace',
   'el.ice.desc':
     'Lisse comme un miroir : une fois lancé, tu continues de glisser – freiner devient laborieux, diriger devient flou. Signature : un sifflement cristallin sous la bille, qui enfle avec la vitesse. Prépare ton élan avant de le prendre.',
+  'el.sand.title': 'Plaque de sable',
+  'el.sand.desc':
+    'Sol lourd : l’élan s’y perd, la bille ne dépasse guère la moitié de sa vitesse – la direction reste entière. Signature : le bruit de roulement passe du grondement sourd à un ruissellement sec. Un raccourci par le sable coûte du temps.',
   'el.echoCrystal.title': 'Cristal d’écho',
   'el.echoCrystal.desc':
     'Du ping en bouteille : le ramasser donne +1 ping d’écho – même au-delà de la réserve de la manche. Signature : un timbre de cloche clair et unique en réponse au ping, une frappe limpide au ramassage. Tu vises l’étoile aveugle ? Laisse-le.',

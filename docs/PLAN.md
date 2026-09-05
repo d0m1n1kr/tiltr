@@ -651,6 +651,38 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M103 „Sand" ✓ (v3.39.0)
+
+Gewünscht in einem Satz: „Als Nächstes noch weiteren Untergrund: Sand (langsam,
+anderes Rollgeräusch, Farbe)." Drei Zusagen, drei Antworten – und die
+interessante Frage war, was „langsam" heißt.
+
+LANGSAM HEISST GEDECKELT, NICHT KLEBRIG. Eine hohe Reibung könnte auch heißen
+„die Kugel bleibt stehen, wenn man loslässt" – das wäre eine Bremse, kein
+Untergrund. Die Endgeschwindigkeit ist `accel / friction`: auf Stein 2600/1,4 (also über `maxSpeed`, volle 900), im
+Sand 2600/5,0 = 520. Wer neigt, rollt – nur nie schnell. Und GELENKT wird
+weiter voll: Sand bekommt bewusst KEINEN eigenen `control` wie das Eis (0,45).
+Eis nimmt den Grip in beide Richtungen, Sand nimmt nur den Schwung. Zwei
+Untergründe, zwei verschiedene Aussagen – sonst wäre Sand nur „Eis mit
+anderem Vorzeichen".
+
+SAND STICHT EIS. Wer beides in eine Zelle legt, hat Sand AUF Eis gelegt, und
+darauf rutscht nichts mehr. Die Regel muss ausgesprochen sein, sonst hinge das
+Verhalten an der Reihenfolge zweier Listen – genau die Sorte Fehler, die man
+erst im gemeldeten Spielbericht findet.
+
+DAS ROLLGERÄUSCH IST DER UNTERGRUND. Sand bekommt keine eigene Klangquelle
+ÜBER dem Rollen (so macht es das Eis mit seinem Sirren), sondern eine zweite
+Rollspur, in die `setRolling(speed01, sand01)` überblendet: Stein ist braunes
+Rauschen durch einen Tiefpass (Grollen), Sand weißes durch einen breiten
+Bandpass weit oben (Rieseln), etwas leiser – ein zäher Boden trägt weniger.
+Das ist die richtige Ebene für diese Aussage: Der Untergrund ist eine
+Eigenschaft DIESES Rollens, kein eigener Körper in der Welt. Eine Aufrufstelle
+in der Schleife, gespeist aus `world.onSand()`.
+
+Für die Lösbarkeit ändert sich nichts – wie beim Eis. Im Netz meldet das
+Merkmals-Gate den neuen Element-Typ (`needsFor(…, sand)`).
+
 ## M102 „Zehrfeld" ✓ (v3.38.0)
 
 Gewünscht in einem Satz: „Ein Feld, auf dem man bis zu einer bestimmten Anzahl

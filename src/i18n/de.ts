@@ -644,6 +644,9 @@ export const de = {
   'el.ice.title': 'Eisfläche',
   'el.ice.desc':
     'Spiegelglatt: Einmal angerollt, gleitest du weiter – Bremsen wird zäh, Lenken schwammig. Signatur: kristallines Sirren unter dem Ball, das mit dem Tempo anschwillt. Plane den Schwung, bevor du ihn nimmst.',
+  'el.sand.title': 'Sandfeld',
+  'el.sand.desc':
+    'Zäher Grund: Der Schwung versickert, die Kugel kommt über ein halbes Tempo nicht hinaus – gelenkt wird weiter voll. Signatur: Das Rollgeräusch wechselt vom dunklen Grollen zu einem trockenen Rieseln. Eine Abkürzung durch Sand kostet Zeit.',
   'el.echoCrystal.title': 'Echo-Kristall',
   'el.echoCrystal.desc':
     'Abgefüllter Ping: Einsammeln gibt +1 Echo-Ping – auch über den Rundenvorrat hinaus. Signatur: heller, einzelner Glockenton als Ping-Antwort, ein glasklarer Anschlag beim Einsammeln. Wer blind spielen will, lässt ihn liegen.',

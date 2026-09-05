@@ -280,6 +280,15 @@ export interface IcePatch {
   h: number;
 }
 
+/** Sandfeld (M103): das Gegenstück zum Eis – hohe Reibung, der Schwung
+ *  versickert. Wie das Eis eine reine Zelle ohne Einstellung. */
+export interface SandPatch {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** Sog-Anker: zieht den Ball im Radius an – Kraft bleibt unter der
  *  Neigungs-Beschleunigung, man kommt immer (mühsam) wieder heraus. */
 /** Rollstein (M47): zweiter Körper, ZELLWEISE. Der Ball schiebt ihn um genau

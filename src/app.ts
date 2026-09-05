@@ -2276,6 +2276,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
             levelFeatures(mp.level).has('resonance'),
             hasMultiOpens(mp.level),
             levelFeatures(mp.level).has('drain'),
+            levelFeatures(mp.level).has('sand'),
           ),
         });
         $('mpLobbyStatus').textContent = t('mp.connected');
@@ -2355,6 +2356,7 @@ function mpOnMessage(type: string, payload: unknown): void {
             levelFeatures(mp.level).has('resonance'),
             hasMultiOpens(mp.level),
             levelFeatures(mp.level).has('drain'),
+            levelFeatures(mp.level).has('sand'),
           ), p?.features)
     ) {
       $('mpLobbyStatus').textContent = t('mp.needsUpdate');
@@ -3298,7 +3300,9 @@ function frame(now: number): void {
     touchCell(glowMap, Math.floor(world.ball.x / CELL), Math.floor(world.ball.y / CELL), CELL, now);
     pruneGlow(glowMap, now);
 
-    audio.setRolling(Math.min(1, world.ball.speed / world.maxSpeed));
+    // Rollen: Untergrund als Anteil derselben Quelle (M103) – auf Sand
+    // rieselt es, auf Stein grollt es.
+    audio.setRolling(Math.min(1, world.ball.speed / world.maxSpeed), world.onSand() ? 1 : 0);
 
     const gdx = loaded!.goalPos.x - world.ball.x;
     const gdy = loaded!.goalPos.y - world.ball.y;
@@ -3927,6 +3931,13 @@ function frame(now: number): void {
     bonusS,
     bells: world.bells.length,
     drains: world.drains.map((d) => ({ cost: d.cost, inside: d.inside })),
+    // Untergrund (M103): wie viele Sandfelder diese Ebene hat und ob die
+    // Kugel gerade darauf liegt – die zwei Fragen, die der Lauf stellt.
+    sand: world.sand.length,
+    onSand: world.onSand(),
+    // … und wie schnell die Kugel gerade ist: Sand ist eine Aussage über das
+    // TEMPO, also muss der Lauf es messen können.
+    speed: world.ball.speed,
     ringing: world.bells.filter((b) => b.ringLeft > 0).length,
     reverbZones: world.reverbZones.length,
     inReverb: world.inReverb(),
