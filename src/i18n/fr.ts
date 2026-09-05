@@ -215,7 +215,13 @@ export const fr: Dict = {
   'ed.tune.unison': 'Unisson',
   'ed.tune.fifth': 'Quinte',
   'ed.plateSoloHint': 'En solo : celui qui est sur la plaque ne franchit pas la porte en même temps. Cela devient jouable avec un ROCHER poussé dessus – ou avec une porte réglée sur « reste ouverte » : elle se bloque ouverte dès qu’on roule dessus.',
-  'ed.resonanceHint': 'Champ de résonance : la coupe retient la bille, la direction de l’inclinaison accorde le son (haut = fondamentale, bas = quinte). La porte s’ouvre quand les DEUX sons sont dans l’intervalle – place deux champs avec le même intervalle et règle la porte sur « tous les ouvreurs + reste ouverte ».',
+  'ed.f.pitch': 'Ton imposé',
+  'ed.pitch.off': 'désactivé (c’est le partenaire)',
+  'ed.pitch.base': 'Fondamentale',
+  'ed.pitch.fifth': 'Quinte',
+  'ed.pitch.octave': 'Octave',
+  'ed.pitchHint': 'Avec un ton imposé, le contre-ton vient du champ lui-même : la porte s’accorde donc EN SOLO. Il faut alors régler la porte sur « reste ouverte », sinon tu serais encore sur le champ en la franchissant.',
+  'ed.resonanceHint': 'Champ de résonance : la coupe retient la bille, la direction de l’inclinaison accorde le son (haut = fondamentale, bas = octave). La porte s’ouvre quand les DEUX sons sont dans l’intervalle – place deux champs avec le même intervalle et règle la porte sur « tous les ouvreurs + reste ouverte ».',
   'ed.f.opens': 'Ouvre la porte',
   'ed.f.id': 'ID de porte',
   'ed.f.openers': 'Ouvreurs',
@@ -438,6 +444,8 @@ export const fr: Dict = {
     '🎵 On cherche {int}. Incline brièvement dans une direction – en haut c’est grave, en bas c’est aigu.',
   'st.tuneClose':
     '🎵 Presque ! Le battement ralentit – de toutes petites inclinaisons maintenant.',
+  'st.tuneGiven':
+    '🎵 Le champ donne le ton – accorde {int} dessus. Une brève inclinaison dans une direction, et le son reste.',
   'st.tuneOpen':
     '🎵 Ça tient – la porte s’ouvre !',
   'st.markSet': 'Repère posé 📍',

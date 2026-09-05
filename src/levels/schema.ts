@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { compileTune } from '../audio/chiptune';
+import { FIFTH_CENTS, PITCH_SPAN_CENTS } from '../core/resonance';
 
 export const cellCoord = z.tuple([z.number().int().min(0), z.number().int().min(0)]);
 export const wallDir = z.enum(['n', 'e', 's', 'w']);
@@ -127,7 +128,29 @@ export const plateDef = z.object({
    *  beider Felder im Zielintervall stehen – allein ist ein Duett nicht zu
    *  spielen. Ohne das Feld bleibt die Platte eine gewöhnliche Druckplatte. */
   tune: z.enum(['unison', 'fifth']).optional(),
-});
+  /** DER STIMMTON (M96): Der Gegenton kommt vom SPIEL, nicht vom Partner –
+   *  Cent über dem Grundton (0…1200, wie `pitchFromTilt`). Damit ist ein
+   *  Resonanz-Tor ALLEIN spielbar: Das Feld gibt den Ton an, man stimmt
+   *  dagegen, und die Tür braucht „bleibt offen" (sonst stünde man auf der
+   *  Platte, während man hindurchrollen müsste – M95). Nur mit `tune`. */
+  pitch: z.number().min(0).max(1200).optional(),
+})
+  .refine((p) => p.pitch === undefined || p.tune !== undefined, {
+    message: '„Vorgabe-Ton" nur auf einem Resonanzfeld (tune)',
+  })
+  // DER GEGENTON MUSS ERREICHBAR SEIN: Die Skala reicht von 0 bis
+  // PITCH_SPAN_CENTS (Norden bis Süden). Bei einer QUINTE braucht der Spieler
+  // `pitch ± 702` – liegt beides außerhalb der Skala, ginge das Tor NIE auf,
+  // und ein Level, dessen Vorgabe unspielbar ist, wäre ein Versprechen, das es
+  // nicht hält (dieselbe Lehre wie die Tür für einen Spieler, M72).
+  .refine(
+    (p) =>
+      p.pitch === undefined ||
+      p.tune !== 'fifth' ||
+      p.pitch >= FIFTH_CENTS ||
+      p.pitch <= PITCH_SPAN_CENTS - FIFTH_CENTS,
+    { message: `„Vorgabe-Ton" für eine Quinte muss ≤ ${PITCH_SPAN_CENTS - FIFTH_CENTS} oder ≥ ${FIFTH_CENTS} Cent sein` },
+  );
 
 export const transporterDef = z.object({
   ...base,

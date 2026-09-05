@@ -119,3 +119,116 @@ describe('Druckplatte im Solo (M95)', () => {
     expect(red(def)).toContain('goal');
   });
 });
+
+// DER STIMMTON (M96): Ein Resonanzfeld ist allein nicht zu halten – es fehlt
+// der Gegenton. Gibt das FELD ihn vor (`plate.pitch`), wird das Tor solo
+// stimmbar; die M95-Regel bleibt trotzdem stehen, denn man steht dabei
+// weiterhin selbst darauf. Also: nur mit „bleibt offen", und ein Stein hilft
+// nie (er kann nicht neigen).
+describe('Der Stimmton (M96)', () => {
+  const level = (elements: unknown[]) =>
+    parseLevel({
+      id: 'custom-solo-tune',
+      name: 'Solo mit Resonanzfeld',
+      floors: [
+        {
+          size: [5, 2],
+          maze: {
+            seed: 3,
+            carve: [...Array(4).keys()].map((x) => [[x, 0], 'e']),
+            add: [...Array(5).keys()].map((x) => [[x, 0], 's']),
+          },
+          elements,
+          start: [0, 0],
+          goal: [4, 0],
+        },
+      ],
+    });
+  const red = (def: ReturnType<typeof parseLevel>) =>
+    validateLevel(def)
+      .filter((c) => !c.ok)
+      .map((c) => c.key);
+
+  it('Feld mit Vorgabe-Ton und „bleibt offen": allein stimmbar, also lösbar', () => {
+    const def = level([
+      { type: 'door', id: 'g1', edge: [[3, 0], 'e'], latch: true },
+      { type: 'plate', cell: [1, 0], opens: 'g1', tune: 'unison', pitch: 0 },
+    ]);
+    expect(red(def)).toEqual([]);
+  });
+
+  it('ohne Vorgabe-Ton bleibt es tot – auch mit „bleibt offen"', () => {
+    // Das ist der Unterschied zur gewöhnlichen Platte: Die rastet beim
+    // Draufrollen ein, ein Resonanzfeld hält erst, wenn zwei Töne stehen.
+    const def = level([
+      { type: 'door', id: 'g1', edge: [[3, 0], 'e'], latch: true },
+      { type: 'plate', cell: [1, 0], opens: 'g1', tune: 'unison' },
+    ]);
+    expect(red(def)).toContain('goal');
+  });
+
+  it('mit Vorgabe-Ton, aber ohne „bleibt offen": man stünde beim Durchrollen noch darauf', () => {
+    const def = level([
+      { type: 'door', id: 'g1', edge: [[3, 0], 'e'] },
+      { type: 'plate', cell: [1, 0], opens: 'g1', tune: 'unison', pitch: 0 },
+    ]);
+    expect(red(def)).toContain('goal');
+  });
+
+  it('ein Stein auf dem Feld hilft nicht – er kann nicht neigen', () => {
+    const def = level([
+      { type: 'door', id: 'g1', edge: [[3, 0], 'e'] },
+      { type: 'boulder', cell: [2, 0] },
+      { type: 'plate', cell: [1, 0], opens: 'g1', tune: 'unison', pitch: 0 },
+    ]);
+    expect(red(def)).toContain('goal');
+  });
+
+  it('zu zweit gilt die Solo-Regel nicht: der Partner hält das Feld', () => {
+    const def = parseLevel({
+      id: 'custom-duet-two',
+      name: 'Duett zu zweit',
+      players: 2,
+      mpMode: 'coop',
+      floors: [
+        {
+          size: [5, 2],
+          maze: {
+            seed: 3,
+            carve: [...Array(4).keys()].map((x) => [[x, 0], 'e']),
+            add: [...Array(5).keys()].map((x) => [[x, 0], 's']),
+          },
+          elements: [
+            { type: 'door', id: 'g1', edge: [[3, 0], 'e'] },
+            { type: 'plate', cell: [1, 0], opens: 'g1', tune: 'unison' },
+          ],
+          start: [0, 0],
+          start2: [0, 0],
+          goal: [4, 0],
+        },
+      ],
+    });
+    expect(validateLevel(def).filter((c) => !c.ok).map((c) => c.key)).not.toContain('coop');
+  });
+
+  it('„Vorgabe-Ton" ohne Resonanzfeld lehnt das Schema ab', () => {
+    expect(() =>
+      level([
+        { type: 'door', id: 'g1', edge: [[3, 0], 'e'], latch: true },
+        { type: 'plate', cell: [1, 0], opens: 'g1', pitch: 0 },
+      ]),
+    ).toThrow();
+  });
+
+  // DER GEGENTON MUSS IN DER SKALA LIEGEN: Bei einer Quinte braucht der
+  // Spieler Vorgabe ± 702 Cent, und die Skala reicht nur von 0 bis 1200.
+  it('eine Quinte auf einen unerreichbaren Vorgabe-Ton lehnt das Schema ab', () => {
+    const withPitch = (pitch: number) =>
+      level([
+        { type: 'door', id: 'g1', edge: [[3, 0], 'e'], latch: true },
+        { type: 'plate', cell: [1, 0], opens: 'g1', tune: 'fifth', pitch },
+      ]);
+    expect(() => withPitch(600)).toThrow();
+    for (const ok of [0, 498, 702, 1200]) expect(() => withPitch(ok)).not.toThrow();
+  });
+});

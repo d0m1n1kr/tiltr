@@ -215,7 +215,13 @@ export const en: Dict = {
   'ed.tune.unison': 'Unison',
   'ed.tune.fifth': 'Fifth',
   'ed.plateSoloHint': 'On your own: whoever stands on the plate is not rolling through the door at the same time. It becomes solvable with a BOULDER pushed onto it – or with a door set to „stays open (latch)": then it locks open the moment you roll across.',
-  'ed.resonanceHint': 'Resonance field: the bowl holds your ball, the tilt direction tunes the tone (up = root, down = fifth). The gate opens once BOTH tones sit in the interval – place two fields with the same interval and set the door to „all openers + stays open".',
+  'ed.f.pitch': 'Given tone',
+  'ed.pitch.off': 'off (the partner sounds it)',
+  'ed.pitch.base': 'Root',
+  'ed.pitch.fifth': 'Fifth',
+  'ed.pitch.octave': 'Octave',
+  'ed.pitchHint': 'With a given tone the counter-tone sounds from the field itself – so the gate can be tuned ALONE. The door then needs „stays open", otherwise you would still be on the field while rolling through.',
+  'ed.resonanceHint': 'Resonance field: the bowl holds your ball, the tilt direction tunes the tone (up = root, down = octave). The gate opens once BOTH tones sit in the interval – place two fields with the same interval and set the door to „all openers + stays open".',
   'ed.f.opens': 'Opens door',
   'ed.f.id': 'Door ID',
   'ed.f.openers': 'Openers',
@@ -438,6 +444,8 @@ export const en: Dict = {
     '🎵 Looking for {int}. Nudge in any direction – up is low, down is high.',
   'st.tuneClose':
     '🎵 Almost! The beating is slowing down – tiny nudges now.',
+  'st.tuneGiven':
+    '🎵 The field sets the tone – tune {int} to it. A short nudge in one direction, and the tone stays.',
   'st.tuneOpen':
     '🎵 It stands – the gate swings open!',
   'st.markSet': 'Waypoint dropped 📍',

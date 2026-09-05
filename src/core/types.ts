@@ -191,6 +191,9 @@ export interface Plate {
    *  stehen – der Ton kommt aus der Neigungsrichtung des Spielers, der darauf
    *  steht. Ein STEIN kann sie nicht halten: er hat keine Neigung. */
   tune?: 'unison' | 'fifth';
+  /** Vorgegebener Gegenton in Cent (M96): Das Feld gibt den Ton an, gegen den
+   *  gestimmt wird – dann braucht es keinen Partner. */
+  pitch?: number;
   litFrom?: number;
   litUntil?: number;
   /** Wie bei der Wand (M94): Stehen lädt, danach glüht es aus. */

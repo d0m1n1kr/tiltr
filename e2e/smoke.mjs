@@ -102,6 +102,7 @@ const KNOWN_RUNS = [
   "48",
   "49",
   "50",
+  "51",
 ];
 const only = process.env.E2E_ONLY
   ? new Set(process.env.E2E_ONLY.split(",").map((x) => x.trim()))
@@ -8779,6 +8780,171 @@ if (want("50")) {
   } catch (e) {
     check(
       `Lauf 50 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
+      false,
+    );
+  }
+}
+
+// --- Lauf 51: Der Stimmton (M96). Ein Resonanzfeld ist allein nicht zu halten
+// – es fehlt der Gegenton. Gibt das FELD ihn vor (`plate.pitch`), stimmt man
+// dagegen und das Tor geht auf, ohne Partner. Die M95-Regel bleibt trotzdem
+// stehen: Man steht dabei selbst darauf, also braucht die Tür „bleibt offen" –
+// und genau das prüft der Lauf am Ende (Feld verlassen, Tür bleibt auf).
+// Vorgabe ist die OKTAVE (1200 Cent = Neigung nach Süden), damit der Weg
+// dorthin im Bild ist: Beim Betreten steht der Grundton, das ist noch nicht
+// gestimmt, und die Statuszeile sagt, wogegen man stimmt. ---
+if (want("51")) {
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, locale: "de-DE" });
+    const page = await ctx.newPage();
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const def = {
+      id: "custom-m96",
+      name: "Stimmton",
+      pingBudget: 3,
+      floors: [
+        {
+          size: [5, 2],
+          // Ein Gang in Reihe 0, Reihe 1 abgemauert: Start auf dem Feld, Tür
+          // dahinter, Ziel am Ende. Die Kugel muss NACH SÜDEN neigen können,
+          // ohne aus dem Bild zu rollen – die Schale holt sie zurück.
+          maze: {
+            seed: 3,
+            carve: [0, 1, 2, 3].map((x) => [[x, 0], "e"]),
+            add: [0, 1, 2, 3, 4].map((x) => [[x, 0], "s"]),
+          },
+          elements: [
+            { type: "door", id: "gz", edge: [[2, 0], "e"], latch: true },
+            { type: "plate", cell: [0, 0], opens: "gz", tune: "unison", pitch: 1200 },
+            // Dazu eine GEWÖHNLICHE Platte auf dem Weg: Auch sie war im Solo
+            // bis 3.30 wirkungslos (das Modell rechnete mit ihr, das Spiel
+            // setzte `held` nur im Multiplayer). Sie kostet hier keinen
+            // eigenen Lauf – die Kugel rollt ohnehin über sie hinweg.
+            { type: "door", id: "g2", edge: [[3, 0], "e"], latch: true },
+            { type: "plate", cell: [1, 0], opens: "g2" },
+          ],
+          start: [0, 0],
+          goal: [4, 0],
+          bright: true,
+        },
+      ],
+    };
+    await page.goto(`${BASE}/?nosplash`);
+    await page.click("#workshopBtn");
+    await page.click("#wsImportBtn");
+    await page.fill("#wsImportText", JSON.stringify(def));
+    await page.click("#wsImportGo");
+    await until(async () => (await page.locator("#workshopList .ws-item").count()) > 0);
+    await page.locator("#workshopList .ws-item").last().locator("button", { hasText: "✏️" }).click();
+    await until(async () => (await page.locator("#edBadges .ed-badge").count()) > 0);
+    // Der Vorgabe-Ton ist eine EIGENSCHAFT des Feldes (wie das Intervall
+    // selbst, M58): Platte auswählen, und er steht im Panel.
+    const tap = async (cx, cy) => {
+      const pt = await page.evaluate(
+        ([x, y]) => {
+          const ed = window.__tiltrEd;
+          const box = document.getElementById("edCanvas").getBoundingClientRect();
+          return {
+            x: box.left + (ed.ox + (x * 100 + 50) * ed.scale) / ed.dpr,
+            y: box.top + (ed.oy + (y * 100 + 50) * ed.scale) / ed.dpr,
+          };
+        },
+        [cx, cy],
+      );
+      await page.mouse.click(pt.x, pt.y);
+      await page.waitForTimeout(250);
+    };
+    await page.locator(".ed-tile", { hasText: "☝" }).first().click();
+    await tap(0, 0);
+    const pitchSel = page.locator("#edPlatePitch");
+    const pitchValue = (await pitchSel.count()) === 1 ? await pitchSel.inputValue() : null;
+    check(
+      `Editor: der Vorgabe-Ton ist eine Eigenschaft des Feldes (Feld: ${await pitchSel.count()}, Wert: ${pitchValue})`,
+      pitchValue === "1200",
+    );
+
+    await page.click("#edTest");
+    await until(
+      async () => (await page.evaluate(() => document.getElementById("interstitial")?.classList.contains("hidden"))) === true,
+      { timeout: 20000 },
+    );
+    const read = () =>
+      page.evaluate(() => ({
+        res: window.__tiltrResonance,
+        doors: window.__tiltrWorld?.doorsOpen ?? [],
+        held: window.__tiltrWorld?.platesHeld ?? [],
+      }));
+
+    // ALLEIN, ABER NICHT STUMM: Der Gegenton steht da, obwohl kein Partner
+    // spielt – und weil Grundton gegen Oktave kein Einklang ist, bleibt das
+    // Tor zu. Das ist der Unterschied zu M91: dort wäre `theirs` null.
+    const start = await until(async () => {
+      const r = await read();
+      return r.res && r.res.theirs !== null ? r : null;
+    }, { timeout: 12000 });
+    check(
+      `Allein: den Gegenton gibt das Spiel (${JSON.stringify({ ...start?.res, doors: start?.doors })})`,
+      start?.res?.given === true &&
+        start.res.theirs === 1200 &&
+        start.res.mine === 0 &&
+        start.res.open === false &&
+        start.doors.length === 0,
+    );
+    // Er klingt aus dem Feld, auf dem ich stehe – also ungepannt, nicht
+    // irgendwo im Raum: Es gibt keinen Partner, der ihn tragen könnte.
+    check(
+      `Der Gegenton klingt aus dem eigenen Feld (dx ${start?.res?.hisDx}, dy ${start?.res?.hisDy})`,
+      Math.abs(start?.res?.hisDx ?? 999) < 40 && Math.abs(start?.res?.hisDy ?? 999) < 40,
+    );
+    // Und die Statuszeile sagt es: „warte auf den Partner" wäre hier falsch.
+    const said = await until(async () => {
+      const txt = (await page.textContent("#status")).trim();
+      return txt.includes("gibt den Ton vor") ? txt : null;
+    }, { timeout: 12000 });
+    check(`Die Anweisung nennt den Vorgabe-Ton („${String(said).slice(0, 50)}…")`, said !== null);
+
+    // Gestimmt wird mit einem TIPP nach SÜDEN – das ist die Oktave, also der
+    // Einklang mit der Vorgabe. Danach steht der Ton (`tuneStep`), das Feld
+    // gilt als gehalten und die Tür geht auf.
+    await page.keyboard.down("ArrowDown");
+    await page.waitForTimeout(120);
+    await page.keyboard.up("ArrowDown");
+    const tuned = await until(async () => {
+      const r = await read();
+      return r.res?.open === true ? r : null;
+    }, { timeout: 10000 });
+    check(
+      `Allein gestimmt: das Tor schwingt auf (${JSON.stringify({ ...tuned?.res, doors: tuned?.doors, held: tuned?.held })})`,
+      tuned !== null && tuned.res.mine > 1100 && tuned.doors.includes("gz") && tuned.held.length === 1,
+    );
+
+    // DIE TÜR MUSS EINRASTEN (M95): Wer selbst auf dem Feld steht, rollt nicht
+    // gleichzeitig hindurch. Also: Feld verlassen – der Ton verstummt, das
+    // Feld hält nichts mehr, und die Tür bleibt trotzdem offen.
+    await page.keyboard.down("ArrowRight");
+    const left = await until(async () => {
+      const r = await read();
+      // Gewartet wird, bis die Kugel BEIDE Platten hinter sich hat (`held`
+      // leer) – sonst prüft die Zusicherung darunter „bleibt offen" an einer
+      // Platte, auf der die Kugel noch steht.
+      return (r.res === null || r.res.mine === null) && r.doors.includes("g2") && r.held.length === 0 ? r : null;
+    }, { timeout: 15000 });
+    await page.keyboard.up("ArrowRight");
+    check(
+      `Feld verlassen: der Ton verstummt (${JSON.stringify(left?.res?.mine ?? null)})`,
+      left !== null && (left.res === null || left.res.mine === null),
+    );
+    const stillOpen = await read();
+    check(
+      `„bleibt offen": beide Türen sind auf, obwohl niemand mehr auf einer Platte steht (${JSON.stringify({ doors: stillOpen.doors, held: stillOpen.held })})`,
+      stillOpen.doors.includes("gz") && stillOpen.doors.includes("g2") && stillOpen.held.length === 0,
+    );
+    await page.close();
+    await ctx.close();
+  } catch (e) {
+    check(
+      `Lauf 51 läuft ohne Absturz durch (${String(e).split("\n")[0].slice(0, 100)})`,
       false,
     );
   }

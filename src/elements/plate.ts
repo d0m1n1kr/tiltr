@@ -21,6 +21,7 @@ registerElement<PlateDef>({
       opens: def.opens,
       held: false,
       tune: def.tune,
+      pitch: def.pitch,
     });
     // RESONANZFELD (M91): Zum Stimmen muss man neigen – und Neigen würde einen
     // vom Feld rollen. Deshalb ist das Feld eine SCHALE: derselbe Sog wie beim

@@ -651,6 +651,53 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M96 „Der Stimmton" ✓ (v3.31.0)
+
+Gefragt in einem Satz: „Und was ist mit Resonanz? Hier könnte der Computer ja
+eine Tonhöhe vorgeben, oder?" Genau das – und es passt auf die Regel von M95:
+Ein Resonanzfeld (M91) ist allein nicht zu halten, weil der GEGENTON fehlt.
+Gibt ihn das FELD vor, stimmt man dagegen, und ein Duett-Tor wird zum
+Solo-Rätsel.
+
+`plate.pitch` (Cent über dem Grundton, 0…1200 wie `pitchFromTilt`) ist das
+ganze Feature. `duetFrame` nimmt ihn als `theirs`, wenn das Feld unter der
+Kugel einen trägt – er GEWINNT gegen den Partner-Ton, denn wer eine Vorgabe
+baut, meint sie. Sein Klang kommt aus dem Feld, auf dem ich STEHE (also
+ungepannt): Es gibt keinen Partner, der ihn im Raum tragen könnte. Und die
+Statuszeile bekommt eine fünfte Stufe (`st.tuneGiven`) – „warte auf den
+Partner" wäre hier eine Lüge.
+
+ZWEI SCHEMA-INVARIANTEN, beide aus derselben Regel („ein Level darf kein
+Versprechen geben, das es nicht hält", wie die Tür für einen Spieler in M72):
+`pitch` gibt es nur MIT `tune`, und bei einer QUINTE muss `pitch ± 702` in der
+Skala liegen (also ≤ 498 oder ≥ 702) – sonst gäbe es keine Neigung, die das Tor
+öffnet. Der Editor bietet deshalb drei GENANNTE Töne an (Grundton, Quinte,
+Oktave), keine freie Zahl: Jeder davon geht mit beiden Intervallen auf.
+
+Der BEWEIS erbt die M95-Regel, statt sie zu umgehen: Ein Feld mit Vorgabe ist
+allein stimmbar, aber man steht dabei selbst darauf – also zählt es nur, wenn
+die Tür „bleibt offen" hat. OHNE Vorgabe ist es auch dann tot (kein Gegenton),
+und ein STEIN hilft nie, denn er kann nicht neigen (`stonePlates` lässt Felder
+seit M91 aus). Drei Fälle, eine Zeile in `coopReachable`, Gegenproben in
+tests/soloPlate.test.ts.
+
+EINE REGEL MIT NUR EINER HÄLFTE (der eigentliche Fund dieses Milestones): Die
+E2E zu M96 fiel an einer Stelle, die nichts mit M96 zu tun hatte – die Tür ging
+nicht auf, obwohl das Duett stand. Grund: `pl.held` setzte bis 3.30 NUR der
+Multiplayer (`mpFrame`/`mpTestFrame`). Im Solo stand man auf einer Platte, und
+nichts geschah. M95 hatte also das MODELL geöffnet und das SPIEL vergessen; die
+Units waren grün, weil sie den Beweis prüfen, nicht die Schleife.
+`soloPlateFrame` ist die zweite Hälfte (dieselbe `heldIds`-Regel,
+`updateDoors` nur bei einer ÄNDERUNG – es läuft über alle Wände aller Ebenen,
+und je Bild kostet das ohne Not, Lektion aus M94b). Daraus die Regel: Wer eine
+Modell-Regel LOCKERT, sucht die Stelle, die sie im Spiel ausführt – und
+schreibt den E2E-Lauf, der beide Hälften zusammen fährt.
+
+E2E Lauf 51 fährt genau das in EINEM Fixture: Feld mit Vorgabe-Ton (Oktave) auf
+dem Start, Tür mit „bleibt offen" dahinter, und auf dem Weg noch eine
+GEWÖHNLICHE Platte mit eigener latchender Tür – beide Hälften von M95/M96 in
+einem Lauf, ohne einen zweiten zu kosten.
+
 ## M95 „Die Druckplatte darf allein" ✓ (v3.30.0)
 
 Gemeldet in einem Satz: „Druckplatten kann es auch im Solo geben. Zusammen mit

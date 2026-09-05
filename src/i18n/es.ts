@@ -215,7 +215,13 @@ export const es: Dict = {
   'ed.tune.unison': 'Unísono',
   'ed.tune.fifth': 'Quinta',
   'ed.plateSoloHint': 'En solitario: quien está sobre la placa no cruza la puerta al mismo tiempo. Se vuelve jugable con una ROCA empujada encima, o con una puerta en «se queda abierta»: entonces se traba al rodar sobre la placa.',
-  'ed.resonanceHint': 'Campo de resonancia: el cuenco retiene la bola y la dirección de inclinación afina el tono (arriba = fundamental, abajo = quinta). La puerta se abre cuando AMBOS tonos están en el intervalo: coloca dos campos con el mismo intervalo y pon la puerta en «todos los abridores + se queda abierta».',
+  'ed.f.pitch': 'Tono dado',
+  'ed.pitch.off': 'apagado (lo da el compañero)',
+  'ed.pitch.base': 'Fundamental',
+  'ed.pitch.fifth': 'Quinta',
+  'ed.pitch.octave': 'Octava',
+  'ed.pitchHint': 'Con un tono dado el contratono suena del propio campo: así la puerta se afina EN SOLITARIO. Entonces la puerta necesita «se queda abierta», si no seguirías sobre el campo al cruzarla.',
+  'ed.resonanceHint': 'Campo de resonancia: el cuenco retiene la bola y la dirección de inclinación afina el tono (arriba = fundamental, abajo = octava). La puerta se abre cuando AMBOS tonos están en el intervalo: coloca dos campos con el mismo intervalo y pon la puerta en «todos los abridores + se queda abierta».',
   'ed.f.opens': 'Abre puerta',
   'ed.f.id': 'ID de puerta',
   'ed.f.openers': 'Abridores',
@@ -438,6 +444,8 @@ export const es: Dict = {
     '🎵 Buscad {int}. Inclina un momento en cualquier dirección: arriba es grave, abajo es agudo.',
   'st.tuneClose':
     '🎵 ¡Casi! El batido se ralentiza: ahora inclinaciones mínimas.',
+  'st.tuneGiven':
+    '🎵 El campo marca el tono: afina {int} con él. Una breve inclinación en una dirección y el tono se queda.',
   'st.tuneOpen':
     '🎵 ¡Se sostiene, la puerta se abre!',
   'st.markSet': 'Marca dejada 📍',

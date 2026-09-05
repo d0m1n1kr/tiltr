@@ -219,7 +219,13 @@ export const de = {
   'ed.tune.unison': 'Einklang',
   'ed.tune.fifth': 'Quinte',
   'ed.plateSoloHint': 'Allein: Wer selbst auf der Platte steht, rollt nicht gleichzeitig durch die Tür. Lösbar wird es mit einem ROLLSTEIN, den du daraufschiebst – oder wenn die Tür „bleibt offen\u00a0(latch)" hat: Dann rastet sie beim Draufrollen ein.',
-  'ed.resonanceHint': 'Resonanzfeld: Die Schale hält die Kugel, die Neigungsrichtung stimmt den Ton (oben = Grundton, unten = Quinte). Das Tor öffnet, wenn BEIDE Töne im Intervall stehen – setze zwei Felder mit demselben Intervall und gib der Tür „alle Öffner\u00a0+\u00a0bleibt offen".',
+  'ed.f.pitch': 'Vorgabe-Ton',
+  'ed.pitch.off': 'aus (der Partner gibt ihn)',
+  'ed.pitch.base': 'Grundton',
+  'ed.pitch.fifth': 'Quinte',
+  'ed.pitch.octave': 'Oktave',
+  'ed.pitchHint': 'Mit Vorgabe-Ton klingt der Gegenton aus dem Feld selbst – damit ist das Tor ALLEIN zu stimmen. Die Tür braucht dann „bleibt offen", sonst stündest du beim Durchrollen noch auf dem Feld.',
+  'ed.resonanceHint': 'Resonanzfeld: Die Schale hält die Kugel, die Neigungsrichtung stimmt den Ton (oben = Grundton, unten = Oktave). Das Tor öffnet, wenn BEIDE Töne im Intervall stehen – setze zwei Felder mit demselben Intervall und gib der Tür „alle Öffner\u00a0+\u00a0bleibt offen".',
   'ed.f.opens': 'Öffnet Tür',
   'ed.f.id': 'Tür-ID',
   'ed.f.openers': 'Öffner',
@@ -442,6 +448,8 @@ export const de = {
     '🎵 Gesucht: {int}. Kurz in eine Richtung neigen – oben tief, unten hoch.',
   'st.tuneClose':
     '🎵 Fast! Die Schwebung wird langsamer – ganz kleine Neigungen jetzt.',
+  'st.tuneGiven':
+    '🎵 Das Feld gibt den Ton vor – stimme {int} dazu. Kurz in eine Richtung neigen, der Ton bleibt stehen.',
   'st.tuneOpen':
     '🎵 Es steht – das Tor schwingt auf!',
   'st.markSet': 'Wegmarke gelegt 📍',

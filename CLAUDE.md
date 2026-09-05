@@ -457,7 +457,14 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   'all'-Tür aus Schlüssel UND Platte plötzlich mit dem Schlüssel allein auf.
   Die Regel bekommt JEDE Solo-Abfrage über den Helfer `soloReach` in
   `validateLevel` (goal, openers, Softlock): zwei Checks mit zwei Meinungen
-  war schon einmal der Bug. `stonePlates` wird dafür VOR dem `goal`-Check
+  war schon einmal der Bug. EINE REGEL MIT NUR EINER HÄLFTE (M96, nachgereicht):
+  M95 öffnete das MODELL und vergaß das SPIEL – `pl.held` setzte bis 3.30 NUR
+  der Multiplayer (`mpFrame`/`mpTestFrame`), im Solo stand man auf der Platte
+  und nichts geschah. `soloPlateFrame` ist die zweite Hälfte (dieselbe
+  `heldIds`-Regel, `updateDoors` nur bei einer ÄNDERUNG – es geht über alle
+  Wände aller Ebenen). Wer eine Modell-Regel LOCKERT, sucht die Stelle, die sie
+  in der Schleife ausführt: Units prüfen den Beweis, nicht das Spiel; gefunden
+  hat es erst der E2E-Lauf, der beide Hälften zusammen fährt (Lauf 51). `stonePlates` wird dafür VOR dem `goal`-Check
   gerechnet. Der Stein-Beweis kennt jetzt auch „bleibt offen"
   (`State.latched`, eine Bitmaske über latchende Platten-Türen – eingerastet
   bleibt eingerastet, wie M78 im Erreichbarkeits-Beweis). Im Editor steht der
@@ -852,7 +859,19 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   Spielerwechsel gratis (`TestSide.tone` je Seite, `duetTone` im echten Netz),
   und im Netz entspannt dieselbe Regel das Stimmen: Man darf das Gerät ruhig
   legen. Eingebautes Level: coop-08 „Duett".
-  `window.__tiltrResonance` (E2E Lauf 48).
+  DER STIMMTON (M96, v3.31.0): `plate.pitch` (Cent, 0…1200) gibt den GEGENTON
+  vor – damit ist ein Resonanz-Tor ALLEIN stimmbar. `duetFrame` nimmt ihn als
+  `theirs` und lässt ihn gegen den Partner-Ton GEWINNEN (wer eine Vorgabe baut,
+  meint sie); er klingt aus dem Feld, auf dem ich STEHE (ungepannt – es gibt
+  keinen Partner, der ihn im Raum trüge), und die Statuszeile bekommt eine
+  fünfte Stufe (`st.tuneGiven`), denn „warte auf den Partner" wäre gelogen.
+  Zwei Schema-Invarianten: `pitch` nur MIT `tune`, und bei einer QUINTE muss
+  `pitch ± 702` in der Skala liegen (≤ 498 oder ≥ 702) – sonst öffnete keine
+  Neigung das Tor. Der Editor bietet deshalb drei GENANNTE Töne (Grundton,
+  Quinte, Oktave), keine freie Zahl. Der Beweis erbt M95: Man steht beim
+  Stimmen selbst darauf, also zählt das Feld nur mit „bleibt offen"; OHNE
+  Vorgabe ist es auch dann tot, und ein Stein hilft nie (er kann nicht neigen).
+  `window.__tiltrResonance` (E2E Läufe 48 und 51).
 - LICHT JE SPIELER (M92, v3.26.0): `floor.brightPlayer` 1|2 macht eine HELLE
   Ebene nur für EINEN Spieler hell – der andere hört sie. Damit wird das
   Stilmittel Helle Ebene zum Coop-Werkzeug: Einer sieht das Labyrinth und sagt

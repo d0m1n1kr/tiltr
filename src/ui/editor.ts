@@ -10,6 +10,7 @@
 
 import { CELL } from '../core/constants';
 import { breathAt } from '../core/breathing';
+import { FIFTH_CENTS, PITCH_SPAN_CENTS } from '../core/resonance';
 import type { GameAudio } from '../audio/audio';
 import { Renderer } from '../render/renderer';
 import { WORLD } from '../render/palette';
@@ -2078,9 +2079,28 @@ export function setupEditor(opts: {
           propsEl.append(soloHint);
         }
         if (el.tune) {
+          // DER STIMMTON (M96): Der Gegenton kommt vom SPIEL statt vom
+          // Partner – damit ist ein Resonanz-Tor ALLEIN zu stimmen. Angeboten
+          // werden drei GENANNTE Töne, keine freie Zahl: Jeder davon liegt für
+          // beide Intervalle in der Skala (bei einer Quinte braucht man
+          // Vorgabe ± 702 Cent innerhalb von 0…1200), eine frei getippte Zahl
+          // wäre eine neue Fehlerquelle ohne Gewinn.
+          const pitch = selectInput(el.pitch === undefined ? 'off' : String(el.pitch), [
+            ['off', t('ed.pitch.off')],
+            ['0', t('ed.pitch.base')],
+            [String(FIFTH_CENTS), t('ed.pitch.fifth')],
+            [String(PITCH_SPAN_CENTS), t('ed.pitch.octave')],
+          ], (v) => {
+            if (v === 'off') delete el.pitch;
+            else el.pitch = Number(v);
+            rebuild();
+            paint();
+          });
+          pitch.id = 'edPlatePitch';
+          propsEl.append(field(t('ed.f.pitch'), pitch));
           const hint = document.createElement('p');
           hint.className = 'menu-meta';
-          hint.textContent = t('ed.resonanceHint');
+          hint.textContent = t(el.pitch === undefined ? 'ed.resonanceHint' : 'ed.pitchHint');
           propsEl.append(hint);
         }
       }

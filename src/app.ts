@@ -2523,8 +2523,10 @@ interface DuetState {
   open: boolean;
   /** sein Feld auf MEINER Ebene (dort klingt sein Ton), sonst null */
   his: Plate | null;
+  /** M96: Der Gegenton kommt vom SPIEL (Feld mit `pitch`), nicht vom Partner. */
+  given: boolean;
 }
-const DUET_NONE: DuetState = { mine: null, theirs: null, interval: null, aim: 0, open: false, his: null };
+const DUET_NONE: DuetState = { mine: null, theirs: null, interval: null, aim: 0, open: false, his: null, given: false };
 /** Wie lange seine letzte Ton-Meldung gilt – wie beim Rendezvous (M90): Die
  *  Nachsicht deckt ausgefallene Nachrichten, nicht das Verlassen des Feldes
  *  (dann meldet die nächste Nachricht `tn: null`). */
@@ -2552,8 +2554,13 @@ function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
   const mine = tuneStep(side ? side.tone : duetTone, myPlate !== null, tilt.x, tilt.y);
   if (side) side.tone = mine;
   else duetTone = mine;
+  // DER STIMMTON (M96): Trägt das Feld einen vorgegebenen Ton, kommt der
+  // Gegenton vom SPIEL – dann ist das Tor allein zu stimmen (und braucht
+  // „bleibt offen", sonst stünde man beim Durchrollen noch darauf, M95).
+  // Er gewinnt gegen den Partner-Ton: Wer ein Feld mit Vorgabe baut, meint sie.
   const fresh = duetPartnerAt > 0 && now - duetPartnerAt < TONE_FRESH_MS;
-  const theirs = mpTest ? mpTestOther().tone : mp && fresh ? duetPartnerTone : null;
+  const given = myPlate?.pitch;
+  const theirs = given !== undefined ? given : mpTest ? mpTestOther().tone : mp && fresh ? duetPartnerTone : null;
   // Sein Feld: das Resonanzfeld, das SEINER Kugel am nächsten liegt – dort
   // klingt sein Ton, damit die Schwebung im RAUM steht und nicht im Kopf.
   // MEIN Feld ist dabei zugelassen (v3.25.4): Stehen wir beide auf derselben
@@ -2574,8 +2581,13 @@ function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
         fields[0]!,
       )
     : null;
-  // Ohne Funk von ihm: das ANDERE Feld ist die beste Vermutung.
-  const his = near ?? fields.find((f) => f.pl !== myPlate) ?? null;
+  // Ohne Funk von ihm: das ANDERE Feld ist die beste Vermutung. Bei einer
+  // VORGABE klingt der Gegenton aus dem Feld, auf dem ich stehe (ungepannt):
+  // Er gehört diesem Feld, nicht einem Partner irgendwo im Raum.
+  const his =
+    given !== undefined
+      ? (fields.find((f) => f.pl === myPlate) ?? null)
+      : (near ?? fields.find((f) => f.pl !== myPlate) ?? null);
   const interval = myPlate?.tune ?? his?.pl.tune ?? null;
   const tuned = mine !== null && theirs !== null && interval !== null && inTune(mine, theirs, interval);
   const step = holdTuned(duetSince, tuned, now);
@@ -2587,6 +2599,7 @@ function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
     aim: mine !== null && theirs !== null && interval ? tuneAim(mine, theirs, interval) : 0,
     open: step.open,
     his: his && his.fl === activeFloor ? his.pl : null,
+    given: given !== undefined,
   };
 }
 
@@ -2594,6 +2607,35 @@ function duetFrame(now: number, tilt: { x: number; y: number }): DuetState {
  *  Eine gewöhnliche Platte hält, wer darauf steht – wie immer. */
 function heldIds(plates: readonly Plate[]): Set<string> {
   return new Set(plates.filter((p) => !p.tune || duet.open).map((p) => p.id));
+}
+
+/** ALLEIN AUF DER PLATTE (M96): Bis 3.30 setzte NUR der Multiplayer `pl.held`
+ *  – im Solo stand man auf einer Platte, und nichts geschah. Das MODELL
+ *  rechnete seit M95 mit ihr (ein Stein hält sie, oder die Tür rastet ein),
+ *  das SPIEL nicht: eine Regel mit nur einer Hälfte, und der Beweis wäre grün
+ *  über ein Level gelaufen, das sich nicht öffnen lässt. Hier ist die zweite
+ *  Hälfte, mit derselben `heldIds`-Regel wie im MP (ein Resonanzfeld hält erst
+ *  mit stehendem Duett – solo also nur mit Vorgabe-Ton).
+ *
+ *  `updateDoors` läuft nur bei einer ÄNDERUNG: Es geht über alle Wände aller
+ *  Ebenen, und je Bild kostet das ohne Not (Lektion aus M94b). */
+function soloPlateFrame(now: number): void {
+  if (!loaded || !world) return;
+  const holds = heldIds(world.platesUnderBall());
+  let changed = false;
+  for (const floor of loaded.floors) {
+    for (const pl of floor.world.plates) {
+      const next = holds.has(pl.id);
+      if (next === pl.held) continue;
+      pl.held = next;
+      changed = true;
+      if (floor.world === world) audio.plate(next);
+    }
+  }
+  if (changed) {
+    haptics.hit(0.3);
+    updateDoors(now);
+  }
 }
 
 // Pro Frame im MP: Zustand senden, Platten/Türen synchronisieren.
@@ -3568,6 +3610,7 @@ function frame(now: number): void {
 
     if (mp && mp.phase === 'playing' && !disconnected) mpFrame(now);
     if (mpTest) mpTestFrame(now, dt);
+    if (!mp && !mpTest) soloPlateFrame(now);
     advanceIdleWorlds(dt);
     if (mp && disconnected) {
       const remaining = Math.max(0, 10 - (now - mp.disconnectedAt!) / 1000);
@@ -3675,7 +3718,11 @@ function frame(now: number): void {
             ? 'st.tuneAlone'
             : duet.aim > 0.5
               ? 'st.tuneClose'
-              : 'st.tuneSearch',
+              : // M96: Kommt der Gegenton vom Spiel, ist „warte auf den
+                // Partner" falsch – dann steht da, wogegen man stimmt.
+                duet.given
+                ? 'st.tuneGiven'
+                : 'st.tuneSearch',
         { int: t(duet.interval === 'fifth' ? 'st.int.fifth' : 'st.int.unison') },
       );
     } else {
@@ -3757,6 +3804,9 @@ function frame(now: number): void {
           // falsche Ortung nicht prüfbar (v3.25.4).
           hisDx: duet.his && world ? Math.round(duet.his.x - world.ball.x) : null,
           hisDy: duet.his && world ? Math.round(duet.his.y - world.ball.y) : null,
+          // M96: Kommt der Gegenton vom Spiel? Ohne das ist „allein gestimmt"
+          // nicht von „der Partner hat zufällig getroffen" zu unterscheiden.
+          given: duet.given,
         };
   (window as unknown as { __tiltrMarks?: unknown }).__tiltrMarks = {
     left: markMax() - ownCount(marks),

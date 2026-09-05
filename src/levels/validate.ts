@@ -337,11 +337,16 @@ export function coopReachable(
         // Sie fällt nicht aus der Liste, sie wird UNERFÜLLBAR – sonst ginge
         // eine 'all'-Tür aus Schlüssel UND Platte plötzlich mit dem Schlüssel
         // allein auf, weil ihre zweite Bedingung verschwunden wäre.
+        // M96: Ein RESONANZFELD braucht einen Gegenton. Allein gibt es den
+        // nur, wenn das Feld ihn VORGIBT (`pitch`) – ohne Vorgabe ist es auch
+        // mit „bleibt offen" tot, und ein Stein hilft nie (er kann nicht
+        // neigen; `stonePlates` lässt Felder deshalb aus).
         const dead =
           solo !== undefined &&
           el.type === 'plate' &&
-          !latchDoors.has(el.opens) &&
-          !solo.stone.has(cellKey(fl, el.cell));
+          (el.tune !== undefined
+            ? el.pitch === undefined || !latchDoors.has(el.opens)
+            : !latchDoors.has(el.opens) && !solo.stone.has(cellKey(fl, el.cell)));
         const list = openersOf.get(el.opens) ?? [];
         list.push({ fl, cell: el.cell, dead });
         openersOf.set(el.opens, list);
