@@ -821,6 +821,12 @@
     .ed-track .ed-order { flex: none; width: 1.4em; opacity: 0.55; font-variant-numeric: tabular-nums; }
     .ed-track .ed-embedded { flex: none; font-size: var(--fs-caption); opacity: 0.55; }
     .ed-track button { flex: none; min-height: 34px; padding: 0 var(--space-2); }
+    /* „Öffnet Türen" (M99): Ein Öffner kann MEHRERE Türen nennen, also eine
+       umbrechende Chip-Zeile statt eines Auswahlfelds – ein `select multiple`
+       ist auf dem Phone unbedienbar, und die Chips zeigen den Zustand, ohne
+       dass man aufklappen muss. Umbrechen ist Pflicht: Bei vielen Türen wäre
+       eine Zeile sonst breiter als das Panel (Regel wie #controlsRow). */
+    .ed-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
     .ed-row { display: flex; gap: var(--space-2); align-items: end; }
     .ed-row .ed-field { flex: 1; }
     .gallery-item { display: flex; align-items: flex-start; gap: 14px; }

@@ -2573,6 +2573,36 @@ if (want("14")) {
       key?.opens === "tor1" && (await status()).includes("tor1"),
     );
 
+    // EIN ÖFFNER, MEHRERE TÜREN (M99): Das 🔗 ersetzt weiterhin (siehe oben) –
+    // DAZU hängt man in der Chip-Zeile „Öffnet Türen", wo der Zustand steht.
+    // Aus dem String wird dann eine Liste; nimmt man eine wieder heraus, steht
+    // wieder ein STRING in der Def (byte-gleich zu früher, damit Teilen-Token
+    // und Export mit älteren Fassungen lesbar bleiben).
+    await page.locator('#edOpensRow .chip[data-door="tor2"]').click();
+    await page.waitForTimeout(200);
+    key = (await els()).find((e) => e.type === "key");
+    const chipsOn = await page.locator("#edOpensRow .chip.active").count();
+    check(
+      `Chip hängt eine zweite Tür DAZU (${JSON.stringify(key?.opens)}, ${chipsOn} Chips aktiv)`,
+      Array.isArray(key?.opens) && key.opens.length === 2 && key.opens.includes("tor1") && key.opens.includes("tor2") && chipsOn === 2,
+    );
+    // Chip-Tap nimmt „tor2" wieder heraus – zurück zum String.
+    await page.locator('#edOpensRow .chip[data-door="tor2"]').click();
+    await page.waitForTimeout(200);
+    key = (await els()).find((e) => e.type === "key");
+    check(
+      `Chip-Tap löst wieder, und eine einzelne Tür bleibt ein String (${JSON.stringify(key?.opens)})`,
+      key?.opens === "tor1",
+    );
+    // Die LETZTE Tür bleibt: ohne `opens` parst die Def nicht (M60).
+    await page.locator('#edOpensRow .chip[data-door="tor1"]').click();
+    await page.waitForTimeout(200);
+    key = (await els()).find((e) => e.type === "key");
+    check(
+      `Die letzte Tür lässt sich nicht abwählen ("${await status()}", ${JSON.stringify(key?.opens)})`,
+      key?.opens === "tor1" && (await status()).includes("Mindestens eine Tür"),
+    );
+
     // Tür-IDs sind GLOBAL eindeutig: die neue Tür auf E2 heißt tor3.
     await page.locator("#edFloorTabs .chip", { hasText: "＋" }).click();
     await page.locator(".ed-tile", { hasText: /^Tür$/ }).click();

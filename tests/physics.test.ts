@@ -147,7 +147,7 @@ describe('Strömungen', () => {
 describe('Zeitschloss-Schalter', () => {
   it('switchUnderBall nutzt die Platten-Toleranz (halber Ballradius)', () => {
     const world = new World([], new Ball(100, 50, 22), { x: 900, y: 900, r: 30 });
-    world.switches.push({ x: 200, y: 50, r: 30, opens: 'tor', durationS: 6, openUntil: null, held: false });
+    world.switches.push({ x: 200, y: 50, r: 30, opens: ['tor'], durationS: 6, openUntil: null, held: false });
     expect(world.switchUnderBall()).toBeNull();
     world.ball.x = 165; // Abstand 35 < 30 + 11
     expect(world.switchUnderBall()).not.toBeNull();

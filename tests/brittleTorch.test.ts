@@ -265,10 +265,22 @@ describe('Rückweg durch eine einseitig brüchige Wand (M81)', () => {
     expect(sl.detail).toContain('Ebene 1, Zelle 1/1 bricht nur von der anderen Seite');
   });
   it('ohne brüchige Wand bleibt der Satz kurz (kein Hinweis aus dem Nichts)', () => {
+    // Der Riegel ist hier ein ZEITSCHALTER, kein Schlüssel: Eine reine
+    // Schlüssel-Tür fällt NICHT hinter einem zu – sie wird zu Schutt
+    // (`doorState(...).permanent`), und der Softlock-Beweis rechnet seit M99
+    // damit. Diese Probe will aber eine Tür, die wirklich wieder zugeht.
     const def = pocketBack('e');
     const plain = parseLevel({
       ...def,
-      floors: [{ ...def.floors[0]!, maze: { ...def.floors[0]!.maze, brittle: [], brittleSide: [] } }],
+      floors: [
+        {
+          ...def.floors[0]!,
+          maze: { ...def.floors[0]!.maze, brittle: [], brittleSide: [] },
+          elements: def.floors[0]!.elements.map((el) =>
+            el.type === 'key' ? { type: 'timedSwitch', cell: el.cell, opens: el.opens, durationS: 6, r: 30 } : el,
+          ),
+        },
+      ],
     });
     const sl = badge(plain, 'softlock');
     expect(sl.ok).toBe(false);

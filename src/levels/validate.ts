@@ -341,15 +341,21 @@ export function coopReachable(
         // nur, wenn das Feld ihn VORGIBT (`pitch`) – ohne Vorgabe ist es auch
         // mit „bleibt offen" tot, und ein Stein hilft nie (er kann nicht
         // neigen; `stonePlates` lässt Felder deshalb aus).
-        const dead =
-          solo !== undefined &&
-          el.type === 'plate' &&
-          (el.tune !== undefined
-            ? el.pitch === undefined || !latchDoors.has(el.opens)
-            : !latchDoors.has(el.opens) && !solo.stone.has(cellKey(fl, el.cell)));
-        const list = openersOf.get(el.opens) ?? [];
-        list.push({ fl, cell: el.cell, dead });
-        openersOf.set(el.opens, list);
+        // M99: Ein Öffner kann MEHRERE Türen nennen – er ist bei jeder eine
+        // eigene Bedingung. Die Solo-Regel (M95/M96) hängt an der TÜR, denn
+        // „bleibt offen" ist eine Eigenschaft der Tür: Dieselbe Platte kann
+        // für die latchende Tür zählen und für die andere tot sein.
+        for (const doorId of el.opens) {
+          const dead =
+            solo !== undefined &&
+            el.type === 'plate' &&
+            (el.tune !== undefined
+              ? el.pitch === undefined || !latchDoors.has(doorId)
+              : !latchDoors.has(doorId) && !solo.stone.has(cellKey(fl, el.cell)));
+          const list = openersOf.get(doorId) ?? [];
+          list.push({ fl, cell: el.cell, dead });
+          openersOf.set(doorId, list);
+        }
       }
     }
   });
@@ -488,9 +494,11 @@ export function pairReachable(
       if (el.type === 'door' && el.require === 'all') requireAll.add(el.id);
       if (el.type === 'door' && el.latch) latchDoors.add(el.id);
       if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
-        const list = openersOf.get(el.opens) ?? [];
-        list.push({ fl, cell: el.cell, plate: el.type === 'plate' });
-        openersOf.set(el.opens, list);
+        for (const doorId of el.opens) {
+          const list = openersOf.get(doorId) ?? [];
+          list.push({ fl, cell: el.cell, plate: el.type === 'plate' });
+          openersOf.set(doorId, list);
+        }
       }
     }
   });
@@ -801,11 +809,14 @@ export function validateLevel(raw: unknown): CheckResult[] {
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch') continue;
-      opensUsed.add(el.opens);
-      if (!doorIds.has(el.opens)) {
-        linksOk = false;
-        linksDetail = `${el.type} → Tür „${el.opens}" fehlt`;
-        linksAt = { floor: fl, cell: el.cell };
+      // M99: Jede genannte Tür muss es geben – eine fehlende reicht für Rot.
+      for (const doorId of el.opens) {
+        opensUsed.add(doorId);
+        if (!doorIds.has(doorId)) {
+          linksOk = false;
+          linksDetail = `${el.type} → Tür „${doorId}" fehlt`;
+          linksAt = { floor: fl, cell: el.cell };
+        }
       }
     }
   });
@@ -924,9 +935,11 @@ export function validateLevel(raw: unknown): CheckResult[] {
   def.floors.forEach((floor, fl) => {
     for (const el of floor.elements) {
       if (el.type !== 'key' && el.type !== 'timedSwitch' && el.type !== 'plate') continue;
-      const list = openersByDoor.get(el.opens) ?? [];
-      list.push({ fl, cell: el.cell, type: el.type });
-      openersByDoor.set(el.opens, list);
+      for (const doorId of el.opens) {
+        const list = openersByDoor.get(doorId) ?? [];
+        list.push({ fl, cell: el.cell, type: el.type });
+        openersByDoor.set(doorId, list);
+      }
     }
   });
   const requireAllDoors = new Set(
@@ -987,12 +1000,14 @@ export function validateLevel(raw: unknown): CheckResult[] {
   def.floors.forEach((floor, swFl) => {
     for (const el of floor.elements) {
       if (el.type !== 'timedSwitch') continue;
+      // M99: Der Sprint muss zu JEDER Tür reichen, die der Schalter nennt –
+      // sonst wäre eine davon ein Versprechen, das das Level nicht hält.
       const doors = def.floors.flatMap((f, fl) =>
-        f.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens).map((door) => ({ door, fl })),
+        f.elements.filter((d): d is DoorDef => d.type === 'door' && el.opens.includes(d.id)).map((door) => ({ door, fl })),
       );
-      if (!doors.length) {
+      if (doors.length < el.opens.length) {
         timerOk = false;
-        timerDetail = `${el.opens}: Tür fehlt`;
+        timerDetail = `${el.opens.join(', ')}: Tür fehlt`;
         timerAt = { floor: swFl, cell: el.cell };
         continue;
       }
@@ -1003,7 +1018,7 @@ export function validateLevel(raw: unknown): CheckResult[] {
         const { steps, hops } = switchDoorSteps(def, swFl, el.cell, door, fl);
         if (steps === Infinity || timerSeconds(steps, hops) > el.durationS) {
           timerOk = false;
-          timerDetail = `${el.opens}: ${el.durationS}s`;
+          timerDetail = `${door.id}: ${el.durationS}s`;
           timerAt = { floor: swFl, cell: el.cell };
         }
       }
@@ -1033,8 +1048,29 @@ export function validateLevel(raw: unknown): CheckResult[] {
   // eingerastet; von dort ist sie offen, für beide Spieler (die Tür ist
   // physisch offen). Eine Zelle, die man auch ohne die Tür erreicht, zählt
   // ohne sie – dort ist sie vielleicht noch zu.
+  // Dazu (M99) die reinen SCHLÜSSEL-Türen: Die werden zu Schutt
+  // (`doorState(...).permanent`), bleiben also genauso offen. Nötig wurde das
+  // mit „ein Öffner, mehrere Türen": Ein Schlüssel, der eine SPÄTERE Tür mit
+  // aufschließt, sah sonst wie ein Softlock aus – man stand hinter Tür a, und
+  // der Beweis fragte, wie man von dort an den Schlüssel für b käme, den man
+  // längst in der Hand hatte. Die Bedingung ist dieselbe wie in core/doors.ts:
+  // mindestens ein Öffner, und ALLE davon sind Schlüssel.
+  const openerKinds = new Map<string, Set<string>>();
+  for (const f of def.floors) {
+    for (const el of f.elements) {
+      if (el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch') continue;
+      for (const id of el.opens) (openerKinds.get(id) ?? openerKinds.set(id, new Set()).get(id)!).add(el.type);
+    }
+  }
   const latchIds = def.floors.flatMap((f) =>
-    f.elements.filter((e): e is DoorDef => e.type === 'door' && e.latch).map((d) => d.id),
+    f.elements
+      .filter((e): e is DoorDef => {
+        if (e.type !== 'door') return false;
+        if (e.latch) return true;
+        const kinds = openerKinds.get(e.id);
+        return kinds !== undefined && kinds.size === 1 && kinds.has('key');
+      })
+      .map((d) => d.id),
   );
   /** Türen, die an Zelle k sicher eingerastet sind (je Spieler-Reichweite). */
   const latchedAt = (k: string, without: Map<string, Set<string>>): Set<string> =>

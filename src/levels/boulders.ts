@@ -44,7 +44,7 @@ interface FloorModel {
   holes: Map<number, number>;
   /** `tune` = RESONANZFELD (M91): Ein Stein kann es nicht halten – er hat
    *  keine Neigung, und gestimmt wird mit Neigung. */
-  plates: Array<{ idx: number; opens: string; tune?: boolean }>;
+  plates: Array<{ idx: number; opens: readonly string[]; tune?: boolean }>;
   slides: Set<string>;
   /** Türkanten je Tür-ID: "x,y,dir" */
   doorEdges: Map<string, Set<string>>;
@@ -92,10 +92,13 @@ function plateOnlyDoors(def: LevelDef): Map<string, { require: 'any' | 'all'; pl
     for (const el of f.elements) {
       if (el.type === 'door') doors.set(el.id, { require: el.require ?? 'any', latch: el.latch === true });
       if (el.type === 'plate' || el.type === 'key' || el.type === 'timedSwitch') {
-        const o = openers.get(el.opens) ?? { plates: 0, other: 0 };
-        if (el.type === 'plate') o.plates++;
-        else o.other++;
-        openers.set(el.opens, o);
+        // M99: Ein Öffner kann mehrere Türen nennen – er zählt bei jeder.
+        for (const id of el.opens) {
+          const o = openers.get(id) ?? { plates: 0, other: 0 };
+          if (el.type === 'plate') o.plates++;
+          else o.other++;
+          openers.set(id, o);
+        }
       }
     }
   }
@@ -207,7 +210,7 @@ export function boulderProof(
       latchBit.set(id, bit);
       floors.forEach((fm, ffl) => {
         for (const pl of fm.plates) {
-          if (pl.opens !== id || pl.tune) continue;
+          if (!pl.opens.includes(id) || pl.tune) continue;
           const at = ffl * 100000 + pl.idx;
           bitsAt.set(at, (bitsAt.get(at) ?? 0) | bit);
         }
@@ -231,7 +234,7 @@ export function boulderProof(
       let total = 0;
       floors.forEach((fm, ffl) => {
         for (const pl of fm.plates) {
-          if (pl.opens !== doorId) continue;
+          if (!pl.opens.includes(doorId)) continue;
           total++;
           const key = `${ffl}:${pl.idx % fm.cols},${Math.floor(pl.idx / fm.cols)}`;
           // Ein STEIN hält kein Resonanzfeld (M91) – der PARTNER schon, wenn

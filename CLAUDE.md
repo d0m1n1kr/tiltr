@@ -174,6 +174,33 @@ Werkzeug NICHT – die Commit-Nachricht ist Teil der Arbeit.
   `updateDoors(now)` in app.ts sie – Schlüssel, Zeitschloss und MP-Platten
   schalten keine Tür mehr selbst. `permanent` (Schutt) nur bei reinen
   Schlüssel-Bedingungen.
+  UND UMGEKEHRT: EIN ÖFFNER, MEHRERE TÜREN (M99, v3.34.0). `opens` nimmt eine
+  ID ODER eine Liste; nach `parseLevel` ist es IMMER eine Liste (`opensField`,
+  ein `preprocess` – KEINE Union: bei einer Union meldet zod nur „Invalid
+  input", und der Ladefehler-Text des Editors wäre wieder Kauderwelsch, M61).
+  Jede genannte Tür ist eine EIGENE Bedingung: `collectOpeners` trägt den
+  Zustand bei jeder ein, `coopReachable`/`pairReachable`/`boulderProof`/`links`
+  iterieren, und der `timer`-Beweis verlangt, dass der Sprint zu JEDER reicht.
+  Die Solo-Regel (M95/M96) hängt dabei an der TÜR, nicht am Öffner: Dieselbe
+  Platte kann für die latchende Tür zählen und für die andere tot sein.
+  KOMPATIBEL BLEIBT ES ÜBER DIE SCHREIBWEISE: Der Editor schreibt weiter einen
+  STRING, solange es EINE Tür ist (`setOpens`) – ein Level ohne das neue Mittel
+  ist Byte für Byte wie vorher, also bleiben Teilen-Token und Exporte mit
+  älteren Fassungen lesbar. Erst eine echte Liste braucht 3.34, und im Netz
+  deckt das Merkmals-Gate den Fall (`needsFor(…, multiOpens)`, abgeleitet über
+  `hasMultiOpens`). Editor: aus dem Auswahlfeld wird eine CHIP-Zeile
+  (`#edOpensRow`, `.ed-chips`, umbrechend) – ein `select multiple` ist auf dem
+  Phone unbedienbar; das 🔗 ERSETZT weiterhin (ein Tap, der heimlich dazuhängt,
+  wäre eine andere Geste am selben Knopf), und die LETZTE Tür lässt sich nicht
+  abwählen (ohne `opens` parst die Def nicht, M60).
+  EINE SCHLÜSSEL-TÜR FÄLLT NICHT HINTER DIR ZU (Fund aus M99): Der
+  Softlock-Beweis führte reine Schlüssel-Türen so, als stünden sie wieder zu –
+  dabei werden sie zu Schutt (`permanent`). Auffällig wurde es erst, als ein
+  Schlüssel eine SPÄTERE Tür mit aufschloss: Der Beweis fragte, wie man von
+  hinter Tür a an den Schlüssel für b käme, den man längst in der Hand hatte.
+  `latchIds` im Softlock-Beweis enthält deshalb neben den latchenden Türen auch
+  die reinen Schlüssel-Türen (Bedingung wie in `doorState`: mindestens ein
+  Öffner, und ALLE sind Schlüssel) – dieselbe Regel wie M78, nur für Schutt.
   WIE LANGE OFFEN (M76): Schlüssel dauerhaft, PLATTE nur solange gehalten,
   ZEITSCHALTER nur solange der Timer läuft – und je Tür einstellbar über
   `door.latch` („bleibt offen"): War die Bedingung EINMAL erfüllt, bleibt die

@@ -70,7 +70,7 @@ describe('Kampagne', () => {
         for (const el of floor.elements) {
           if (el.type !== 'timedSwitch') continue;
           const doors = def.floors.flatMap((f, fl) =>
-            f.elements.filter((d): d is DoorDef => d.type === 'door' && d.id === el.opens).map((door) => ({ door, fl })),
+            f.elements.filter((d): d is DoorDef => d.type === 'door' && el.opens.includes(d.id)).map((door) => ({ door, fl })),
           );
           expect(doors.length, `${def.id}: Zeitschloss ohne Tür`).toBeGreaterThan(0);
           for (const { door, fl } of doors) {
@@ -205,8 +205,8 @@ describe('Kampagne', () => {
       while (changed) {
         changed = false;
         for (const el of floor0.elements) {
-          if (el.type === 'key' && !openDoors.has(el.opens) && seen.has(el.cell.join(','))) {
-            openDoors.add(el.opens);
+          if (el.type === 'key' && el.opens.some((id) => !openDoors.has(id)) && seen.has(el.cell.join(','))) {
+            for (const id of el.opens) openDoors.add(id);
             changed = true;
           }
         }

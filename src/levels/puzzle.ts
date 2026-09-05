@@ -146,14 +146,14 @@ export function planDoorPuzzle(
   };
   let used = 0;
   for (; used < candidates.length && openers.length < spec.keys; used++) {
-    openers.push({ type: 'key', cell: take(candidates[used]!), opens: id, r: 18, voice: 'tinkle' });
+    openers.push({ type: 'key', cell: take(candidates[used]!), opens: [id], r: 18, voice: 'tinkle' });
   }
   if (spec.switch) {
     // Nahe der Tür: Distanz im Ankunfts-Teil zur Türzelle a.
     const toDoor = bfsWithout(cells, cols, rows, a, { a, b }).dist;
     const near = candidates.slice(used).find((k) => (toDoor.get(k) ?? Infinity) <= SWITCH_MAX_STEPS);
     if (near !== undefined) {
-      openers.push({ type: 'timedSwitch', cell: take(near), opens: id, durationS: SWITCH_DURATION_S, r: 30 });
+      openers.push({ type: 'timedSwitch', cell: take(near), opens: [id], durationS: SWITCH_DURATION_S, r: 30 });
     }
   }
   if (!openers.length) return null;

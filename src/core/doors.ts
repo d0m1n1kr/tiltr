@@ -53,9 +53,9 @@ export function doorState(
 /** Was eine Welt an Öffnern beiträgt – STRUKTURELL beschrieben, damit `World`
  *  (physics.ts) ohne Import passt und ein Test mit nackten Objekten reicht. */
 export interface OpenerSource {
-  keys: readonly { opens: string; collected: boolean }[];
-  switches: readonly { opens: string; openUntil: number | null }[];
-  plates: readonly { opens: string; held: boolean; boulder?: boolean }[];
+  keys: readonly { opens: readonly string[]; collected: boolean }[];
+  switches: readonly { opens: readonly string[]; openUntil: number | null }[];
+  plates: readonly { opens: readonly string[]; held: boolean; boulder?: boolean }[];
 }
 
 /** Öffner-Zustände mehrerer Welten (alle Ebenen – im Coop die BEIDER Spieler)
@@ -68,11 +68,15 @@ export function collectOpeners(sources: readonly OpenerSource[], now: number): M
     if (list) list.push(o);
     else openers.set(id, [o]);
   };
+  // EIN ÖFFNER, MEHRERE TÜREN (M99): `opens` ist eine LISTE – derselbe Zustand
+  // wird bei jeder genannten Tür eingetragen. Für die Tür ändert sich nichts:
+  // Sie sieht weiter eine Liste von Bedingungen und rechnet 'any'/'all'.
   for (const s of sources) {
-    for (const k of s.keys) add(k.opens, { kind: 'key', satisfied: k.collected });
-    for (const sw of s.switches) add(sw.opens, { kind: 'timedSwitch', satisfied: sw.openUntil !== null && sw.openUntil > now });
+    for (const k of s.keys) for (const id of k.opens) add(id, { kind: 'key', satisfied: k.collected });
+    for (const sw of s.switches)
+      for (const id of sw.opens) add(id, { kind: 'timedSwitch', satisfied: sw.openUntil !== null && sw.openUntil > now });
     // Platte gehalten: von einem Spieler (MP, Testmodus) oder einem Rollstein (M47).
-    for (const p of s.plates) add(p.opens, { kind: 'plate', satisfied: p.held || p.boulder === true });
+    for (const p of s.plates) for (const id of p.opens) add(id, { kind: 'plate', satisfied: p.held || p.boulder === true });
   }
   return openers;
 }

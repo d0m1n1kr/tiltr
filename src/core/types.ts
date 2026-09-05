@@ -164,8 +164,9 @@ export interface Collectible {
 }
 
 export interface Key extends Collectible {
-  /** Tür-ID, die dieser Schlüssel öffnet */
-  opens: string;
+  /** Tür-ID(s), die dieser Schlüssel öffnet – IMMER eine Liste (M99), auch
+   *  wenn die Def nur eine ID nennt: EINE Form im Modell. */
+  opens: readonly string[];
   /** Klang (M45): 'tinkle' klimpert gepannt; 'fork' ist eine Stimmgabel –
    *  ungepannter Ton, dessen Schwebung verrät, ob man auf sie zu neigt. */
   voice: 'tinkle' | 'fork';
@@ -181,8 +182,8 @@ export interface Plate {
    *  gehalten wird. Vorher hieß der Schlüssel `opens` – dann öffnete eine
    *  Platte alle ihre Geschwister mit. */
   id: string;
-  /** Tür-ID, die diese Druckplatte (solange gehalten) öffnet */
-  opens: string;
+  /** Tür-ID(s), die diese Druckplatte (solange gehalten) öffnet (M99) */
+  opens: readonly string[];
   /** wird gerade von einem Spieler gehalten (lokal ODER remote) */
   held: boolean;
   /** Rollstein (M47) liegt auf der Platte – hält sie dauerhaft, auch allein. */
@@ -206,8 +207,8 @@ export interface TimedSwitch {
   x: number;
   y: number;
   r: number;
-  /** Tür-ID, die der Schalter für durationS Sekunden öffnet */
-  opens: string;
+  /** Tür-ID(s), die der Schalter für durationS Sekunden öffnet (M99) */
+  opens: readonly string[];
   durationS: number;
   /** Tür offen bis (ms, performance.now-Zeitbasis); null = nie ausgelöst */
   openUntil: number | null;

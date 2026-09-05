@@ -11,18 +11,23 @@
 // spielt weiter mit jeder älteren Fassung. Rein – Units in tests/features.test.ts.
 
 /** Merkmale, die DIESE Fassung beherrscht. Neues Spielmittel ⇒ hier eintragen. */
-export const FEATURES: readonly string[] = ['marks', 'together', 'duet'];
+export const FEATURES: readonly string[] = ['marks', 'together', 'duet', 'multiOpens'];
 
 /** Was ein Level verlangt: `marks` > 0 heißt „beide müssen Bojen legen
  *  können", `together` heißt „beide müssen nach der Rendezvous-Regel spielen"
  *  (M90 – eine alte Gegenstelle würde sonst nach der alten Regel gewinnen),
  *  `duet` heißt „das Level hat ein Resonanz-Tor" (M91): Ohne den Ton der
- *  anderen Seite (`state.tn`) geht es NIE auf – ein unlösbares Level. */
-export function needsFor(marks: number, together = false, duet = false): string[] {
+ *  anderen Seite (`state.tn`) geht es NIE auf – ein unlösbares Level.
+ *  `multiOpens` heißt „ein Öffner nennt mehrere Türen" (M99): Eine Fassung vor
+ *  3.34 liest `opens` nur als EINE ID, das Level lädt bei ihr gar nicht. Hier
+ *  geht es also nicht um halbe Regeln, sondern um „geht überhaupt" – und
+ *  gemeldet gehört es trotzdem in der Lobby, nicht als roher Ladefehler. */
+export function needsFor(marks: number, together = false, duet = false, multiOpens = false): string[] {
   const needs: string[] = [];
   if (marks > 0) needs.push('marks');
   if (together) needs.push('together');
   if (duet) needs.push('duet');
+  if (multiOpens) needs.push('multiOpens');
   return needs;
 }
 

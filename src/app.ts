@@ -60,7 +60,7 @@ import {
 import { probeIce } from './net/iceProbe';
 import { scanRoomCode } from './ui/scanner';
 import { renderSVG } from 'uqr';
-import { parseLevel, type LevelDef } from './levels/schema';
+import { hasMultiOpens, parseLevel, type LevelDef } from './levels/schema';
 import { profile } from './profile';
 import { setupUpdates } from './ui/update';
 import { setupGallery, extraEntries } from './ui/gallery';
@@ -2266,7 +2266,7 @@ function mpInit(transport: Transport, code: string, host: boolean, mpmode: MpMod
           mode: mp.mode,
           levelId: mp.level.id,
           def: mp.custom ? mp.level : undefined,
-          needs: needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance')),
+          needs: needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance'), hasMultiOpens(mp.level)),
         });
         $('mpLobbyStatus').textContent = t('mp.connected');
         mpShowIntro();
@@ -2339,7 +2339,7 @@ function mpOnMessage(type: string, payload: unknown): void {
     if (
       mp.host &&
       mp.level &&
-      !canDo(needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance')), p?.features)
+      !canDo(needsFor(mp.level.marks, mp.level.together, levelFeatures(mp.level).has('resonance'), hasMultiOpens(mp.level)), p?.features)
     ) {
       $('mpLobbyStatus').textContent = t('mp.needsUpdate');
       return;
@@ -3396,7 +3396,9 @@ function frame(now: number): void {
         // über ALLE Ebenen – das Lösbarkeits-Modell (coopReachable) ist
         // ebenenübergreifend, das Spiel muss dasselbe tun.
         const opened = updateDoors(now);
-        flash(opened.has(key.opens) ? t('st.door') : t('st.keyMore'));
+        // M99: Ein Schlüssel kann mehrere Türen nennen – „geöffnet" meldet nur,
+        // wer ALLE davon aufbekommen hat; sonst fehlt noch etwas.
+        flash(key.opens.every((id) => opened.has(id)) ? t('st.door') : t('st.keyMore'));
       } else if (kd < KEY_HEAR) {
         // Hinter einer Schallschutzwand klingt der Schlüssel wie weit weg.
         audio.keyTinkle(kdx, kdy, Math.min(1, kd / KEY_HEAR / shield(kdx, kdy)));

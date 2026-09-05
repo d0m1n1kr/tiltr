@@ -647,20 +647,37 @@ export function setupEditor(opts: {
       });
   };
 
+  /** EIN ÖFFNER, MEHRERE TÜREN (M99): `opens` ist in der ROHEN Def eine ID
+   *  ODER eine Liste. Gelesen wird hier immer als Liste … */
+  const opensList = (el: RawEl): string[] =>
+    Array.isArray(el.opens) ? el.opens.map(String) : el.opens === undefined || el.opens === '' ? [] : [String(el.opens)];
+
+  /** … und geschrieben als STRING, solange es eine Tür ist. Nur so bleibt ein
+   *  Level, das das neue Mittel nicht braucht, Byte für Byte wie vorher –
+   *  Teilen-Token und Export bleiben mit älteren Fassungen lesbar. */
+  const setOpens = (el: RawEl, ids: readonly string[]): void => {
+    el.opens = ids.length === 1 ? ids[0]! : [...ids];
+  };
+
+  const isOpener = (el: RawEl): boolean => el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch';
+
   const openersOf = (doorId: string): RawEl[] =>
-    draft!.floors.flatMap((f) =>
-      f.elements.filter((el) => (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch') && el.opens === doorId),
-    );
+    draft!.floors.flatMap((f) => f.elements.filter((el) => isOpener(el) && opensList(el).includes(doorId)));
 
   /** Tür weg ⇒ Referenzen nicht hängen lassen: Öffner auf die nächstgelegene
    *  verbleibende Tür umhängen; gibt es keine mehr, bleibt das Badge
    *  „Verknüpfungen" rot und der Status sagt warum. */
   function cleanupAfterDoorDelete(doorId: string): void {
+    // M99: Ein Öffner kann mehrere Türen nennen – die gelöschte fällt aus der
+    // Liste. VERWAIST ist nur, wer danach gar keine Tür mehr hat.
     const orphans: Array<{ fl: number; el: RawEl }> = [];
     draft!.floors.forEach((f, fl) => {
       for (const el of f.elements) {
-        if ((el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch') && el.opens === doorId)
-          orphans.push({ fl, el });
+        if (!isOpener(el)) continue;
+        const rest = opensList(el).filter((id) => id !== doorId);
+        if (rest.length === opensList(el).length) continue;
+        if (rest.length) setOpens(el, rest);
+        else orphans.push({ fl, el });
       }
     });
     if (!orphans.length) return;
@@ -670,7 +687,7 @@ export function setupEditor(opts: {
         // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel überall.
         const next = nearestDoorId(o.fl, o.el.cell ?? [0, 0], o.el.type !== 'timedSwitch');
         if (next) {
-          o.el.opens = next;
+          setOpens(o.el, [next]);
           last = next;
         }
       }
@@ -690,7 +707,7 @@ export function setupEditor(opts: {
       return renderProps();
     }
     el.id = next;
-    for (const o of openersOf(old)) o.opens = next;
+    for (const o of openersOf(old)) setOpens(o, opensList(o).map((id) => (id === old ? next : id)));
     flash(`„${old}" → „${next}"`);
     renderProps();
     rebuild();
@@ -972,10 +989,16 @@ export function setupEditor(opts: {
     for (const el of floor().elements) {
       if ((el.type !== 'key' && el.type !== 'plate' && el.type !== 'timedSwitch') || !el.cell) continue;
       // Ausgewählte Paare leuchten – die Verknüpfung soll man SEHEN.
-      const hot = selEl === el || (selEl?.type === 'door' && String(selEl.id) === String(el.opens));
+      // M99: Ein Öffner kann MEHRERE Türen nennen – jede auf dieser Ebene
+      // bekommt ihre Linie. Die Zelle des Öffners wird EINMAL gerahmt, egal
+      // wie viele Linien von ihr ausgehen (und auch dann, wenn keine Tür auf
+      // dieser Ebene liegt – dann ist der Rahmen die ganze Auskunft).
+      const ids = opensList(el);
+      const hot = selEl === el || (selEl?.type === 'door' && ids.includes(String(selEl.id)));
       overlay.strokeStyle = `rgba(${WORLD.door}, ${hot ? 0.95 : 0.5})`;
-      const door = doors.get(String(el.opens));
-      if (door) {
+      for (const id of ids) {
+        const door = doors.get(id);
+        if (!door) continue;
         const [mx, my] = edgeMid(door);
         overlay.beginPath();
         overlay.moveTo(tx((el.cell[0] + 0.5) * CELL), ty((el.cell[1] + 0.5) * CELL));
@@ -991,12 +1014,9 @@ export function setupEditor(opts: {
             (vertical ? 16 : CELL + 16) * s,
             (vertical ? CELL + 16 : 16) * s,
           );
-          overlay.strokeRect(tx(el.cell[0] * CELL), ty(el.cell[1] * CELL), CELL * s, CELL * s);
         }
-      } else if (hot || selEl === el) {
-        // Öffner zeigt ins Leere (oder auf eine andere Ebene): Zelle markieren
-        overlay.strokeRect(tx(el.cell[0] * CELL), ty(el.cell[1] * CELL), CELL * s, CELL * s);
       }
+      if (hot) overlay.strokeRect(tx(el.cell[0] * CELL), ty(el.cell[1] * CELL), CELL * s, CELL * s);
     }
     overlay.setLineDash([]);
 
@@ -1320,7 +1340,11 @@ export function setupEditor(opts: {
     if (!hit || hit.type !== 'door') return flash(t('ed.linkMiss'), true);
     if (src.type === 'timedSwitch' && pendingLink!.floor !== activeFloor)
       return flash(t('ed.linkSameFloor'), true);
-    src.opens = String(hit.id);
+    // M99 ändert das 🔗 NICHT: Der Tap ERSETZT die Verknüpfung, wie seit M13.
+    // „Diese Tür" heißt diese Tür – ein Tap, der heimlich dazuhängt, wäre eine
+    // andere Geste mit demselben Knopf. Mehrere Türen wählt man in der
+    // Chip-Zeile „Öffnet Türen" daneben, wo man den Zustand SIEHT.
+    setOpens(src, [String(hit.id)]);
     // Quelle liegt auf einer anderen Ebene: Auswahl-Index gilt dort nicht.
     if (pendingLink!.floor !== activeFloor) selected = -1;
     pendingLink = null;
@@ -1454,6 +1478,9 @@ export function setupEditor(opts: {
       // Platte (M60) wie Schlüssel: Türen wirken ebenenübergreifend. Ohne
       // `opens` parst die Def nicht – die Platte war unsichtbar, weil das
       // letzte gültige Bild stehen blieb.
+      // M99 ändert daran nichts: Ein frisch gesetzter Öffner bekommt GENAU
+      // eine Tür (als String, also byte-gleich zu früher) – weitere hängt man
+      // per 🔗 oder über die Tür-Chips dazu.
       if (placeType === 'key' || placeType === 'timedSwitch' || placeType === 'plate')
         el.opens = nearestDoorId(activeFloor, target.cell!, placeType !== 'timedSwitch') ?? 'tor1';
       if (placeType === 'hole') el.breathing = { offset: Math.round(Math.random() * 8) / 2 }; // 0,5er-Schritte wie das Eingabefeld
@@ -2035,10 +2062,37 @@ export function setupEditor(opts: {
       if (el.type === 'key' || el.type === 'timedSwitch' || el.type === 'plate') {
         // Zeitschlösser nur auf derselben Ebene (Timer-Beweis), Schlüssel und
         // Platten überall (M60: die Platte hatte weder Feld noch 🔗).
+        // EIN ÖFFNER, MEHRERE TÜREN (M99): Aus dem Auswahlfeld wird eine
+        // CHIP-Zeile – eine Kachel je Tür, angetippt heißt verknüpft. Ein
+        // `<select multiple>` wäre auf dem Phone unbedienbar; Chips brechen um
+        // (dieselbe Sprache wie die Zeilen im Menü) und zeigen den Zustand,
+        // ohne dass man aufklappen muss.
         const options = doorOptions(el.type === 'timedSwitch');
-        const cur = String(el.opens ?? '');
-        if (!options.some(([v]) => v === cur)) options.unshift([cur, `${cur} ⚠`]);
-        propsEl.append(field(t('ed.f.opens'), selectInput(cur, options, (v) => (el.opens = v))));
+        const cur = opensList(el);
+        for (const id of cur) if (!options.some(([v]) => v === id)) options.unshift([id, `${id} ⚠`]);
+        const row = document.createElement('div');
+        row.className = 'ed-chips';
+        row.id = 'edOpensRow';
+        for (const [id, label] of options) {
+          const chip = document.createElement('button');
+          chip.className = 'chip';
+          chip.dataset.door = id;
+          chip.textContent = label;
+          chip.classList.toggle('active', cur.includes(id));
+          chip.addEventListener('click', () => {
+            const now = opensList(el);
+            if (now.includes(id)) {
+              // Die LETZTE Tür bleibt: ohne `opens` parst die Def nicht (M60).
+              if (now.length === 1) return flash(t('ed.opensMin'), true);
+              setOpens(el, now.filter((x) => x !== id));
+            } else setOpens(el, [...now, id]);
+            renderProps();
+            rebuild();
+            paint();
+          });
+          row.append(chip);
+        }
+        propsEl.append(field(t('ed.f.opens'), row));
         const link = document.createElement('button');
         link.className = 'btn btn-soft ed-link';
         link.textContent = `🔗 ${t('ed.linkPick')}`;

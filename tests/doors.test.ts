@@ -42,8 +42,8 @@ describe('doorState', () => {
 // eigene. Nackte Objekte reichen: die Quelle ist strukturell beschrieben.
 describe('collectOpeners', () => {
   const src = (o: Partial<OpenerSource>): OpenerSource => ({ keys: [], switches: [], plates: [], ...o });
-  const p1 = src({ keys: [{ opens: 'k', collected: false }] });
-  const p2 = src({ plates: [{ opens: 'k', held: true }] });
+  const p1 = src({ keys: [{ opens: ['k'], collected: false }] });
+  const p2 = src({ plates: [{ opens: ['k'], held: true }] });
 
   it('sammelt je Tür-ID über alle Quellen', () => {
     const m = collectOpeners([p1, p2], 1000);
@@ -55,28 +55,28 @@ describe('collectOpeners', () => {
     expect(doorState(collectOpeners([p1], 1000).get('k') ?? []).open).toBe(false);
   });
   it('Zeitschalter zählt nur, solange sein Timer läuft; Rollstein hält die Platte', () => {
-    const sw = src({ switches: [{ opens: 'd', openUntil: 900 }] });
+    const sw = src({ switches: [{ opens: ['d'], openUntil: 900 }] });
     expect(doorState(collectOpeners([sw], 800).get('d') ?? []).open).toBe(true);
     expect(doorState(collectOpeners([sw], 1000).get('d') ?? []).open).toBe(false);
-    const boulder = src({ plates: [{ opens: 'd', held: false, boulder: true }] });
+    const boulder = src({ plates: [{ opens: ['d'], held: false, boulder: true }] });
     expect(doorState(collectOpeners([boulder], 0).get('d') ?? []).open).toBe(true);
   });
   it('zwei Platten derselben Tür sind ZWEI Bedingungen (M76)', () => {
     // Der Fehler, den das ausschließt: Der Halte-Zustand lief über die
     // TÜR-ID, also hielt eine Platte ihre Geschwister mit – ein 'all' ging
     // mit einer einzigen Kugel auf. Jede Platte ist ein eigener Eintrag.
-    const one = collectOpeners([src({ plates: [{ opens: 'g', held: true }, { opens: 'g', held: false }] })], 0);
+    const one = collectOpeners([src({ plates: [{ opens: ['g'], held: true }, { opens: ['g'], held: false }] })], 0);
     expect(one.get('g')).toHaveLength(2);
     expect(doorState(one.get('g') ?? [], 'all').open).toBe(false);
     expect(doorState(one.get('g') ?? [], 'any').open).toBe(true);
-    const both = collectOpeners([src({ plates: [{ opens: 'g', held: true }, { opens: 'g', held: true }] })], 0);
+    const both = collectOpeners([src({ plates: [{ opens: ['g'], held: true }, { opens: ['g'], held: true }] })], 0);
     expect(doorState(both.get('g') ?? [], 'all').open).toBe(true);
   });
 
   it("'all' verlangt beide Öffner gleichzeitig – auch über zwei Welten", () => {
-    const both = collectOpeners([src({ keys: [{ opens: 'g', collected: true }] }), src({ plates: [{ opens: 'g', held: false }] })], 0);
+    const both = collectOpeners([src({ keys: [{ opens: ['g'], collected: true }] }), src({ plates: [{ opens: ['g'], held: false }] })], 0);
     expect(doorState(both.get('g') ?? [], 'all').open).toBe(false);
-    const held = collectOpeners([src({ keys: [{ opens: 'g', collected: true }] }), src({ plates: [{ opens: 'g', held: true }] })], 0);
+    const held = collectOpeners([src({ keys: [{ opens: ['g'], collected: true }] }), src({ plates: [{ opens: ['g'], held: true }] })], 0);
     expect(doorState(held.get('g') ?? [], 'all').open).toBe(true);
   });
 });

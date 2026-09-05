@@ -651,6 +651,57 @@ EIGENE Welt, oft auf einer anderen Ebene, und Wände sind nicht synchronisiert
 (M68) – eine gemeinsame Zwangskraft bräuchte eine Autorität und wäre bei 80 ms
 Latenz gummiartig.
 
+## M99 „Ein Öffner, mehrere Türen" ✓ (v3.34.0)
+
+Gefragt in einem Satz: „wäre es möglich, dass eine Platte mit mehreren Türen
+verknüpft ist?" Zwei Türen mit DERSELBEN ID gingen schon immer (sie sind dann
+eine Tür an zwei Stellen und schalten gemeinsam) – gewünscht war das andere:
+unabhängige Türen, und deshalb `opens` als LISTE.
+
+EINE FORM IM MODELL, ZWEI AN DER SCHNITTSTELLE: `opensField` nimmt eine ID oder
+eine Liste und liefert nach dem Parsen IMMER eine Liste. Dadurch iterieren alle
+Verbraucher (`collectOpeners`, `coopReachable`, `pairReachable`, `boulderProof`,
+`links`, `timer`) über EINE Form, statt an zwanzig Stellen zwei Fälle zu kennen.
+Als `preprocess`, nicht als `union`: Bei einer Union meldet zod für ein
+fehlendes `opens` nur „Invalid input", und der Ladefehler-Text des Editors (M61)
+wäre wieder Kauderwelsch.
+
+KOMPATIBILITÄT LIEGT IN DER SCHREIBWEISE, nicht in einer Migration: Der Editor
+schreibt weiter einen STRING, solange ein Öffner genau eine Tür nennt
+(`setOpens`). Ein Level, das das neue Mittel nicht braucht, bleibt damit Byte
+für Byte wie vorher – Teilen-Token, Exporte und Bundles bleiben mit älteren
+Fassungen lesbar. Erst eine echte Liste verlangt 3.34; im Netz meldet das
+Merkmals-Gate das (`needsFor(…, multiOpens)`), statt den Gast mit einem rohen
+Ladefehler stehen zu lassen.
+
+DIE SOLO-REGEL HÄNGT AN DER TÜR (M95/M96 im neuen Licht): Ob eine Platte zählt,
+entscheidet „bleibt offen" – eine Eigenschaft der TÜR. Nennt eine Platte zwei
+Türen, kann sie für die eine zählen und für die andere tot sein. Genau so
+rechnet `coopReachable` jetzt, und die Gegenprobe steht in
+tests/multiOpens.test.ts.
+
+DER EIGENTLICHE FUND: EINE SCHLÜSSEL-TÜR FÄLLT NICHT HINTER DIR ZU. Der
+Softlock-Beweis führte reine Schlüssel-Türen so, als stünden sie wieder zu –
+dabei macht `doorState` sie `permanent`, und das Spiel verwandelt sie in
+Schutt. Bemerkt hat es niemand, weil die gewöhnliche Progression (Schlüssel 1 →
+Tür 1 → Schlüssel 2 → Tür 2) den Fall nie erzeugt: Der Schlüssel für die
+nächste Tür liegt immer HINTER der vorigen. Erst ein Schlüssel, der eine
+SPÄTERE Tür mit aufschließt, stellte die Frage „wie kommst du von hinter Tür a
+an den Schlüssel für b?" – den man längst in der Hand hatte. `latchIds` führt
+deshalb neben den latchenden auch die reinen Schlüssel-Türen; dieselbe Regel
+wie M78, nur für Schutt. Ein Test, der die alte Modell-Lücke als Wahrheit
+festhielt (tests/brittleTorch: „Tür tor2 fällt hinter dir zu" mit einem
+Schlüssel), bekam dafür einen Zeitschalter – eine Tür, die wirklich zufällt.
+
+Editor: Aus dem Auswahlfeld „Öffnet Tür" wird die Chip-Zeile „Öffnet Türen"
+(`#edOpensRow`, umbrechend wie die Chip-Zeilen im Menü) – ein `select multiple`
+ist auf dem Phone unbedienbar, und Chips zeigen den Zustand, ohne dass man
+aufklappen muss. Das 🔗 ERSETZT weiterhin: „diese Tür" heißt diese Tür, ein Tap
+der heimlich dazuhängt wäre eine zweite Geste am selben Knopf. Die letzte Tür
+lässt sich nicht abwählen (ohne `opens` parst die Def nicht, M60). Beim Löschen
+einer Tür fällt sie aus den Listen; verwaist ist nur, wer danach gar keine mehr
+hat.
+
 ## M98 „Der Startblick" ✓ (v3.33.0)
 
 Gemeldet in einem Satz: „Im First Person soll die Startrichtung nicht nach

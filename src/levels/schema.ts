@@ -72,11 +72,29 @@ export const guardDef = z.object({
     .optional(),
 });
 
+/* --- EIN ÖFFNER, MEHRERE TÜREN (M99) ----------------------------------------
+   `opens` nimmt eine Tür-ID ODER eine Liste – nach dem Parsen ist es IMMER
+   eine Liste. EINE Form im Modell, zwei an der Schnittstelle: Alle Beweise und
+   die Türregel iterieren, und trotzdem lädt jede Def von vor 3.34 unverändert.
+
+   Der Editor schreibt weiterhin einen STRING, solange es EINE Tür ist
+   (`setOpens`): Ein Level, das das neue Mittel nicht braucht, bleibt Byte für
+   Byte, wie es war – Teilen-Token und Exporte bleiben mit älteren Fassungen
+   lesbar. Erst wer wirklich zwei Türen an einen Öffner hängt, braucht 3.34.
+   Im Netz deckt das Merkmals-Gate den Fall (`needsFor(…, multiOpens)`). */
+// `preprocess` statt `union`: Ein fehlendes `opens` soll weiter „Required"
+// melden (der Editor macht daraus „opens fehlt", M61) – bei einer Union stünde
+// dort nur „Invalid input", und die Ladefehler-Meldung wäre wieder Kauderwelsch.
+const opensField = z.preprocess(
+  (v) => (typeof v === 'string' ? [v] : v),
+  z.array(z.string().min(1)).min(1),
+);
+
 export const keyDef = z.object({
   ...base,
   type: z.literal('key'),
-  /** Tür-ID, die dieser Schlüssel öffnet */
-  opens: z.string().min(1),
+  /** Tür-ID(s), die dieser Schlüssel öffnet – eine oder mehrere (M99) */
+  opens: opensField,
   r: z.number().positive().default(18),
   /** Klang (M45): Klimpern (gepannt) oder Stimmgabel – reiner Ton, dessen
    *  Schwebung mit der Neigungsrichtung wandert (Ortung über Tonhöhe). */
@@ -120,8 +138,9 @@ export const gemDef = z.object({
 export const plateDef = z.object({
   ...base,
   type: z.literal('plate'),
-  /** Tür-ID, die diese Platte öffnet, SOLANGE sie gehalten wird (Coop) */
-  opens: z.string().min(1),
+  /** Tür-ID(s), die diese Platte öffnet, SOLANGE sie gehalten wird (Coop) –
+   *  eine oder mehrere (M99) */
+  opens: opensField,
   r: z.number().positive().default(30),
   /** RESONANZFELD (M91): Die Platte ist eine SCHALE, die die Kugel hält, und
    *  die Neigung wird zum Stimmknopf. Gehalten ist sie erst, wenn die Töne
@@ -174,8 +193,8 @@ export const slidingWallDef = z.object({
 export const timedSwitchDef = z.object({
   ...base,
   type: z.literal('timedSwitch'),
-  /** Tür-ID, die der Schalter für durationS Sekunden öffnet */
-  opens: z.string().min(1),
+  /** Tür-ID(s), die der Schalter für durationS Sekunden öffnet (M99) */
+  opens: opensField,
   durationS: z.number().positive().default(6),
   r: z.number().positive().default(30),
 });
@@ -479,6 +498,15 @@ export const levelSchema = z.object({
     message: '„brightPlayer" nur bei zwei Spielern und mit bright: true',
   });
 export type LevelDef = z.infer<typeof levelSchema>;
+
+/** Nennt irgendein Öffner MEHRERE Türen (M99)? Das ist die Frage des
+ *  Merkmals-Gates: Eine Fassung vor 3.34 liest `opens` nur als eine ID und
+ *  lädt so ein Level gar nicht. Rein abgeleitet – kein Level-Feld, sonst
+ *  könnte es lügen. */
+export const hasMultiOpens = (def: LevelDef): boolean =>
+  def.floors.some((f) =>
+    f.elements.some((el) => (el.type === 'key' || el.type === 'plate' || el.type === 'timedSwitch') && el.opens.length > 1),
+  );
 
 export function parseLevel(data: unknown): LevelDef {
   return levelSchema.parse(data);
